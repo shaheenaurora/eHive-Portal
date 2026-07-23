@@ -1,0 +1,145 @@
+import { useState } from "react";
+import type { FormEvent } from "react";
+import { trpc } from "@/providers/trpc";
+import { EhShell, ADMIN_NAV, PageHead, Pill, StatusPill, Empty, TierPill, Spinner, Modal, Field, toast } from "@/components/eh";
+import { fmtDateTime, fmtDay, initials } from "@/lib/ehf";
+import { EVENT_KINDS, TIERS, TIER_LABEL } from "@contracts/constants";
+
+export default function AdminEvents() {
+  const utils = trpc.useUtils();
+  const q = trpc.admin.eventsAdmin.useQuery(undefined, { retry: false });
+  const [create, setCreate] = useState(false);
+  const [regsFor, setRegsFor] = useState<number | null>(null);
+
+  const invalidate = () => utils.admin.eventsAdmin.invalidate();
+
+  const createEvent = trpc.admin.createEvent.useMutation({
+    onSuccess: () => { toast("Event published — visible to members at once."); invalidate(); setCreate(false); },
+    onError: (e) => toast(e.message),
+  });
+  const markAtt = trpc.admin.markEventAttendance.useMutation({
+    onSuccess: () => { toast("Updated — score adjusted where due."); invalidate(); utils.admin.eventRegs.invalidate(); },
+    onError: (e) => toast(e.message),
+  });
+
+  const regs = trpc.admin.eventRegs.useQuery({ id: regsFor! }, { enabled: regsFor !== null, retry: false });
+
+  function onCreate(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    createEvent.mutate({
+      title: String(f.get("title")),
+      kind: String(f.get("kind")) as never,
+      description: String(f.get("description")) || undefined,
+      startsAt: new Date(String(f.get("startsAt"))),
+      location: String(f.get("location")) || undefined,
+      tierGate: String(f.get("tierGate")) as never,
+      capacity: Number(f.get("capacity")) || 40,
+    });
+  }
+
+  return (
+    <EhShell groups={ADMIN_NAV} brandSub="Admin">
+      <PageHead eyebrow="Events" title="Calendar management"
+                sub="Publish events, watch registrations, mark attendance — attendance feeds the Hive Score."
+                actions={<button className="eh-btn gold" onClick={() => setCreate(true)}>+ New event</button>} />
+
+      {q.isLoading && <Spinner />}
+      {q.data && q.data.length === 0 && <div className="eh-card"><Empty big="No events yet." /></div>}
+
+      {q.data && q.data.length > 0 && (
+        <div className="eh-card" style={{ padding: ".4rem 1.25rem" }}>
+          <table className="eh-table">
+            <thead>
+              <tr><th>Event</th><th>Kind</th><th>When</th><th>Gate</th><th>Registered</th><th></th></tr>
+            </thead>
+            <tbody>
+              {q.data.map((e) => (
+                <tr key={e.id}>
+                  <td><b>{e.title}</b><div className="eh-muted eh-sm">{e.location ?? "TBA"}</div></td>
+                  <td><Pill>{e.kind}</Pill></td>
+                  <td className="eh-sm">{fmtDay(e.startsAt)} {fmtDateTime(e.startsAt).split("·")[1]}</td>
+                  <td><TierPill tier={e.tierGate} /></td>
+                  <td className="eh-num">{e.regCount}/{e.capacity}</td>
+                  <td><button className="eh-btn ghost sm" onClick={() => setRegsFor(e.id)}>Registrations →</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {create && (
+        <Modal title="New event" onClose={() => setCreate(false)}>
+          <form onSubmit={onCreate}>
+            <Field label="Title">
+              <input className="eh-input" name="title" required minLength={2} placeholder="Spark Evening — …" />
+            </Field>
+            <div className="eh-grid g2">
+              <Field label="Kind">
+                <select className="eh-select" name="kind">
+                  {EVENT_KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
+                </select>
+              </Field>
+              <Field label="Tier gate">
+                <select className="eh-select" name="tierGate" defaultValue="horizon">
+                  {TIERS.map((t) => <option key={t} value={t}>{TIER_LABEL[t]}+</option>)}
+                </select>
+              </Field>
+            </div>
+            <div className="eh-grid g2">
+              <Field label="Starts at">
+                <input className="eh-input" name="startsAt" type="datetime-local" required />
+              </Field>
+              <Field label="Capacity">
+                <input className="eh-input" name="capacity" type="number" min={1} defaultValue={40} />
+              </Field>
+            </div>
+            <Field label="Location">
+              <input className="eh-input" name="location" placeholder="eHive Majlis, DIFC" />
+            </Field>
+            <Field label="Description">
+              <textarea className="eh-textarea" name="description" />
+            </Field>
+            <button className="eh-btn gold" type="submit" disabled={createEvent.isPending}>Publish event →</button>
+          </form>
+        </Modal>
+      )}
+
+      {regsFor !== null && (
+        <Modal title="Registrations" onClose={() => setRegsFor(null)} wide>
+          {regs.isLoading && <Spinner />}
+          {regs.data && regs.data.length === 0 && <Empty big="No registrations yet." />}
+          <div className="eh-list">
+            {regs.data?.map(({ reg, member, userName, userEmail }) => (
+              <div className="row" key={reg.id}>
+                <div className="eh-row" style={{ flexWrap: "nowrap" }}>
+                  <span className="eh-avatar">{initials(userName)}</span>
+                  <div>
+                    <div className="t">{userName}</div>
+                    <div className="d">{member.company ?? userEmail ?? ""}</div>
+                  </div>
+                </div>
+                <div className="eh-row">
+                  <StatusPill status={reg.status} />
+                  {reg.status === "registered" && (
+                    <button className="eh-btn gold sm"
+                            onClick={() => markAtt.mutate({ eventId: regsFor, memberId: member.id, status: "attended" })}>
+                      Mark attended
+                    </button>
+                  )}
+                  {reg.status === "attended" && (
+                    <button className="eh-btn ghost sm"
+                            onClick={() => markAtt.mutate({ eventId: regsFor, memberId: member.id, status: "registered" })}>
+                      Undo
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Modal>
+      )}
+    </EhShell>
+  );
+}

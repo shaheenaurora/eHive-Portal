@@ -1,0 +1,261 @@
+import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
+import { NavLink, useNavigate } from "react-router";
+import { useAuth } from "@/hooks/useAuth";
+import { initials } from "@/lib/ehf";
+import { TIER_LABEL } from "@contracts/constants";
+
+/* ------------------------------- toasts -------------------------------- */
+let pushToastFn: ((msg: string) => void) | null = null;
+export function toast(msg: string) {
+  if (pushToastFn) pushToastFn(msg);
+}
+function ToastHost() {
+  const [msg, setMsg] = useState<string | null>(null);
+  useEffect(() => {
+    pushToastFn = (m: string) => {
+      setMsg(m);
+      setTimeout(() => setMsg(null), 3200);
+    };
+    return () => {
+      pushToastFn = null;
+    };
+  }, []);
+  return msg ? <div className="eh-toast">{msg}</div> : null;
+}
+
+/* -------------------------------- atoms -------------------------------- */
+export function Spinner() {
+  return <div className="eh-spin" role="status" aria-label="Loading" />;
+}
+
+export function PageHead(props: { eyebrow: string; title: string; sub?: string; actions?: ReactNode }) {
+  return (
+    <div className="eh-page-head">
+      <div>
+        <div className="eh-eyebrow">{props.eyebrow}</div>
+        <h1 className="eh-h1">{props.title}</h1>
+        {props.sub && <p className="eh-sub">{props.sub}</p>}
+      </div>
+      {props.actions && <div className="eh-row">{props.actions}</div>}
+    </div>
+  );
+}
+
+export function Stat(props: { k: string; v: ReactNode; n?: string; gold?: boolean }) {
+  return (
+    <div className="eh-stat">
+      <div className="k">{props.k}</div>
+      <div className={"v" + (props.gold ? " gold" : "")}>{props.v}</div>
+      {props.n && <div className="n">{props.n}</div>}
+    </div>
+  );
+}
+
+type PillColor = "gold" | "green" | "red" | "blue" | "purple" | "grey";
+export function Pill(props: { color?: PillColor; children: ReactNode }) {
+  return <span className={"eh-pill" + (props.color && props.color !== "gold" ? " " + props.color : "")}>{props.children}</span>;
+}
+
+export function TierPill(props: { tier: string }) {
+  const map: Record<string, PillColor> = { horizon: "grey", ascent: "blue", vanguard: "purple", zenith: "gold" };
+  return <Pill color={map[props.tier] ?? "grey"}>{TIER_LABEL[props.tier as keyof typeof TIER_LABEL] ?? props.tier}</Pill>;
+}
+
+export function StatusPill(props: { status: string }) {
+  const map: Record<string, PillColor> = {
+    active: "green", approved: "green", attended: "green", done: "green", completed: "green", reviewed: "green",
+    received: "grey", screening: "blue", interview: "purple", scheduled: "blue", registered: "blue",
+    in_progress: "blue", submitted: "purple", enrolled: "blue", running: "blue", open: "blue",
+    paused: "gold", withdrawn: "gold", excused: "gold", not_started: "grey",
+    cancelled: "red", rejected: "red", absent: "red", closed: "grey",
+  };
+  return <Pill color={map[props.status] ?? "grey"}>{props.status.replace(/_/g, " ")}</Pill>;
+}
+
+export function Empty(props: { big: string; p?: string; children?: ReactNode }) {
+  return (
+    <div className="eh-empty">
+      <div className="big">{props.big}</div>
+      {props.p && <p>{props.p}</p>}
+      {props.children && <div style={{ marginTop: "1rem" }}>{props.children}</div>}
+    </div>
+  );
+}
+
+export function Modal(props: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && props.onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [props]);
+  return (
+    <div className="eh-modal-veil" onClick={(e) => e.target === e.currentTarget && props.onClose()}>
+      <div className="eh-modal" style={props.wide ? { maxWidth: 760 } : undefined} role="dialog" aria-modal="true">
+        <div className="eh-between eh-mb">
+          <h3 style={{ margin: 0 }}>{props.title}</h3>
+          <button className="eh-btn ghost sm" onClick={props.onClose} aria-label="Close">✕</button>
+        </div>
+        {props.children}
+      </div>
+    </div>
+  );
+}
+
+export function Field(props: { label: string; children: ReactNode }) {
+  return (
+    <label className="eh-field">
+      <span>{props.label}</span>
+      {props.children}
+    </label>
+  );
+}
+
+export function Bar(props: { pct: number; green?: boolean }) {
+  return (
+    <div className={"eh-bar" + (props.green ? " green" : "")}>
+      <i style={{ width: Math.min(100, Math.max(0, props.pct)) + "%" }} />
+  </div>
+  );
+}
+
+export function Ring(props: { value: number; max?: number; label?: string; size?: number }) {
+  const size = props.size ?? 132;
+  const max = props.max ?? 100;
+  const r = 54;
+  const c = 2 * Math.PI * r;
+  const pct = Math.min(1, Math.max(0, props.value / max));
+  return (
+    <div className="eh-ring" style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox="0 0 120 120">
+        <circle cx="60" cy="60" r={r} fill="none" stroke="#ece6d9" strokeWidth="9" />
+        <circle
+          cx="60" cy="60" r={r} fill="none" stroke="#b8862e" strokeWidth="9" strokeLinecap="round"
+          strokeDasharray={c} strokeDashoffset={c * (1 - pct)}
+          style={{ transition: "stroke-dashoffset 1s cubic-bezier(.2,.8,.2,1)" }}
+        />
+      </svg>
+      <div className="lbl">
+        <div>
+          <b className="eh-num">{props.value}</b>
+          <span>{props.label ?? "Hive Score"}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------- shell -------------------------------- */
+export type NavItem = { to: string; label: string; icon: string; end?: boolean };
+export type NavGroup = { label?: string; items: NavItem[] };
+
+export function EhShell(props: {
+  groups: NavGroup[];
+  brandSub: string;
+  roleRequired?: "admin";
+  children: ReactNode;
+}) {
+  const { user, isLoading, logout } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isLoading && !user) navigate("/login");
+    if (!isLoading && user && props.roleRequired === "admin" && user.role !== "admin") navigate("/portal");
+  }, [isLoading, user, navigate, props.roleRequired]);
+
+  if (isLoading || !user) return <Spinner />;
+  if (props.roleRequired === "admin" && user.role !== "admin") return <Spinner />;
+
+  return (
+    <div className="eh-shell">
+      <aside className="eh-side">
+        <div className="eh-side-brand">
+          <div className="eh-hex">⬡</div>
+          <div>
+            <b>eHive Circle</b>
+            <span>{props.brandSub}</span>
+          </div>
+        </div>
+        <nav className="eh-nav">
+          {props.groups.map((g, i) => (
+            <div key={i}>
+              {g.label && <div className="eh-nav-label">{g.label}</div>}
+              {g.items.map((it) => (
+                <NavLink key={it.to} to={it.to} end={it.end} className={({ isActive }) => (isActive ? "on" : "")}>
+                  <span className="eh-ico">{it.icon}</span>
+                  {it.label}
+                </NavLink>
+              ))}
+            </div>
+          ))}
+        </nav>
+        <div className="eh-side-foot">
+          <div className="eh-side-user">
+            <div className="eh-avatar">{initials(user.name)}</div>
+            <div>
+              <b>{user.name ?? "Member"}</b>
+              <span>{user.email}</span>
+            </div>
+          </div>
+          <button className="eh-signout" onClick={() => logout()}>Sign out</button>
+        </div>
+      </aside>
+      <main className="eh-main">{props.children}</main>
+      <ToastHost />
+    </div>
+  );
+}
+
+export const MEMBER_NAV: NavGroup[] = [
+  {
+    items: [
+      { to: "/portal", label: "Dashboard", icon: "⬡", end: true },
+      { to: "/portal/pods", label: "My Pods", icon: "◍" },
+      { to: "/portal/events", label: "Events", icon: "◷" },
+      { to: "/portal/score", label: "Hive Score", icon: "✦" },
+    ],
+  },
+  {
+    label: "Grow",
+    items: [
+      { to: "/portal/frp", label: "Fundraising", icon: "↗" },
+      { to: "/portal/library", label: "Library", icon: "▤" },
+      { to: "/portal/offers", label: "Member Offers", icon: "◇" },
+    ],
+  },
+  {
+    label: "Circle",
+    items: [
+      { to: "/portal/governance", label: "Governance", icon: "§" },
+      { to: "/portal/membership", label: "Membership", icon: "◈" },
+    ],
+  },
+];
+
+export const ADMIN_NAV: NavGroup[] = [
+  {
+    items: [
+      { to: "/admin", label: "Dashboard", icon: "⬡", end: true },
+      { to: "/admin/applications", label: "Applications", icon: "⇥" },
+      { to: "/admin/members", label: "Members", icon: "◍" },
+      { to: "/admin/leads", label: "Website Leads", icon: "✉" },
+    ],
+  },
+  {
+    label: "Community",
+    items: [
+      { to: "/admin/pods", label: "Pods & Sessions", icon: "◷" },
+      { to: "/admin/events", label: "Events", icon: "◇" },
+      { to: "/admin/score", label: "Hive Score", icon: "✦" },
+    ],
+  },
+  {
+    label: "Programmes",
+    items: [
+      { to: "/admin/frp", label: "FRP", icon: "↗" },
+      { to: "/admin/governance", label: "Governance", icon: "§" },
+      { to: "/admin/library", label: "Library", icon: "▤" },
+      { to: "/admin/offers", label: "Offers", icon: "◈" },
+    ],
+  },
+];
