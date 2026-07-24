@@ -3,15 +3,26 @@ import type { FormEvent } from "react";
 import { trpc } from "@/providers/trpc";
 import { EhShell, MEMBER_NAV, PageHead, Pill, StatusPill, TierPill, Spinner, Modal, Field, Empty, toast } from "@/components/eh";
 import { fmtDate } from "@/lib/ehf";
-import { TIERS, TIER_LABEL, TIER_PRICE, tierRank } from "@contracts/constants";
+import { TIERS, TIER_LABEL, TIER_PRICE, tierRank, DORMANCY_LABEL } from "@contracts/constants";
+import type { DormancyStage } from "@contracts/constants";
 
 export default function Membership() {
   const utils = trpc.useUtils();
   const me = trpc.circle.me.useQuery(undefined, { retry: false });
   const hist = trpc.circle.membershipHistory.useQuery(undefined, { retry: false, enabled: !!me.data?.member });
+  const eng = trpc.engage.myEngagement.useQuery(undefined, { retry: false, enabled: !!me.data?.member });
+  const dataReqs = trpc.engage.myDataRequests.useQuery(undefined, { retry: false, enabled: !!me.data?.member });
 
   const updateProfile = trpc.circle.updateProfile.useMutation({
     onSuccess: () => { toast("Profile saved."); utils.circle.me.invalidate(); },
+    onError: (e) => toast(e.message),
+  });
+  const setVisible = trpc.engage.setDirectoryVisible.useMutation({
+    onSuccess: () => { toast("Directory preference saved."); utils.circle.me.invalidate(); },
+    onError: (e) => toast(e.message),
+  });
+  const requestData = trpc.engage.requestData.useMutation({
+    onSuccess: () => { toast("Request received — the team processes it within 30 days."); utils.engage.myDataRequests.invalidate(); },
     onError: (e) => toast(e.message),
   });
   const change = trpc.circle.requestMembershipChange.useMutation({
@@ -33,8 +44,8 @@ export default function Membership() {
     if (member) setForm({ company: member.company ?? "", title: member.title ?? "", phone: member.phone ?? "" });
   }, [member]);
 
-  if (me.isLoading) return <EhShell groups={MEMBER_NAV} brandSub="Member Portal"><Spinner /></EhShell>;
-  if (!member) return <EhShell groups={MEMBER_NAV} brandSub="Member Portal"><Empty big="No membership yet." /></EhShell>;
+  if (me.isLoading) return <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif><Spinner /></EhShell>;
+  if (!member) return <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif><Empty big="No membership yet." /></EhShell>;
 
   function onSaveProfile(e: FormEvent) {
     e.preventDefault();
@@ -54,7 +65,7 @@ export default function Membership() {
   };
 
   return (
-    <EhShell groups={MEMBER_NAV} brandSub="Member Portal">
+    <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif>
       <PageHead eyebrow="Membership" title="Your membership"
                 sub="Tier, status, renewal and your profile — everything in one place, no emails required." />
 
@@ -69,11 +80,25 @@ export default function Membership() {
               <TierPill tier={member.tier} />
               <div className="eh-serif" style={{ fontSize: "1.7rem", marginTop: ".5rem" }}>{TIER_LABEL[member.tier]}</div>
               <div className="eh-muted eh-sm eh-num">{TIER_PRICE[member.tier]}</div>
+              <div className="eh-mt">
+                <Pill color="gold">✓ verified {TIER_LABEL[member.tier]} badge</Pill>
+                {member.inductionNo ? <Pill color="purple">induction №{member.inductionNo}</Pill> : null}
+              </div>
             </div>
             <hr className="eh-divider" />
             <div className="eh-list">
               <div className="row"><span className="d">Member since</span><span className="t eh-sm">{fmtDate(member.joinedAt)}</span></div>
               <div className="row"><span className="d">Renews</span><span className="t eh-sm">{fmtDate(member.renewalAt)}</span></div>
+              <div className="row">
+                <span className="d">Engagement</span>
+                <span className="t eh-sm">
+                  {(() => {
+                    const stage = (member.dormancyStage ?? "active") as DormancyStage;
+                    const color = stage === "active" ? "green" : stage === "at_risk" ? "gold" : "red";
+                    return <Pill color={color as "green" | "gold" | "red"}>{DORMANCY_LABEL[stage]}</Pill>;
+                  })()}
+                </span>
+              </div>
             </div>
             <div className="eh-row eh-mt">
               <button className="eh-btn ghost sm" onClick={() => setConfirm({ type: "renew" })}>Renew +1 year</button>
@@ -112,20 +137,107 @@ export default function Membership() {
           </div>
         </div>
 
-        <div className="eh-card">
-          <h3>Your profile</h3>
-          <form onSubmit={onSaveProfile}>
-            <Field label="Company">
-              <input className="eh-input" value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} />
-            </Field>
-            <Field label="Your title">
-              <input className="eh-input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-            </Field>
-            <Field label="Phone (only the Circle team sees this)">
-              <input className="eh-input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-            </Field>
-            <button className="eh-btn" type="submit" disabled={updateProfile.isPending}>Save profile</button>
-          </form>
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <div className="eh-card">
+            <h3>Your profile</h3>
+            <form onSubmit={onSaveProfile}>
+              <Field label="Company">
+                <input className="eh-input" value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} />
+              </Field>
+              <Field label="Your title">
+                <input className="eh-input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+              </Field>
+              <Field label="Phone (only the Circle team sees this)">
+                <input className="eh-input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              </Field>
+              <button className="eh-btn" type="submit" disabled={updateProfile.isPending}>Save profile</button>
+            </form>
+          </div>
+
+          <div className="eh-card">
+            <h3>Privacy & data (PDPL)</h3>
+            <div className="eh-list">
+              <div className="row">
+                <div style={{ flex: 1 }}>
+                  <div className="t">Member directory</div>
+                  <div className="d">Other members can find you for 1-2-1s and mentoring</div>
+                </div>
+                <button className={"eh-btn sm" + (member.directoryVisible ? "" : " gold")}
+                        disabled={setVisible.isPending}
+                        onClick={() => setVisible.mutate({ visible: !member.directoryVisible })}>
+                  {member.directoryVisible ? "Visible — hide me" : "Hidden — show me"}
+                </button>
+              </div>
+            </div>
+            <hr className="eh-divider" />
+            <p className="eh-muted eh-sm">
+              Under the UAE PDPL you can request an export or deletion of your personal data at any time.
+            </p>
+            <div className="eh-row">
+              <button className="eh-btn ghost sm" disabled={requestData.isPending}
+                      onClick={() => requestData.mutate({ kind: "export" })}>Request data export</button>
+              <button className="eh-btn ghost sm" style={{ color: "var(--eh-red)", borderColor: "#e5c0b9" }}
+                      disabled={requestData.isPending}
+                      onClick={() => requestData.mutate({ kind: "deletion" })}>Request deletion</button>
+            </div>
+            {(dataReqs.data ?? []).length > 0 && (
+              <div className="eh-list eh-mt">
+                {dataReqs.data!.map((r) => (
+                  <div className="row" key={r.id}>
+                    <span className="d">{fmtDate(r.createdAt)}</span>
+                    <span className="t eh-sm" style={{ flex: 1 }}>Data {r.kind}</span>
+                    {r.status === "done" ? <Pill color="green">completed</Pill> : <Pill color="blue">open</Pill>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {eng.data && (
+            <div className="eh-card">
+              <h3>Engagement Standard — {TIER_LABEL[member.tier]}</h3>
+              <div className="eh-list">
+                {eng.data.config?.sessionsRequired != null && (
+                  <div className="row">
+                    <span className="d">Pod sessions this quarter</span>
+                    <span className="t eh-sm eh-num">
+                      {eng.data.counts.sessions} / {Math.max(1, Math.ceil(eng.data.config.sessionsRequired / 4))}
+                      {eng.data.config.sessionsOffered ? ` (of ${eng.data.config.sessionsOffered}/yr offered)` : ""}
+                    </span>
+                  </div>
+                )}
+                {eng.data.config?.oneToOnesPerQuarter != null && (
+                  <div className="row">
+                    <span className="d">Confirmed 1-2-1s this quarter</span>
+                    <span className="t eh-sm eh-num">{eng.data.counts.oneToOnes} / {eng.data.config.oneToOnesPerQuarter}</span>
+                  </div>
+                )}
+                {eng.data.config?.giveBackPerYear != null && (
+                  <div className="row">
+                    <span className="d">Give-Back sessions this year</span>
+                    <span className="t eh-sm eh-num">{eng.data.counts.giveBack} / {eng.data.config.giveBackPerYear}</span>
+                  </div>
+                )}
+              </div>
+              {member.exceptionPause > 0 && (
+                <div className="eh-banner eh-mt"><span className="eh-sm">Exception pause active — your engagement review is paused ({member.exceptionPause} quarter{member.exceptionPause > 1 ? "s" : ""} left).</span></div>
+              )}
+              {eng.data.log.length > 0 && (
+                <>
+                  <hr className="eh-divider" />
+                  <div className="eh-timeline">
+                    {eng.data.log.map((l) => (
+                      <div className="ev" key={l.id}>
+                        <div className="w">{fmtDate(l.createdAt)}</div>
+                        <div className="x">{DORMANCY_LABEL[l.fromStage as DormancyStage] ?? l.fromStage} → {DORMANCY_LABEL[l.toStage as DormancyStage] ?? l.toStage}</div>
+                        {l.reason && <div className="n">{l.reason}{l.actor !== "system" ? ` (by ${l.actor})` : ""}</div>}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="eh-card">

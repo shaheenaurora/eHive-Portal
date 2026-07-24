@@ -20,6 +20,8 @@ export default function Apply() {
   });
 
   const [tier, setTier] = useState<string>("ascent");
+  const [consent, setConsent] = useState(false);
+  const wantsProof = tier === "vanguard" || tier === "zenith";
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -30,7 +32,9 @@ export default function Apply() {
       stage: String(f.get("stage") ?? "") || undefined,
       revenue: String(f.get("revenue") ?? "") || undefined,
       why: String(f.get("why") ?? "") || undefined,
+      proofPoint: String(f.get("proofPoint") ?? "") || undefined,
       tierRequested: tier as never,
+      consent,
     });
   }
 
@@ -75,7 +79,23 @@ export default function Apply() {
             <textarea className="eh-textarea" name="why" maxLength={2000}
                       placeholder="What you're building, where you're stuck, and what you'd bring to the room." />
           </Field>
-          <button className="eh-btn gold" type="submit" disabled={apply.isPending}>
+          {wantsProof && (
+            <Field label={tier === "vanguard"
+              ? "Vanguard proof point — revenue, funding or scale evidence"
+              : "Proof point — revenue, funding or scale evidence"}>
+              <textarea className="eh-textarea" name="proofPoint" maxLength={4000} required
+                        placeholder="e.g. $1.2M ARR, 40 staff, Series A closed 2025 — links welcome." />
+            </Field>
+          )}
+          <label className="row eh-sm" style={{ cursor: "pointer", alignItems: "flex-start", margin: ".25rem 0 1rem" }}>
+            <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)}
+                   style={{ marginTop: ".2rem", accentColor: "#b8862e" }} />
+            <span className="eh-muted">
+              I consent to eHive collecting and processing my application data under the UAE Personal Data
+              Protection Law (PDPL). I can request export or deletion of my data at any time from the portal.
+            </span>
+          </label>
+          <button className="eh-btn gold" type="submit" disabled={apply.isPending || !consent}>
             {apply.isPending ? "Submitting…" : "Submit application →"}
           </button>
         </form>

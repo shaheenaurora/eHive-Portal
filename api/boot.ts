@@ -9,6 +9,7 @@ import { createOAuthCallbackHandler } from "./kimi/auth";
 import { Paths } from "@contracts/constants";
 import { getDb } from "./queries/connection";
 import * as schema from "@db/schema";
+import { eq, desc, sql } from "drizzle-orm";
 
 const app = new Hono<{ Bindings: HttpBindings }>();
 
@@ -50,6 +51,41 @@ app.post("/api/lead", async (c) => {
     console.error("lead insert failed", err);
     return c.json({ ok: false, error: "storage failed" }, 500);
   }
+});
+
+/* Public content JSON for the marketing site (published insights + newsletter archive). */
+app.get("/api/insights", async (c) => {
+  const rows = await getDb()
+    .select({
+      slug: schema.insights.slug, title: schema.insights.title,
+      excerpt: schema.insights.excerpt, tag: schema.insights.tag,
+      publishedAt: schema.insights.publishedAt,
+    })
+    .from(schema.insights)
+    .where(sql`${schema.insights.publishedAt} is not null`)
+    .orderBy(desc(schema.insights.publishedAt))
+    .limit(30);
+  return c.json({ posts: rows });
+});
+
+app.get("/api/insights/:slug", async (c) => {
+  const rows = await getDb()
+    .select()
+    .from(schema.insights)
+    .where(eq(schema.insights.slug, c.req.param("slug")))
+    .limit(1);
+  const row = rows.at(0);
+  if (!row || !row.publishedAt) return c.json({ error: "Not found" }, 404);
+  return c.json({ post: row });
+});
+
+app.get("/api/newsletters", async (c) => {
+  const rows = await getDb()
+    .select()
+    .from(schema.newsletters)
+    .orderBy(desc(schema.newsletters.publishedAt))
+    .limit(24);
+  return c.json({ issues: rows });
 });
 
 app.all("/api/*", (c) => c.json({ error: "Not Found" }, 404));

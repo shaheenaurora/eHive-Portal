@@ -4,7 +4,7 @@ import { eq, and, desc, asc, gte, sql } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "./queries/connection";
 import { createRouter, authedQuery } from "./middleware";
-import { getMemberByUserId, awardPoints, nextSessionForMember } from "./queries/circle";
+import { getMemberByUserId, awardPoints, nextSessionForMember, newCheckinCode, promoteWaitlist } from "./queries/circle";
 import { tierRank } from "@contracts/constants";
 
 async function requireMember(userId: number) {
@@ -37,8 +37,12 @@ export const circleRouter = createRouter({
       revenue: z.string().optional(),
       why: z.string().max(2000).optional(),
       tierRequested: z.enum(["horizon", "ascent", "vanguard", "zenith"]),
+      proofPoint: z.string().max(4000).optional(), // BRD 6.2 — Vanguard proof point
+      consent: z.boolean(),                        // BRD 8.4 — PDPL consent capture
     }))
     .mutation(async ({ ctx, input }) => {
+      if (!input.consent)
+        throw new TRPCError({ code: "BAD_REQUEST", message: "PDPL consent is required to apply" });
       const existing = await getMemberByUserId(ctx.user.id);
       if (existing) throw new TRPCError({ code: "CONFLICT", message: "Already a member" });
       const pending = await getDb().select().from(schema.applications)
@@ -55,6 +59,8 @@ export const circleRouter = createRouter({
         revenue: input.revenue,
         why: input.why,
         tierRequested: input.tierRequested,
+        proofPoint: input.proofPoint,
+        consentAt: new Date(),
       });
       return { ok: true };
     }),
@@ -208,7 +214,7 @@ export const circleRouter = createRouter({
       .orderBy(asc(schema.events.startsAt)).limit(24);
     const regs = await db.select().from(schema.eventRegs)
       .where(and(eq(schema.eventRegs.memberId, member.id),
-                 sql`${schema.eventRegs.status} in ('registered','attended')`));
+                 sql`${schema.eventRegs.status} in ('registered','waitlisted','attended')`));
     const regMap = new Map(regs.map(r => [r.eventId, r]));
     const out = [] as any[];
     for (const e of upcoming) {
@@ -217,6 +223,7 @@ export const circleRouter = createRouter({
                    sql`${schema.eventRegs.status} in ('registered','attended')`));
       const reg = regMap.get(e.id);
       out.push({ ...e, registered: !!reg, regStatus: reg?.status ?? null,
+                 checkinCode: reg?.status === "registered" ? reg.checkinCode : null,
                  seatsLeft: e.capacity - (count.at(0)?.n ?? 0),
                  allowed: tierRank(member.tier) >= tierRank(e.tierGate) });
     }
@@ -239,25 +246,42 @@ export const circleRouter = createRouter({
       const count = await db.select({ n: sql<number>`count(*)` }).from(schema.eventRegs)
         .where(and(eq(schema.eventRegs.eventId, ev.id),
                    sql`${schema.eventRegs.status} in ('registered','attended')`));
-      if ((count.at(0)?.n ?? 0) >= ev.capacity)
-        throw new TRPCError({ code: "CONFLICT", message: "Event is at capacity" });
+      // BRD 6.4 — at capacity: join the waitlist instead of hard-failing
+      const full = (count.at(0)?.n ?? 0) >= ev.capacity;
+      if (full) {
+        if (existing.length) {
+          await db.update(schema.eventRegs).set({ status: "waitlisted" })
+            .where(eq(schema.eventRegs.id, existing[0].id));
+        } else {
+          await db.insert(schema.eventRegs).values({ eventId: ev.id, memberId: member.id, status: "waitlisted" });
+        }
+        return { ok: true, waitlisted: true };
+      }
+      // points are written at QR check-in (BRD 6.4), not at registration
       if (existing.length) {
-        await db.update(schema.eventRegs).set({ status: "registered" })
+        await db.update(schema.eventRegs).set({ status: "registered", checkinCode: newCheckinCode() })
           .where(eq(schema.eventRegs.id, existing[0].id));
       } else {
-        await db.insert(schema.eventRegs).values({ eventId: ev.id, memberId: member.id });
+        await db.insert(schema.eventRegs)
+          .values({ eventId: ev.id, memberId: member.id, checkinCode: newCheckinCode() });
       }
-      const score = await awardPoints(member.id, "events", 2, "Registered: " + ev.title);
-      return { ok: true, score };
+      return { ok: true, waitlisted: false };
     }),
 
   cancelEventReg: authedQuery
     .input(z.object({ eventId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const member = await requireMember(ctx.user.id);
-      await getDb().update(schema.eventRegs).set({ status: "cancelled" })
+      const db = getDb();
+      const reg = (await db.select().from(schema.eventRegs)
+        .where(and(eq(schema.eventRegs.eventId, input.eventId),
+                   eq(schema.eventRegs.memberId, member.id))).limit(1)).at(0);
+      const wasRegistered = reg?.status === "registered";
+      await db.update(schema.eventRegs).set({ status: "cancelled" })
         .where(and(eq(schema.eventRegs.eventId, input.eventId),
                    eq(schema.eventRegs.memberId, member.id)));
+      // BRD 6.4 — freed seat auto-promotes the waitlist
+      if (wasRegistered) await promoteWaitlist(input.eventId);
       return { ok: true };
     }),
 

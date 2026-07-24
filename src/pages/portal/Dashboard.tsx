@@ -8,14 +8,14 @@ export default function Dashboard() {
   const d = trpc.circle.dashboard.useQuery(undefined, { retry: false });
   const { user } = useAuth();
 
-  if (d.isLoading) return <EhShell groups={MEMBER_NAV} brandSub="Member Portal"><Spinner /></EhShell>;
-  if (!d.data) return <EhShell groups={MEMBER_NAV} brandSub="Member Portal"><Empty big="Could not load your dashboard." /></EhShell>;
+  if (d.isLoading) return <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif><Spinner /></EhShell>;
+  if (!d.data) return <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif><Empty big="Could not load your dashboard." /></EhShell>;
 
   const { member, nextSession, openActionItems, upcomingEvents, podCount } = d.data;
   const first = (user?.name ?? "there").split(" ")[0];
 
   return (
-    <EhShell groups={MEMBER_NAV} brandSub="Member Portal">
+    <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif>
       <PageHead
         eyebrow="Dashboard"
         title={`Good to see you, ${first}.`}

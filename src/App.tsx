@@ -10,6 +10,8 @@ import Dashboard from "./pages/portal/Dashboard";
 import Pods from "./pages/portal/Pods";
 import PodDetail from "./pages/portal/PodDetail";
 import Events from "./pages/portal/Events";
+import Connect from "./pages/portal/Connect";
+import Chapter from "./pages/portal/Chapter";
 import Score from "./pages/portal/Score";
 import Frp from "./pages/portal/Frp";
 import Governance from "./pages/portal/Governance";
@@ -31,6 +33,12 @@ import AdminGovernance from "./pages/admin/AdminGovernance";
 import AdminLibrary from "./pages/admin/AdminLibrary";
 import AdminOffers from "./pages/admin/AdminOffers";
 import AdminLeads from "./pages/admin/AdminLeads";
+import AdminEngagement from "./pages/admin/AdminEngagement";
+import AdminConnect from "./pages/admin/AdminConnect";
+import AdminAdmissions from "./pages/admin/AdminAdmissions";
+import AdminChapters from "./pages/admin/AdminChapters";
+import AdminInsights from "./pages/admin/AdminInsights";
+import AdminNewsletters from "./pages/admin/AdminNewsletters";
 
 export default function App() {
   return (
@@ -46,6 +54,8 @@ export default function App() {
       <Route path="/portal/pods" element={<Pods />} />
       <Route path="/portal/pods/:id" element={<PodDetail />} />
       <Route path="/portal/events" element={<Events />} />
+      <Route path="/portal/connect" element={<Connect />} />
+      <Route path="/portal/chapter" element={<Chapter />} />
       <Route path="/portal/score" element={<Score />} />
       <Route path="/portal/frp" element={<Frp />} />
       <Route path="/portal/governance" element={<Governance />} />
@@ -67,6 +77,12 @@ export default function App() {
       <Route path="/admin/library" element={<AdminLibrary />} />
       <Route path="/admin/offers" element={<AdminOffers />} />
       <Route path="/admin/leads" element={<AdminLeads />} />
+      <Route path="/admin/engagement" element={<AdminEngagement />} />
+      <Route path="/admin/connect" element={<AdminConnect />} />
+      <Route path="/admin/admissions" element={<AdminAdmissions />} />
+      <Route path="/admin/chapters" element={<AdminChapters />} />
+      <Route path="/admin/insights" element={<AdminInsights />} />
+      <Route path="/admin/newsletters" element={<AdminNewsletters />} />
 
       <Route path="*" element={<NotFound />} />
     </Routes>

@@ -21,8 +21,19 @@ export default function AdminEvents() {
     onSuccess: () => { toast("Updated — score adjusted where due."); invalidate(); utils.admin.eventRegs.invalidate(); },
     onError: (e) => toast(e.message),
   });
+  const doorCheckin = trpc.adminEngage.eventCheckinByCode.useMutation({
+    onSuccess: (r) => { toast(r.already ? "Already checked in." : "Checked in ✓ — score written in real time."); setDoorCode(""); utils.admin.eventRegs.invalidate(); invalidate(); },
+    onError: (e) => toast(e.message),
+  });
+  const noShow = trpc.adminEngage.markNoShow.useMutation({
+    onSuccess: () => { toast("No-show recorded — points deducted per the rules."); utils.admin.eventRegs.invalidate(); },
+    onError: (e) => toast(e.message),
+  });
 
+  const [doorCode, setDoorCode] = useState("");
+  const [fbFor, setFbFor] = useState<number | null>(null);
   const regs = trpc.admin.eventRegs.useQuery({ id: regsFor! }, { enabled: regsFor !== null, retry: false });
+  const fb = trpc.adminEngage.eventFeedbackAdmin.useQuery({ eventId: fbFor! }, { enabled: fbFor !== null, retry: false });
 
   function onCreate(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -44,6 +55,17 @@ export default function AdminEvents() {
                 sub="Publish events, watch registrations, mark attendance — attendance feeds the Hive Score."
                 actions={<button className="eh-btn gold" onClick={() => setCreate(true)}>+ New event</button>} />
 
+      <div className="eh-card eh-mb" style={{ display: "flex", gap: ".75rem", alignItems: "center", flexWrap: "wrap" }}>
+        <b>Door check-in</b>
+        <input className="eh-input" style={{ maxWidth: 180, letterSpacing: ".1em" }} placeholder="XXXX-XXXX"
+               value={doorCode} onChange={(e) => setDoorCode(e.target.value.toUpperCase())} maxLength={9} />
+        <button className="eh-btn gold sm" disabled={doorCheckin.isPending || doorCode.trim().length < 4}
+                onClick={() => doorCheckin.mutate({ code: doorCode.trim() })}>
+          {doorCheckin.isPending ? "Checking…" : "Check in →"}
+        </button>
+        <span className="eh-muted eh-sm">Members show their door code; score writes in real time.</span>
+      </div>
+
       {q.isLoading && <Spinner />}
       {q.data && q.data.length === 0 && <div className="eh-card"><Empty big="No events yet." /></div>}
 
@@ -61,7 +83,10 @@ export default function AdminEvents() {
                   <td className="eh-sm">{fmtDay(e.startsAt)} {fmtDateTime(e.startsAt).split("·")[1]}</td>
                   <td><TierPill tier={e.tierGate} /></td>
                   <td className="eh-num">{e.regCount}/{e.capacity}</td>
-                  <td><button className="eh-btn ghost sm" onClick={() => setRegsFor(e.id)}>Registrations →</button></td>
+                  <td style={{ whiteSpace: "nowrap" }}>
+                    <button className="eh-btn ghost sm" onClick={() => setRegsFor(e.id)}>Registrations →</button>{" "}
+                    <button className="eh-btn ghost sm" onClick={() => setFbFor(e.id)}>Feedback →</button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -122,11 +147,24 @@ export default function AdminEvents() {
                 </div>
                 <div className="eh-row">
                   <StatusPill status={reg.status} />
+                  {reg.checkinCode && reg.status === "registered" && (
+                    <span className="eh-muted eh-sm eh-num">{reg.checkinCode}</span>
+                  )}
                   {reg.status === "registered" && (
-                    <button className="eh-btn gold sm"
-                            onClick={() => markAtt.mutate({ eventId: regsFor, memberId: member.id, status: "attended" })}>
-                      Mark attended
-                    </button>
+                    <>
+                      <button className="eh-btn gold sm"
+                              onClick={() => markAtt.mutate({ eventId: regsFor, memberId: member.id, status: "attended" })}>
+                        Mark attended
+                      </button>
+                      <button className="eh-btn ghost sm" disabled={noShow.isPending}
+                              onClick={() => noShow.mutate({ regId: reg.id, excused: false })}>
+                        No-show
+                      </button>
+                      <button className="eh-btn ghost sm" disabled={noShow.isPending}
+                              onClick={() => noShow.mutate({ regId: reg.id, excused: true })}>
+                        Excused
+                      </button>
+                    </>
                   )}
                   {reg.status === "attended" && (
                     <button className="eh-btn ghost sm"
@@ -134,10 +172,37 @@ export default function AdminEvents() {
                       Undo
                     </button>
                   )}
+                  {reg.status === "waitlisted" && <Pill color="blue">auto-promotes</Pill>}
                 </div>
               </div>
             ))}
           </div>
+        </Modal>
+      )}
+
+      {fbFor !== null && (
+        <Modal title="Event feedback" onClose={() => setFbFor(null)} wide>
+          {fb.isLoading && <Spinner />}
+          {fb.data && (
+            <>
+              <div className="eh-between eh-mb">
+                <span className="eh-muted eh-sm">{fb.data.rows.length} response(s)</span>
+                {fb.data.avg !== null && <Pill color="gold">avg {fb.data.avg.toFixed(1)}/5</Pill>}
+              </div>
+              {fb.data.rows.length === 0 && <Empty big="No feedback yet." p="Members can rate after attending." />}
+              <div className="eh-list">
+                {fb.data.rows.map((r) => (
+                  <div className="row" key={r.id} style={{ alignItems: "flex-start" }}>
+                    <div style={{ flex: 1 }}>
+                      <div className="t">{r.memberName}</div>
+                      {r.comment && <div className="d">{r.comment}</div>}
+                    </div>
+                    <Pill color={r.rating >= 4 ? "green" : r.rating >= 3 ? "gold" : "red"}>{r.rating}/5</Pill>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </Modal>
       )}
     </EhShell>
