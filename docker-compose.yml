@@ -1,0 +1,52 @@
+# eHive Portal — turnkey local / single-VM deployment (app + MySQL).
+#
+#   1. cp .env.example .env   and fill in every value (see DEPLOY.md)
+#   2. docker compose up -d --build
+#   3. docker compose run --rm app npm run db:push     # one-time: create schema
+#   4. (optional) docker compose run --rm app npx tsx db/seed.ts   # demo data
+#
+# The app then serves the marketing site, member/admin portal, and API on :3000.
+services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-ehive}
+      MYSQL_USER: ${MYSQL_USER:-ehive}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+    volumes:
+      - ehive-db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build:
+      context: .
+      # VITE_* are inlined into the client bundle at build time (Kimi OAuth
+      # redirect), so they must be passed as build args — not just runtime env.
+      args:
+        VITE_KIMI_AUTH_URL: ${VITE_KIMI_AUTH_URL:?set VITE_KIMI_AUTH_URL in .env}
+        VITE_APP_ID: ${VITE_APP_ID:?set VITE_APP_ID in .env}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # Backend secrets (validated on boot by api/lib/env.ts)
+      APP_ID: ${APP_ID:?set APP_ID in .env}
+      APP_SECRET: ${APP_SECRET:?set APP_SECRET in .env}
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env}
+      KIMI_AUTH_URL: ${KIMI_AUTH_URL:?set KIMI_AUTH_URL in .env}
+      KIMI_OPEN_URL: ${KIMI_OPEN_URL:?set KIMI_OPEN_URL in .env}
+      OWNER_UNION_ID: ${OWNER_UNION_ID:-}
+    ports:
+      - "${APP_PORT:-3000}:3000"
+
+volumes:
+  ehive-db:
