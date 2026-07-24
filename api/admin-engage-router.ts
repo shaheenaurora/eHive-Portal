@@ -281,7 +281,12 @@ export const adminEngageRouter = createRouter({
   zenithAdmin: adminQuery.query(async () => {
     const db = getDb();
     const apps = await db.select().from(schema.zenithApps).orderBy(desc(schema.zenithApps.createdAt)).limit(60);
-    const out = [] as any[];
+    const out: Array<
+      (typeof apps)[number] & {
+        endorsements: { role: (typeof schema.endorsements.$inferSelect)["role"]; name: string }[];
+        weight: number;
+      }
+    > = [];
     for (const a of apps) {
       const end = await db.select({ e: schema.endorsements, user: schema.users })
         .from(schema.endorsements)
@@ -380,7 +385,7 @@ export const adminEngageRouter = createRouter({
   chaptersAdmin: adminQuery.query(async () => {
     const db = getDb();
     const rows = await db.select().from(schema.chapters).orderBy(asc(schema.chapters.name));
-    const out = [] as any[];
+    const out: Array<(typeof rows)[number] & { memberCount: number }> = [];
     for (const c of rows) {
       const n = (await db.select({ n: sql<number>`count(*)` }).from(schema.members)
         .where(eq(schema.members.homeChapterId, c.id))).at(0)?.n ?? 0;

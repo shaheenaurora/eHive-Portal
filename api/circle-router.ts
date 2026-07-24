@@ -140,7 +140,12 @@ export const circleRouter = createRouter({
       .from(schema.podMembers)
       .innerJoin(schema.pods, eq(schema.podMembers.podId, schema.pods.id))
       .where(eq(schema.podMembers.memberId, member.id));
-    const out = [] as any[];
+    const out: Array<
+      (typeof rows)[number] & {
+        memberCount: number;
+        nextSession: NonNullable<Awaited<ReturnType<typeof nextSessionForMember>>>["session"] | null;
+      }
+    > = [];
     for (const r of rows) {
       const next = await nextSessionForMember(member.id);
       const roster = await getDb().select({ n: sql<number>`count(*)` })
@@ -216,7 +221,15 @@ export const circleRouter = createRouter({
       .where(and(eq(schema.eventRegs.memberId, member.id),
                  sql`${schema.eventRegs.status} in ('registered','waitlisted','attended')`));
     const regMap = new Map(regs.map(r => [r.eventId, r]));
-    const out = [] as any[];
+    const out: Array<
+      (typeof upcoming)[number] & {
+        registered: boolean;
+        regStatus: (typeof regs)[number]["status"] | null;
+        checkinCode: string | null;
+        seatsLeft: number;
+        allowed: boolean;
+      }
+    > = [];
     for (const e of upcoming) {
       const count = await db.select({ n: sql<number>`count(*)` }).from(schema.eventRegs)
         .where(and(eq(schema.eventRegs.eventId, e.id),

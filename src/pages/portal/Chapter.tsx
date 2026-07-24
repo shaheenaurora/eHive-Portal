@@ -77,8 +77,8 @@ export default function Chapter() {
               </div>
 
               <div className="eh-list eh-mt">
-                {e.candidates.map((c: any) => {
-                  const result = e.results?.find((r: any) => r.candidateId === c.id);
+                {e.candidates.map((c) => {
+                  const result = e.results?.find((r) => r.candidateId === c.id);
                   return (
                     <div className="row" key={c.id} style={{ alignItems: "flex-start" }}>
                       <div style={{ flex: 1 }}>
@@ -101,7 +101,7 @@ export default function Chapter() {
               </div>
 
               <div className="eh-mt" style={{ display: "flex", gap: ".5rem", flexWrap: "wrap", alignItems: "center" }}>
-                {e.status === "open" && !e.candidates.some((c: any) => c.mine) && (
+                {e.status === "open" && !e.candidates.some((c) => c.mine) && (
                   <button className="eh-btn sm" onClick={() => { setStandFor(e.id); setStatement(""); }}>
                     Stand for this seat →
                   </button>
@@ -122,9 +122,9 @@ export default function Chapter() {
             <div className="eh-card"><Empty big="No open motions." p="Chapter motions are tabled by the chapter board." /></div>
           )}
           {(q.data!.motions ?? []).map((m) => {
-            const yes = m.votes.find((v: any) => v.choice === "yes")?.n ?? 0;
-            const no = m.votes.find((v: any) => v.choice === "no")?.n ?? 0;
-            const abstain = m.votes.find((v: any) => v.choice === "abstain")?.n ?? 0;
+            const yes = m.votes.find((v) => v.choice === "yes")?.n ?? 0;
+            const no = m.votes.find((v) => v.choice === "no")?.n ?? 0;
+            const abstain = m.votes.find((v) => v.choice === "abstain")?.n ?? 0;
             return (
               <div className="eh-card eh-mb" key={m.id}>
                 <div className="eh-between">

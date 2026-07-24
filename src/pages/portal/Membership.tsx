@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { trpc } from "@/providers/trpc";
 import { EhShell, MEMBER_NAV, PageHead, Pill, StatusPill, TierPill, Spinner, Modal, Field, Empty, toast } from "@/components/eh";
@@ -39,10 +39,15 @@ export default function Membership() {
   const [note, setNote] = useState("");
 
   const member = me.data?.member;
-  const [form, setForm] = useState({ company: "", title: "", phone: "" });
-  useEffect(() => {
-    if (member) setForm({ company: member.company ?? "", title: member.title ?? "", phone: member.phone ?? "" });
-  }, [member]);
+  /* Profile form is seeded from the member record and becomes locally editable
+     once the member types — derived here rather than synced via effect. */
+  const serverForm = useMemo(
+    () => ({ company: member?.company ?? "", title: member?.title ?? "", phone: member?.phone ?? "" }),
+    [member],
+  );
+  const [edited, setEdited] = useState<{ company: string; title: string; phone: string } | null>(null);
+  const form = edited ?? serverForm;
+  const setForm = setEdited;
 
   if (me.isLoading) return <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif><Spinner /></EhShell>;
   if (!member) return <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif><Empty big="No membership yet." /></EhShell>;

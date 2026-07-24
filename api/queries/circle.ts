@@ -166,7 +166,7 @@ export async function evaluateDormancy(): Promise<{ evaluated: number; transitio
       await db.update(schema.members).set({ exceptionPause: m.exceptionPause - 1 }).where(eq(schema.members.id, m.id));
       continue;
     }
-    const cfg = cfgByTier.get(m.tier as any);
+    const cfg = cfgByTier.get(m.tier);
     const counts = await engagementCounts(m.id);
     const needSessions = Math.max(1, Math.ceil((cfg?.sessionsRequired ?? 2) / 4));
     const needOneToOnes = cfg?.oneToOnesPerQuarter ?? 1;

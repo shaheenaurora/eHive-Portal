@@ -173,16 +173,14 @@ async function seed() {
     videoLink: "https://meet.ehive.ae/founders-pod-1",
     status: "scheduled",
   });
-  const s3 = Number(
-    (await db.insert(schema.sessions).values({
-      podId: pod2,
-      startsAt: daysFromNow(6, 8),
-      durationMin: 120,
-      topic: "Delegation without dropping quality",
-      videoLink: "https://meet.ehive.ae/scale-mastermind",
-      status: "scheduled",
-    }))[0].insertId,
-  );
+  await db.insert(schema.sessions).values({
+    podId: pod2,
+    startsAt: daysFromNow(6, 8),
+    durationMin: 120,
+    topic: "Delegation without dropping quality",
+    videoLink: "https://meet.ehive.ae/scale-mastermind",
+    status: "scheduled",
+  });
 
   await db.insert(schema.sessionNotes).values({
     sessionId: s1,

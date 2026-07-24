@@ -46,7 +46,7 @@ export const engageRouter = createRouter({
     const member = await requireMember(ctx.user.id);
     const db = getDb();
     const cfg = (await db.select().from(schema.engagementConfig)
-      .where(eq(schema.engagementConfig.tier, member.tier as any)).limit(1)).at(0) ?? null;
+      .where(eq(schema.engagementConfig.tier, member.tier)).limit(1)).at(0) ?? null;
     const counts = await engagementCounts(member.id);
     const log = await db.select().from(schema.dormancyLog)
       .where(eq(schema.dormancyLog.memberId, member.id))
@@ -335,7 +335,9 @@ export const engageRouter = createRouter({
     const apps = await db.select().from(schema.zenithApps)
       .where(sql`${schema.zenithApps.status} in ('nominated','endorsing','review')`)
       .orderBy(desc(schema.zenithApps.createdAt)).limit(30);
-    const out = [] as any[];
+    const out: Array<
+      (typeof apps)[number] & { endorsements: number; weight: number; mine: boolean }
+    > = [];
     for (const a of apps) {
       const end = await db.select().from(schema.endorsements).where(eq(schema.endorsements.appId, a.id));
       const mine = end.some(e => e.memberId === member.id);
@@ -382,7 +384,20 @@ export const engageRouter = createRouter({
       .where(eq(schema.members.homeChapterId, chapter.id))).at(0)?.n ?? 0;
     const els = await db.select().from(schema.elections)
       .where(eq(schema.elections.chapterId, chapter.id)).orderBy(desc(schema.elections.createdAt)).limit(10);
-    const electionOut = [] as any[];
+    const electionOut: Array<
+      (typeof els)[number] & {
+        voted: boolean;
+        turnout: number;
+        results: { candidateId: number; n: number }[] | null;
+        candidates: {
+          id: number;
+          memberId: number;
+          name: string;
+          statement: string | null;
+          mine: boolean;
+        }[];
+      }
+    > = [];
     for (const e of els) {
       const cands = await db.select({ candidate: schema.candidates, user: schema.users })
         .from(schema.candidates)
@@ -409,7 +424,12 @@ export const engageRouter = createRouter({
     }
     const mos = await db.select().from(schema.motions)
       .where(eq(schema.motions.chapterId, chapter.id)).orderBy(desc(schema.motions.createdAt)).limit(10);
-    const motionOut = [] as any[];
+    const motionOut: Array<
+      (typeof mos)[number] & {
+        votes: { choice: (typeof schema.motionVotes.$inferSelect)["choice"]; n: number }[];
+        myChoice: (typeof schema.motionVotes.$inferSelect)["choice"] | null;
+      }
+    > = [];
     for (const mo of mos) {
       const votes = await db.select({ choice: schema.motionVotes.choice, n: sql<number>`count(*)` })
         .from(schema.motionVotes).where(eq(schema.motionVotes.motionId, mo.id)).groupBy(schema.motionVotes.choice);
