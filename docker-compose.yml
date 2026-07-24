@@ -6,6 +6,7 @@
 #   4. (optional) docker compose run --rm app npx tsx db/seed.ts   # demo data
 #
 # The app then serves the marketing site, member/admin portal, and API on :3000.
+# The first account that registers with OWNER_EMAIL is auto-granted admin.
 services:
   db:
     image: mysql:8.0
@@ -26,11 +27,6 @@ services:
   app:
     build:
       context: .
-      # VITE_* are inlined into the client bundle at build time (Kimi OAuth
-      # redirect), so they must be passed as build args — not just runtime env.
-      args:
-        VITE_KIMI_AUTH_URL: ${VITE_KIMI_AUTH_URL:?set VITE_KIMI_AUTH_URL in .env}
-        VITE_APP_ID: ${VITE_APP_ID:?set VITE_APP_ID in .env}
     restart: unless-stopped
     depends_on:
       db:
@@ -38,13 +34,11 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      # Backend secrets (validated on boot by api/lib/env.ts)
-      APP_ID: ${APP_ID:?set APP_ID in .env}
+      # Secret that signs session JWTs — use a long random string.
       APP_SECRET: ${APP_SECRET:?set APP_SECRET in .env}
       DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env}
-      KIMI_AUTH_URL: ${KIMI_AUTH_URL:?set KIMI_AUTH_URL in .env}
-      KIMI_OPEN_URL: ${KIMI_OPEN_URL:?set KIMI_OPEN_URL in .env}
-      OWNER_UNION_ID: ${OWNER_UNION_ID:-}
+      # Account registering with this email becomes the first admin.
+      OWNER_EMAIL: ${OWNER_EMAIL:-}
     ports:
       - "${APP_PORT:-3000}:3000"
 

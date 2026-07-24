@@ -2,6 +2,10 @@ import { eq } from "drizzle-orm";
 import { getDb } from "../api/queries/connection";
 import * as schema from "./schema";
 import { recomputeScore } from "../api/queries/circle";
+import { hashPassword } from "../api/lib/password";
+
+/* Every seeded account can sign in with this password (demo/testing only). */
+const DEMO_PASSWORD = "ehive1234";
 
 /* eHive Circle — seed data
    Idempotent-ish: wipes the circle tables (not users) and reseeds.
@@ -49,10 +53,11 @@ async function clearCircle() {
 }
 
 async function user(unionId: string, name: string, email: string, role: "user" | "admin" = "user") {
+  const passwordHash = hashPassword(DEMO_PASSWORD);
   await db
     .insert(schema.users)
-    .values({ unionId, name, email, role })
-    .onDuplicateKeyUpdate({ set: { name, email, role } });
+    .values({ unionId, name, email, passwordHash, role })
+    .onDuplicateKeyUpdate({ set: { name, email, passwordHash, role } });
   const got = await db
     .select({ id: schema.users.id })
     .from(schema.users)

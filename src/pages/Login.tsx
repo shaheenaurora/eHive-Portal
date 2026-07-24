@@ -1,20 +1,36 @@
-function getOAuthUrl() {
-  const kimiAuthUrl = import.meta.env.VITE_KIMI_AUTH_URL;
-  const appID = import.meta.env.VITE_APP_ID;
-  const redirectUri = `${window.location.origin}/api/oauth/callback`;
-  const state = btoa(redirectUri);
+import { useState } from "react";
+import type { FormEvent } from "react";
+import { useNavigate } from "react-router";
+import { trpc } from "@/providers/trpc";
+import { PORTAL_PATH } from "@/const";
 
-  const url = new URL(`${kimiAuthUrl}/api/oauth/authorize`);
-  url.searchParams.set("client_id", appID);
-  url.searchParams.set("redirect_uri", redirectUri);
-  url.searchParams.set("response_type", "code");
-  url.searchParams.set("scope", "profile");
-  url.searchParams.set("state", state);
-
-  return url.toString();
-}
+type Mode = "login" | "register";
 
 export default function Login() {
+  const navigate = useNavigate();
+  const utils = trpc.useUtils();
+  const [mode, setMode] = useState<Mode>("login");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+
+  const onDone = async () => {
+    await utils.auth.me.invalidate();
+    navigate(PORTAL_PATH);
+  };
+
+  const login = trpc.auth.login.useMutation({ onSuccess: onDone, onError: (e) => setErr(e.message) });
+  const register = trpc.auth.register.useMutation({ onSuccess: onDone, onError: (e) => setErr(e.message) });
+  const pending = login.isPending || register.isPending;
+
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    setErr(null);
+    if (mode === "login") login.mutate({ email, password });
+    else register.mutate({ name, email, password });
+  }
+
   return (
     <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "var(--eh-ink)", padding: "1rem" }}>
       <div style={{ textAlign: "center", maxWidth: 400, width: "100%" }}>
@@ -23,16 +39,63 @@ export default function Login() {
           eHive Circle
         </h1>
         <p style={{ color: "#9aa7b6", fontSize: ".9rem", margin: "0 0 2rem" }}>
-          The member portal — pods, events, Hive Score, library and your membership, one sign-in away.
+          {mode === "login"
+            ? "Sign in to your member portal — pods, events, Hive Score and more."
+            : "Create your account to join the eHive Circle member portal."}
         </p>
-        <button
-          className="eh-btn gold"
-          style={{ width: "100%", padding: ".8rem", fontSize: ".95rem" }}
-          onClick={() => (window.location.href = getOAuthUrl())}
-        >
-          Sign in with Kimi →
-        </button>
-        <p style={{ marginTop: "1.6rem", fontSize: ".78rem" }}>
+
+        <form onSubmit={submit} style={{ display: "grid", gap: ".7rem", textAlign: "left" }}>
+          {mode === "register" && (
+            <input
+              className="eh-input"
+              placeholder="Full name"
+              autoComplete="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          )}
+          <input
+            className="eh-input"
+            type="email"
+            placeholder="Email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <input
+            className="eh-input"
+            type="password"
+            placeholder={mode === "register" ? "Password (min 8 characters)" : "Password"}
+            autoComplete={mode === "login" ? "current-password" : "new-password"}
+            minLength={8}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+
+          {err && (
+            <p style={{ color: "#f0a8a0", fontSize: ".82rem", margin: 0 }}>{err}</p>
+          )}
+
+          <button className="eh-btn gold" style={{ width: "100%", padding: ".8rem", fontSize: ".95rem" }} disabled={pending}>
+            {pending ? "Please wait…" : mode === "login" ? "Sign in →" : "Create account →"}
+          </button>
+        </form>
+
+        <p style={{ marginTop: "1.2rem", fontSize: ".82rem", color: "#9aa7b6" }}>
+          {mode === "login" ? "New to eHive?" : "Already have an account?"}{" "}
+          <button
+            type="button"
+            onClick={() => { setErr(null); setMode(mode === "login" ? "register" : "login"); }}
+            style={{ background: "none", border: "none", color: "var(--eh-gold-2)", cursor: "pointer", padding: 0, font: "inherit" }}
+          >
+            {mode === "login" ? "Create an account" : "Sign in"}
+          </button>
+        </p>
+
+        <p style={{ marginTop: "1.4rem", fontSize: ".78rem" }}>
           <a href="/" style={{ color: "#b9c4d1" }}>← Back to the website</a>
         </p>
       </div>

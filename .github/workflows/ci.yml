@@ -30,9 +30,4 @@ jobs:
         run: npm test
 
       - name: Build
-        # VITE_* are placeholders here — CI only proves the build compiles.
-        # Real values are supplied as build args at deploy time (see DEPLOY.md).
-        env:
-          VITE_KIMI_AUTH_URL: https://auth.example.com
-          VITE_APP_ID: ci-build
         run: npm run build

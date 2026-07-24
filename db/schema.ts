@@ -11,9 +11,13 @@ import {
 
 export const users = mysqlTable("users", {
   id: serial("id").primaryKey(),
+  // Stable internal id carried in the session token. Generated on sign-up.
   unionId: varchar("unionId", { length: 255 }).notNull().unique(),
   name: varchar("name", { length: 255 }),
-  email: varchar("email", { length: 320 }),
+  // Email is the login identity for email/password auth — unique and required.
+  email: varchar("email", { length: 320 }).notNull().unique(),
+  // scrypt hash (salt:hash). Null only for legacy/non-password accounts.
+  passwordHash: varchar("passwordHash", { length: 255 }),
   avatar: text("avatar"),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

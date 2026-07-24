@@ -5,8 +5,6 @@ import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { appRouter } from "./router";
 import { createContext } from "./context";
 import { env } from "./lib/env";
-import { createOAuthCallbackHandler } from "./kimi/auth";
-import { Paths } from "@contracts/constants";
 import { getDb } from "./queries/connection";
 import * as schema from "@db/schema";
 import { eq, desc, sql } from "drizzle-orm";
@@ -14,7 +12,6 @@ import { eq, desc, sql } from "drizzle-orm";
 const app = new Hono<{ Bindings: HttpBindings }>();
 
 app.use(bodyLimit({ maxSize: 50 * 1024 * 1024 }));
-app.get(Paths.oauthCallback, createOAuthCallbackHandler());
 app.use("/api/trpc/*", async (c) => {
   return fetchRequestHandler({
     endpoint: "/api/trpc",
@@ -99,16 +96,16 @@ if (env.isProduction) {
   const fs = await import("fs");
   const path = await import("path");
 
-  /* SPA client-side routes: /portal/* and /admin/* are rendered by the React
-     app (portal.html). Registered before the static middlewares so deep links
-     resolve to the SPA instead of the marketing pages. */
+  /* SPA client-side routes: /login, /portal/* and /admin/* are rendered by the
+     React app (portal.html). Registered before the static middlewares so deep
+     links (and direct hits to /login) resolve to the SPA, not marketing pages. */
   const portalPath = path.resolve(import.meta.dirname, "../dist/public/portal.html");
   let portalHtml: string | null = null;
   const readPortal = () => {
     if (!portalHtml) portalHtml = fs.readFileSync(portalPath, "utf-8");
     return portalHtml;
   };
-  for (const p of ["/portal", "/portal/*", "/admin", "/admin/*"]) {
+  for (const p of ["/login", "/portal", "/portal/*", "/admin", "/admin/*"]) {
     app.get(p, (c) => c.html(readPortal()));
   }
 
