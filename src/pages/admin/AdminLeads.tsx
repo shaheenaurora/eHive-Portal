@@ -40,19 +40,36 @@ export default function AdminLeads() {
         </div>
       )}
 
-      {sel && (
-        <Modal title={`Lead — ${sel.email ?? sel.form}`} onClose={() => setSel(null)} wide>
+      {sel && (() => {
+        let data: Record<string, unknown> = {};
+        try { data = sel.payload ? JSON.parse(sel.payload) : {}; } catch { /* leave empty */ }
+        const str = (k: string) => (typeof data[k] === "string" && data[k] ? String(data[k]) : null);
+        const contact: [string, string | null][] = [
+          ["Name", str("name")],
+          ["Email", sel.email ?? str("email")],
+          ["Phone", str("phone")],
+          ["Business", str("company") ?? str("business")],
+          ["Location", str("location")],
+          ["Industry", str("industry")],
+        ];
+        const shown = contact.filter(([, v]) => v);
+        return (
+        <Modal title={`Lead — ${str("name") ?? sel.email ?? sel.form}`} onClose={() => setSel(null)} wide>
           <div className="eh-list" style={{ marginBottom: "1rem" }}>
             <div className="row"><span className="d">Form</span><Pill>{sel.form}</Pill></div>
+            {shown.map(([label, val]) => (
+              <div className="row" key={label}><span className="d">{label}</span><span className="t">{val}</span></div>
+            ))}
             <div className="row"><span className="d">Source page</span><span className="t eh-sm">{sel.sourcePage ?? "—"}</span></div>
             <div className="row"><span className="d">Captured</span><span className="t eh-sm">{fmtDateTime(sel.createdAt)}</span></div>
           </div>
           <div className="eh-eyebrow">Full payload</div>
           <pre className="eh-card eh-mono" style={{ background: "var(--eh-paper)", fontSize: ".74rem", overflowX: "auto", whiteSpace: "pre-wrap" }}>
-            {sel.payload ? JSON.stringify(JSON.parse(sel.payload), null, 2) : "—"}
+            {sel.payload ? JSON.stringify(data, null, 2) : "—"}
           </pre>
         </Modal>
-      )}
+        );
+      })()}
     </EhShell>
   );
 }
