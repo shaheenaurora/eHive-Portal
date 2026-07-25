@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { NavLink, Link, useNavigate, useLocation } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
+import { InstallPrompt } from "@/components/InstallPrompt";
 import { initials } from "@/lib/ehf";
 import { TIER_LABEL } from "@contracts/constants";
 import { trpc } from "@/providers/trpc";
@@ -216,6 +217,7 @@ export function EhShell(props: {
       <main className="eh-main">{props.children}</main>
       {props.notif && <NotifBell />}
       <ToastHost />
+      <InstallPrompt />
     </div>
   );
 }
