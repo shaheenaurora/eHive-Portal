@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, like, or, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/mysql-core";
 import * as schema from "@db/schema";
 import { getDb } from "./queries/connection";
 import { createRouter, adminQuery, scopedAdmin } from "./middleware";
@@ -1001,19 +1002,55 @@ export const adminRouter = createRouter({
 
   /* --------------------------------- leads -------------------------------- */
   leads: adminQuery
-    .input(z.object({ q: z.string().max(120).optional() }).optional())
+    .input(z.object({
+      q: z.string().max(120).optional(),
+      status: z.enum(["new", "contacted", "qualified", "won", "lost"]).optional(),
+    }).optional())
     .query(async ({ input }) => {
       const db = getDb();
+      const conds = [];
       if (input?.q) {
         const q = `%${input.q}%`;
-        return db
-          .select()
-          .from(schema.leads)
-          .where(or(like(schema.leads.email, q), like(schema.leads.form, q)))
-          .orderBy(desc(schema.leads.createdAt))
-          .limit(200);
+        conds.push(or(like(schema.leads.email, q), like(schema.leads.form, q)));
       }
-      return db.select().from(schema.leads).orderBy(desc(schema.leads.createdAt)).limit(200);
+      if (input?.status) conds.push(eq(schema.leads.status, input.status));
+      const owner = alias(schema.users, "lead_owner");
+      const rows = await db
+        .select({ lead: schema.leads, ownerName: owner.name, ownerEmail: owner.email })
+        .from(schema.leads)
+        .leftJoin(owner, eq(owner.id, schema.leads.ownerUserId))
+        .where(conds.length ? and(...conds) : undefined)
+        .orderBy(desc(schema.leads.createdAt))
+        .limit(200);
+      return rows.map((r) => ({ ...r.lead, ownerName: r.ownerName, ownerEmail: r.ownerEmail }));
+    }),
+
+  /* Lead pipeline counts for the status tabs. */
+  leadCounts: adminQuery.query(async () => {
+    const rows = await getDb()
+      .select({ status: schema.leads.status, n: sql<number>`count(*)` })
+      .from(schema.leads).groupBy(schema.leads.status);
+    return Object.fromEntries(rows.map((r) => [r.status, Number(r.n)]));
+  }),
+
+  /* Update a lead's CRM fields (status / owner / notes). */
+  updateLead: adminQuery
+    .input(z.object({
+      id: z.number().int().positive(),
+      status: z.enum(["new", "contacted", "qualified", "won", "lost"]).optional(),
+      ownerUserId: z.number().int().positive().nullable().optional(),
+      notes: z.string().max(5000).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const set: Record<string, unknown> = {};
+      if (input.status !== undefined) set.status = input.status;
+      if (input.ownerUserId !== undefined) set.ownerUserId = input.ownerUserId;
+      if (input.notes !== undefined) set.notes = input.notes;
+      if (!Object.keys(set).length) return { ok: true };
+      await getDb().update(schema.leads).set(set).where(eq(schema.leads.id, input.id));
+      await audit(ctx.user, "lead.update", { type: "lead", id: input.id,
+        detail: input.status ? `status → ${input.status}` : "updated" });
+      return { ok: true };
     }),
 
   /* -------------------- admin audit trail + access control ----------------- */

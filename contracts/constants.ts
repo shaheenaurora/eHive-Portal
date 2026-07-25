@@ -196,6 +196,13 @@ export const ADMIN_SCOPES = [
 export type AdminScope = (typeof ADMIN_SCOPES)[number]["key"];
 export const ADMIN_SCOPE_KEYS = ADMIN_SCOPES.map((s) => s.key);
 
+/** Leads CRM pipeline. */
+export const LEAD_STATUSES = ["new", "contacted", "qualified", "won", "lost"] as const;
+export type LeadStatus = (typeof LEAD_STATUSES)[number];
+export const LEAD_STATUS_LABEL: Record<LeadStatus, string> = {
+  new: "New", contacted: "Contacted", qualified: "Qualified", won: "Won", lost: "Lost",
+};
+
 /** Verification / reset token lifetimes (ms). */
 export const VERIFY_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;   // 24h
 export const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;         // 1h

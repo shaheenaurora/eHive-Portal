@@ -334,6 +334,11 @@ export const leads = mysqlTable("leads", {
   payload: text("payload"),
   sourcePage: varchar("sourcePage", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
+  /* Lightweight CRM: pipeline status, owner (admin) and freeform notes. */
+  status: mysqlEnum("status", ["new", "contacted", "qualified", "won", "lost"]).notNull().default("new"),
+  ownerUserId: bigint("ownerUserId", { mode: "number", unsigned: true }),
+  notes: text("notes"),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
 });
 export type Lead = typeof leads.$inferSelect;
 
