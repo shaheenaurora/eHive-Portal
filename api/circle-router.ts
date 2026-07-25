@@ -5,7 +5,8 @@ import * as schema from "@db/schema";
 import { getDb } from "./queries/connection";
 import { createRouter, authedQuery } from "./middleware";
 import { getMemberByUserId, awardPoints, nextSessionForMember, newCheckinCode, promoteWaitlist } from "./queries/circle";
-import { tierRank } from "@contracts/constants";
+import { paymentsEnabled, getPaymentProvider } from "./lib/payments";
+import { tierRank, TIER_PRICE_AED, SELF_SERVE_TIERS } from "@contracts/constants";
 
 async function requireMember(userId: number) {
   const member = await getMemberByUserId(userId);
@@ -14,6 +15,36 @@ async function requireMember(userId: number) {
 }
 
 export const circleRouter = createRouter({
+  /* ---- self-serve paid join (SRS POR-MEM-03 / INT-01) ---- */
+  paymentsEnabled: authedQuery.query(() => ({ enabled: paymentsEnabled() })),
+
+  startCheckout: authedQuery
+    .input(z.object({ tier: z.enum(SELF_SERVE_TIERS) }))
+    .mutation(async ({ ctx, input }) => {
+      if (!paymentsEnabled())
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Online payment isn't enabled yet — please apply instead." });
+      const existing = await getMemberByUserId(ctx.user.id);
+      if (existing) throw new TRPCError({ code: "CONFLICT", message: "You're already a member." });
+
+      const amount = TIER_PRICE_AED[input.tier] * 100; // AED → fils
+      const origin = ctx.req.headers.get("origin") ?? new URL(ctx.req.url).origin;
+      const provider = getPaymentProvider();
+      const { url, providerRef } = await provider.createCheckoutSession({
+        tier: input.tier,
+        userId: ctx.user.id,
+        email: ctx.user.email ?? "",
+        amount,
+        currency: "aed",
+        successUrl: `${origin}/portal?paid=1`,
+        cancelUrl: `${origin}/portal/apply?canceled=1`,
+      });
+      await getDb().insert(schema.paymentRecords).values({
+        userId: ctx.user.id, provider: provider.name, providerRef,
+        tier: input.tier, amount, currency: "aed", status: "pending", purpose: "membership",
+      });
+      return { url };
+    }),
+
   /* ---- identity: user + member + latest application ---- */
   me: authedQuery.query(async ({ ctx }) => {
     const member = await getMemberByUserId(ctx.user.id);

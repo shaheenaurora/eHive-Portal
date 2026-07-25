@@ -31,6 +31,13 @@ export function tierRank(t: string): number {
   const i = TIERS.indexOf(t as Tier);
   return i === -1 ? 0 : i + 1;
 }
+/** Annual price per tier in whole AED (used to build a checkout amount). */
+export const TIER_PRICE_AED: Record<Tier, number> = {
+  horizon: 999, ascent: 5999, vanguard: 11999, zenith: 29999,
+};
+/** Tiers that can be joined by self-serve online payment. Zenith is application-only. */
+export const SELF_SERVE_TIERS = ["horizon", "ascent", "vanguard"] as const;
+export type SelfServeTier = (typeof SELF_SERVE_TIERS)[number];
 
 export const MEMBER_STATUSES = ["active", "paused", "cancelled"] as const;
 export type MemberStatus = (typeof MEMBER_STATUSES)[number];

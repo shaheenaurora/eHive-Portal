@@ -54,7 +54,7 @@ export default function PodDetail() {
       </div>
 
       <div className="eh-grid g3" style={{ alignItems: "start" }}>
-        <div style={{ gridColumn: "span 2", display: "flex", flexDirection: "column", gap: "1rem" }}>
+        <div className="eh-span2" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           {myOpen.length > 0 && (
             <div className="eh-card" style={{ borderColor: "#e8d5ac", background: "#fdfaf3" }}>
               <h3>Your open commitments ({myOpen.length})</h3>

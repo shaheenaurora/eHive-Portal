@@ -1,5 +1,6 @@
 import { eq, and, asc, sql, gte } from "drizzle-orm";
 import * as schema from "@db/schema";
+import type { Tier } from "@contracts/constants";
 import { getDb } from "./connection";
 import { pushToMember } from "../lib/push";
 
@@ -142,6 +143,31 @@ export async function autoPairBuddy(newMemberId: number): Promise<number | null>
   await notify(newMemberId, "You've been paired with an eHive buddy — say hello and book a first chat!", "connect");
   await notify(buddy.id, "You've been assigned as a buddy to a new member. A 30-day check-in is due.", "connect");
   return buddy.id;
+}
+
+/**
+ * Activate (or upgrade) a membership for a user — the shared path used by both
+ * paid self-serve join and admin approval. Creates the member, logs the event,
+ * awards joining points, and auto-pairs a buddy for brand-new members.
+ */
+export async function activateMembership(userId: number, tier: Tier, note = "Membership activated"): Promise<number> {
+  const db = getDb();
+  const existing = (await db.select().from(schema.members).where(eq(schema.members.userId, userId)).limit(1)).at(0);
+  if (existing) {
+    const fromTier = existing.tier;
+    await db.update(schema.members).set({ tier, status: "active" }).where(eq(schema.members.id, existing.id));
+    if (fromTier !== tier) {
+      await db.insert(schema.membershipEvents).values({ memberId: existing.id, type: "upgrade", fromTier, toTier: tier, note });
+    }
+    return existing.id;
+  }
+  const renewal = new Date(); renewal.setFullYear(renewal.getFullYear() + 1);
+  const res = await db.insert(schema.members).values({ userId, tier, status: "active", renewalAt: renewal });
+  const memberId = Number(res[0].insertId);
+  await db.insert(schema.membershipEvents).values({ memberId, type: "approved", toTier: tier, note });
+  await awardPoints(memberId, "tenure", 5, "Joined eHive Circle");
+  try { await autoPairBuddy(memberId); } catch (e) { console.error("buddy auto-pair failed", e); }
+  return memberId;
 }
 
 /** Start of the current quarter. */

@@ -8,6 +8,9 @@ import { env } from "./lib/env";
 import { getDb } from "./queries/connection";
 import * as schema from "@db/schema";
 import { eq, desc, sql } from "drizzle-orm";
+import { paymentsEnabled, getPaymentProvider } from "./lib/payments";
+import { activateMembership } from "./queries/circle";
+import { notifyLead } from "./lib/lead-mail";
 
 const app = new Hono<{ Bindings: HttpBindings }>();
 
@@ -33,21 +36,24 @@ app.post("/api/lead", async (c) => {
   if (!body || typeof body.form !== "string" || !body.form) {
     return c.json({ ok: false, error: "form field required" }, 400);
   }
+  const email = typeof body.email === "string" ? body.email.slice(0, 320) : null;
+  const sourcePage = typeof body.source_page === "string" ? body.source_page.slice(0, 255) : null;
   try {
     await getDb()
       .insert(schema.leads)
       .values({
         form: body.form.slice(0, 64),
-        email: typeof body.email === "string" ? body.email.slice(0, 320) : null,
+        email,
         payload: JSON.stringify(body).slice(0, 60000),
-        sourcePage:
-          typeof body.source_page === "string" ? body.source_page.slice(0, 255) : null,
+        sourcePage,
       });
-    return c.json({ ok: true });
   } catch (err) {
     console.error("lead insert failed", err);
     return c.json({ ok: false, error: "storage failed" }, 500);
   }
+  // Fire notification + confirmation emails without blocking the response.
+  void notifyLead({ form: body.form, email, payload: body, sourcePage });
+  return c.json({ ok: true });
 });
 
 /* Public content JSON for the marketing site (published insights + newsletter archive). */
@@ -83,6 +89,58 @@ app.get("/api/newsletters", async (c) => {
     .orderBy(desc(schema.newsletters.publishedAt))
     .limit(24);
   return c.json({ issues: rows });
+});
+
+/* Payment gateway webhook (SRS INT-01). Reads the RAW body for signature
+   verification, then flips the payment_records row and activates membership.
+   Idempotent: a record already marked paid is left untouched. */
+app.post("/api/payments/webhook", async (c) => {
+  if (!paymentsEnabled()) return c.json({ ok: false, error: "payments disabled" }, 404);
+  const signature = c.req.header("stripe-signature") ?? "";
+  const raw = await c.req.text();
+  let result;
+  try {
+    result = await getPaymentProvider().handleWebhook(raw, signature);
+  } catch (err) {
+    console.error("webhook verification failed", err);
+    return c.json({ ok: false, error: "invalid signature" }, 400);
+  }
+  if (!result) return c.json({ ok: true, ignored: true });
+
+  try {
+    const db = getDb();
+    const record = (
+      await db
+        .select()
+        .from(schema.paymentRecords)
+        .where(eq(schema.paymentRecords.providerRef, result.providerRef))
+        .limit(1)
+    ).at(0);
+
+    if (result.status === "paid") {
+      if (record && record.status === "paid") return c.json({ ok: true, duplicate: true });
+      if (record) {
+        await db
+          .update(schema.paymentRecords)
+          .set({ status: "paid" })
+          .where(eq(schema.paymentRecords.id, record.id));
+      }
+      const userId = result.userId ?? record?.userId;
+      const tier = result.tier ?? record?.tier ?? undefined;
+      if (userId && tier) {
+        await activateMembership(userId, tier, "Membership activated via online payment");
+      }
+    } else if (result.status === "failed" && record && record.status === "pending") {
+      await db
+        .update(schema.paymentRecords)
+        .set({ status: "failed" })
+        .where(eq(schema.paymentRecords.id, record.id));
+    }
+  } catch (err) {
+    console.error("webhook handling failed", err);
+    return c.json({ ok: false, error: "processing failed" }, 500);
+  }
+  return c.json({ ok: true });
 });
 
 app.all("/api/*", (c) => c.json({ error: "Not Found" }, 404));

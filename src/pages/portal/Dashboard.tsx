@@ -1,12 +1,24 @@
-import { Link } from "react-router";
+import { useEffect } from "react";
+import { Link, useSearchParams } from "react-router";
 import { trpc } from "@/providers/trpc";
 import { useAuth } from "@/hooks/useAuth";
-import { EhShell, MEMBER_NAV, PageHead, Stat, Ring, Pill, Empty, TierPill, Spinner } from "@/components/eh";
+import { EhShell, MEMBER_NAV, PageHead, Stat, Ring, Pill, Empty, TierPill, Spinner, toast } from "@/components/eh";
 import { fmtDateTime, fmtDay, relDay } from "@/lib/ehf";
 
 export default function Dashboard() {
   const d = trpc.circle.dashboard.useQuery(undefined, { retry: false });
   const { user } = useAuth();
+  const [params, setParams] = useSearchParams();
+
+  useEffect(() => {
+    if (params.get("paid") === "1") {
+      toast("Payment received — welcome to eHive Circle! 🎉");
+      params.delete("paid");
+      setParams(params, { replace: true });
+      void d.refetch();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (d.isLoading) return <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif><Spinner /></EhShell>;
   if (!d.data) return <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif><Empty big="Could not load your dashboard." /></EhShell>;
@@ -57,7 +69,7 @@ export default function Dashboard() {
       </div>
 
       <div className="eh-grid g3 eh-mt" style={{ alignItems: "start" }}>
-        <div style={{ gridColumn: "span 2", display: "flex", flexDirection: "column", gap: "1rem" }}>
+        <div className="eh-span2" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           {nextSession ? (
             <div className="eh-banner">
               <div className="eh-eyebrow" style={{ color: "var(--eh-gold-2)" }}>Next session</div>

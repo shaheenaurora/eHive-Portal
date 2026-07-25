@@ -41,7 +41,7 @@ export default function Score() {
           </p>
         </div>
 
-        <div className="eh-card" style={{ gridColumn: "span 2" }}>
+        <div className="eh-card eh-span2">
           <h3>The six factors</h3>
           <div className="eh-list">
             {FACTOR_ORDER.map((f) => {

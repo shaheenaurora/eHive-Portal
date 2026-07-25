@@ -3,7 +3,7 @@ import type { FormEvent } from "react";
 import { useNavigate } from "react-router";
 import { trpc } from "@/providers/trpc";
 import { EhShell, MEMBER_NAV, Field, Pill, toast } from "@/components/eh";
-import { TIERS, TIER_LABEL, TIER_PRICE } from "@contracts/constants";
+import { TIERS, TIER_LABEL, TIER_PRICE, SELF_SERVE_TIERS } from "@contracts/constants";
 
 const STAGES = ["Idea", "Pre-seed", "Seed", "Series A", "Series B+", "Established business", "Family business"];
 const REVENUES = ["Pre-revenue", "< $10k MRR", "$10k–$50k MRR", "$50k–$200k MRR", "$200k+ MRR", "$2M+ annual"];
@@ -19,9 +19,24 @@ export default function Apply() {
     onError: (e) => toast(e.message),
   });
 
+  const pay = trpc.circle.paymentsEnabled.useQuery(undefined, { retry: false });
+  const checkout = trpc.circle.startCheckout.useMutation({
+    onSuccess: ({ url }) => { window.location.href = url; },
+    onError: (e) => toast(e.message),
+  });
+
   const [tier, setTier] = useState<string>("ascent");
   const [consent, setConsent] = useState(false);
   const wantsProof = tier === "vanguard" || tier === "zenith";
+  const canPayNow =
+    !!pay.data?.enabled &&
+    (SELF_SERVE_TIERS as readonly string[]).includes(tier) &&
+    !me.data?.member;
+
+  function onPayNow() {
+    if (!consent) { toast("Please tick the consent box first."); return; }
+    checkout.mutate({ tier: tier as never });
+  }
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -52,7 +67,7 @@ export default function Apply() {
       </div>
 
       <div className="eh-grid g3" style={{ alignItems: "start" }}>
-        <form className="eh-card" style={{ gridColumn: "span 2" }} onSubmit={onSubmit}>
+        <form className="eh-card eh-span2" onSubmit={onSubmit}>
           <h3>Your application</h3>
           <Field label="Full name">
             <input className="eh-input" name="name" required minLength={2}
@@ -126,6 +141,23 @@ export default function Apply() {
             <div className="eh-locked eh-mt">
               <Pill>Invitation-only</Pill>
               <span className="eh-sm">Zenith applications need two member sponsors. Apply anyway — the council reviews every request.</span>
+            </div>
+          )}
+          {canPayNow && (
+            <div className="eh-mt" style={{ borderTop: "1px solid var(--eh-border, #2a2a2a)", paddingTop: "1rem" }}>
+              <div className="eh-between" style={{ marginBottom: ".5rem" }}>
+                <span className="t">Join instantly</span>
+                <span className="eh-muted eh-sm eh-num">{TIER_PRICE[tier as never]}</span>
+              </div>
+              <p className="eh-muted eh-sm" style={{ marginBottom: ".75rem" }}>
+                Skip the queue — pay online now and your {TIER_LABEL[tier as never]} membership
+                activates the moment payment clears. Secure checkout, cancel anytime.
+              </p>
+              <button className="eh-btn gold" type="button" style={{ width: "100%" }}
+                      disabled={checkout.isPending || !consent} onClick={onPayNow}>
+                {checkout.isPending ? "Redirecting…" : `Join & pay — ${TIER_PRICE[tier as never]}`}
+              </button>
+              {!consent && <div className="eh-muted eh-sm eh-mt">Tick the consent box in the form to continue.</div>}
             </div>
           )}
         </div>

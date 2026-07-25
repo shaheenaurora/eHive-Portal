@@ -19,10 +19,15 @@ third-party identity provider to register. The first account that signs up with
 | 3 | **`OWNER_EMAIL`** | The account signing up with it becomes the first admin | You — your own email |
 | 4 | A host that runs a Node 20 container on a public URL over HTTPS | Serves site + portal + API | You — VM, PaaS, or similar |
 
-Deferred per BRD §10 (not blockers for a first launch, but plan for them):
-payment gateway selection (Telr/PayTabs/Network International/Stripe UAE) for
-self-serve tier purchase, WhatsApp/email platform for nudges, and the Emirates
-First integration for Business Setup status.
+Optional integrations — the app runs fully without them, and each switches on
+the moment its env vars are present (see §2C):
+
+- **Email (SMTP):** lead notifications to the business + confirmation emails to
+  people who submit website forms. Without it, leads are still stored in the DB.
+- **Payments (Stripe):** self-serve online join & pay for the Horizon/Ascent/
+  Vanguard tiers, with membership auto-activated on payment. Without it, everyone
+  goes through the application flow. Any UAE gateway (Telr/PayTabs/Network
+  International) can be dropped in later by implementing one `PaymentProvider`.
 
 ---
 
@@ -81,6 +86,40 @@ docker compose run --rm app npx tsx db/seed.ts  # optional: demo data
 
 App is on `http://<server>:3000`. Put it behind a reverse proxy
 (Caddy/nginx/Traefik) for TLS and your domain. Update: `git pull && docker compose up -d --build`.
+
+## 2C. Optional: email + payments
+
+Both are off until their variables are set. Add them anytime (Railway → app
+service → Variables, or your `.env`) — no code change, just redeploy.
+
+**Email (SMTP).** Turn on lead notifications + submitter confirmations:
+
+| Variable | Example / source |
+|---|---|
+| `SMTP_HOST` | `smtp.gmail.com`, `smtp.zoho.com`, `email-smtp.<region>.amazonaws.com` |
+| `SMTP_PORT` | `587` (STARTTLS) or `465` (implicit TLS) |
+| `SMTP_SECURE` | `true` for port 465; leave empty for 587 |
+| `SMTP_USER` / `SMTP_PASS` | mailbox login. For Gmail, create an **App Password** (2FA required) |
+| `MAIL_FROM` | `hello@ehive.ae` (defaults to `SMTP_USER`) |
+| `LEAD_NOTIFY_EMAIL` | where new-lead alerts go (defaults to `OWNER_EMAIL`) |
+
+Every website form (newsletter, Get Started, booking, setup calculator, the
+Clarity Scorecard) then emails a formatted alert to `LEAD_NOTIFY_EMAIL` and a
+branded confirmation to whoever submitted it. Mail failures never break a
+submission — the lead is stored first, mail is fire-and-forget.
+
+**Payments (Stripe).** Turn on self-serve online join:
+
+1. Set `STRIPE_SECRET_KEY` (`sk_test_…` to trial, `sk_live_…` for real charges).
+2. In the Stripe dashboard → **Developers → Webhooks → Add endpoint**, point it
+   at `https://YOUR_DOMAIN/api/payments/webhook` and subscribe to
+   `checkout.session.completed` (and `checkout.session.async_payment_succeeded`).
+3. Copy the endpoint's **Signing secret** (`whsec_…`) into `STRIPE_WEBHOOK_SECRET`.
+
+The Apply page then shows a **Join & pay** button for the Horizon/Ascent/
+Vanguard tiers; on successful payment the webhook activates the membership,
+awards joining points, and auto-pairs a buddy. Prices come from
+`TIER_PRICE_AED` in `contracts/constants.ts`. Zenith stays application-only.
 
 ---
 
