@@ -76,25 +76,25 @@ provides the MySQL database — no code changes, no TLS setup.
 
 The app derives its URL from the incoming request, so **no code or env change
 is needed** — verification, password-reset and payment links all use whatever
-domain serves the request. Steps (example: `www.wipsol.com`):
+domain serves the request. Steps (example: `www.ehiveglobal.com`):
 
 1. **Railway → app service → Settings → Networking → Custom Domain.** Enter
-   `www.wipsol.com`. Railway shows a **CNAME target** like `xxxx.up.railway.app`
+   `www.ehiveglobal.com`. Railway shows a **CNAME target** like `xxxx.up.railway.app`
    — copy it.
-2. **At the domain's DNS provider** (registrar or Cloudflare for wipsol.com),
+2. **At the domain's DNS provider** (registrar or Cloudflare for ehiveglobal.com),
    add a record:
    - Type `CNAME`, Name/Host `www`, Value the Railway target, TTL default.
-3. **Root/apex** (`wipsol.com` with no www) — optional but recommended:
-   - Add `wipsol.com` as a *second* custom domain in Railway, then either point
+3. **Root/apex** (`ehiveglobal.com` with no www) — optional but recommended:
+   - Add `ehiveglobal.com` as a *second* custom domain in Railway, then either point
      the apex at the Railway target using your provider's `ALIAS`/`ANAME`/
      CNAME-flattening (Cloudflare does this automatically), **or** set a
-     registrar redirect `wipsol.com → www.wipsol.com`.
+     registrar redirect `ehiveglobal.com → www.ehiveglobal.com`.
 4. **SSL is automatic.** Railway provisions a Let's Encrypt certificate once DNS
    resolves — usually minutes, up to ~an hour. Nothing to configure.
-5. **Verify:** open `https://www.wipsol.com/`, then `/login` → register → confirm
+5. **Verify:** open `https://www.ehiveglobal.com/`, then `/login` → register → confirm
    you reach `/portal`.
 
-Notes: if `www.wipsol.com` currently serves another site, this replaces it. DNS
+Notes: if `www.ehiveglobal.com` currently serves another site, this replaces it. DNS
 propagation is usually fast but can take up to 48h. Once the domain is live and
 you later add `SMTP_*` / `STRIPE_*`, their emails and checkout redirects use the
 new domain automatically.
@@ -127,7 +127,7 @@ service → Variables, or your `.env`) — no code change, just redeploy.
 | `SMTP_PORT` | `587` (STARTTLS) or `465` (implicit TLS) |
 | `SMTP_SECURE` | `true` for port 465; leave empty for 587 |
 | `SMTP_USER` / `SMTP_PASS` | mailbox login. For Gmail, create an **App Password** (2FA required) |
-| `MAIL_FROM` | `hello@ehive.ae` (defaults to `SMTP_USER`) |
+| `MAIL_FROM` | `hello@ehiveglobal.com` (defaults to `SMTP_USER`) |
 | `LEAD_NOTIFY_EMAIL` | where new-lead alerts go (defaults to `OWNER_EMAIL`) |
 
 Every website form (newsletter, Get Started, booking, setup calculator, the
