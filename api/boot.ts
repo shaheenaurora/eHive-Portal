@@ -117,7 +117,8 @@ if (env.isProduction) {
   serveStaticFiles(app);
 
   const port = parseInt(process.env.PORT || "3000");
-  serve({ fetch: app.fetch, port }, () => {
-    console.log(`Server running on http://localhost:${port}/`);
+  // Bind 0.0.0.0 so container platforms (Railway, Render, Fly) can route to it.
+  serve({ fetch: app.fetch, port, hostname: "0.0.0.0" }, () => {
+    console.log(`Server running on http://0.0.0.0:${port}/`);
   });
 }

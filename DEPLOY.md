@@ -46,7 +46,32 @@ For the bundled MySQL container, also set `MYSQL_PASSWORD`,
 
 ---
 
-## 2A. Deploy with Docker Compose (single VM — simplest)
+## 2A. Deploy on Railway (recommended)
+
+Railway runs this repo as-is from the `Dockerfile` (see `railway.json`) and
+provides the MySQL database — no code changes, no TLS setup.
+
+1. **New Project → Deploy from GitHub repo** → pick this repo. Railway detects
+   the `Dockerfile` and builds it.
+2. **Add a database:** in the project, **New → Database → MySQL**. Railway
+   creates it on the private network.
+3. **Wire the app's variables** (app service → Variables):
+   - `DATABASE_URL` = `${{ MySQL.MYSQL_URL }}`  ← reference the MySQL service
+   - `APP_SECRET` = output of `openssl rand -hex 32`
+   - `OWNER_EMAIL` = your email
+   - (leave `DATABASE_SSL` unset — the private network doesn't need TLS)
+   Railway injects `PORT` automatically; the server already binds `0.0.0.0`.
+4. **Create the schema (one-time).** With the Railway CLI:
+   `railway run npm run db:push` (and optionally `railway run npx tsx db/seed.ts`).
+   Or add `npm run db:push` as a one-off in the service shell.
+5. Railway gives you a public URL. Add your custom domain when ready
+   (BRD sitemap: `app.ehive.com`).
+
+Render/Fly.io work the same way — point them at the `Dockerfile`, add a managed
+MySQL, and set the same three variables (set `DATABASE_SSL=true` if that
+provider's MySQL requires TLS).
+
+## 2B. Deploy with Docker Compose (local or a single VM)
 
 ```bash
 docker compose up -d --build          # build image + start app and MySQL
@@ -54,18 +79,8 @@ docker compose run --rm app npm run db:push     # one-time: create the schema
 docker compose run --rm app npx tsx db/seed.ts  # optional: demo data
 ```
 
-App is now on `http://<server>:3000`. Put it behind a reverse proxy
-(Caddy/nginx/Traefik) for TLS and your domain (BRD sitemap: `app.ehive.com`).
-
-Update later: `git pull && docker compose up -d --build`.
-
-## 2B. Deploy on a managed PaaS (Railway / Render / Fly.io)
-
-1. Provision a **MySQL 8** add-on; copy its connection string into `DATABASE_URL`.
-2. Point the platform at this repo's **Dockerfile** (no build args needed).
-3. Set the runtime env vars from §1 (`APP_SECRET`, `DATABASE_URL`, `OWNER_EMAIL`).
-4. After the first deploy, run the schema push once from a one-off shell /
-   release command: `npm run db:push` (and optionally `npx tsx db/seed.ts`).
+App is on `http://<server>:3000`. Put it behind a reverse proxy
+(Caddy/nginx/Traefik) for TLS and your domain. Update: `git pull && docker compose up -d --build`.
 
 ---
 
