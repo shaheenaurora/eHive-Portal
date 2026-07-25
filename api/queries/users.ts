@@ -80,6 +80,17 @@ export async function markEmailVerified(userId: number) {
   await getDb().update(schema.users).set({ emailVerifiedAt: new Date() }).where(eq(schema.users.id, userId));
 }
 
+export async function setTotpSecret(userId: number, secret: string) {
+  // Store the pending secret; not active until the user confirms a code.
+  await getDb().update(schema.users).set({ totpSecret: secret, totpEnabled: 0 }).where(eq(schema.users.id, userId));
+}
+
+export async function setTotpEnabled(userId: number, enabled: boolean) {
+  await getDb().update(schema.users)
+    .set(enabled ? { totpEnabled: 1 } : { totpEnabled: 0, totpSecret: null })
+    .where(eq(schema.users.id, userId));
+}
+
 export async function touchLastSignIn(userId: number) {
   await getDb()
     .update(schema.users)

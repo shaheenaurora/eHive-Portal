@@ -12,14 +12,16 @@ let pushToastFn: ((msg: string) => void) | null = null;
 export function toast(msg: string) {
   if (pushToastFn) pushToastFn(msg);
 }
-/** Dismissible nudge shown until a member confirms their email address. */
+/** Dismissible nudge shown until a member confirms their email address.
+ *  Hidden entirely when the server has no email configured (nothing to send). */
 function VerifyBanner() {
   const [hidden, setHidden] = useState(false);
+  const cfg = trpc.auth.config.useQuery(undefined, { retry: false, staleTime: 5 * 60 * 1000 });
   const resend = trpc.auth.resendVerification.useMutation({
     onSuccess: () => toast("Verification email sent — check your inbox."),
     onError: (e) => toast(e.message),
   });
-  if (hidden) return null;
+  if (hidden || !cfg.data?.mailConfigured) return null;
   return (
     <div className="eh-verify" role="status">
       <span className="eh-verify-dot">✉</span>

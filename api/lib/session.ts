@@ -32,6 +32,28 @@ async function verifySessionToken(token: string): Promise<SessionPayload | null>
   }
 }
 
+/** Short-lived signed token that proves a password check passed and a 2FA code
+ *  is still required. Carries the userId; expires quickly. */
+export async function sign2faChallenge(userId: number): Promise<string> {
+  const secret = new TextEncoder().encode(env.appSecret);
+  return new jose.SignJWT({ twofa: userId })
+    .setProtectedHeader({ alg: JWT_ALG })
+    .setIssuedAt()
+    .setExpirationTime("10m")
+    .sign(secret);
+}
+
+export async function verify2faChallenge(token: string): Promise<number | null> {
+  if (!token) return null;
+  try {
+    const secret = new TextEncoder().encode(env.appSecret);
+    const { payload } = await jose.jwtVerify(token, secret, { algorithms: [JWT_ALG] });
+    return typeof payload.twofa === "number" ? payload.twofa : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Resolve the current user from the session cookie, or throw if not signed in. */
 export async function authenticateRequest(headers: Headers) {
   const cookies = cookie.parse(headers.get("cookie") || "");

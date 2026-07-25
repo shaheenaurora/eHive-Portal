@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { trpc } from "@/providers/trpc";
 import { EhShell, MEMBER_NAV, PageHead, Pill, StatusPill, TierPill, Spinner, Modal, Field, Empty, toast } from "@/components/eh";
 import { PushSettings } from "@/components/PushSettings";
+import { TwoFactorSettings } from "@/components/TwoFactorSettings";
 import { fmtDate } from "@/lib/ehf";
 import { TIERS, TIER_LABEL, TIER_PRICE, tierRank, DORMANCY_LABEL } from "@contracts/constants";
 import type { DormancyStage } from "@contracts/constants";
@@ -161,6 +162,8 @@ export default function Membership() {
           </div>
 
           <PushSettings />
+
+          <TwoFactorSettings />
 
           <div className="eh-card">
             <h3>Privacy & data (PDPL)</h3>
