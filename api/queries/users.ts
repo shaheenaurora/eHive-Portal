@@ -1,8 +1,24 @@
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import * as schema from "@db/schema";
+import type { User } from "@db/schema";
 import { getDb } from "./connection";
 import { env } from "../lib/env";
+
+/**
+ * Promote a user to admin if their email matches OWNER_EMAIL. Runs on every
+ * authenticated request so the owner account becomes admin even if it was
+ * created before OWNER_EMAIL was set. No-op once the user is already admin.
+ */
+export async function ensureOwnerRole(user: User): Promise<User> {
+  if (user.role === "admin") return user;
+  const owner = env.ownerEmail.trim().toLowerCase();
+  if (owner && (user.email ?? "").toLowerCase() === owner) {
+    await getDb().update(schema.users).set({ role: "admin" }).where(eq(schema.users.id, user.id));
+    return { ...user, role: "admin" };
+  }
+  return user;
+}
 
 export async function findUserByUnionId(unionId: string) {
   const rows = await getDb()
