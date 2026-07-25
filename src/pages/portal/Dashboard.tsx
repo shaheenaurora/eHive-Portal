@@ -11,8 +11,17 @@ export default function Dashboard() {
   if (d.isLoading) return <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif><Spinner /></EhShell>;
   if (!d.data) return <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif><Empty big="Could not load your dashboard." /></EhShell>;
 
-  const { member, nextSession, openActionItems, upcomingEvents, podCount } = d.data;
+  const { member, nextSession, openActionItems, upcomingEvents, podCount, onboarding, onboardingDone } = d.data;
   const first = (user?.name ?? "there").split(" ")[0];
+
+  const steps: { key: keyof typeof onboarding; label: string; to: string; cta: string }[] = [
+    { key: "profile", label: "Complete your profile", to: "/portal/membership", cta: "Add your details" },
+    { key: "buddy", label: "Meet your welcome buddy", to: "/portal/connect", cta: "Say hello" },
+    { key: "pod", label: "Join a pod", to: "/portal/pods", cta: "Browse pods" },
+    { key: "event", label: "RSVP your first event", to: "/portal/events", cta: "See the calendar" },
+    { key: "oneToOne", label: "Log your first 1-2-1", to: "/portal/connect", cta: "Log a chat" },
+  ];
+  const doneCount = steps.filter((s) => onboarding[s.key]).length;
 
   return (
     <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif>
@@ -22,6 +31,23 @@ export default function Dashboard() {
         sub={`${member.company ?? "Your company"} · member since ${relDay(member.joinedAt).toLowerCase()}`}
         actions={<TierPill tier={member.tier} />}
       />
+
+      {!onboardingDone && (
+        <div className="eh-banner eh-mb">
+          <div className="eh-eyebrow" style={{ color: "var(--eh-gold-2)" }}>Getting started · {doneCount} of {steps.length}</div>
+          <h2 style={{ margin: ".2rem 0 .1rem" }}>Your first week at eHive</h2>
+          <p className="eh-sm" style={{ marginBottom: ".6rem" }}>Members who finish this in week one are far more likely to thrive here.</p>
+          <div className="eh-list">
+            {steps.map((s) => (
+              <div className="row" key={s.key}>
+                <span style={{ fontSize: "1.05rem", width: "1.5rem" }}>{onboarding[s.key] ? "✅" : "⬜"}</span>
+                <span className="t" style={{ flex: 1, textDecoration: onboarding[s.key] ? "line-through" : "none", opacity: onboarding[s.key] ? 0.6 : 1 }}>{s.label}</span>
+                {!onboarding[s.key] && <Link className="eh-btn ghost sm" to={s.to}>{s.cta} →</Link>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="eh-grid g4">
         <Stat k="Hive Score" v={member.hiveScore} gold n="See the breakdown →" />

@@ -4,7 +4,7 @@ import { and, desc, eq, like, or, sql } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "./queries/connection";
 import { createRouter, adminQuery } from "./middleware";
-import { awardPoints, awardRulePoints, promoteWaitlist, recomputeScore } from "./queries/circle";
+import { awardPoints, awardRulePoints, promoteWaitlist, recomputeScore, autoPairBuddy } from "./queries/circle";
 import { tierRank } from "@contracts/constants";
 
 const TIER = z.enum(["horizon", "ascent", "vanguard", "zenith"]);
@@ -163,6 +163,8 @@ export const adminRouter = createRouter({
             note: input.note ?? "Application approved",
           });
           await awardPoints(memberId, "tenure", 5, "Joined eHive Circle");
+          // Onboarding automation: auto-pair a buddy (never block approval on it).
+          try { await autoPairBuddy(memberId); } catch (e) { console.error("buddy auto-pair failed", e); }
           return { ok: true, memberId };
         }
       }

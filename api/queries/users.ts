@@ -36,6 +36,7 @@ export async function createUser(input: { email: string; passwordHash: string; n
     name: input.name,
     passwordHash: input.passwordHash,
     role,
+    consentAt: new Date(),
     lastSignInAt: new Date(),
   });
   return findUserByUnionId(unionId);

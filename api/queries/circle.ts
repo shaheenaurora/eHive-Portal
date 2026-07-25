@@ -103,6 +103,44 @@ export async function notify(memberId: number, text: string, kind = "info") {
   await getDb().insert(schema.notifications).values({ memberId, text, kind });
 }
 
+/**
+ * Automatically pair a new member with an existing active buddy (SRS POR-ENG-06
+ * / 5.3 — within 5 business days). Picks the least-loaded active member (spreads
+ * the load), tie-broken by longest tenure. No-op if already paired or if there's
+ * no eligible buddy yet. Safe to call on member creation; never throws upward.
+ */
+export async function autoPairBuddy(newMemberId: number): Promise<number | null> {
+  const db = getDb();
+  const already = await db.select({ id: schema.buddies.id }).from(schema.buddies)
+    .where(eq(schema.buddies.newMemberId, newMemberId)).limit(1);
+  if (already.length) return null;
+
+  const candidates = await db.select({ id: schema.members.id, createdAt: schema.members.createdAt })
+    .from(schema.members)
+    .where(and(
+      eq(schema.members.status, "active"),
+      sql`${schema.members.dormancyStage} = 'active'`,
+      sql`${schema.members.id} <> ${newMemberId}`,
+    )).limit(500);
+  if (!candidates.length) return null;
+
+  const loads = await db.select({ b: schema.buddies.buddyMemberId, n: sql<number>`count(*)` })
+    .from(schema.buddies).groupBy(schema.buddies.buddyMemberId);
+  const loadOf = new Map(loads.map((l) => [l.b, Number(l.n)]));
+
+  candidates.sort((a, b) => {
+    const la = loadOf.get(a.id) ?? 0, lb = loadOf.get(b.id) ?? 0;
+    if (la !== lb) return la - lb;
+    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+  });
+  const buddy = candidates[0];
+
+  await db.insert(schema.buddies).values({ newMemberId, buddyMemberId: buddy.id });
+  await notify(newMemberId, "You've been paired with an eHive buddy — say hello and book a first chat!", "connect");
+  await notify(buddy.id, "You've been assigned as a buddy to a new member. A 30-day check-in is due.", "connect");
+  return buddy.id;
+}
+
 /** Start of the current quarter. */
 export function quarterStart(d = new Date()): Date {
   const q = Math.floor(d.getMonth() / 3) * 3;
