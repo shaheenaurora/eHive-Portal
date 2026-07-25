@@ -3,14 +3,18 @@ import { TRPCError } from "@trpc/server";
 import { VERIFY_TOKEN_TTL_MS, RESET_TOKEN_TTL_MS } from "@contracts/constants";
 import { createRouter, publicQuery, authedQuery } from "./middleware";
 import { hashPassword, verifyPassword } from "./lib/password";
-import { sessionSetCookie, sessionClearCookie } from "./lib/session";
+import {
+  sessionSetCookie, sessionClearCookie, sign2faChallenge, verify2faChallenge,
+} from "./lib/session";
 import {
   findUserByEmail, findUserById, createUser, touchLastSignIn,
-  setUserPassword, markEmailVerified,
+  setUserPassword, markEmailVerified, setTotpSecret, setTotpEnabled,
 } from "./queries/users";
 import { createAuthToken, consumeAuthToken } from "./lib/tokens";
 import { sendVerifyEmail, sendResetEmail } from "./lib/auth-mail";
 import { rateLimit, rateLimitReset } from "./lib/rate-limit";
+import { generateTotpSecret, totpKeyUri, verifyTotp } from "./lib/totp";
+import { mailEnabled } from "./lib/mailer";
 
 const credentials = z.object({
   email: z.string().email().max(320),
@@ -34,6 +38,10 @@ async function issueVerification(userId: number, email: string, name: string, or
 
 export const authRouter = createRouter({
   me: authedQuery.query((opts) => opts.ctx.user),
+
+  /* Public runtime flags for the client (e.g. whether to show the email-verify
+     nudge — pointless until SMTP is configured). */
+  config: publicQuery.query(() => ({ mailConfigured: mailEnabled() })),
 
   register: publicQuery
     .input(credentials.extend({ name: z.string().min(1).max(255) }))
@@ -73,9 +81,32 @@ export const authRouter = createRouter({
         throw new TRPCError({ code: "UNAUTHORIZED", message: "Incorrect email or password." });
       }
       rateLimitReset(`login:acct:${email}`);
+      // Password OK. If 2FA is on, defer the session until a valid code — hand
+      // back a short-lived challenge instead of signing in.
+      if (user.totpEnabled) {
+        return { needs2fa: true as const, challenge: await sign2faChallenge(user.id) };
+      }
       await touchLastSignIn(user.id);
       ctx.resHeaders.append("set-cookie", await sessionSetCookie(user.unionId, ctx.req.headers));
-      return user;
+      return { needs2fa: false as const, user };
+    }),
+
+  /* Second factor: exchange a login challenge + TOTP code for a session. */
+  loginVerify2fa: publicQuery
+    .input(z.object({ challenge: z.string().min(10), code: z.string().min(6).max(10) }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = await verify2faChallenge(input.challenge);
+      if (!userId) throw new TRPCError({ code: "UNAUTHORIZED", message: "Your login session expired — please sign in again." });
+      if (!rateLimit(`2fa:${userId}`, 6, 15 * 60 * 1000)) {
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many codes. Please wait a few minutes." });
+      }
+      const user = await findUserById(userId);
+      if (!user || !user.totpEnabled || !user.totpSecret || !verifyTotp(input.code, user.totpSecret)) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "That code isn't right. Check your authenticator app and try again." });
+      }
+      await touchLastSignIn(user.id);
+      ctx.resHeaders.append("set-cookie", await sessionSetCookie(user.unionId, ctx.req.headers));
+      return { user };
     }),
 
   logout: authedQuery.mutation(async ({ ctx }) => {
@@ -129,6 +160,40 @@ export const authRouter = createRouter({
       // A password reset also proves control of the mailbox.
       const user = await findUserById(userId);
       if (user && !user.emailVerifiedAt) await markEmailVerified(userId);
+      return { ok: true };
+    }),
+
+  /* ---- two-factor authentication (TOTP) ---- */
+  twoFactorStatus: authedQuery.query(({ ctx }) => ({ enabled: !!ctx.user.totpEnabled })),
+
+  /* Begin enrolment: mint a secret, return it + the otpauth URI for a QR code.
+     Not active until confirmed with a valid code via twoFactorEnable. */
+  twoFactorSetup: authedQuery.mutation(async ({ ctx }) => {
+    const secret = generateTotpSecret();
+    await setTotpSecret(ctx.user.id, secret);
+    return { secret, otpauthUri: totpKeyUri(secret, ctx.user.email ?? "member") };
+  }),
+
+  twoFactorEnable: authedQuery
+    .input(z.object({ code: z.string().min(6).max(10) }))
+    .mutation(async ({ ctx, input }) => {
+      const user = await findUserById(ctx.user.id);
+      if (!user?.totpSecret) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Start setup first." });
+      if (!verifyTotp(input.code, user.totpSecret)) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "That code isn't right — make sure you scanned the QR, then enter a fresh code." });
+      }
+      await setTotpEnabled(ctx.user.id, true);
+      return { ok: true };
+    }),
+
+  twoFactorDisable: authedQuery
+    .input(z.object({ code: z.string().min(6).max(10) }))
+    .mutation(async ({ ctx, input }) => {
+      const user = await findUserById(ctx.user.id);
+      if (!user?.totpSecret || !verifyTotp(input.code, user.totpSecret)) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "Enter a current code to turn off two-factor." });
+      }
+      await setTotpEnabled(ctx.user.id, false);
       return { ok: true };
     }),
 });
