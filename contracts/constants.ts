@@ -178,6 +178,28 @@ export const PUSH_CATEGORIES = [
 ] as const;
 export const PUSH_CATEGORY_KEYS = PUSH_CATEGORIES.map((c) => c.key);
 
+/* ---- Admin capability scopes (segregation of duties). Modelled on the eHive
+   Circle pillar's org roles so a staff member's portal access matches their
+   actual job. An admin whose adminScopes is "" has full access (back-compat);
+   "*" is explicit full access (Director eHive Circle / COO / CEO). Otherwise
+   the admin may only perform actions whose scope is in their list. ---- */
+export const ADMIN_SCOPES = [
+  { key: "membership", label: "Membership Growth — applications, admissions, tiers & status" },
+  { key: "community", label: "Community Manager — pods, buddies, 1-2-1s & referrals" },
+  { key: "events", label: "Programming & Events — events, sessions & check-in" },
+  { key: "chapters", label: "Chapter Development — chapters, governance & elections" },
+  { key: "member_success", label: "Member Success — Zenith concierge & dormancy" },
+  { key: "partnerships", label: "Partnerships & Member Value — offers, deals & investor intros" },
+  { key: "content", label: "Content & Editorial — Hive Journal, library & insights" },
+  { key: "finance", label: "Finance & Compliance — payments, leads & PDPL data requests" },
+] as const;
+export type AdminScope = (typeof ADMIN_SCOPES)[number]["key"];
+export const ADMIN_SCOPE_KEYS = ADMIN_SCOPES.map((s) => s.key);
+
+/** Verification / reset token lifetimes (ms). */
+export const VERIFY_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;   // 24h
+export const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;         // 1h
+
 /** Days within which a new member must be paired with a buddy */
 export const BUDDY_PAIR_WITHIN_DAYS = 5;
 /** Days after pairing for the buddy 30-day check-in */

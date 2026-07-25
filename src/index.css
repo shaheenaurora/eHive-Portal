@@ -116,7 +116,26 @@ body { font-family: "Inter", system-ui, sans-serif; color: var(--eh-ink); }
 }
 .eh-signout:hover { border-color: var(--eh-gold-2); color: #f3dfae; }
 .eh-main { flex: 1; min-width: 0; padding: 1.8rem clamp(1rem, 3vw, 2.4rem) 3rem; }
+.eh-main:focus { outline: none; }
 .eh-toplink { display: none; }
+
+/* Accessibility: skip-to-content link, visible only when focused (keyboard). */
+.eh-skip {
+  position: absolute; left: -9999px; top: 0; z-index: 100;
+  background: var(--eh-gold); color: #fff; padding: .6rem 1rem; border-radius: 0 0 9px 0;
+  font-size: .85rem; font-weight: 600; text-decoration: none;
+}
+.eh-skip:focus { left: 0; }
+
+/* Visible keyboard focus ring on all interactive elements (WCAG 2.4.7). */
+a:focus-visible, button:focus-visible, .eh-btn:focus-visible,
+input:focus-visible, select:focus-visible, textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--eh-gold-2);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+.eh-nav a:focus-visible { outline-offset: -2px; }
 
 /* Mobile header (hamburger + brand) — hidden on desktop, shown < 900px. */
 .eh-mtop { display: none; }
@@ -268,12 +287,34 @@ body { font-family: "Inter", system-ui, sans-serif; color: var(--eh-ink); }
 .eh-modal h3 { font-family: "Fraunces", serif; margin: 0 0 1rem; font-size: 1.2rem; }
 @keyframes eh-pop { from { transform: scale(.96) translateY(6px); opacity: 0; } to { transform: none; opacity: 1; } }
 
+.eh-toast-live { position: fixed; bottom: 0; left: 0; z-index: 80; }
 .eh-toast {
   position: fixed; bottom: 1.2rem; left: 50%; transform: translateX(-50%);
   background: var(--eh-ink); color: #f5efe2; font-size: .84rem; padding: .65rem 1.1rem;
   border-radius: 10px; box-shadow: 0 10px 30px rgba(16,29,44,.3); z-index: 80;
   animation: eh-pop .18s ease-out;
 }
+
+/* Email-verification nudge banner (portal shell). */
+.eh-verify {
+  display: flex; align-items: center; gap: .7rem; margin-bottom: 1.2rem;
+  background: var(--eh-gold-soft); border: 1px solid #e8d5ac; border-radius: 12px;
+  padding: .7rem 1rem; font-size: .86rem; color: var(--eh-ink-2);
+}
+.eh-verify-dot {
+  flex: 0 0 auto; width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center;
+  background: var(--eh-gold); color: #fff; font-size: .95rem;
+}
+.eh-verify-x {
+  flex: 0 0 auto; background: none; border: none; color: var(--eh-mut); cursor: pointer;
+  font-size: .9rem; padding: .2rem .35rem; border-radius: 6px;
+}
+.eh-verify-x:hover { color: var(--eh-ink); }
+.eh-linkbtn {
+  background: none; border: none; color: var(--eh-gold); font: inherit; font-weight: 600;
+  cursor: pointer; padding: 0; text-decoration: underline;
+}
+.eh-linkbtn:disabled { opacity: .6; cursor: default; }
 
 .eh-ring { position: relative; width: 132px; height: 132px; }
 .eh-ring svg { transform: rotate(-90deg); }

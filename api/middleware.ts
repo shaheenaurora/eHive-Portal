@@ -40,3 +40,29 @@ function requireRole(role: string) {
 
 export const authedQuery = t.procedure.use(requireAuth);
 export const adminQuery = authedQuery.use(requireRole("admin"));
+
+/**
+ * Whether an admin holds a capability scope. Segregation of duties:
+ *  - "*" (owner) or "" (legacy/full admin) → all capabilities
+ *  - otherwise the scope must be in the comma-separated adminScopes list
+ */
+export function hasScope(user: { role: string; adminScopes?: string | null }, scope: string): boolean {
+  if (user.role !== "admin") return false;
+  const s = (user.adminScopes ?? "").trim();
+  if (s === "" || s === "*") return true;
+  return s.split(",").map((x) => x.trim()).includes(scope);
+}
+
+/** Admin procedure additionally gated on a capability scope. */
+export function scopedAdmin(scope: string) {
+  return adminQuery.use(async (opts) => {
+    const { ctx, next } = opts;
+    if (!hasScope(ctx.user as never, scope)) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Your admin role doesn't include this action.",
+      });
+    }
+    return next({ ctx });
+  });
+}

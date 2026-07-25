@@ -11,11 +11,19 @@ import { env } from "../lib/env";
  * created before OWNER_EMAIL was set. No-op once the user is already admin.
  */
 export async function ensureOwnerRole(user: User): Promise<User> {
-  if (user.role === "admin") return user;
   const owner = env.ownerEmail.trim().toLowerCase();
-  if (owner && (user.email ?? "").toLowerCase() === owner) {
-    await getDb().update(schema.users).set({ role: "admin" }).where(eq(schema.users.id, user.id));
-    return { ...user, role: "admin" };
+  const isOwner = !!owner && (user.email ?? "").toLowerCase() === owner;
+  if (user.role === "admin") {
+    // Owner always holds the full "*" scope even if promoted before scopes existed.
+    if (isOwner && user.adminScopes !== "*") {
+      await getDb().update(schema.users).set({ adminScopes: "*" }).where(eq(schema.users.id, user.id));
+      return { ...user, adminScopes: "*" };
+    }
+    return user;
+  }
+  if (isOwner) {
+    await getDb().update(schema.users).set({ role: "admin", adminScopes: "*" }).where(eq(schema.users.id, user.id));
+    return { ...user, role: "admin", adminScopes: "*" };
   }
   return user;
 }
@@ -45,17 +53,31 @@ export async function findUserByEmail(email: string) {
 export async function createUser(input: { email: string; passwordHash: string; name: string }) {
   const email = input.email.toLowerCase();
   const unionId = nanoid();
-  const role = env.ownerEmail && email === env.ownerEmail.toLowerCase() ? "admin" : "user";
+  const isOwner = !!env.ownerEmail && email === env.ownerEmail.toLowerCase();
   await getDb().insert(schema.users).values({
     unionId,
     email,
     name: input.name,
     passwordHash: input.passwordHash,
-    role,
+    role: isOwner ? "admin" : "user",
+    adminScopes: isOwner ? "*" : "",
     consentAt: new Date(),
     lastSignInAt: new Date(),
   });
   return findUserByUnionId(unionId);
+}
+
+export async function findUserById(id: number) {
+  const rows = await getDb().select().from(schema.users).where(eq(schema.users.id, id)).limit(1);
+  return rows.at(0);
+}
+
+export async function setUserPassword(userId: number, passwordHash: string) {
+  await getDb().update(schema.users).set({ passwordHash }).where(eq(schema.users.id, userId));
+}
+
+export async function markEmailVerified(userId: number) {
+  await getDb().update(schema.users).set({ emailVerifiedAt: new Date() }).where(eq(schema.users.id, userId));
 }
 
 export async function touchLastSignIn(userId: number) {

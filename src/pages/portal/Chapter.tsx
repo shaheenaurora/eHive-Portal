@@ -38,7 +38,7 @@ export default function Chapter() {
       {q.data && !ch && (
         <div className="eh-card">
           <Empty big="No home chapter yet."
-                 p="Chapters are opening city by city. The Circle team will assign your home chapter as yours charters — we'll notify you." />
+                 p="Chapters are opening city by city. The Circle team will assign your home chapter as yours charters — we'll notify you the moment it's live." />
         </div>
       )}
 
