@@ -363,6 +363,25 @@ export const dormancyLog = mysqlTable("dormancy_log", {
 });
 
 /* BRD 6.3/7.4 — in-portal notifications (email/WhatsApp are platform dependencies) */
+/* Generic key/value config — used to persist the auto-generated VAPID keypair
+   so web push needs no environment setup. */
+export const appConfig = mysqlTable("app_config", {
+  key: varchar("key", { length: 64 }).primaryKey(),
+  value: text("value"),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+});
+
+/* Web Push subscriptions (PWA push notifications, one row per device). */
+export const pushSubscriptions = mysqlTable("push_subscriptions", {
+  id: serial("id").primaryKey(),
+  memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+  endpoint: varchar("endpoint", { length: 500 }).notNull().unique(),
+  p256dh: varchar("p256dh", { length: 255 }).notNull(),
+  auth: varchar("auth", { length: 255 }).notNull(),
+  categories: text("categories"), // JSON array of enabled category keys; null = all
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 export const notifications = mysqlTable("notifications", {
   id: serial("id").primaryKey(),
   memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
