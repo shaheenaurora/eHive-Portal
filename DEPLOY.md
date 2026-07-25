@@ -69,8 +69,35 @@ provides the MySQL database — no code changes, no TLS setup.
 4. **Create the schema (one-time).** With the Railway CLI:
    `railway run npm run db:push` (and optionally `railway run npx tsx db/seed.ts`).
    Or add `npm run db:push` as a one-off in the service shell.
-5. Railway gives you a public URL. Add your custom domain when ready
-   (BRD sitemap: `app.ehive.com`).
+5. Railway gives you a public URL (`*.up.railway.app`). Add your custom domain
+   next (see below).
+
+### Connecting a custom domain
+
+The app derives its URL from the incoming request, so **no code or env change
+is needed** — verification, password-reset and payment links all use whatever
+domain serves the request. Steps (example: `www.wipsol.com`):
+
+1. **Railway → app service → Settings → Networking → Custom Domain.** Enter
+   `www.wipsol.com`. Railway shows a **CNAME target** like `xxxx.up.railway.app`
+   — copy it.
+2. **At the domain's DNS provider** (registrar or Cloudflare for wipsol.com),
+   add a record:
+   - Type `CNAME`, Name/Host `www`, Value the Railway target, TTL default.
+3. **Root/apex** (`wipsol.com` with no www) — optional but recommended:
+   - Add `wipsol.com` as a *second* custom domain in Railway, then either point
+     the apex at the Railway target using your provider's `ALIAS`/`ANAME`/
+     CNAME-flattening (Cloudflare does this automatically), **or** set a
+     registrar redirect `wipsol.com → www.wipsol.com`.
+4. **SSL is automatic.** Railway provisions a Let's Encrypt certificate once DNS
+   resolves — usually minutes, up to ~an hour. Nothing to configure.
+5. **Verify:** open `https://www.wipsol.com/`, then `/login` → register → confirm
+   you reach `/portal`.
+
+Notes: if `www.wipsol.com` currently serves another site, this replaces it. DNS
+propagation is usually fast but can take up to 48h. Once the domain is live and
+you later add `SMTP_*` / `STRIPE_*`, their emails and checkout redirects use the
+new domain automatically.
 
 Render/Fly.io work the same way — point them at the `Dockerfile`, add a managed
 MySQL, and set the same three variables (set `DATABASE_SSL=true` if that
