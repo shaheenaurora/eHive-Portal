@@ -23,15 +23,15 @@ export default function AdminLeads() {
 
       {q.data && q.data.length > 0 && (
         <div className="eh-card" style={{ padding: ".4rem 1.25rem" }}>
-          <table className="eh-table">
+          <table className="eh-table stack">
             <thead><tr><th>Email</th><th>Form</th><th>Source page</th><th>When</th><th></th></tr></thead>
             <tbody>
               {q.data.map((l) => (
                 <tr key={l.id} className="click" onClick={() => setSel(l)}>
                   <td><b>{l.email ?? "—"}</b></td>
-                  <td><Pill>{l.form}</Pill></td>
-                  <td className="eh-sm">{l.sourcePage ?? "—"}</td>
-                  <td className="eh-sm eh-muted">{fmtDateTime(l.createdAt)}</td>
+                  <td data-label="Form"><Pill>{l.form}</Pill></td>
+                  <td className="eh-sm" data-label="Source">{l.sourcePage ?? "—"}</td>
+                  <td className="eh-sm eh-muted" data-label="When">{fmtDateTime(l.createdAt)}</td>
                   <td><span className="eh-btn ghost sm">View →</span></td>
                 </tr>
               ))}

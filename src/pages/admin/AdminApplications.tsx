@@ -48,7 +48,7 @@ export default function AdminApplications() {
 
       {rows.length > 0 && (
         <div className="eh-card" style={{ padding: ".4rem 1.25rem" }}>
-          <table className="eh-table">
+          <table className="eh-table stack">
             <thead>
               <tr><th>Applicant</th><th>Company</th><th>Stage</th><th>Tier</th><th>Status</th><th>Applied</th><th></th></tr>
             </thead>
@@ -56,11 +56,11 @@ export default function AdminApplications() {
               {rows.map((a) => (
                 <tr key={a.id} className="click" onClick={() => { setSel(a); setNote(a.note ?? ""); setTier(a.tierRequested); }}>
                   <td><b>{a.name}</b><div className="eh-muted eh-sm">{a.email}</div></td>
-                  <td>{a.company ?? "—"}</td>
-                  <td className="eh-sm">{a.stage ?? "—"}</td>
-                  <td><TierPill tier={a.tierRequested} /></td>
-                  <td><StatusPill status={a.status} /></td>
-                  <td className="eh-sm eh-muted">{fmtDate(a.createdAt)}</td>
+                  <td data-label="Company">{a.company ?? "—"}</td>
+                  <td className="eh-sm" data-label="Stage">{a.stage ?? "—"}</td>
+                  <td data-label="Tier"><TierPill tier={a.tierRequested} /></td>
+                  <td data-label="Status"><StatusPill status={a.status} /></td>
+                  <td className="eh-sm eh-muted" data-label="Applied">{fmtDate(a.createdAt)}</td>
                   <td><span className="eh-btn ghost sm">Review →</span></td>
                 </tr>
               ))}

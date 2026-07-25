@@ -101,7 +101,7 @@ export default function AdminEvents() {
 
       {q.data && q.data.length > 0 && (
         <div className="eh-card" style={{ padding: ".4rem 1.25rem" }}>
-          <table className="eh-table">
+          <table className="eh-table stack">
             <thead>
               <tr><th>Event</th><th>Kind</th><th>When</th><th>Gate</th><th>Registered</th><th></th></tr>
             </thead>
@@ -109,10 +109,10 @@ export default function AdminEvents() {
               {q.data.map((e) => (
                 <tr key={e.id}>
                   <td><b>{e.title}</b><div className="eh-muted eh-sm">{e.location ?? "TBA"}</div></td>
-                  <td><Pill>{e.kind}</Pill></td>
-                  <td className="eh-sm">{fmtDay(e.startsAt)} {fmtDateTime(e.startsAt).split("·")[1]}</td>
-                  <td><TierPill tier={e.tierGate} /></td>
-                  <td className="eh-num">{e.regCount}/{e.capacity}</td>
+                  <td data-label="Kind"><Pill>{e.kind}</Pill></td>
+                  <td className="eh-sm" data-label="When">{fmtDay(e.startsAt)} {fmtDateTime(e.startsAt).split("·")[1]}</td>
+                  <td data-label="Gate"><TierPill tier={e.tierGate} /></td>
+                  <td className="eh-num" data-label="Registered">{e.regCount}/{e.capacity}</td>
                   <td style={{ whiteSpace: "nowrap" }}>
                     <button className="eh-btn ghost sm" onClick={() => setRegsFor(e.id)}>Registrations →</button>{" "}
                     <button className="eh-btn ghost sm" onClick={() => setFbFor(e.id)}>Feedback →</button>

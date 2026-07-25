@@ -117,18 +117,18 @@ export default function AdminEngagement() {
         {board.isLoading && <Spinner />}
         {board.data && board.data.rows.length === 0 && <Empty big="No members yet." />}
         <div className="eh-table-wrap">
-          <table className="eh-table">
+          <table className="eh-table stack">
             <thead><tr><th>Member</th><th>Tier</th><th>Stage</th><th>Pause</th><th>Note</th><th></th></tr></thead>
             <tbody>
               {(board.data?.rows ?? []).map((r) => {
                 const stage = (r.member.dormancyStage ?? "active") as DormancyStage;
                 return (
                   <tr key={r.member.id}>
-                    <td>{r.user.name ?? r.user.email}</td>
-                    <td>{TIER_LABEL[r.member.tier as Tier]}</td>
-                    <td><Pill color={STAGE_COLOR[stage] ?? "grey"}>{DORMANCY_LABEL[stage]}</Pill></td>
-                    <td className="eh-num">{r.member.exceptionPause > 0 ? `${r.member.exceptionPause}q` : "—"}</td>
-                    <td className="eh-muted">{r.member.dormancyNote ?? "—"}</td>
+                    <td><b>{r.user.name ?? r.user.email}</b></td>
+                    <td data-label="Tier">{TIER_LABEL[r.member.tier as Tier]}</td>
+                    <td data-label="Stage"><Pill color={STAGE_COLOR[stage] ?? "grey"}>{DORMANCY_LABEL[stage]}</Pill></td>
+                    <td className="eh-num" data-label="Pause">{r.member.exceptionPause > 0 ? `${r.member.exceptionPause}q` : "—"}</td>
+                    <td className="eh-muted" data-label="Note">{r.member.dormancyNote ?? "—"}</td>
                     <td style={{ whiteSpace: "nowrap" }}>
                       <button className="eh-btn ghost sm" onClick={() => setOverrideFor({ id: r.member.id, name: r.user.name ?? "member" })}>Override</button>{" "}
                       <button className="eh-btn ghost sm" onClick={() => setPauseFor({ id: r.member.id, name: r.user.name ?? "member" })}>Pause</button>

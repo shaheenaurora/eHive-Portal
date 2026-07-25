@@ -187,6 +187,32 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
   }
   .eh-card > .eh-table { white-space: nowrap; }
   .eh-page-head { align-items: flex-start; }
+
+  /* Responsive data tables: a table marked .stack collapses to one card per
+     row on phones, each cell labelled by its column header — no more sideways
+     scrolling to reach tier/status/score. */
+  .eh-table.stack { display: block; white-space: normal; overflow: visible; }
+  .eh-table.stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .eh-table.stack tbody { display: block; }
+  .eh-table.stack tr {
+    display: block; border: 1px solid var(--eh-line-2); border-radius: 12px;
+    padding: .35rem .9rem; margin: .6rem 0; background: var(--eh-card);
+  }
+  .eh-table.stack tr.click:hover td { background: transparent; }
+  .eh-table.stack td {
+    display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+    padding: .5rem 0; border-bottom: 1px solid var(--eh-line-2); text-align: right;
+    white-space: normal;
+  }
+  .eh-table.stack td:last-child { border-bottom: none; }
+  .eh-table.stack td[data-label]::before {
+    content: attr(data-label); font-weight: 700; color: var(--eh-mut);
+    font-size: .66rem; text-transform: uppercase; letter-spacing: .07em;
+    text-align: left; flex: 0 0 auto;
+  }
+  /* Cells with no data-label (action buttons) take the full row width. */
+  .eh-table.stack td:not([data-label]) { justify-content: flex-end; }
+  .eh-table.stack td:empty { display: none; }
 }
 
 /* ------------------------------ components ----------------------------- */
