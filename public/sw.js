@@ -1,7 +1,7 @@
 /* eHive Circle — PWA service worker.
    App-shell + static assets are cached for offline load; the API is never
    cached (always fresh). Bump CACHE to invalidate on a breaking change. */
-const CACHE = "ehive-v2";
+const CACHE = "ehive-v3";
 const SHELL = "/portal.html";
 
 self.addEventListener("install", (event) => {
@@ -34,17 +34,21 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Same-origin static assets (hashed bundle, icons, css/js): cache-first.
+  // Same-origin static assets: stale-while-revalidate. Serves the cached copy
+  // instantly (fast + offline) but ALWAYS refetches in the background and
+  // updates the cache — so unhashed files like app.min.js can't get stuck on a
+  // stale version after a deploy (hashed bundles are immutable, so no cost).
   if (url.origin === self.location.origin) {
     event.respondWith(
-      caches.match(req).then((cached) =>
-        cached ||
-        fetch(req).then((res) => {
-          if (res.ok && res.type === "basic") {
-            const copy = res.clone();
-            caches.open(CACHE).then((c) => c.put(req, copy));
-          }
-          return res;
+      caches.open(CACHE).then((cache) =>
+        cache.match(req).then((cached) => {
+          const network = fetch(req)
+            .then((res) => {
+              if (res.ok && res.type === "basic") cache.put(req, res.clone());
+              return res;
+            })
+            .catch(() => cached);
+          return cached || network;
         }),
       ),
     );
