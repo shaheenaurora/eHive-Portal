@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { trpc } from "@/providers/trpc";
 import { EhShell, ADMIN_NAV, PageHead, Pill, Empty, Spinner, Modal, Field, Bar, toast } from "@/components/eh";
 import { fmtDateTime } from "@/lib/ehf";
@@ -55,7 +56,7 @@ export default function AdminLeads() {
       {q.data && q.data.length > 0 && (
         <div className="eh-card" style={{ padding: ".4rem 1.25rem" }}>
           <table className="eh-table stack">
-            <thead><tr><th>Contact</th><th>Form</th><th>Status</th><th>Owner</th><th>When</th><th></th></tr></thead>
+            <thead><tr><th>Contact</th><th>Form</th><th>Detail</th><th>Status</th><th>Owner</th><th>When</th><th></th></tr></thead>
             <tbody>
               {(q.data as LeadRow[]).map((l) => {
                 const nm = leadName(l);
@@ -63,6 +64,7 @@ export default function AdminLeads() {
                   <tr key={l.id} className="click" onClick={() => setSel(l)}>
                     <td><b>{nm ?? l.email ?? "—"}</b>{nm && l.email ? <div className="eh-muted eh-sm">{l.email}</div> : null}</td>
                     <td data-label="Form"><Pill>{formLabel(l.form)}</Pill></td>
+                    <td data-label="Detail" className="eh-sm">{leadHighlight(l)}</td>
                     <td data-label="Status"><Pill color={STATUS_COLOR[l.status]}>{LEAD_STATUS_LABEL[l.status]}</Pill></td>
                     <td data-label="Owner" className="eh-sm">{l.ownerName ?? l.ownerEmail ?? "—"}</td>
                     <td data-label="When" className="eh-sm eh-muted">{fmtDateTime(l.createdAt)}</td>
@@ -154,6 +156,25 @@ function LeadDetail({ lead, onClose, onSaved }: { lead: LeadRow; onClose: () => 
         <div className="row"><span className="d">Captured</span><span className="t eh-sm">{fmtDateTime(lead.createdAt)}</span></div>
       </div>
 
+      {/* ---- Everything else they submitted (booking slot, estimate, enquiry…) ---- */}
+      {(() => {
+        const extra = extraFields(data);
+        if (!extra.length) return null;
+        return (
+          <>
+            <div className="eh-eyebrow">What they submitted</div>
+            <div className="eh-list eh-mb">
+              {extra.map(([k, v]) => (
+                <div className="row" key={k} style={{ alignItems: "flex-start" }}>
+                  <span className="d">{k}</span>
+                  <span className="t eh-sm" style={{ textAlign: "right", whiteSpace: "pre-wrap" }}>{v}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        );
+      })()}
+
       {/* ---- CRM controls ---- */}
       <div className="eh-eyebrow">Work this lead</div>
       <div className="eh-grid g2 eh-mb" style={{ marginTop: ".4rem" }}>
@@ -194,3 +215,47 @@ const FORM_LABELS: Record<string, string> = {
   "calculator-breakdown": "Setup calculator", newsletter: "Newsletter",
 };
 function formLabel(f: string): string { return FORM_LABELS[f] ?? f; }
+
+const CONTACT_KEYS = new Set(["name", "email", "phone", "company", "business", "location", "industry"]);
+const PLUMBING_KEYS = new Set(["form", "source_page", "user_agent", "referrer", "timestamp"]);
+const SCORECARD_INTERNAL = new Set(["total", "domains"]);
+const prettyKey = (k: string) => k.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+function fmtVal(v: unknown): string {
+  if (v == null) return "—";
+  if (typeof v === "object") {
+    // Flatten one level so estimates/objects read as "key: value · key: value".
+    return Object.entries(v as Record<string, unknown>)
+      .map(([k, val]) => `${prettyKey(k)}: ${typeof val === "object" ? JSON.stringify(val) : String(val)}`)
+      .join(" · ");
+  }
+  return String(v);
+}
+
+/** Every submitted field that isn't contact info, plumbing, or scorecard
+ *  internals (those render in the report) — so booking/estimate/enquiry details
+ *  are never hidden from admins. */
+function extraFields(data: Record<string, unknown>): [string, string][] {
+  return Object.entries(data)
+    .filter(([k, v]) => !CONTACT_KEYS.has(k) && !PLUMBING_KEYS.has(k) && !SCORECARD_INTERNAL.has(k) && v !== "" && v != null)
+    .map(([k, v]) => [prettyKey(k), fmtVal(v)] as [string, string]);
+}
+
+/** At-a-glance value for the list: score for the scorecard, else the form's
+ *  most telling field. */
+function leadHighlight(l: LeadRow): ReactNode {
+  let d: Record<string, unknown> = {};
+  try { d = l.payload ? JSON.parse(l.payload) : {}; } catch { /* ignore */ }
+  if (l.form === "clarity-scorecard" && typeof d.total === "number") {
+    const band = d.total >= 82 ? "green" : d.total >= 64 ? "gold" : d.total >= 45 ? "blue" : "red";
+    return <Pill color={band as never}>Score {d.total as number}/100</Pill>;
+  }
+  const pick = (k: string) => (typeof d[k] === "string" && d[k] ? String(d[k]) : null);
+  if (l.form === "get-started") return [pick("door"), pick("product_or_tier") ?? pick("detail"), pick("question")].filter(Boolean).join(" · ") || "—";
+  if (l.form === "booking") return [pick("product"), pick("when")].filter(Boolean).join(" · ") || "—";
+  if (l.form === "calculator-breakdown") {
+    const e = d.estimate as Record<string, unknown> | undefined;
+    return e ? `${e.jurisdiction ?? ""} · AED ${e.low ?? "?"}–${e.high ?? "?"}`.trim() : "—";
+  }
+  return pick("detail") ?? pick("question") ?? "—";
+}
