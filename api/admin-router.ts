@@ -3,9 +3,20 @@ import { TRPCError } from "@trpc/server";
 import { and, desc, eq, like, or, sql } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "./queries/connection";
-import { createRouter, adminQuery } from "./middleware";
+import { createRouter, adminQuery, scopedAdmin } from "./middleware";
 import { awardPoints, awardRulePoints, promoteWaitlist, recomputeScore, autoPairBuddy } from "./queries/circle";
+import { audit } from "./lib/audit";
+import { findUserByEmail } from "./queries/users";
 import { tierRank } from "@contracts/constants";
+
+const SCOPE_ENUM = z.enum([
+  "membership", "community", "events", "chapters",
+  "member_success", "partnerships", "content", "finance",
+]);
+function isFullAdmin(user: { adminScopes?: string | null }): boolean {
+  const s = (user.adminScopes ?? "").trim();
+  return s === "" || s === "*";
+}
 
 const TIER = z.enum(["horizon", "ascent", "vanguard", "zenith"]);
 const idInput = z.object({ id: z.number().int().positive() });
@@ -108,7 +119,7 @@ export const adminRouter = createRouter({
       return base;
     }),
 
-  setApplicationStatus: adminQuery
+  setApplicationStatus: scopedAdmin("membership")
     .input(
       z.object({
         id: z.number().int().positive(),
@@ -117,7 +128,7 @@ export const adminRouter = createRouter({
         tier: TIER.optional(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = getDb();
       const rows = await db
         .select()
@@ -165,9 +176,11 @@ export const adminRouter = createRouter({
           await awardPoints(memberId, "tenure", 5, "Joined eHive Circle");
           // Onboarding automation: auto-pair a buddy (never block approval on it).
           try { await autoPairBuddy(memberId); } catch (e) { console.error("buddy auto-pair failed", e); }
+          await audit(ctx.user, "application.approve", { type: "application", id: input.id, detail: `→ member #${memberId} (${tier})` });
           return { ok: true, memberId };
         }
       }
+      await audit(ctx.user, `application.${input.status}`, { type: "application", id: input.id });
       return { ok: true };
     }),
 
@@ -266,9 +279,9 @@ export const adminRouter = createRouter({
     return { ...row, history: hist, pods: podRows, applications: apps, actionItems: actions, scoreHistory: scoreHist, eventRegs: regs };
   }),
 
-  setMemberTier: adminQuery
+  setMemberTier: scopedAdmin("membership")
     .input(z.object({ memberId: z.number().int().positive(), tier: TIER, note: z.string().max(500).optional() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = getDb();
       const m = await mustMember(input.memberId);
       if (m.tier === input.tier) return { ok: true };
@@ -281,10 +294,11 @@ export const adminRouter = createRouter({
         toTier: input.tier,
         note: input.note,
       });
+      await audit(ctx.user, `member.${type}`, { type: "member", id: m.id, detail: `${m.tier} → ${input.tier}` });
       return { ok: true, type };
     }),
 
-  setMemberStatus: adminQuery
+  setMemberStatus: scopedAdmin("membership")
     .input(
       z.object({
         memberId: z.number().int().positive(),
@@ -292,7 +306,7 @@ export const adminRouter = createRouter({
         note: z.string().max(500).optional(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = getDb();
       const m = await mustMember(input.memberId);
       await db.update(schema.members).set({ status: input.status }).where(eq(schema.members.id, m.id));
@@ -303,6 +317,7 @@ export const adminRouter = createRouter({
           note: input.note,
         });
       }
+      await audit(ctx.user, "member.status", { type: "member", id: m.id, detail: `status → ${input.status}` });
       return { ok: true };
     }),
 
@@ -999,5 +1014,66 @@ export const adminRouter = createRouter({
           .limit(200);
       }
       return db.select().from(schema.leads).orderBy(desc(schema.leads.createdAt)).limit(200);
+    }),
+
+  /* -------------------- admin audit trail + access control ----------------- */
+  auditTrail: adminQuery
+    .input(z.object({ limit: z.number().min(1).max(500).default(200) }).optional())
+    .query(async ({ input }) => {
+      return getDb().select().from(schema.adminAuditLog)
+        .orderBy(desc(schema.adminAuditLog.createdAt)).limit(input?.limit ?? 200);
+    }),
+
+  /* List admins + their capability scopes (management view). */
+  adminRoster: adminQuery.query(async () => {
+    return getDb()
+      .select({ id: schema.users.id, name: schema.users.name, email: schema.users.email,
+                role: schema.users.role, adminScopes: schema.users.adminScopes })
+      .from(schema.users)
+      .where(eq(schema.users.role, "admin"))
+      .orderBy(schema.users.email);
+  }),
+
+  /* Grant/adjust an admin's role and capability scopes. Only a FULL admin
+     (owner "*" or legacy "") may manage access — segregation of duties. */
+  setAdminAccess: adminQuery
+    .input(z.object({
+      userId: z.number().int().positive(),
+      makeAdmin: z.boolean(),
+      scopes: z.array(SCOPE_ENUM).default([]),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (!isFullAdmin(ctx.user as never)) throw new TRPCError({ code: "FORBIDDEN", message: "Only a full administrator can manage admin access." });
+      if (input.userId === ctx.user.id && !input.makeAdmin) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "You can't remove your own admin access." });
+      }
+      const db = getDb();
+      const target = (await db.select().from(schema.users).where(eq(schema.users.id, input.userId)).limit(1)).at(0);
+      if (!target) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+      // Never demote the platform owner or strip their full scope.
+      const isOwner = target.adminScopes === "*";
+      await db.update(schema.users)
+        .set({
+          role: input.makeAdmin ? "admin" : "user",
+          adminScopes: isOwner ? "*" : (input.makeAdmin ? input.scopes.join(",") : ""),
+        })
+        .where(eq(schema.users.id, input.userId));
+      await audit(ctx.user, "admin.access", { type: "user", id: input.userId,
+        detail: input.makeAdmin ? `admin [${input.scopes.join(",") || "full"}]` : "revoked" });
+      return { ok: true };
+    }),
+
+  /* Grant admin access to an existing account by email (onboard a staff member). */
+  grantAdminByEmail: adminQuery
+    .input(z.object({ email: z.string().email(), scopes: z.array(SCOPE_ENUM).default([]) }))
+    .mutation(async ({ ctx, input }) => {
+      if (!isFullAdmin(ctx.user as never)) throw new TRPCError({ code: "FORBIDDEN", message: "Only a full administrator can grant access." });
+      const user = await findUserByEmail(input.email);
+      if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "No account with that email. Ask them to register first, then grant access." });
+      await getDb().update(schema.users)
+        .set({ role: "admin", adminScopes: input.scopes.join(",") })
+        .where(eq(schema.users.id, user.id));
+      await audit(ctx.user, "admin.grant", { type: "user", id: user.id, detail: `${user.email} [${input.scopes.join(",") || "full"}]` });
+      return { ok: true, name: user.name ?? user.email };
     }),
 });

@@ -22,6 +22,15 @@ export const users = mysqlTable("users", {
   consentAt: timestamp("consentAt"),
   avatar: text("avatar"),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  // Segregation of duties: comma-separated admin capability scopes (see
+  // contracts/constants ADMIN_SCOPES). Empty on a plain admin = full access
+  // for backward-compatibility; the owner always has "*".
+  adminScopes: varchar("adminScopes", { length: 512 }).notNull().default(""),
+  // Email verification (null until the address is confirmed via emailed link).
+  emailVerifiedAt: timestamp("emailVerifiedAt"),
+  // TOTP two-factor (base32 secret; enabled only once confirmed).
+  totpSecret: varchar("totpSecret", { length: 64 }),
+  totpEnabled: int("totpEnabled").notNull().default(0),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt")
     .defaultNow()
@@ -384,6 +393,33 @@ export const appConfig = mysqlTable("app_config", {
   key: varchar("key", { length: 64 }).primaryKey(),
   value: text("value"),
   updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+});
+
+/* Single-use auth tokens for email verification + password reset. Only the
+   SHA-256 hash of the token is stored; the raw token lives only in the emailed
+   link. Rows are consumed (usedAt set) on success and expire by expiresAt. */
+export const authTokens = mysqlTable("auth_tokens", {
+  id: serial("id").primaryKey(),
+  userId: bigint("userId", { mode: "number", unsigned: true }).notNull(),
+  kind: mysqlEnum("kind", ["verify", "reset"]).notNull(),
+  tokenHash: varchar("tokenHash", { length: 64 }).notNull().unique(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  usedAt: timestamp("usedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+/* Append-only audit trail of privileged admin actions (who did what, to what,
+   when). Never updated or deleted from the app — accountability for PDPL and
+   internal governance. */
+export const adminAuditLog = mysqlTable("admin_audit_log", {
+  id: serial("id").primaryKey(),
+  actorUserId: bigint("actorUserId", { mode: "number", unsigned: true }).notNull(),
+  actorEmail: varchar("actorEmail", { length: 320 }),
+  action: varchar("action", { length: 64 }).notNull(),       // e.g. "application.approve"
+  targetType: varchar("targetType", { length: 48 }),         // e.g. "application"
+  targetId: varchar("targetId", { length: 64 }),
+  detail: text("detail"),                                    // short human summary
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
 /* Web Push subscriptions (PWA push notifications, one row per device). */

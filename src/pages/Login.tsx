@@ -98,6 +98,12 @@ export default function Login() {
           </button>
         </form>
 
+        {mode === "login" && (
+          <p style={{ marginTop: ".9rem", fontSize: ".82rem" }}>
+            <a href="/forgot-password" style={{ color: "#9aa7b6" }}>Forgot your password?</a>
+          </p>
+        )}
+
         <p style={{ marginTop: "1.2rem", fontSize: ".82rem", color: "#9aa7b6" }}>
           {mode === "login" ? "New to eHive?" : "Already have an account?"}{" "}
           <button

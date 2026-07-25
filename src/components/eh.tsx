@@ -12,6 +12,28 @@ let pushToastFn: ((msg: string) => void) | null = null;
 export function toast(msg: string) {
   if (pushToastFn) pushToastFn(msg);
 }
+/** Dismissible nudge shown until a member confirms their email address. */
+function VerifyBanner() {
+  const [hidden, setHidden] = useState(false);
+  const resend = trpc.auth.resendVerification.useMutation({
+    onSuccess: () => toast("Verification email sent — check your inbox."),
+    onError: (e) => toast(e.message),
+  });
+  if (hidden) return null;
+  return (
+    <div className="eh-verify" role="status">
+      <span className="eh-verify-dot">✉</span>
+      <span style={{ flex: 1 }}>
+        <b>Confirm your email</b> to secure your account. We sent you a link — didn't get it?{" "}
+        <button className="eh-linkbtn" disabled={resend.isPending} onClick={() => resend.mutate()}>
+          {resend.isPending ? "Sending…" : "Resend it"}
+        </button>
+      </span>
+      <button className="eh-verify-x" aria-label="Dismiss" onClick={() => setHidden(true)}>✕</button>
+    </div>
+  );
+}
+
 function ToastHost() {
   const [msg, setMsg] = useState<string | null>(null);
   useEffect(() => {
@@ -23,7 +45,11 @@ function ToastHost() {
       pushToastFn = null;
     };
   }, []);
-  return msg ? <div className="eh-toast">{msg}</div> : null;
+  // aria-live region so screen readers announce toasts; always present so the
+  // announcement fires when content changes.
+  return <div className="eh-toast-live" role="status" aria-live="polite" aria-atomic="true">
+    {msg ? <div className="eh-toast">{msg}</div> : null}
+  </div>;
 }
 
 /* -------------------------------- atoms -------------------------------- */
@@ -173,6 +199,7 @@ export function EhShell(props: {
 
   return (
     <div className="eh-shell">
+      <a href="#eh-main" className="eh-skip">Skip to content</a>
       <header className="eh-mtop">
         <button className="eh-burger" aria-label="Menu" aria-expanded={menuOpen}
                 onClick={() => setMenuOpen(true)}>☰</button>
@@ -222,7 +249,10 @@ export function EhShell(props: {
           <button className="eh-signout" onClick={() => logout()}>Sign out</button>
         </div>
       </aside>
-      <main className="eh-main">{props.children}</main>
+      <main className="eh-main" id="eh-main" tabIndex={-1}>
+        {!user.emailVerifiedAt && <VerifyBanner />}
+        {props.children}
+      </main>
       {props.notif && <NotifBell />}
       <ToastHost />
       <InstallPrompt />
@@ -342,6 +372,13 @@ export const ADMIN_NAV: NavGroup[] = [
     items: [
       { to: "/admin/insights", label: "Insights", icon: "✎" },
       { to: "/admin/newsletters", label: "Newsletters", icon: "▤" },
+    ],
+  },
+  {
+    label: "Administration",
+    items: [
+      { to: "/admin/access", label: "Team & Access", icon: "⚿" },
+      { to: "/admin/audit", label: "Audit Trail", icon: "❑" },
     ],
   },
 ];

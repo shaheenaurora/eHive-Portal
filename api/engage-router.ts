@@ -126,9 +126,15 @@ export const engageRouter = createRouter({
     .mutation(async ({ ctx, input }) => {
       const member = await requireMember(ctx.user.id);
       const db = getDb();
+      // One open request per KIND — export and deletion are distinct PDPL
+      // rights a member may legitimately exercise at the same time.
       const open = await db.select().from(schema.dataRequests)
-        .where(and(eq(schema.dataRequests.memberId, member.id), eq(schema.dataRequests.status, "open"))).limit(1);
-      if (open.length) throw new TRPCError({ code: "CONFLICT", message: "You already have an open data request" });
+        .where(and(
+          eq(schema.dataRequests.memberId, member.id),
+          eq(schema.dataRequests.kind, input.kind),
+          eq(schema.dataRequests.status, "open"),
+        )).limit(1);
+      if (open.length) throw new TRPCError({ code: "CONFLICT", message: `You already have an open ${input.kind} request.` });
       await db.insert(schema.dataRequests).values({ memberId: member.id, kind: input.kind });
       return { ok: true };
     }),

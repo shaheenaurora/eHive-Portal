@@ -4,7 +4,8 @@ import { createHash } from "crypto";
 import { eq, and, desc, asc, gte, sql } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "./queries/connection";
-import { createRouter, adminQuery } from "./middleware";
+import { createRouter, adminQuery, scopedAdmin } from "./middleware";
+import { audit } from "./lib/audit";
 import {
   awardRulePoints, notify, evaluateDormancy, introEligibility,
 } from "./queries/circle";
@@ -303,9 +304,9 @@ export const adminEngageRouter = createRouter({
     return { apps: out, zenithCount: zen.at(0)?.n ?? 0, cap: ZENITH_CAP };
   }),
 
-  decideZenith: adminQuery
+  decideZenith: scopedAdmin("member_success")
     .input(z.object({ id: z.number(), approve: z.boolean(), note: z.string().max(1000).optional() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = getDb();
       const app = (await db.select().from(schema.zenithApps).where(eq(schema.zenithApps.id, input.id)).limit(1)).at(0);
       if (!app) throw new TRPCError({ code: "NOT_FOUND" });
@@ -313,6 +314,7 @@ export const adminEngageRouter = createRouter({
       if (!input.approve) {
         await db.update(schema.zenithApps).set({ status: "rejected", note: input.note, decidedAt: new Date() })
           .where(eq(schema.zenithApps.id, app.id));
+        await audit(ctx.user, "zenith.reject", { type: "zenithApp", id: app.id });
         return { ok: true };
       }
       // cap of 50 + induction number
@@ -339,6 +341,7 @@ export const adminEngageRouter = createRouter({
       }
       await db.update(schema.zenithApps).set({ status: "approved", note: input.note, decidedAt: new Date() })
         .where(eq(schema.zenithApps.id, app.id));
+      await audit(ctx.user, "zenith.approve", { type: "zenithApp", id: app.id, detail: `induction №${inductionNo}` });
       return { ok: true, inductionNo };
     }),
 
@@ -614,14 +617,15 @@ export const adminEngageRouter = createRouter({
     return rows.map(r => ({ ...r.req, memberName: r.user.name ?? r.user.email ?? "Member" }));
   }),
 
-  completeDataRequest: adminQuery
+  completeDataRequest: scopedAdmin("finance")
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = getDb();
       const req = (await db.select().from(schema.dataRequests).where(eq(schema.dataRequests.id, input.id)).limit(1)).at(0);
       if (!req) throw new TRPCError({ code: "NOT_FOUND" });
       await db.update(schema.dataRequests).set({ status: "done" }).where(eq(schema.dataRequests.id, req.id));
       await notify(req.memberId, `Your data ${req.kind} request has been completed.`);
+      await audit(ctx.user, "data.complete", { type: "dataRequest", id: req.id, detail: req.kind });
       return { ok: true };
     }),
 });
