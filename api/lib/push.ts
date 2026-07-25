@@ -20,7 +20,7 @@ async function ensureVapid() {
     await db.insert(schema.appConfig).values({ key: "vapid", value: JSON.stringify(keys) })
       .onDuplicateKeyUpdate({ set: { value: JSON.stringify(keys) } });
   }
-  const subject = env.ownerEmail ? `mailto:${env.ownerEmail}` : "mailto:hello@ehive.ae";
+  const subject = env.ownerEmail ? `mailto:${env.ownerEmail}` : "mailto:hello@ehiveglobal.com";
   webpush.setVapidDetails(subject, keys.publicKey, keys.privateKey);
   ready = keys;
   return keys;

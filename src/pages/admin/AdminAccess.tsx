@@ -86,7 +86,7 @@ export default function AdminAccess() {
             They must have registered an account first. Enter their email and choose their capabilities.
           </p>
           <Field label="Email address">
-            <input className="eh-input" type="email" placeholder="name@ehive.ae"
+            <input className="eh-input" type="email" placeholder="name@ehiveglobal.com"
                    value={email} onChange={(e) => setEmail(e.target.value)} />
           </Field>
           <div className="eh-eyebrow" style={{ marginBottom: ".4rem" }}>Capabilities</div>

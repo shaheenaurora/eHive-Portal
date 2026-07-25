@@ -234,7 +234,7 @@ export default function AdminPodDetail() {
               </Field>
             </div>
             <Field label="Video link">
-              <input className="eh-input" name="videoLink" placeholder="https://meet.ehive.ae/…" />
+              <input className="eh-input" name="videoLink" placeholder="https://meet.google.com/…" />
             </Field>
             <Field label="Location (if in person)">
               <input className="eh-input" name="location" placeholder="eHive Majlis, DIFC" />
