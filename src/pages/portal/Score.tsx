@@ -15,9 +15,10 @@ const FACTOR_HINT: Record<string, string> = {
 
 export default function Score() {
   const q = trpc.circle.myScore.useQuery(undefined, { retry: false });
+  const eng = trpc.engage.myEngagement.useQuery(undefined, { retry: false });
 
-  if (q.isLoading) return <EhShell groups={MEMBER_NAV} brandSub="Member Portal"><Spinner /></EhShell>;
-  if (!q.data) return <EhShell groups={MEMBER_NAV} brandSub="Member Portal"><Empty big="Score unavailable." /></EhShell>;
+  if (q.isLoading) return <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif><Spinner /></EhShell>;
+  if (!q.data) return <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif><Empty big="Score unavailable." /></EhShell>;
 
   const { member, config, sums, history, recent } = q.data;
   const weightMap = new Map(config.map((c) => [c.factor, c.weight]));
@@ -25,7 +26,7 @@ export default function Score() {
   const totalWeight = config.reduce((a, c) => a + c.weight, 0) || 100;
 
   return (
-    <EhShell groups={MEMBER_NAV} brandSub="Member Portal">
+    <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif>
       <PageHead eyebrow="Hive Score" title="How the circle sees your quarter"
                 sub="The Hive Score is not a ranking — it's the mirror. Six factors, each capped, so one loud month can't fake a quiet year." />
 
@@ -63,6 +64,24 @@ export default function Score() {
           </div>
         </div>
       </div>
+
+      {eng.data && (
+        <div className="eh-card eh-mt">
+          <h3>The point rules</h3>
+          <p className="eh-muted eh-sm">Set by the Circle team — the current table, applied to every member the same way.</p>
+          <div className="eh-list">
+            {eng.data.rules.map((r) => (
+              <div className="row" key={r.key}>
+                <div style={{ flex: 1 }}>
+                  <div className="t">{r.label}</div>
+                  <div className="d">{SCORE_FACTOR_LABEL[r.factor as keyof typeof SCORE_FACTOR_LABEL] ?? r.factor}</div>
+                </div>
+                <Pill color={r.points >= 0 ? "green" : "red"}>{r.points >= 0 ? "+" : ""}{r.points}</Pill>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="eh-grid g2 eh-mt" style={{ alignItems: "start" }}>
         <div className="eh-card">

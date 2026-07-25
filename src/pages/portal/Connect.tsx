@@ -1,0 +1,324 @@
+import { useState } from "react";
+import { trpc } from "@/providers/trpc";
+import { EhShell, MEMBER_NAV, PageHead, Pill, Empty, Spinner, Modal, Field, TierPill, toast } from "@/components/eh";
+import { fmtDate } from "@/lib/ehf";
+import { TIER_LABEL } from "@contracts/constants";
+
+type Tab = "121" | "referrals" | "deals";
+
+export default function Connect() {
+  const utils = trpc.useUtils();
+  const [tab, setTab] = useState<Tab>("121");
+  const [logOpen, setLogOpen] = useState(false);
+  const [refOpen, setRefOpen] = useState(false);
+  const [dealOpen, setDealOpen] = useState(false);
+
+  const oneToOnes = trpc.engage.myOneToOnes.useQuery(undefined, { retry: false });
+  const buddy = trpc.engage.myBuddy.useQuery(undefined, { retry: false });
+  const directory = trpc.engage.memberDirectory.useQuery(undefined, { retry: false });
+  const referrals = trpc.engage.myReferrals.useQuery(undefined, { retry: false });
+  const deals = trpc.engage.deals.useQuery(undefined, { retry: false });
+
+  function refresh() {
+    utils.engage.myOneToOnes.invalidate();
+    utils.engage.myBuddy.invalidate();
+    utils.engage.myReferrals.invalidate();
+    utils.engage.deals.invalidate();
+    utils.circle.myScore.invalidate();
+    utils.circle.dashboard.invalidate();
+  }
+
+  const log = trpc.engage.logOneToOne.useMutation({
+    onSuccess: () => { toast("Logged — your counterpart confirms it."); setLogOpen(false); refresh(); },
+    onError: (e) => toast(e.message),
+  });
+  const respond = trpc.engage.respondOneToOne.useMutation({
+    onSuccess: (r) => { toast(r.score !== undefined ? `Confirmed — Hive Score now ${r.score}` : "Response recorded."); refresh(); },
+    onError: (e) => toast(e.message),
+  });
+  const checkin = trpc.engage.buddyCheckin.useMutation({
+    onSuccess: () => { toast("30-day check-in recorded — thank you for looking after new members."); refresh(); },
+    onError: (e) => toast(e.message),
+  });
+  const submitRef = trpc.engage.submitReferral.useMutation({
+    onSuccess: (r) => { toast(`Referral submitted — Hive Score now ${r.score}`); setRefOpen(false); refresh(); },
+    onError: (e) => toast(e.message),
+  });
+  const postDeal = trpc.engage.postDeal.useMutation({
+    onSuccess: () => { toast("Deal posted to the board."); setDealOpen(false); refresh(); },
+    onError: (e) => toast(e.message),
+  });
+
+  const pendingForMe = (oneToOnes.data ?? []).filter((r) => r.status === "pending" && !r.mine);
+  const myLog = (oneToOnes.data ?? []).filter((r) => !(r.status === "pending" && !r.mine));
+
+  return (
+    <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif>
+      <PageHead eyebrow="Connect" title="Give first"
+                sub="1-2-1s, mentoring, referrals and the Deal Flow board. The Circle runs on members showing up for each other." />
+
+      {/* buddy strip */}
+      {(buddy.data?.pairedWith || (buddy.data?.buddyFor.length ?? 0) > 0) && (
+        <div className="eh-banner eh-mb" style={{ display: "flex", gap: "1.5rem", flexWrap: "wrap", alignItems: "center" }}>
+          {buddy.data?.pairedWith && (
+            <span className="eh-sm">⬡ Your buddy: <b>{buddy.data.pairedWith.name}</b> — reach out, they're expecting you.</span>
+          )}
+          {buddy.data?.buddyFor.map((b) => (
+            <span key={b.id} className="eh-sm" style={{ display: "inline-flex", gap: ".5rem", alignItems: "center" }}>
+              ◍ You're buddy to <b>{b.name}</b>
+              {b.checkinAt
+                ? <Pill color="green">check-in done</Pill>
+                : <button className="eh-btn sm" disabled={checkin.isPending} onClick={() => checkin.mutate({ id: b.id })}>
+                    30-day check-in
+                  </button>}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <div className="eh-tabs">
+        <button className={tab === "121" ? "on" : ""} onClick={() => setTab("121")}>1-2-1s & Mentoring</button>
+        <button className={tab === "referrals" ? "on" : ""} onClick={() => setTab("referrals")}>Referrals</button>
+        <button className={tab === "deals" ? "on" : ""} onClick={() => setTab("deals")}>Deal Flow</button>
+      </div>
+
+      {tab === "121" && (
+        <>
+          <div className="eh-between eh-mb">
+            <h2 className="eh-h2" style={{ margin: 0 }}>1-2-1s</h2>
+            <button className="eh-btn gold" onClick={() => setLogOpen(true)}>Log a 1-2-1 →</button>
+          </div>
+          <p className="eh-muted eh-sm eh-mb">
+            Log it, your counterpart confirms it, you both earn points. Mentoring sessions earn Give-Back credit for the mentor.
+          </p>
+
+          {pendingForMe.length > 0 && (
+            <div className="eh-card eh-mb" style={{ borderColor: "#b8862e" }}>
+              <h3>Awaiting your confirmation</h3>
+              <div className="eh-list">
+                {pendingForMe.map((r) => (
+                  <div className="row" key={r.id}>
+                    <div style={{ flex: 1 }}>
+                      <div className="t">{r.kind === "mentoring" ? "Mentoring" : "1-2-1"} with {r.aName}</div>
+                      <div className="d">{fmtDate(r.createdAt)}{r.note ? ` — ${r.note}` : ""}</div>
+                    </div>
+                    <button className="eh-btn sm gold" disabled={respond.isPending}
+                            onClick={() => respond.mutate({ id: r.id, accept: true })}>Confirm</button>
+                    <button className="eh-btn ghost sm" disabled={respond.isPending}
+                            onClick={() => respond.mutate({ id: r.id, accept: false })}>Decline</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="eh-card">
+            {oneToOnes.isLoading && <Spinner />}
+            {oneToOnes.data && myLog.length === 0 && (
+              <Empty big="No 1-2-1s yet." p="Pick someone from the directory and book twenty minutes — it's how the Circle works." />
+            )}
+            <div className="eh-list">
+              {myLog.map((r) => (
+                <div className="row" key={r.id}>
+                  <div style={{ flex: 1 }}>
+                    <div className="t">
+                      {r.kind === "mentoring" ? "Mentoring" : "1-2-1"} — {r.mine ? r.bName : r.aName}
+                    </div>
+                    <div className="d">{fmtDate(r.createdAt)}{r.note ? ` — ${r.note}` : ""}</div>
+                  </div>
+                  {r.status === "confirmed" && <Pill color="green">confirmed</Pill>}
+                  {r.status === "pending" && <Pill color="blue">awaiting confirm</Pill>}
+                  {r.status === "declined" && <Pill>declined</Pill>}
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {tab === "referrals" && (
+        <>
+          <div className="eh-between eh-mb">
+            <h2 className="eh-h2" style={{ margin: 0 }}>Referrals</h2>
+            <button className="eh-btn gold" onClick={() => setRefOpen(true)}>Submit a referral →</button>
+          </div>
+          <p className="eh-muted eh-sm eh-mb">
+            Know someone who belongs in the Circle? Submit them — conversions earn double. One referral per quarter unlocks Deal Flow posting.
+          </p>
+          <div className="eh-card">
+            {referrals.data && referrals.data.length === 0 && (
+              <Empty big="No referrals yet." p="Give-to-get: your first referral opens the Deal Flow board for posting." />
+            )}
+            <div className="eh-list">
+              {(referrals.data ?? []).map((r) => (
+                <div className="row" key={r.id}>
+                  <div style={{ flex: 1 }}>
+                    <div className="t">{r.prospectName}</div>
+                    <div className="d">{fmtDate(r.createdAt)}{r.note ? ` — ${r.note}` : ""}</div>
+                  </div>
+                  {r.status === "converted" && <Pill color="green">converted</Pill>}
+                  {r.status === "submitted" && <Pill color="blue">in review</Pill>}
+                  {r.status === "rejected" && <Pill>not a fit</Pill>}
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {tab === "deals" && (
+        <>
+          <div className="eh-between eh-mb">
+            <h2 className="eh-h2" style={{ margin: 0 }}>Deal Flow</h2>
+            <button className="eh-btn gold" onClick={() => setDealOpen(true)} disabled={!deals.data?.canPost}
+                    title={deals.data?.canPost ? "" : "Submit 1 referral this quarter to unlock posting"}>
+              Post a deal →
+            </button>
+          </div>
+          {deals.data && !deals.data.canPost && (
+            <div className="eh-banner eh-mb">
+              <span className="eh-sm">
+                <b>Give-to-get:</b> submit at least 1 referral this quarter to post on the board
+                (you have {deals.data.referralsThisQuarter}). Vanguard+ members post freely.
+              </span>
+            </div>
+          )}
+          <div className="eh-grid g2">
+            {(deals.data?.deals ?? []).map((d) => (
+              <div className="eh-card" key={d.id}>
+                <div className="eh-between">
+                  <TierPill tier={d.tierGate} />
+                  <span className="eh-muted eh-sm">{fmtDate(d.createdAt)}</span>
+                </div>
+                <h3 className="eh-mt">{d.title}</h3>
+                <p className="eh-sm eh-muted">{d.description}</p>
+              </div>
+            ))}
+          </div>
+          {deals.data && deals.data.deals.length === 0 && (
+            <div className="eh-card"><Empty big="The board is quiet." p="Deals, asks and offers from members and staff land here." /></div>
+          )}
+          {deals.data?.gated && (
+            <p className="eh-muted eh-sm eh-mt">Some deals are gated to higher tiers — upgrade to see them.</p>
+          )}
+        </>
+      )}
+
+      {logOpen && (
+        <Modal title="Log a 1-2-1" onClose={() => setLogOpen(false)}>
+          <LogForm directory={directory.data ?? []} pending={log.isPending}
+                   onSubmit={(counterpartId, kind, note) => log.mutate({ counterpartId, kind, note })} />
+        </Modal>
+      )}
+
+      {refOpen && (
+        <Modal title="Submit a referral" onClose={() => setRefOpen(false)}>
+          <RefForm pending={submitRef.isPending}
+                   onSubmit={(prospectName, prospectContact, note) => submitRef.mutate({ prospectName, prospectContact, note })} />
+        </Modal>
+      )}
+
+      {dealOpen && (
+        <Modal title="Post a deal" onClose={() => setDealOpen(false)}>
+          <DealForm pending={postDeal.isPending}
+                    onSubmit={(title, description, tierGate) => postDeal.mutate({ title, description, tierGate })} />
+        </Modal>
+      )}
+    </EhShell>
+  );
+}
+
+function LogForm(props: {
+  directory: { id: number; name: string; company: string | null; tier: string }[];
+  pending: boolean;
+  onSubmit: (counterpartId: number, kind: "one_to_one" | "mentoring", note?: string) => void;
+}) {
+  const [who, setWho] = useState(0);
+  const [kind, setKind] = useState<"one_to_one" | "mentoring">("one_to_one");
+  const [note, setNote] = useState("");
+  return (
+    <>
+      <Field label="With whom">
+        <select className="eh-select" value={who} onChange={(e) => setWho(Number(e.target.value))}>
+          <option value={0}>Pick a member…</option>
+          {props.directory.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name}{m.company ? ` — ${m.company}` : ""} ({TIER_LABEL[m.tier as keyof typeof TIER_LABEL] ?? m.tier})
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Kind">
+        <select className="eh-select" value={kind} onChange={(e) => setKind(e.target.value as "one_to_one" | "mentoring")}>
+          <option value="one_to_one">1-2-1 (peer catch-up)</option>
+          <option value="mentoring">Mentoring (they mentored me)</option>
+        </select>
+      </Field>
+      <Field label="Note (optional)">
+        <input className="eh-input" value={note} onChange={(e) => setNote(e.target.value)} maxLength={500}
+               placeholder="What did you work on?" />
+      </Field>
+      <button className="eh-btn gold" style={{ width: "100%" }} disabled={props.pending || !who}
+              onClick={() => props.onSubmit(who, kind, note || undefined)}>
+        {props.pending ? "Logging…" : "Log it — they'll confirm →"}
+      </button>
+    </>
+  );
+}
+
+function RefForm(props: {
+  pending: boolean;
+  onSubmit: (name: string, contact?: string, note?: string) => void;
+}) {
+  const [name, setName] = useState("");
+  const [contact, setContact] = useState("");
+  const [note, setNote] = useState("");
+  return (
+    <>
+      <Field label="Who should join the Circle?">
+        <input className="eh-input" value={name} onChange={(e) => setName(e.target.value)} minLength={2}
+               placeholder="Founder name" />
+      </Field>
+      <Field label="Contact (email / phone — optional)">
+        <input className="eh-input" value={contact} onChange={(e) => setContact(e.target.value)} />
+      </Field>
+      <Field label="Why them? (optional)">
+        <textarea className="eh-textarea" value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} />
+      </Field>
+      <button className="eh-btn gold" style={{ width: "100%" }} disabled={props.pending || name.trim().length < 2}
+              onClick={() => props.onSubmit(name.trim(), contact || undefined, note || undefined)}>
+        {props.pending ? "Submitting…" : "Submit referral →"}
+      </button>
+    </>
+  );
+}
+
+function DealForm(props: {
+  pending: boolean;
+  onSubmit: (title: string, description?: string, tierGate?: "horizon" | "ascent" | "vanguard" | "zenith") => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [desc, setDesc] = useState("");
+  const [gate, setGate] = useState<"horizon" | "ascent" | "vanguard" | "zenith">("ascent");
+  return (
+    <>
+      <Field label="Deal title">
+        <input className="eh-input" value={title} onChange={(e) => setTitle(e.target.value)} minLength={4}
+               placeholder="e.g. Seeking co-lead for $500k bridge" />
+      </Field>
+      <Field label="Details">
+        <textarea className="eh-textarea" value={desc} onChange={(e) => setDesc(e.target.value)} maxLength={4000}
+                  placeholder="Terms, timing, who to contact." />
+      </Field>
+      <Field label="Visible from tier">
+        <select className="eh-select" value={gate} onChange={(e) => setGate(e.target.value as typeof gate)}>
+          {(["ascent", "vanguard", "zenith"] as const).map((t) => <option key={t} value={t}>{TIER_LABEL[t]} and above</option>)}
+        </select>
+      </Field>
+      <button className="eh-btn gold" style={{ width: "100%" }} disabled={props.pending || title.trim().length < 4}
+              onClick={() => props.onSubmit(title.trim(), desc || undefined, gate)}>
+        {props.pending ? "Posting…" : "Post to the board →"}
+      </button>
+    </>
+  );
+}

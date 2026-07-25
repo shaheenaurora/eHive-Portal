@@ -1,0 +1,46 @@
+# eHive Portal — turnkey local / single-VM deployment (app + MySQL).
+#
+#   1. cp .env.example .env   and fill in every value (see DEPLOY.md)
+#   2. docker compose up -d --build
+#   3. docker compose run --rm app npm run db:push     # one-time: create schema
+#   4. (optional) docker compose run --rm app npx tsx db/seed.ts   # demo data
+#
+# The app then serves the marketing site, member/admin portal, and API on :3000.
+# The first account that registers with OWNER_EMAIL is auto-granted admin.
+services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-ehive}
+      MYSQL_USER: ${MYSQL_USER:-ehive}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+    volumes:
+      - ehive-db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build:
+      context: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # Secret that signs session JWTs — use a long random string.
+      APP_SECRET: ${APP_SECRET:?set APP_SECRET in .env}
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env}
+      # Account registering with this email becomes the first admin.
+      OWNER_EMAIL: ${OWNER_EMAIL:-}
+    ports:
+      - "${APP_PORT:-3000}:3000"
+
+volumes:
+  ehive-db:

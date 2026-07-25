@@ -4,7 +4,7 @@ import { and, desc, eq, like, or, sql } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "./queries/connection";
 import { createRouter, adminQuery } from "./middleware";
-import { awardPoints, recomputeScore } from "./queries/circle";
+import { awardPoints, awardRulePoints, promoteWaitlist, recomputeScore } from "./queries/circle";
 import { tierRank } from "@contracts/constants";
 
 const TIER = z.enum(["horizon", "ascent", "vanguard", "zenith"]);
@@ -520,12 +520,12 @@ export const adminRouter = createRouter({
           .where(eq(schema.attendance.id, prev.id));
         // award points only on transition to attended
         if (input.status === "attended" && prev.status !== "attended") {
-          await awardPoints(input.memberId, "attendance", 6, "Session attendance");
+          await awardRulePoints(input.memberId, "session_attend");
         }
       } else {
         await db.insert(schema.attendance).values(input);
         if (input.status === "attended") {
-          await awardPoints(input.memberId, "attendance", 6, "Session attendance");
+          await awardRulePoints(input.memberId, "session_attend");
         }
       }
       return { ok: true };
@@ -639,7 +639,11 @@ export const adminRouter = createRouter({
       if (!reg) throw new TRPCError({ code: "NOT_FOUND", message: "Registration not found" });
       await db.update(schema.eventRegs).set({ status: input.status }).where(eq(schema.eventRegs.id, reg.id));
       if (input.status === "attended" && reg.status !== "attended") {
-        await awardPoints(input.memberId, "events", 4, "Event attendance");
+        await awardRulePoints(input.memberId, "event_attend", "Event attendance");
+      }
+      // freed seat auto-promotes the waitlist (BRD 6.4)
+      if (input.status === "cancelled" && reg.status === "registered") {
+        await promoteWaitlist(input.eventId);
       }
       return { ok: true };
     }),

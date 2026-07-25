@@ -5,15 +5,13 @@ import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { appRouter } from "./router";
 import { createContext } from "./context";
 import { env } from "./lib/env";
-import { createOAuthCallbackHandler } from "./kimi/auth";
-import { Paths } from "@contracts/constants";
 import { getDb } from "./queries/connection";
 import * as schema from "@db/schema";
+import { eq, desc, sql } from "drizzle-orm";
 
 const app = new Hono<{ Bindings: HttpBindings }>();
 
 app.use(bodyLimit({ maxSize: 50 * 1024 * 1024 }));
-app.get(Paths.oauthCallback, createOAuthCallbackHandler());
 app.use("/api/trpc/*", async (c) => {
   return fetchRequestHandler({
     endpoint: "/api/trpc",
@@ -52,6 +50,41 @@ app.post("/api/lead", async (c) => {
   }
 });
 
+/* Public content JSON for the marketing site (published insights + newsletter archive). */
+app.get("/api/insights", async (c) => {
+  const rows = await getDb()
+    .select({
+      slug: schema.insights.slug, title: schema.insights.title,
+      excerpt: schema.insights.excerpt, tag: schema.insights.tag,
+      publishedAt: schema.insights.publishedAt,
+    })
+    .from(schema.insights)
+    .where(sql`${schema.insights.publishedAt} is not null`)
+    .orderBy(desc(schema.insights.publishedAt))
+    .limit(30);
+  return c.json({ posts: rows });
+});
+
+app.get("/api/insights/:slug", async (c) => {
+  const rows = await getDb()
+    .select()
+    .from(schema.insights)
+    .where(eq(schema.insights.slug, c.req.param("slug")))
+    .limit(1);
+  const row = rows.at(0);
+  if (!row || !row.publishedAt) return c.json({ error: "Not found" }, 404);
+  return c.json({ post: row });
+});
+
+app.get("/api/newsletters", async (c) => {
+  const rows = await getDb()
+    .select()
+    .from(schema.newsletters)
+    .orderBy(desc(schema.newsletters.publishedAt))
+    .limit(24);
+  return c.json({ issues: rows });
+});
+
 app.all("/api/*", (c) => c.json({ error: "Not Found" }, 404));
 
 export default app;
@@ -63,16 +96,16 @@ if (env.isProduction) {
   const fs = await import("fs");
   const path = await import("path");
 
-  /* SPA client-side routes: /portal/* and /admin/* are rendered by the React
-     app (portal.html). Registered before the static middlewares so deep links
-     resolve to the SPA instead of the marketing pages. */
+  /* SPA client-side routes: /login, /portal/* and /admin/* are rendered by the
+     React app (portal.html). Registered before the static middlewares so deep
+     links (and direct hits to /login) resolve to the SPA, not marketing pages. */
   const portalPath = path.resolve(import.meta.dirname, "../dist/public/portal.html");
   let portalHtml: string | null = null;
   const readPortal = () => {
     if (!portalHtml) portalHtml = fs.readFileSync(portalPath, "utf-8");
     return portalHtml;
   };
-  for (const p of ["/portal", "/portal/*", "/admin", "/admin/*"]) {
+  for (const p of ["/login", "/portal", "/portal/*", "/admin", "/admin/*"]) {
     app.get(p, (c) => c.html(readPortal()));
   }
 
@@ -84,7 +117,8 @@ if (env.isProduction) {
   serveStaticFiles(app);
 
   const port = parseInt(process.env.PORT || "3000");
-  serve({ fetch: app.fetch, port }, () => {
-    console.log(`Server running on http://localhost:${port}/`);
+  // Bind 0.0.0.0 so container platforms (Railway, Render, Fly) can route to it.
+  serve({ fetch: app.fetch, port, hostname: "0.0.0.0" }, () => {
+    console.log(`Server running on http://0.0.0.0:${port}/`);
   });
 }

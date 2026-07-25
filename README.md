@@ -12,31 +12,34 @@ member portal, and the admin portal that runs the community — one full-stack a
 | Admin portal | `/admin/*` | React SPA (role-gated) — applications screening, member 360°, pods/sessions/attendance, events, score engine, FRP reviews, governance, library, offers, website leads |
 | API | `/api/trpc/*` | tRPC 11, end-to-end typed |
 | Lead capture | `POST /api/lead` | Marketing forms land in the admin Leads inbox |
-| Auth | Kimi OAuth | `kimi_sid` JWT cookie; owner unionId auto-gets admin |
+| Auth | Email + password | `eh_sid` JWT session cookie; owner email auto-gets admin |
 
 ## Stack
 
 React 19 + TypeScript + Vite (MPA: marketing from `public/`, SPA entry `portal.html`)
 · Tailwind + custom eHive design system (`src/index.css`, `.eh-*`)
 · Hono + tRPC + Drizzle ORM + MySQL
-· Kimi OAuth 2.0
+· Email/password auth (scrypt hashing, JWT session cookie)
 
 ## Run locally
 
 ```bash
 npm install
-npm run db:push     # sync schema to MySQL (uses DATABASE_URL from .env)
-npx tsx db/seed.ts  # demo data: members, pods, events, policies, library…
-npm run dev         # http://localhost:3000
+cp .env.example .env   # set APP_SECRET, DATABASE_URL, OWNER_EMAIL
+npm run db:push        # sync schema to MySQL (uses DATABASE_URL from .env)
+npx tsx db/seed.ts     # demo data: members, pods, events, policies, library…
+npm run dev            # http://localhost:3000
 ```
 
 Production: `npm run build && npm start` — or build the included Dockerfile.
+Full launch steps are in **[DEPLOY.md](./DEPLOY.md)**.
 
 ## Roles
 
-- Any Kimi sign-in creates a `users` row.
-- The account whose unionId matches `OWNER_UNION_ID` becomes **admin** automatically.
+- Registering at `/login` creates a `users` row (scrypt-hashed password).
+- The account whose email matches `OWNER_EMAIL` becomes **admin** automatically.
 - Admin grants access to `/admin/*` (enforced server-side on every procedure).
+- Seeded demo accounts sign in with password `ehive1234` (e.g. `amina@ehive.ae`, admin).
 
 ## Domain model (BRD §9 community vertical)
 

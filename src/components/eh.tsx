@@ -4,6 +4,7 @@ import { NavLink, useNavigate } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { initials } from "@/lib/ehf";
 import { TIER_LABEL } from "@contracts/constants";
+import { trpc } from "@/providers/trpc";
 
 /* ------------------------------- toasts -------------------------------- */
 let pushToastFn: ((msg: string) => void) | null = null;
@@ -153,6 +154,7 @@ export function EhShell(props: {
   groups: NavGroup[];
   brandSub: string;
   roleRequired?: "admin";
+  notif?: boolean;
   children: ReactNode;
 }) {
   const { user, isLoading, logout } = useAuth();
@@ -201,7 +203,57 @@ export function EhShell(props: {
         </div>
       </aside>
       <main className="eh-main">{props.children}</main>
+      {props.notif && <NotifBell />}
       <ToastHost />
+    </div>
+  );
+}
+
+/* ------------------------- notifications bell --------------------------- */
+function NotifBell() {
+  const [open, setOpen] = useState(false);
+  const q = trpc.engage.myNotifications.useQuery(undefined, { retry: false, refetchInterval: 30000 });
+  const mark = trpc.engage.markNotificationsRead.useMutation({
+    onSuccess: () => q.refetch(),
+  });
+  const rows = q.data?.rows ?? [];
+  const unread = q.data?.unread ?? 0;
+  return (
+    <div style={{ position: "fixed", top: "1rem", right: "1.25rem", zIndex: 60 }}>
+      <button className="eh-btn ghost sm" aria-label="Notifications"
+              onClick={() => { setOpen(!open); if (!open && unread > 0) mark.mutate({}); }}
+              style={{ position: "relative", background: "var(--eh-card, #fff)" }}>
+        ⠇
+        {unread > 0 && (
+          <span style={{
+            position: "absolute", top: -6, right: -6, background: "#b8862e", color: "#fff",
+            borderRadius: 99, fontSize: ".68rem", padding: "0 .35rem", fontWeight: 700,
+          }}>{unread}</span>
+        )}
+      </button>
+      {open && (
+        <div className="eh-card" style={{
+          position: "absolute", right: 0, top: "2.5rem", width: 340, maxHeight: 420,
+          overflowY: "auto", animation: "eh-pop .18s ease-out", zIndex: 61,
+        }}>
+          <div className="eh-between eh-mb">
+            <b>Notifications</b>
+            <button className="eh-btn ghost sm" onClick={() => setOpen(false)}>✕</button>
+          </div>
+          {rows.length === 0 && <p className="eh-muted eh-sm">Nothing yet — you're all caught up.</p>}
+          <div className="eh-list">
+            {rows.map((n) => (
+              <div key={n.id} className="row" style={{ alignItems: "flex-start", opacity: n.readAt ? .65 : 1 }}>
+                <div style={{ flex: 1 }}>
+                  <div className="eh-sm">{n.text}</div>
+                  <div className="d">{new Date(n.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</div>
+                </div>
+                {!n.readAt && <Pill color="gold">new</Pill>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -212,6 +264,7 @@ export const MEMBER_NAV: NavGroup[] = [
       { to: "/portal", label: "Dashboard", icon: "⬡", end: true },
       { to: "/portal/pods", label: "My Pods", icon: "◍" },
       { to: "/portal/events", label: "Events", icon: "◷" },
+      { to: "/portal/connect", label: "Connect", icon: "⇄" },
       { to: "/portal/score", label: "Hive Score", icon: "✦" },
     ],
   },
@@ -226,6 +279,7 @@ export const MEMBER_NAV: NavGroup[] = [
   {
     label: "Circle",
     items: [
+      { to: "/portal/chapter", label: "My Chapter", icon: "⌂" },
       { to: "/portal/governance", label: "Governance", icon: "§" },
       { to: "/portal/membership", label: "Membership", icon: "◈" },
     ],
@@ -237,6 +291,7 @@ export const ADMIN_NAV: NavGroup[] = [
     items: [
       { to: "/admin", label: "Dashboard", icon: "⬡", end: true },
       { to: "/admin/applications", label: "Applications", icon: "⇥" },
+      { to: "/admin/admissions", label: "Zenith & Investors", icon: "✧" },
       { to: "/admin/members", label: "Members", icon: "◍" },
       { to: "/admin/leads", label: "Website Leads", icon: "✉" },
     ],
@@ -246,6 +301,9 @@ export const ADMIN_NAV: NavGroup[] = [
     items: [
       { to: "/admin/pods", label: "Pods & Sessions", icon: "◷" },
       { to: "/admin/events", label: "Events", icon: "◇" },
+      { to: "/admin/engagement", label: "Engagement", icon: "♥" },
+      { to: "/admin/connect", label: "Connect", icon: "⇄" },
+      { to: "/admin/chapters", label: "Chapters", icon: "⌂" },
       { to: "/admin/score", label: "Hive Score", icon: "✦" },
     ],
   },
@@ -256,6 +314,13 @@ export const ADMIN_NAV: NavGroup[] = [
       { to: "/admin/governance", label: "Governance", icon: "§" },
       { to: "/admin/library", label: "Library", icon: "▤" },
       { to: "/admin/offers", label: "Offers", icon: "◈" },
+    ],
+  },
+  {
+    label: "Content",
+    items: [
+      { to: "/admin/insights", label: "Insights", icon: "✎" },
+      { to: "/admin/newsletters", label: "Newsletters", icon: "▤" },
     ],
   },
 ];

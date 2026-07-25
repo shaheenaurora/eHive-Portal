@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { trpc } from "@/providers/trpc";
 import { EhShell, ADMIN_NAV, PageHead, Pill, Empty, Spinner, TierPill, toast } from "@/components/eh";
 import { SCORE_FACTORS, SCORE_FACTOR_LABEL } from "@contracts/constants";
@@ -6,15 +6,17 @@ import { SCORE_FACTORS, SCORE_FACTOR_LABEL } from "@contracts/constants";
 export default function AdminScore() {
   const utils = trpc.useUtils();
   const q = trpc.admin.scoreConfig.useQuery(undefined, { retry: false });
-  const [weights, setWeights] = useState<Record<string, number>>({});
 
-  useEffect(() => {
-    if (q.data) {
-      const w: Record<string, number> = {};
-      for (const c of q.data.config) w[c.factor] = c.weight;
-      setWeights(w);
-    }
+  /* Weights are seeded from the server config and become locally editable once
+     the admin touches an input — derived here rather than synced via effect. */
+  const serverWeights = useMemo(() => {
+    const w: Record<string, number> = {};
+    for (const c of q.data?.config ?? []) w[c.factor] = c.weight;
+    return w;
   }, [q.data]);
+  const [edited, setEdited] = useState<Record<string, number> | null>(null);
+  const weights = edited ?? serverWeights;
+  const setWeights = setEdited;
 
   const save = trpc.admin.setScoreWeights.useMutation({
     onSuccess: () => { toast("Weights saved — recompute to apply to everyone."); utils.admin.scoreConfig.invalidate(); },

@@ -181,6 +181,7 @@
     </form>
     <p class="cadence reveal" style="--d:.26s">Issue 01 ships with the launch — 1 August 2026.
       Cadence is set before then: a few excellent pieces, on a rhythm the team can sustain.</p>
+    <div id="nl-archive" style="margin-top:2.2rem"></div>
   </div>
 </section>
 
@@ -252,5 +253,56 @@
 
 <script src="app.min.js" defer></script>
 <script src="apps.min.js" defer></script>
+<script>
+/* Live Insights: published posts from the Circle CMS (staff publish from the admin portal). */
+(function () {
+  var grid = document.querySelector(".art-grid");
+  var feat = document.querySelector(".feat");
+  var issueH = document.getElementById("issue-h");
+  function esc(s) { var d = document.createElement("div"); d.textContent = s == null ? "" : s; return d.innerHTML; }
+  function fmt(d) { try { return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }); } catch (e) { return ""; } }
+
+  function openPost(slug) {
+    fetch("/api/insights/" + encodeURIComponent(slug)).then(function (r) { return r.json(); }).then(function (d) {
+      if (!d.post || !feat) return;
+      var body = (d.post.body || "").split(/\n+/).filter(Boolean).map(function (p) { return "<p class='ex'>" + esc(p) + "</p>"; }).join("");
+      feat.innerHTML =
+        "<div><div class='feat-tagrow'><span class='art-tag solid'>" + esc(d.post.tag || "Note") + "</span>" +
+        "<span class='art-fmt'>" + fmt(d.post.publishedAt) + "</span></div>" +
+        "<h3>" + esc(d.post.title) + "</h3>" + body +
+        "<p class='foot' style='margin-top:1rem'><a href='insights.html' style='color:inherit'>← All pieces</a></p></div>";
+      feat.scrollIntoView({ behavior: "smooth", block: "center" });
+    }).catch(function () {});
+  }
+
+  fetch("/api/insights").then(function (r) { return r.json(); }).then(function (d) {
+    var posts = (d && d.posts) || [];
+    if (!posts.length || !grid) return;
+    if (issueH) issueH.textContent = "Fresh from the Hive.";
+    grid.innerHTML = posts.map(function (p) {
+      return "<article class='art' data-tag='" + esc((p.tag || "note").toLowerCase()) + "' style='cursor:pointer' data-slug='" + esc(p.slug) + "'>" +
+        "<div class='meta'><span class='art-tag'>" + esc(p.tag || "Note") + "</span><span class='art-fmt'>" + fmt(p.publishedAt) + "</span></div>" +
+        "<h3>" + esc(p.title) + "</h3><p>" + esc(p.excerpt || "") + "</p><p class='foot'>Read the piece →</p></article>";
+    }).join("");
+    grid.querySelectorAll("[data-slug]").forEach(function (el) {
+      el.addEventListener("click", function () { openPost(el.getAttribute("data-slug")); });
+    });
+  }).catch(function () {});
+
+  fetch("/api/newsletters").then(function (r) { return r.json(); }).then(function (d) {
+    var issues = (d && d.issues) || [];
+    var box = document.getElementById("nl-archive");
+    if (!issues.length || !box) return;
+    box.innerHTML = "<p class='eyebrow' style='justify-content:center'>The archive</p>" +
+      "<div style='display:flex;flex-wrap:wrap;gap:.6rem;justify-content:center'>" +
+      issues.map(function (n) {
+        var label = esc(n.title) + (n.issue ? " · №" + esc(n.issue) : "");
+        return n.url
+          ? "<a class='btn btn-ghost on-dark' style='padding:.5rem 1rem;font-size:.85rem' href='" + esc(n.url) + "' target='_blank' rel='noreferrer'>" + label + " ↗</a>"
+          : "<span class='btn btn-ghost on-dark' style='padding:.5rem 1rem;font-size:.85rem;opacity:.75'>" + label + "</span>";
+      }).join("") + "</div>";
+  }).catch(function () {});
+})();
+</script>
 </body>
 </html>
