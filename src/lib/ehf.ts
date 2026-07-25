@@ -11,7 +11,9 @@ export function fmtDateTime(d?: string | Date | null): string {
   return (
     t.toLocaleDateString("en-GB", { day: "numeric", month: "short" }) +
     " · " +
-    t.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
+    // Include the timezone abbreviation so members abroad aren't guessing which
+    // clock a time is on — each viewer sees their own local time, labelled.
+    t.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZoneName: "short" })
   );
 }
 
