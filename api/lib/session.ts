@@ -4,7 +4,7 @@ import { env } from "./env";
 import { getSessionCookieOptions } from "./cookies";
 import { Session } from "@contracts/constants";
 import { Errors } from "@contracts/errors";
-import { findUserByUnionId } from "../queries/users";
+import { findUserByUnionId, ensureOwnerRole } from "../queries/users";
 
 const JWT_ALG = "HS256";
 
@@ -41,7 +41,7 @@ export async function authenticateRequest(headers: Headers) {
   if (!claim) throw Errors.forbidden("Invalid or expired session.");
   const user = await findUserByUnionId(claim.uid);
   if (!user) throw Errors.forbidden("Account not found. Please sign in again.");
-  return user;
+  return ensureOwnerRole(user);
 }
 
 /** Serialize a Set-Cookie header value that establishes the session. */
