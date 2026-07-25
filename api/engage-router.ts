@@ -7,7 +7,8 @@ import { createRouter, authedQuery } from "./middleware";
 import {
   getMemberByUserId, awardRulePoints, notify, engagementCounts, quarterStart,
 } from "./queries/circle";
-import { tierRank, POINT_RULE_DEFAULTS, POINT_RULE_LABEL, POINT_RULE_FACTOR, ZENITH_CAP } from "@contracts/constants";
+import { getVapidPublicKey } from "./lib/push";
+import { tierRank, POINT_RULE_DEFAULTS, POINT_RULE_LABEL, POINT_RULE_FACTOR, ZENITH_CAP, PUSH_CATEGORY_KEYS } from "@contracts/constants";
 
 async function requireMember(userId: number) {
   const member = await getMemberByUserId(userId);
@@ -16,6 +17,55 @@ async function requireMember(userId: number) {
 }
 
 export const engageRouter = createRouter({
+  /* ---- web push notifications (UX-10) ---- */
+  pushKey: authedQuery.query(() => getVapidPublicKey()),
+
+  pushSubscribe: authedQuery
+    .input(z.object({
+      endpoint: z.string().url().max(500),
+      p256dh: z.string().max(255),
+      auth: z.string().max(255),
+      categories: z.array(z.enum(PUSH_CATEGORY_KEYS as [string, ...string[]])).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const member = await requireMember(ctx.user.id);
+      const cats = JSON.stringify(input.categories ?? PUSH_CATEGORY_KEYS);
+      await getDb().insert(schema.pushSubscriptions)
+        .values({ memberId: member.id, endpoint: input.endpoint, p256dh: input.p256dh, auth: input.auth, categories: cats })
+        .onDuplicateKeyUpdate({ set: { memberId: member.id, p256dh: input.p256dh, auth: input.auth, categories: cats } });
+      return { ok: true };
+    }),
+
+  pushUnsubscribe: authedQuery
+    .input(z.object({ endpoint: z.string().max(500) }))
+    .mutation(async ({ input }) => {
+      await getDb().delete(schema.pushSubscriptions).where(eq(schema.pushSubscriptions.endpoint, input.endpoint));
+      return { ok: true };
+    }),
+
+  pushCategories: authedQuery
+    .input(z.object({ endpoint: z.string().max(500) }))
+    .query(async ({ input }) => {
+      const row = (await getDb().select().from(schema.pushSubscriptions)
+        .where(eq(schema.pushSubscriptions.endpoint, input.endpoint)).limit(1)).at(0);
+      if (!row) return { subscribed: false, categories: [...PUSH_CATEGORY_KEYS] };
+      let cats: string[] = [...PUSH_CATEGORY_KEYS];
+      try { if (row.categories) cats = JSON.parse(row.categories); } catch { /* default */ }
+      return { subscribed: true, categories: cats };
+    }),
+
+  setPushCategories: authedQuery
+    .input(z.object({
+      endpoint: z.string().max(500),
+      categories: z.array(z.enum(PUSH_CATEGORY_KEYS as [string, ...string[]])),
+    }))
+    .mutation(async ({ input }) => {
+      await getDb().update(schema.pushSubscriptions)
+        .set({ categories: JSON.stringify(input.categories) })
+        .where(eq(schema.pushSubscriptions.endpoint, input.endpoint));
+      return { ok: true };
+    }),
+
   /* ---- notifications (BRD 6.3/7.4) ---- */
   myNotifications: authedQuery.query(async ({ ctx }) => {
     const member = await requireMember(ctx.user.id);

@@ -1,6 +1,7 @@
 import { eq, and, asc, sql, gte } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "./connection";
+import { pushToMember } from "../lib/push";
 
 /** The member record for a user, or null when they only have an application. */
 export async function getMemberByUserId(userId: number) {
@@ -101,6 +102,8 @@ export async function awardRulePoints(memberId: number, key: PointRuleKey, note?
 /** In-portal notification (BRD 6.3 — email/WhatsApp dispatch is a platform dependency). */
 export async function notify(memberId: number, text: string, kind = "info") {
   await getDb().insert(schema.notifications).values({ memberId, text, kind });
+  // Fire a matching web push (fire-and-forget; never blocks the in-app notify).
+  void pushToMember(memberId, { title: "eHive Circle", body: text, url: "/portal" }, kind);
 }
 
 /**

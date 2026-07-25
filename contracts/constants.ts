@@ -159,6 +159,18 @@ export const DATA_REQUEST_KINDS = ["export", "deletion"] as const;
 
 /** Cool-down days before the same investor can be introduced to the same member again */
 export const INVESTOR_COOLDOWN_DAYS = 90;
+/** Push-notification categories (per-category opt-out; UX-10). Keys align with
+ *  the notify() `kind` values so an in-app notification pushes to the matching
+ *  category. */
+export const PUSH_CATEGORIES = [
+  { key: "event", label: "Event reminders & waitlist" },
+  { key: "connect", label: "Community, buddy & 1-2-1s" },
+  { key: "score", label: "Hive Score & engagement nudges" },
+  { key: "membership", label: "Membership & renewals" },
+  { key: "governance", label: "Governance & chapters" },
+] as const;
+export const PUSH_CATEGORY_KEYS = PUSH_CATEGORIES.map((c) => c.key);
+
 /** Days within which a new member must be paired with a buddy */
 export const BUDDY_PAIR_WITHIN_DAYS = 5;
 /** Days after pairing for the buddy 30-day check-in */

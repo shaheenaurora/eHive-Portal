@@ -174,11 +174,9 @@ export function EhShell(props: {
     <div className="eh-shell">
       <aside className="eh-side">
         <div className="eh-side-brand">
-          <div className="eh-hex">⬡</div>
-          <div>
-            <b>eHive Circle</b>
-            <span>{props.brandSub}</span>
-          </div>
+          <img src="/assets/ehive-wordmark.png" alt="eHive" style={{ height: 24, width: "auto", display: "block" }} />
+          <span style={{ display: "block", marginTop: 5, fontSize: ".68rem", letterSpacing: ".14em",
+                         textTransform: "uppercase", opacity: 0.72 }}>{props.brandSub}</span>
         </div>
         <nav className="eh-nav">
           {props.groups.map((g, i) => (

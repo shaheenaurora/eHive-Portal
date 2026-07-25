@@ -1,7 +1,7 @@
 /* eHive Circle — PWA service worker.
    App-shell + static assets are cached for offline load; the API is never
    cached (always fresh). Bump CACHE to invalidate on a breaking change. */
-const CACHE = "ehive-v1";
+const CACHE = "ehive-v2";
 const SHELL = "/portal.html";
 
 self.addEventListener("install", (event) => {
@@ -53,4 +53,34 @@ self.addEventListener("fetch", (event) => {
 
   // Cross-origin (fonts): cache-first, network fallback.
   event.respondWith(caches.match(req).then((c) => c || fetch(req)));
+});
+
+// Web push: show the notification.
+self.addEventListener("push", (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch { data = {}; }
+  const title = data.title || "eHive Circle";
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: data.body || "",
+      icon: "/assets/icon-192.png",
+      badge: "/assets/icon-192.png",
+      tag: data.tag,
+      data: { url: data.url || "/portal" },
+    }),
+  );
+});
+
+// Tapping a notification focuses an open tab or opens the target URL.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || "/portal";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((cls) => {
+      for (const c of cls) {
+        if ("focus" in c) { c.navigate(target).catch(() => {}); return c.focus(); }
+      }
+      return self.clients.openWindow(target);
+    }),
+  );
 });

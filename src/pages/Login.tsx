@@ -36,9 +36,9 @@ export default function Login() {
   return (
     <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "var(--eh-ink)", padding: "1rem" }}>
       <div style={{ textAlign: "center", maxWidth: 400, width: "100%" }}>
-        <div className="eh-hex" style={{ width: 54, height: 54, fontSize: 22, margin: "0 auto 1.2rem" }}>⬡</div>
-        <h1 className="eh-serif" style={{ color: "#f5efe2", fontSize: "1.8rem", fontWeight: 600, margin: "0 0 .4rem" }}>
-          eHive Circle
+        <img src="/assets/ehive-wordmark.png" alt="eHive" style={{ height: 44, width: "auto", margin: "0 auto 1rem", display: "block" }} />
+        <h1 className="eh-serif" style={{ color: "#f5efe2", fontSize: "1.35rem", fontWeight: 600, margin: "0 0 .4rem" }}>
+          Circle
         </h1>
         <p style={{ color: "#9aa7b6", fontSize: ".9rem", margin: "0 0 2rem" }}>
           {mode === "login"
