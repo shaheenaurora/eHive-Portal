@@ -18,6 +18,8 @@ export const users = mysqlTable("users", {
   email: varchar("email", { length: 320 }).notNull().unique(),
   // scrypt hash (salt:hash). Null only for legacy/non-password accounts.
   passwordHash: varchar("passwordHash", { length: 255 }),
+  // UAE PDPL — timestamp of privacy/terms consent captured at sign-up.
+  consentAt: timestamp("consentAt"),
   avatar: text("avatar"),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

@@ -1,0 +1,47 @@
+name: Weekly database backup
+
+# Safety-net backup for the free-tier database (SRS NFR-OPS-02). Dumps the
+# database weekly and stores it as a downloadable workflow artifact (90 days).
+#
+# Setup (one-time): add a repository secret DATABASE_BACKUP_URL set to the
+# MySQL connection URL. On Railway use the MySQL service's *public* URL
+# (MYSQL_PUBLIC_URL), since GitHub's runners are outside Railway's network.
+
+on:
+  schedule:
+    - cron: "0 3 * * 1" # Mondays 03:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install MySQL client
+        run: sudo apt-get update && sudo apt-get install -y mysql-client
+
+      - name: Dump database
+        env:
+          DB_URL: ${{ secrets.DATABASE_BACKUP_URL }}
+        run: |
+          if [ -z "$DB_URL" ]; then
+            echo "::error::Set the DATABASE_BACKUP_URL repository secret (Railway MySQL public URL)."
+            exit 1
+          fi
+          # Parse mysql://user:pass@host:port/dbname
+          rest=${DB_URL#mysql://}
+          creds=${rest%@*}; hostpart=${rest#*@}
+          DB_USER=${creds%%:*}; DB_PASS=${creds#*:}
+          hostport=${hostpart%%/*}; DB_NAME=${hostpart#*/}; DB_NAME=${DB_NAME%%\?*}
+          DB_HOST=${hostport%%:*}; DB_PORT=${hostport#*:}
+          [ "$DB_PORT" = "$DB_HOST" ] && DB_PORT=3306
+          STAMP=$(date -u +%Y%m%d-%H%M)
+          MYSQL_PWD="$DB_PASS" mysqldump --single-transaction --no-tablespaces --routines \
+            -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" "$DB_NAME" > "ehive-$STAMP.sql"
+          gzip "ehive-$STAMP.sql"
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ehive-db-backup
+          path: "*.sql.gz"
+          retention-days: 90

@@ -13,6 +13,7 @@ export default function Login() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [consent, setConsent] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   const onDone = async () => {
@@ -27,8 +28,9 @@ export default function Login() {
   function submit(e: FormEvent) {
     e.preventDefault();
     setErr(null);
-    if (mode === "login") login.mutate({ email, password });
-    else register.mutate({ name, email, password });
+    if (mode === "login") { login.mutate({ email, password }); return; }
+    if (!consent) { setErr("Please accept the Privacy Policy and Terms to create an account."); return; }
+    register.mutate({ name, email, password });
   }
 
   return (
@@ -74,6 +76,18 @@ export default function Login() {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
+
+          {mode === "register" && (
+            <label style={{ display: "flex", gap: ".55rem", alignItems: "flex-start", fontSize: ".8rem", color: "#c4cdd8", cursor: "pointer" }}>
+              <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)}
+                     style={{ marginTop: ".15rem", accentColor: "#b8862e", flex: "0 0 auto" }} />
+              <span>
+                I agree to the{" "}
+                <a href="/privacy.html" target="_blank" rel="noreferrer" style={{ color: "var(--eh-gold-2)" }}>Privacy Policy</a>{" "}and{" "}
+                <a href="/terms.html" target="_blank" rel="noreferrer" style={{ color: "var(--eh-gold-2)" }}>Terms</a>, and consent to eHive processing my data to run my membership.
+              </span>
+            </label>
+          )}
 
           {err && (
             <p style={{ color: "#f0a8a0", fontSize: ".82rem", margin: 0 }}>{err}</p>

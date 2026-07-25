@@ -82,8 +82,26 @@ export const circleRouter = createRouter({
       .orderBy(asc(schema.events.startsAt)).limit(4);
     const podCount = await db.select({ n: sql<number>`count(*)` })
       .from(schema.podMembers).where(eq(schema.podMembers.memberId, member.id));
+
+    // Onboarding activation checklist (SRS 5.3 / 13.3).
+    const nPods = podCount.at(0)?.n ?? 0;
+    const hasBuddy = (await db.select({ id: schema.buddies.id }).from(schema.buddies)
+      .where(sql`${schema.buddies.newMemberId} = ${member.id} or ${schema.buddies.buddyMemberId} = ${member.id}`).limit(1)).length > 0;
+    const hasEvent = (await db.select({ id: schema.eventRegs.id }).from(schema.eventRegs)
+      .where(eq(schema.eventRegs.memberId, member.id)).limit(1)).length > 0;
+    const hasOneToOne = (await db.select({ id: schema.oneToOnes.id }).from(schema.oneToOnes)
+      .where(sql`${schema.oneToOnes.aMemberId} = ${member.id} or ${schema.oneToOnes.bMemberId} = ${member.id}`).limit(1)).length > 0;
+    const onboarding = {
+      profile: !!(member.company && member.phone),
+      buddy: hasBuddy,
+      pod: nPods > 0,
+      event: hasEvent,
+      oneToOne: hasOneToOne,
+    };
+    const onboardingDone = Object.values(onboarding).every(Boolean);
+
     return { member, nextSession: nextSess, openActionItems: openItems.length,
-             upcomingEvents: myRegs, podCount: podCount.at(0)?.n ?? 0 };
+             upcomingEvents: myRegs, podCount: nPods, onboarding, onboardingDone };
   }),
 
   updateProfile: authedQuery
