@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { trpc } from "@/providers/trpc";
 import { EhShell, MEMBER_NAV, PageHead, Pill, Empty, TierPill, Spinner, Modal, Field, toast } from "@/components/eh";
+import { QrCode } from "@/components/QrCode";
+import { useAuth } from "@/hooks/useAuth";
 import { fmtDateTime, fmtDay } from "@/lib/ehf";
 
 const KIND_COLOR: Record<string, "blue" | "purple" | "green" | "gold" | "grey"> = {
@@ -9,6 +11,7 @@ const KIND_COLOR: Record<string, "blue" | "purple" | "green" | "gold" | "grey"> 
 
 export default function Events() {
   const utils = trpc.useUtils();
+  const { user } = useAuth();
   const q = trpc.circle.events.useQuery(undefined, { retry: false });
   const past = trpc.engage.myPastEvents.useQuery(undefined, { retry: false });
   const [filter, setFilter] = useState<string>("all");
@@ -148,19 +151,33 @@ export default function Events() {
         </>
       )}
 
-      {checkinFor !== null && (
-        <Modal onClose={() => setCheckinFor(null)} title="Event check-in">
-          <p className="eh-sm eh-muted">Enter the door code shown by the event host — your Hive Score updates the moment you check in.</p>
-          <Field label="Check-in code">
+      {checkinFor !== null && (() => {
+        const ev = (q.data ?? []).find((e) => e.id === checkinFor);
+        return (
+        <Modal onClose={() => setCheckinFor(null)} title="Your check-in pass">
+          <div style={{ textAlign: "center", marginBottom: "1rem" }}>
+            <p className="eh-sm eh-muted" style={{ margin: 0 }}>{ev?.title}</p>
+            {ev?.checkinCode && (
+              <div style={{ display: "inline-block", padding: 14, background: "#fff", borderRadius: 14, margin: ".8rem 0 .4rem", boxShadow: "0 2px 10px rgba(0,0,0,.06)" }}>
+                <QrCode value={ev.checkinCode} size={230} />
+              </div>
+            )}
+            {user?.name && <div className="t" style={{ fontWeight: 600 }}>{user.name}</div>}
+            <div className="eh-num" style={{ fontSize: "1.35rem", letterSpacing: ".16em", marginTop: ".2rem" }}>{ev?.checkinCode}</div>
+            <p className="eh-sm eh-muted" style={{ marginTop: ".4rem" }}>Show this at the door to be scanned — your Hive Score updates the moment you're checked in.</p>
+          </div>
+          <hr className="eh-divider" />
+          <Field label="No scanner at the door? Enter the code yourself">
             <input className="eh-input" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())}
-                   placeholder="XXXX-XXXX" maxLength={9} style={{ letterSpacing: ".1em" }} />
+                   placeholder="Door code" maxLength={12} style={{ letterSpacing: ".1em" }} />
           </Field>
           <button className="eh-btn gold" style={{ width: "100%" }} disabled={checkin.isPending || code.trim().length < 4}
                   onClick={() => checkin.mutate({ eventId: checkinFor, code: code.trim() })}>
             {checkin.isPending ? "Checking in…" : "Check in →"}
           </button>
         </Modal>
-      )}
+        );
+      })()}
 
       {feedbackFor !== null && (
         <Modal onClose={() => setFeedbackFor(null)} title="Event feedback">

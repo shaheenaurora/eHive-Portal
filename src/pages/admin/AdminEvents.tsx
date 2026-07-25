@@ -1,9 +1,13 @@
-import { useState } from "react";
+import { lazy, Suspense, useCallback, useState } from "react";
 import type { FormEvent } from "react";
 import { trpc } from "@/providers/trpc";
 import { EhShell, ADMIN_NAV, PageHead, Pill, StatusPill, Empty, TierPill, Spinner, Modal, Field, toast } from "@/components/eh";
 import { fmtDateTime, fmtDay, initials } from "@/lib/ehf";
 import { EVENT_KINDS, TIERS, TIER_LABEL } from "@contracts/constants";
+
+// Camera scanner (html5-qrcode) is heavy and admin-only — load it on demand
+// so members never download it.
+const QrScanner = lazy(() => import("@/components/QrScanner").then((m) => ({ default: m.QrScanner })));
 
 export default function AdminEvents() {
   const utils = trpc.useUtils();
@@ -31,7 +35,17 @@ export default function AdminEvents() {
   });
 
   const [doorCode, setDoorCode] = useState("");
+  const [scanning, setScanning] = useState(false);
   const [fbFor, setFbFor] = useState<number | null>(null);
+
+  // Stable callbacks so the scanner's camera isn't torn down on every render.
+  const handleScan = useCallback((code: string) => {
+    if (code && code.trim().length >= 4) doorCheckin.mutate({ code: code.trim().toUpperCase() });
+  }, [doorCheckin]);
+  const handleScanError = useCallback((msg: string) => {
+    toast("Camera unavailable — use manual code entry. (" + msg + ")");
+    setScanning(false);
+  }, []);
   const regs = trpc.admin.eventRegs.useQuery({ id: regsFor! }, { enabled: regsFor !== null, retry: false });
   const fb = trpc.adminEngage.eventFeedbackAdmin.useQuery({ eventId: fbFor! }, { enabled: fbFor !== null, retry: false });
 
@@ -57,14 +71,30 @@ export default function AdminEvents() {
 
       <div className="eh-card eh-mb" style={{ display: "flex", gap: ".75rem", alignItems: "center", flexWrap: "wrap" }}>
         <b>Door check-in</b>
-        <input className="eh-input" style={{ maxWidth: 180, letterSpacing: ".1em" }} placeholder="XXXX-XXXX"
-               value={doorCode} onChange={(e) => setDoorCode(e.target.value.toUpperCase())} maxLength={9} />
-        <button className="eh-btn gold sm" disabled={doorCheckin.isPending || doorCode.trim().length < 4}
+        <button className="eh-btn gold sm" onClick={() => setScanning(true)}>📷 Scan QR</button>
+        <span className="eh-muted eh-sm">or</span>
+        <input className="eh-input" style={{ maxWidth: 160, letterSpacing: ".1em" }} placeholder="Door code"
+               value={doorCode} onChange={(e) => setDoorCode(e.target.value.toUpperCase())} maxLength={12} />
+        <button className="eh-btn sm" disabled={doorCheckin.isPending || doorCode.trim().length < 4}
                 onClick={() => doorCheckin.mutate({ code: doorCode.trim() })}>
           {doorCheckin.isPending ? "Checking…" : "Check in →"}
         </button>
-        <span className="eh-muted eh-sm">Members show their door code; score writes in real time.</span>
+        <span className="eh-muted eh-sm">Members show their QR pass; score writes in real time.</span>
       </div>
+
+      {scanning && (
+        <Modal title="Scan member QR passes" onClose={() => setScanning(false)}>
+          <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>
+            Point the camera at each member's check-in QR. They're checked in instantly — keep scanning the next person.
+          </p>
+          <Suspense fallback={<div style={{ textAlign: "center", padding: "2rem" }}><Spinner /></div>}>
+            <QrScanner onScan={handleScan} onError={handleScanError} />
+          </Suspense>
+          <p className="eh-sm eh-muted" style={{ textAlign: "center", marginTop: ".8rem" }}>
+            First use asks for camera permission. Nothing is stored from the camera — only the scanned code.
+          </p>
+        </Modal>
+      )}
 
       {q.isLoading && <Spinner />}
       {q.data && q.data.length === 0 && <div className="eh-card"><Empty big="No events yet." /></div>}
