@@ -113,6 +113,19 @@ export function Empty(props: { big: string; p?: string; children?: ReactNode }) 
   );
 }
 
+/** Distinct "failed to load" state with a retry — so a network error never
+ *  looks like an empty screen. */
+export function LoadError(props: { onRetry?: () => void; what?: string }) {
+  return (
+    <div className="eh-card">
+      <Empty big={`Couldn't load ${props.what ?? "this"}.`}
+             p="Something went wrong reaching the server. Check your connection and try again.">
+        {props.onRetry && <button className="eh-btn ghost" onClick={props.onRetry}>Try again</button>}
+      </Empty>
+    </div>
+  );
+}
+
 export function Modal(props: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const titleId = useId();

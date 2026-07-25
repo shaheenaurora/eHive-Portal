@@ -1,5 +1,5 @@
 import { trpc } from "@/providers/trpc";
-import { EhShell, MEMBER_NAV, PageHead, Pill, Empty, TierPill, Spinner } from "@/components/eh";
+import { EhShell, MEMBER_NAV, PageHead, Pill, Empty, TierPill, Spinner, LoadError } from "@/components/eh";
 
 export default function Offers() {
   const q = trpc.circle.offers.useQuery(undefined, { retry: false });
@@ -12,6 +12,7 @@ export default function Offers() {
                 sub="Member rates and priority access across eHive's two practices — business setup and consulting." />
 
       {q.isLoading && <Spinner />}
+      {q.isError && <LoadError what="member offers" onRetry={() => q.refetch()} />}
       {q.data && q.data.length === 0 && (
         <div className="eh-card"><Empty big="No offers at your tier yet." p="New member offers publish with each quarter's programme." /></div>
       )}
