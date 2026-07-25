@@ -118,22 +118,43 @@ body { font-family: "Inter", system-ui, sans-serif; color: var(--eh-ink); }
 .eh-main { flex: 1; min-width: 0; padding: 1.8rem clamp(1rem, 3vw, 2.4rem) 3rem; }
 .eh-toplink { display: none; }
 
+/* Mobile header (hamburger + brand) — hidden on desktop, shown < 900px. */
+.eh-mtop { display: none; }
+.eh-side-veil { display: none; }
+
 @media (max-width: 900px) {
   .eh-shell { flex-direction: column; }
-  .eh-side {
-    width: 100%; flex: none; height: auto; position: static; flex-direction: row;
-    align-items: center; padding: 0 .8rem; overflow-x: auto;
+
+  /* Sticky top bar with the hamburger toggle. */
+  .eh-mtop {
+    display: flex; align-items: center; gap: .7rem;
+    position: sticky; top: 0; z-index: 50;
+    background: var(--eh-ink); padding: .55rem .9rem;
+    border-bottom: 1px solid rgba(255,255,255,.09);
   }
-  .eh-side-brand { border: none; padding: .7rem .6rem .7rem 0; }
-  .eh-side-brand div:last-child { display: none; }
-  .eh-nav { flex-direction: row; padding: 0 .4rem; align-items: center; }
-  .eh-nav-label { display: none; }
-  .eh-nav a { white-space: nowrap; padding: .45rem .55rem; }
-  .eh-nav a .eh-ico { display: none; }
-  .eh-side-foot { border: none; padding: .5rem; display: flex; align-items: center; gap: .5rem; }
-  .eh-side-user b, .eh-side-user span { display: none; }
-  .eh-signout { margin: 0; width: auto; padding: .38rem .7rem; }
+  .eh-burger {
+    display: grid; place-items: center; width: 40px; height: 40px; flex: 0 0 auto;
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.16);
+    color: #f0ead9; border-radius: 9px; font-size: 1.25rem; line-height: 1; cursor: pointer;
+  }
+  .eh-burger:active { background: rgba(255,255,255,.16); }
+
+  /* The sidebar becomes an off-canvas drawer, keeping its normal vertical
+     layout — no more squished horizontal row overlapping the brand. */
+  .eh-side {
+    position: fixed; top: 0; left: 0; bottom: 0; height: 100dvh;
+    width: 82%; max-width: 300px; flex: 0 0 auto;
+    transform: translateX(-100%); transition: transform .22s ease;
+    z-index: 70; box-shadow: 0 0 44px rgba(0,0,0,.45);
+  }
+  .eh-side.open { transform: none; }
+  .eh-side-veil {
+    display: block; position: fixed; inset: 0; z-index: 65;
+    background: rgba(16,29,44,.55); backdrop-filter: blur(2px);
+  }
+
   .eh-main { padding: 1.2rem 1rem 3rem; }
+  .eh-banner::after { display: none; }
 }
 
 /* Phones: keep the page from scrolling sideways, and let wide data tables
@@ -307,6 +328,16 @@ body { font-family: "Inter", system-ui, sans-serif; color: var(--eh-ink); }
 }
 .eh-banner h2 { font-family: "Fraunces", serif; font-size: 1.35rem; margin: 0 0 .35rem; }
 .eh-banner p { color: #b9c4d1; font-size: .86rem; margin: 0; max-width: 56ch; }
+/* Content placed on the dark banner (e.g. the onboarding checklist) needs light
+   text — the default list colours are dark ink and vanish on the navy gradient. */
+.eh-banner .eh-list .row { border-bottom-color: rgba(255,255,255,.14); }
+.eh-banner .eh-list .row .t { color: #f0ead9; }
+.eh-banner .eh-list .row .d { color: #b9c4d1; }
+.eh-banner .eh-btn.ghost { color: #f3ecdb; border-color: rgba(255,255,255,.32); background: rgba(255,255,255,.04); }
+.eh-banner .eh-btn.ghost:hover { border-color: var(--eh-gold-2); color: #f7e6bd; }
+/* Keep banner text above the decorative hexagon so it never bleeds through. */
+.eh-banner > * { position: relative; z-index: 1; }
+.eh-banner::after { z-index: 0; }
 
 .eh-spin {
   width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--eh-line);

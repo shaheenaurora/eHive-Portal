@@ -161,6 +161,7 @@ export function EhShell(props: {
   const { user, isLoading, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) navigate("/login");
@@ -172,7 +173,16 @@ export function EhShell(props: {
 
   return (
     <div className="eh-shell">
-      <aside className="eh-side">
+      <header className="eh-mtop">
+        <button className="eh-burger" aria-label="Menu" aria-expanded={menuOpen}
+                onClick={() => setMenuOpen(true)}>☰</button>
+        <img src="/assets/ehive-wordmark.png" alt="eHive" style={{ height: 22, width: "auto", display: "block" }} />
+      </header>
+      {menuOpen && <div className="eh-side-veil" onClick={() => setMenuOpen(false)} />}
+      {/* Any tap on a nav link or the foot links closes the mobile drawer. */}
+      <aside className={"eh-side" + (menuOpen ? " open" : "")} onClick={(e) => {
+        if ((e.target as HTMLElement).closest("a")) setMenuOpen(false);
+      }}>
         <div className="eh-side-brand">
           <img src="/assets/ehive-wordmark.png" alt="eHive" style={{ height: 24, width: "auto", display: "block" }} />
           <span style={{ display: "block", marginTop: 5, fontSize: ".68rem", letterSpacing: ".14em",
