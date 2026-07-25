@@ -26,8 +26,11 @@
     -webkit-font-smoothing:antialiased;
   }
   .wrap{max-width:760px;margin:0 auto;padding:32px 20px 64px}
-  .brand{font-family:Georgia,serif;font-weight:700;font-size:22px;letter-spacing:.01em}
-  .brand span{color:var(--gold)}
+  /* Light wordmark sits in a navy chip so it reads on the light page. */
+  .brand{display:inline-block;line-height:0;background:var(--navy);padding:9px 14px;border-radius:9px}
+  .brand img{height:22px;width:auto;display:block}
+  /* When shown inside the site's popup, trim the outer padding a touch. */
+  body.embed .wrap{padding-top:18px}
   .rule{height:3px;width:56px;background:var(--gold);margin:10px 0 0}
   h1{font-family:Georgia,serif;font-size:clamp(28px,5vw,42px);line-height:1.15;font-weight:700;margin:22px 0 14px}
   h2{font-family:Georgia,serif;font-size:clamp(21px,3.4vw,27px);line-height:1.25;font-weight:700;margin:0 0 10px}
@@ -124,11 +127,12 @@
 </style>
 </head>
 <body>
+<script>if(new URLSearchParams(location.search).get("embed")==="1")document.body.classList.add("embed");</script>
 <div class="wrap">
 
   <!-- ============ INTRO ============ -->
   <section id="intro">
-    <div class="brand">eHive<span>.</span></div>
+    <a class="brand" href="/" aria-label="eHive — home"><img src="/assets/ehive-wordmark.png" alt="eHive"></a>
     <div class="rule"></div>
     <h1>How clear is your business, really?</h1>
     <p class="lede">Sixteen honest questions across the eight areas every business runs on. You'll get a score for each one — and see exactly where the weakest link is.</p>
@@ -156,7 +160,7 @@
 
   <!-- ============ EMAIL GATE ============ -->
   <section id="gate" class="hidden">
-    <div class="brand">eHive<span>.</span></div>
+    <a class="brand" href="/" aria-label="eHive — home"><img src="/assets/ehive-wordmark.png" alt="eHive"></a>
     <div class="rule"></div>
     <h1>Your scorecard is ready.</h1>
     <p class="lede">Tell us where to send a copy, and we'll show your results now.</p>
@@ -206,7 +210,7 @@
 
   <!-- ============ RESULTS ============ -->
   <section id="results" class="hidden">
-    <div class="brand">eHive<span>.</span></div>
+    <a class="brand" href="/" aria-label="eHive — home"><img src="/assets/ehive-wordmark.png" alt="eHive"></a>
     <div class="rule"></div>
     <h1 style="margin-bottom:20px">Your Clarity Score</h1>
 
