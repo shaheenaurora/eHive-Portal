@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { NavLink, useNavigate } from "react-router";
+import { NavLink, Link, useNavigate, useLocation } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { initials } from "@/lib/ehf";
 import { TIER_LABEL } from "@contracts/constants";
@@ -158,6 +158,7 @@ export function EhShell(props: {
   children: ReactNode;
 }) {
   const { user, isLoading, logout } = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -192,6 +193,16 @@ export function EhShell(props: {
           ))}
         </nav>
         <div className="eh-side-foot">
+          {user.role === "admin" && (
+            <Link
+              to={location.pathname.startsWith("/admin") ? "/portal" : "/admin"}
+              style={{ display: "block", textAlign: "center", padding: ".5rem", marginBottom: ".5rem",
+                       borderRadius: 8, background: "var(--eh-gold-soft)", color: "var(--eh-ink)",
+                       fontSize: ".82rem", fontWeight: 600, textDecoration: "none" }}
+            >
+              {location.pathname.startsWith("/admin") ? "← Member portal" : "⚙ Admin panel"}
+            </Link>
+          )}
           <div className="eh-side-user">
             <div className="eh-avatar">{initials(user.name)}</div>
             <div>
