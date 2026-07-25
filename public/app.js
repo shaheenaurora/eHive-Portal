@@ -939,3 +939,84 @@ function submitLead(payload, onOk, onErr){
   })();
 
 })();
+
+/* ===== eHive Clarity Scorecard — nav button + popup (progressive enhancement) =====
+   Styles every link to /clarity-scorecard.html as a button and opens the
+   scorecard in an in-page modal instead of navigating. Falls back to the plain
+   page if JS is off. */
+(function () {
+  "use strict";
+  if (window.__ehScorecardModal) return;
+  window.__ehScorecardModal = true;
+
+  var SC_URL = "/clarity-scorecard.html";
+  // Don't run on the scorecard page itself.
+  if (location.pathname.replace(/\/index\.html$/, "/").indexOf("clarity-scorecard") !== -1) return;
+
+  var css = ""
+    + ".nav-links a[href*='clarity-scorecard']{"
+    + "display:inline-flex;align-items:center;gap:.4em;padding:.5em .95em;border:1px solid var(--gold,#B8862E);"
+    + "border-radius:8px;color:var(--gold,#B8862E)!important;font-weight:600;transition:background .15s,color .15s;}"
+    + ".nav-links a[href*='clarity-scorecard']:hover{background:var(--gold,#B8862E);color:#fff!important;}"
+    + ".sc-overlay{position:fixed;inset:0;z-index:1000;background:rgba(20,20,35,.62);backdrop-filter:blur(3px);"
+    + "display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;transition:opacity .2s ease;}"
+    + ".sc-overlay.on{opacity:1;}"
+    + ".sc-modal{position:relative;width:100%;max-width:820px;height:min(88vh,900px);background:#FBF9F5;border-radius:16px;"
+    + "overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.4);transform:translateY(10px) scale(.99);transition:transform .2s ease;}"
+    + ".sc-overlay.on .sc-modal{transform:none;}"
+    + ".sc-modal iframe{width:100%;height:100%;border:0;display:block;}"
+    + ".sc-close{position:absolute;top:10px;right:12px;z-index:2;width:38px;height:38px;border-radius:50%;border:0;cursor:pointer;"
+    + "background:rgba(26,26,46,.9);color:#fff;font-size:20px;line-height:38px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.25);}"
+    + ".sc-close:hover{background:#1A1A2E;}"
+    + "@media (max-width:640px){.sc-modal{height:92vh;max-width:100%;border-radius:14px;}}";
+  var style = document.createElement("style");
+  style.appendChild(document.createTextNode(css));
+  document.head.appendChild(style);
+
+  var overlay = null, lastFocus = null;
+  function close() {
+    if (!overlay) return;
+    overlay.classList.remove("on");
+    document.body.style.overflow = "";
+    var el = overlay;
+    setTimeout(function () { if (el && el.parentNode) el.parentNode.removeChild(el); }, 200);
+    overlay = null;
+    document.removeEventListener("keydown", onKey);
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+  function onKey(e) { if (e.key === "Escape") close(); }
+  function open() {
+    if (overlay) return;
+    lastFocus = document.activeElement;
+    overlay = document.createElement("div");
+    overlay.className = "sc-overlay";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    overlay.setAttribute("aria-label", "eHive Clarity Scorecard");
+    overlay.innerHTML =
+      "<div class='sc-modal'>" +
+      "<button class='sc-close' aria-label='Close'>✕</button>" +
+      "<iframe src='" + SC_URL + "?embed=1' title='eHive Clarity Scorecard' loading='lazy'></iframe>" +
+      "</div>";
+    document.body.appendChild(overlay);
+    document.body.style.overflow = "hidden";
+    overlay.querySelector(".sc-close").addEventListener("click", close);
+    overlay.addEventListener("click", function (e) { if (e.target === overlay) close(); });
+    document.addEventListener("keydown", onKey);
+    requestAnimationFrame(function () { overlay.classList.add("on"); });
+    setTimeout(function () { var b = overlay && overlay.querySelector(".sc-close"); if (b) b.focus(); }, 60);
+  }
+
+  function wire() {
+    var links = document.querySelectorAll("a[href*='clarity-scorecard']");
+    for (var i = 0; i < links.length; i++) {
+      links[i].addEventListener("click", function (e) {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button) return; // allow open-in-new-tab
+        e.preventDefault();
+        open();
+      });
+    }
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", wire);
+  else wire();
+})();
