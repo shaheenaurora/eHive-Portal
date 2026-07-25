@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
+import { secureHeaders } from "hono/secure-headers";
 import type { HttpBindings } from "@hono/node-server";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { appRouter } from "./router";
@@ -13,6 +14,20 @@ import { activateMembership } from "./queries/circle";
 import { notifyLead } from "./lib/lead-mail";
 
 const app = new Hono<{ Bindings: HttpBindings }>();
+
+/* Baseline security headers on every response. CSP is intentionally omitted for
+   now — the marketing pages use inline scripts and Google Fonts, so a strict
+   policy needs a staged rollout; the headers below add real protection without
+   risking breakage. Frame options are SAMEORIGIN so the scorecard popup (a
+   same-origin iframe) keeps working. */
+app.use("*", secureHeaders({
+  strictTransportSecurity: "max-age=15552000; includeSubDomains",
+  xFrameOptions: "SAMEORIGIN",
+  xContentTypeOptions: "nosniff",
+  referrerPolicy: "strict-origin-when-cross-origin",
+  crossOriginResourcePolicy: "same-origin",
+  crossOriginOpenerPolicy: "same-origin-allow-popups",
+}));
 
 app.use(bodyLimit({ maxSize: 50 * 1024 * 1024 }));
 app.use("/api/trpc/*", async (c) => {
@@ -144,6 +159,39 @@ app.post("/api/payments/webhook", async (c) => {
 });
 
 app.all("/api/*", (c) => c.json({ error: "Not Found" }, 404));
+
+/* SEO: robots + sitemap generated with the live host, so they're always correct
+   whatever domain the app is served from. App routes are kept out of the index. */
+const SITEMAP_PAGES = [
+  "", "business-setup.html", "consulting.html", "consulting-clarity-sprint.html",
+  "consulting-strategy-sprint.html", "consulting-gapnavigator.html", "consulting-brand-3d.html",
+  "consulting-opsblueprint.html", "consulting-momentum90.html", "circle.html",
+  "clarity-scorecard.html", "get-started.html", "book.html", "about.html",
+  "insights.html", "privacy.html", "terms.html",
+];
+app.get("/robots.txt", (c) => {
+  const origin = new URL(c.req.url).origin;
+  return c.text(
+    [
+      "User-agent: *",
+      "Disallow: /portal", "Disallow: /admin", "Disallow: /login",
+      "Disallow: /forgot-password", "Disallow: /reset-password", "Disallow: /verify-email",
+      "Disallow: /api", "Allow: /",
+      `Sitemap: ${origin}/sitemap.xml`, "",
+    ].join("\n"),
+  );
+});
+app.get("/sitemap.xml", (c) => {
+  const origin = new URL(c.req.url).origin;
+  const urls = SITEMAP_PAGES.map(
+    (p) => `  <url><loc>${origin}/${p}</loc><changefreq>weekly</changefreq></url>`,
+  ).join("\n");
+  return c.body(
+    `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`,
+    200,
+    { "content-type": "application/xml" },
+  );
+});
 
 export default app;
 

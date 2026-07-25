@@ -189,20 +189,23 @@ export const circleRouter = createRouter({
       .from(schema.podMembers)
       .innerJoin(schema.pods, eq(schema.podMembers.podId, schema.pods.id))
       .where(eq(schema.podMembers.memberId, member.id));
-    const out: Array<
-      (typeof rows)[number] & {
-        memberCount: number;
-        nextSession: NonNullable<Awaited<ReturnType<typeof nextSessionForMember>>>["session"] | null;
-      }
-    > = [];
-    for (const r of rows) {
-      const next = await nextSessionForMember(member.id);
-      const roster = await getDb().select({ n: sql<number>`count(*)` })
-        .from(schema.podMembers).where(eq(schema.podMembers.podId, r.pod.id));
-      out.push({ ...r, memberCount: roster.at(0)?.n ?? 0,
-                 nextSession: next && next.pod.id === r.pod.id ? next.session : null });
-    }
-    return out;
+    // Batch the per-pod member counts into one grouped query (was N+1), and
+    // fetch the member's next session once (it's the same regardless of pod).
+    const podIds = rows.map((r) => r.pod.id);
+    const counts = podIds.length
+      ? await getDb()
+          .select({ podId: schema.podMembers.podId, n: sql<number>`count(*)` })
+          .from(schema.podMembers)
+          .where(sql`${schema.podMembers.podId} in (${sql.join(podIds.map((i) => sql`${i}`), sql`, `)})`)
+          .groupBy(schema.podMembers.podId)
+      : [];
+    const countMap = new Map(counts.map((c) => [c.podId, Number(c.n)]));
+    const next = await nextSessionForMember(member.id);
+    return rows.map((r) => ({
+      ...r,
+      memberCount: countMap.get(r.pod.id) ?? 0,
+      nextSession: next && next.pod.id === r.pod.id ? next.session : null,
+    }));
   }),
 
   podDetail: authedQuery
@@ -270,26 +273,29 @@ export const circleRouter = createRouter({
       .where(and(eq(schema.eventRegs.memberId, member.id),
                  sql`${schema.eventRegs.status} in ('registered','waitlisted','attended')`));
     const regMap = new Map(regs.map(r => [r.eventId, r]));
-    const out: Array<
-      (typeof upcoming)[number] & {
-        registered: boolean;
-        regStatus: (typeof regs)[number]["status"] | null;
-        checkinCode: string | null;
-        seatsLeft: number;
-        allowed: boolean;
-      }
-    > = [];
-    for (const e of upcoming) {
-      const count = await db.select({ n: sql<number>`count(*)` }).from(schema.eventRegs)
-        .where(and(eq(schema.eventRegs.eventId, e.id),
-                   sql`${schema.eventRegs.status} in ('registered','attended')`));
+    // Batch seat counts for all upcoming events into one grouped query (was N+1).
+    const evIds = upcoming.map((e) => e.id);
+    const counts = evIds.length
+      ? await db.select({ eventId: schema.eventRegs.eventId, n: sql<number>`count(*)` })
+          .from(schema.eventRegs)
+          .where(and(
+            sql`${schema.eventRegs.eventId} in (${sql.join(evIds.map((i) => sql`${i}`), sql`, `)})`,
+            sql`${schema.eventRegs.status} in ('registered','attended')`,
+          ))
+          .groupBy(schema.eventRegs.eventId)
+      : [];
+    const countMap = new Map(counts.map((c) => [c.eventId, Number(c.n)]));
+    return upcoming.map((e) => {
       const reg = regMap.get(e.id);
-      out.push({ ...e, registered: !!reg, regStatus: reg?.status ?? null,
-                 checkinCode: reg?.status === "registered" ? reg.checkinCode : null,
-                 seatsLeft: e.capacity - (count.at(0)?.n ?? 0),
-                 allowed: tierRank(member.tier) >= tierRank(e.tierGate) });
-    }
-    return out;
+      return {
+        ...e,
+        registered: !!reg,
+        regStatus: reg?.status ?? null,
+        checkinCode: reg?.status === "registered" ? reg.checkinCode : null,
+        seatsLeft: e.capacity - (countMap.get(e.id) ?? 0),
+        allowed: tierRank(member.tier) >= tierRank(e.tierGate),
+      };
+    });
   }),
 
   registerEvent: authedQuery

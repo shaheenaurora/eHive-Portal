@@ -1,5 +1,5 @@
 import { trpc } from "@/providers/trpc";
-import { EhShell, MEMBER_NAV, PageHead, Ring, Bar, Pill, Empty, Spinner } from "@/components/eh";
+import { EhShell, MEMBER_NAV, PageHead, Ring, Bar, Pill, Empty, Spinner, LoadError } from "@/components/eh";
 import { fmtDate, fmtDateTime } from "@/lib/ehf";
 import { SCORE_FACTOR_LABEL } from "@contracts/constants";
 
@@ -18,6 +18,7 @@ export default function Score() {
   const eng = trpc.engage.myEngagement.useQuery(undefined, { retry: false });
 
   if (q.isLoading) return <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif><Spinner /></EhShell>;
+  if (q.isError) return <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif><LoadError what="your Hive Score" onRetry={() => q.refetch()} /></EhShell>;
   if (!q.data) return <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif><Empty big="Score unavailable." /></EhShell>;
 
   const { member, config, sums, history, recent } = q.data;

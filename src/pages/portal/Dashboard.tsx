@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Link, useSearchParams } from "react-router";
 import { trpc } from "@/providers/trpc";
 import { useAuth } from "@/hooks/useAuth";
-import { EhShell, MEMBER_NAV, PageHead, Stat, Ring, Pill, Empty, TierPill, Spinner, toast } from "@/components/eh";
+import { EhShell, MEMBER_NAV, PageHead, Stat, Ring, Pill, Empty, TierPill, Spinner, toast, LoadError } from "@/components/eh";
 import { fmtDateTime, fmtDay, relDay } from "@/lib/ehf";
 
 export default function Dashboard() {
@@ -21,7 +21,7 @@ export default function Dashboard() {
   }, []);
 
   if (d.isLoading) return <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif><Spinner /></EhShell>;
-  if (!d.data) return <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif><Empty big="Could not load your dashboard." /></EhShell>;
+  if (!d.data) return <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif><LoadError what="your dashboard" onRetry={() => d.refetch()} /></EhShell>;
 
   const { member, nextSession, openActionItems, upcomingEvents, podCount, onboarding, onboardingDone } = d.data;
   const first = (user?.name ?? "there").split(" ")[0];

@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 import { trpc } from "@/providers/trpc";
-import { EhShell, MEMBER_NAV, PageHead, Pill, Empty, TierPill, Spinner } from "@/components/eh";
+import { EhShell, MEMBER_NAV, PageHead, Pill, Empty, TierPill, Spinner, LoadError } from "@/components/eh";
 import { fmtDay, fmtDateTime } from "@/lib/ehf";
 
 export default function Pods() {
@@ -11,6 +11,7 @@ export default function Pods() {
       <PageHead eyebrow="Pods & masterminds" title="Your circles"
                 sub="Small rooms, real numbers, one commitment per week. Chatham House Rule applies everywhere." />
       {q.isLoading && <Spinner />}
+      {q.isError && <LoadError what="your pods" onRetry={() => q.refetch()} />}
       {q.data && q.data.length === 0 && (
         <div className="eh-card">
           <Empty big="You're not in a pod yet."

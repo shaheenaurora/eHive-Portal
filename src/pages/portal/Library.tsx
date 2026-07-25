@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/providers/trpc";
-import { EhShell, MEMBER_NAV, PageHead, Pill, Empty, TierPill, Spinner } from "@/components/eh";
+import { EhShell, MEMBER_NAV, PageHead, Pill, Empty, TierPill, Spinner, LoadError } from "@/components/eh";
 
 const KIND_COLOR: Record<string, "blue" | "purple" | "green" | "gold" | "grey"> = {
   playbook: "blue", template: "green", recording: "purple", note: "grey",
@@ -33,6 +33,7 @@ export default function Library() {
       </div>
 
       {q.isLoading && <Spinner />}
+      {q.isError && <LoadError what="the library" onRetry={() => q.refetch()} />}
       {q.data && list.length === 0 && (
         <div className="eh-card"><Empty big="Nothing matches." p="Try a different filter or search." /></div>
       )}
