@@ -37,7 +37,7 @@ export default function AdminMembers() {
 
       {q.data && q.data.length > 0 && (
         <div className="eh-card" style={{ padding: ".4rem 1.25rem" }}>
-          <table className="eh-table">
+          <table className="eh-table stack">
             <thead>
               <tr><th>Member</th><th>Company</th><th>Tier</th><th>Status</th><th>Score</th><th>Joined</th><th></th></tr>
             </thead>
@@ -51,11 +51,11 @@ export default function AdminMembers() {
                       <div><b>{userName ?? "—"}</b><div className="eh-muted eh-sm">{userEmail}</div></div>
                     </div>
                   </td>
-                  <td className="eh-sm">{member.company ?? "—"}</td>
-                  <td><TierPill tier={member.tier} /></td>
-                  <td><StatusPill status={member.status} /></td>
-                  <td className="eh-num"><b>{member.hiveScore}</b></td>
-                  <td className="eh-sm eh-muted">{fmtDate(member.joinedAt)}</td>
+                  <td className="eh-sm" data-label="Company">{member.company ?? "—"}</td>
+                  <td data-label="Tier"><TierPill tier={member.tier} /></td>
+                  <td data-label="Status"><StatusPill status={member.status} /></td>
+                  <td className="eh-num" data-label="Score"><b>{member.hiveScore}</b></td>
+                  <td className="eh-sm eh-muted" data-label="Joined">{fmtDate(member.joinedAt)}</td>
                   <td><Link className="eh-btn ghost sm" to={`/admin/members/${member.id}`}
                             onClick={(e) => e.stopPropagation()}>360° →</Link></td>
                 </tr>

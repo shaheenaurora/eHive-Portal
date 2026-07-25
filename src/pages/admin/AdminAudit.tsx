@@ -32,16 +32,16 @@ export default function AdminAudit() {
 
       {q.data && q.data.length > 0 && (
         <div className="eh-card" style={{ padding: ".4rem 1.25rem" }}>
-          <table className="eh-table">
+          <table className="eh-table stack">
             <thead><tr><th>When</th><th>Who</th><th>Action</th><th>Target</th><th>Detail</th></tr></thead>
             <tbody>
               {q.data.map((r) => (
                 <tr key={r.id}>
-                  <td className="eh-sm eh-muted" style={{ whiteSpace: "nowrap" }}>{fmtDateTime(r.createdAt)}</td>
-                  <td className="eh-sm"><b>{r.actorEmail ?? "—"}</b></td>
-                  <td><Pill color={toneFor(r.action)}>{r.action}</Pill></td>
-                  <td className="eh-sm eh-muted">{r.targetType ? `${r.targetType} ${r.targetId ?? ""}` : "—"}</td>
-                  <td className="eh-sm">{r.detail ?? "—"}</td>
+                  <td className="eh-sm eh-muted" data-label="When" style={{ whiteSpace: "nowrap" }}>{fmtDateTime(r.createdAt)}</td>
+                  <td className="eh-sm" data-label="Who"><b>{r.actorEmail ?? "—"}</b></td>
+                  <td data-label="Action"><Pill color={toneFor(r.action)}>{r.action}</Pill></td>
+                  <td className="eh-sm eh-muted" data-label="Target">{r.targetType ? `${r.targetType} ${r.targetId ?? ""}` : "—"}</td>
+                  <td className="eh-sm" data-label="Detail">{r.detail ?? "—"}</td>
                 </tr>
               ))}
             </tbody>

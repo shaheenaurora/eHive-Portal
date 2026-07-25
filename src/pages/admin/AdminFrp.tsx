@@ -64,14 +64,14 @@ export default function AdminFrp() {
               </div>
             </div>
             {c.enrolments.length > 0 && (
-              <table className="eh-table" style={{ marginTop: ".8rem" }}>
+              <table className="eh-table stack" style={{ marginTop: ".8rem" }}>
                 <thead><tr><th>Member</th><th>Company</th><th>Status</th><th>Enrolled</th><th></th></tr></thead>
                 <tbody>
                   {c.enrolments.map(({ en, member, userName }) => (
                     <tr key={en.id}>
                       <td><b>{userName}</b></td>
-                      <td className="eh-sm">{member.company ?? "—"}</td>
-                      <td>
+                      <td className="eh-sm" data-label="Company">{member.company ?? "—"}</td>
+                      <td data-label="Status">
                         <select className="eh-select" style={{ maxWidth: 140, padding: ".3rem .5rem", fontSize: ".78rem" }}
                                 value={en.status}
                                 onChange={(e) => setEnrolStatus.mutate({ id: en.id, status: e.target.value as never })}>
@@ -81,7 +81,7 @@ export default function AdminFrp() {
                           <option value="withdrawn">withdrawn</option>
                         </select>
                       </td>
-                      <td className="eh-sm eh-muted">{fmtDate(en.createdAt)}</td>
+                      <td className="eh-sm eh-muted" data-label="Enrolled">{fmtDate(en.createdAt)}</td>
                       <td><button className="eh-btn ghost sm" onClick={() => setEnrolId(en.id)}>Review →</button></td>
                     </tr>
                   ))}
