@@ -5,6 +5,7 @@
     "dockerfilePath": "Dockerfile"
   },
   "deploy": {
+    "preDeployCommand": "npm run db:push -- --force",
     "startCommand": "node dist/boot.js",
     "healthcheckPath": "/",
     "healthcheckTimeout": 120,
