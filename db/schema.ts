@@ -303,6 +303,21 @@ export const offers = mysqlTable("offers", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+/* Provider-agnostic payment records (SRS INT-02). One row per checkout. */
+export const paymentRecords = mysqlTable("payment_records", {
+  id: serial("id").primaryKey(),
+  userId: bigint("userId", { mode: "number", unsigned: true }).notNull(),
+  provider: varchar("provider", { length: 32 }).notNull().default("stripe"),
+  providerRef: varchar("providerRef", { length: 255 }), // checkout session / intent id
+  purpose: varchar("purpose", { length: 32 }).notNull().default("membership"),
+  tier: mysqlEnum("tier", ["horizon", "ascent", "vanguard", "zenith"]),
+  amount: int("amount").notNull(),        // minor units (fils)
+  currency: varchar("currency", { length: 8 }).notNull().default("aed"),
+  status: mysqlEnum("status", ["pending", "paid", "failed", "refunded"]).notNull().default("pending"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+});
+
 export const leads = mysqlTable("leads", {
   id: serial("id").primaryKey(),
   form: varchar("form", { length: 64 }).notNull(),

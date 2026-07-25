@@ -120,7 +120,7 @@ export default function AdminPodDetail() {
           </div>
         </div>
 
-        <div style={{ gridColumn: "span 2", display: "flex", flexDirection: "column", gap: "1rem" }}>
+        <div className="eh-span2" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           <div className="eh-card">
             <h3>Sessions</h3>
             {sessions.length === 0 && <Empty big="No sessions scheduled." />}
