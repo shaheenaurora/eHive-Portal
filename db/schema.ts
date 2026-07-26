@@ -578,14 +578,35 @@ export const dataRequests = mysqlTable("data_requests", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-/* BRD 6.7 — chapters */
+/* BRD 6.7 — chapters. Formation follows a BNI-style geographic hierarchy:
+   Country → Region → State/Emirate → City → Zone, with a short chapter code. */
 export const chapters = mysqlTable("chapters", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
-  city: varchar("city", { length: 128 }),
+  code: varchar("code", { length: 24 }),        // short chapter code, e.g. "AE-DXB-01"
   country: varchar("country", { length: 128 }),
+  region: varchar("region", { length: 128 }),   // operating region (e.g. "Gulf", "UAE")
+  state: varchar("state", { length: 128 }),     // state / emirate / province
+  city: varchar("city", { length: 128 }),
+  zone: varchar("zone", { length: 128 }),        // area within a city (e.g. "DIFC", "Downtown")
+  meetingCadence: varchar("meetingCadence", { length: 64 }), // e.g. "Weekly · Tue 7:30am"
   status: mysqlEnum("status", ["seed", "provisional", "chartered", "mature", "at_risk"]).notNull().default("seed"),
   charterDate: timestamp("charterDate"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+/* BRD 6.7 — member-requested chapter transfers. A member asks to move to another
+   chapter; management approves before the home chapter changes (mirrors the tier
+   change approval flow). */
+export const chapterTransfers = mysqlTable("chapter_transfers", {
+  id: serial("id").primaryKey(),
+  memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+  fromChapterId: bigint("fromChapterId", { mode: "number", unsigned: true }),
+  toChapterId: bigint("toChapterId", { mode: "number", unsigned: true }).notNull(),
+  note: varchar("note", { length: 500 }),
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).notNull().default("pending"),
+  actorEmail: varchar("actorEmail", { length: 320 }),
+  decidedAt: timestamp("decidedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

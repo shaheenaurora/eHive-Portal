@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createHash } from "crypto";
 import { eq, and, desc, asc, gte, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/mysql-core";
 import * as schema from "@db/schema";
 import { getDb } from "./queries/connection";
 import { createRouter, adminQuery, scopedAdmin } from "./middleware";
@@ -408,30 +409,107 @@ export const adminEngageRouter = createRouter({
     return out;
   }),
 
-  saveChapter: adminQuery
+  saveChapter: scopedAdmin("chapters")
     .input(z.object({
       id: z.number().optional(), name: z.string().min(2).max(255),
-      city: z.string().max(128).optional(), country: z.string().max(128).optional(),
+      code: z.string().max(24).optional(),
+      country: z.string().max(128).optional(), region: z.string().max(128).optional(),
+      state: z.string().max(128).optional(), city: z.string().max(128).optional(),
+      zone: z.string().max(128).optional(), meetingCadence: z.string().max(64).optional(),
       status: z.enum(["seed", "provisional", "chartered", "mature", "at_risk"]).default("seed"),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = getDb();
       const { id, ...vals } = input;
       if (id) {
         await db.update(schema.chapters).set({
           ...vals, charterDate: vals.status === "chartered" || vals.status === "mature" ? new Date() : undefined,
         }).where(eq(schema.chapters.id, id));
+        await audit(ctx.user, "chapter.update", { type: "chapter", id, detail: vals.name });
       } else {
-        await db.insert(schema.chapters).values(vals);
+        const res = await db.insert(schema.chapters).values(vals);
+        await audit(ctx.user, "chapter.create", { type: "chapter", id: Number(res[0].insertId), detail: vals.name });
       }
       return { ok: true };
     }),
 
-  setHomeChapter: adminQuery
+  /* Assign (or clear) a member's home chapter directly — the admin path used
+     from Chapter management and the member 360°. */
+  setHomeChapter: scopedAdmin("chapters")
     .input(z.object({ memberId: z.number(), chapterId: z.number().nullable() }))
-    .mutation(async ({ input }) => {
-      await getDb().update(schema.members).set({ homeChapterId: input.chapterId })
+    .mutation(async ({ ctx, input }) => {
+      const db = getDb();
+      await db.update(schema.members).set({ homeChapterId: input.chapterId })
         .where(eq(schema.members.id, input.memberId));
+      await audit(ctx.user, "member.chapter", { type: "member", id: input.memberId,
+        detail: input.chapterId ? `→ chapter #${input.chapterId}` : "unassigned" });
+      return { ok: true };
+    }),
+
+  /* Members available to add to a chapter — searchable, with their current
+     chapter so admins don't move someone by accident. */
+  assignableMembers: scopedAdmin("chapters")
+    .input(z.object({ q: z.string().max(120).optional(), excludeChapterId: z.number().optional() }))
+    .query(async ({ input }) => {
+      const db = getDb();
+      const conds = [eq(schema.members.status, "active")];
+      if (input.q) {
+        const like = `%${input.q}%`;
+        conds.push(sql`(${schema.users.name} like ${like} or ${schema.users.email} like ${like} or ${schema.members.company} like ${like})`);
+      }
+      if (input.excludeChapterId != null)
+        conds.push(sql`(${schema.members.homeChapterId} is null or ${schema.members.homeChapterId} <> ${input.excludeChapterId})`);
+      const rows = await db.select({
+        id: schema.members.id, name: schema.users.name, email: schema.users.email,
+        company: schema.members.company, homeChapterId: schema.members.homeChapterId,
+        chapterName: schema.chapters.name,
+      })
+        .from(schema.members)
+        .leftJoin(schema.users, eq(schema.users.id, schema.members.userId))
+        .leftJoin(schema.chapters, eq(schema.chapters.id, schema.members.homeChapterId))
+        .where(and(...conds))
+        .orderBy(asc(schema.users.name)).limit(50);
+      return rows;
+    }),
+
+  /* Member-requested chapter transfers awaiting management approval. */
+  pendingChapterTransfers: scopedAdmin("chapters").query(async () => {
+    const db = getDb();
+    const from = alias(schema.chapters, "fromCh");
+    const to = alias(schema.chapters, "toCh");
+    return db.select({
+      req: schema.chapterTransfers,
+      memberName: schema.users.name, memberEmail: schema.users.email,
+      fromName: from.name, toName: to.name,
+    })
+      .from(schema.chapterTransfers)
+      .innerJoin(schema.members, eq(schema.members.id, schema.chapterTransfers.memberId))
+      .leftJoin(schema.users, eq(schema.users.id, schema.members.userId))
+      .leftJoin(from, eq(from.id, schema.chapterTransfers.fromChapterId))
+      .leftJoin(to, eq(to.id, schema.chapterTransfers.toChapterId))
+      .where(eq(schema.chapterTransfers.status, "pending"))
+      .orderBy(desc(schema.chapterTransfers.createdAt)).limit(100);
+  }),
+
+  /* Approve or reject a transfer. The home chapter moves only on approval. */
+  decideChapterTransfer: scopedAdmin("chapters")
+    .input(z.object({ id: z.number(), decision: z.enum(["approve", "reject"]), note: z.string().max(500).optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = getDb();
+      const req = (await db.select().from(schema.chapterTransfers)
+        .where(eq(schema.chapterTransfers.id, input.id)).limit(1)).at(0);
+      if (!req) throw new TRPCError({ code: "NOT_FOUND", message: "Request not found" });
+      if (req.status !== "pending") throw new TRPCError({ code: "CONFLICT", message: "Already decided." });
+      if (input.decision === "approve") {
+        await db.update(schema.members).set({ homeChapterId: req.toChapterId })
+          .where(eq(schema.members.id, req.memberId));
+      }
+      await db.update(schema.chapterTransfers).set({
+        status: input.decision === "approve" ? "approved" : "rejected",
+        actorEmail: ctx.user.email, decidedAt: new Date(), note: input.note ?? req.note,
+      }).where(eq(schema.chapterTransfers.id, req.id));
+      await audit(ctx.user, `chapter.transfer.${input.decision}`,
+        { type: "member", id: req.memberId, detail: `→ chapter #${req.toChapterId}` });
       return { ok: true };
     }),
 

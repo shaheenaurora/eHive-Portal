@@ -17,6 +17,9 @@ export default function AdminApplications() {
   const [sel, setSel] = useState<AppRow | null>(null);
   const [note, setNote] = useState("");
   const [tier, setTier] = useState<string>("ascent");
+  const [chapter, setChapter] = useState<string>("");
+  const chapters = trpc.adminEngage.chaptersAdmin.useQuery(undefined, { retry: false });
+  const hasChapters = (chapters.data ?? []).length > 0;
 
   const setStatusMut = trpc.admin.setApplicationStatus.useMutation({
     onSuccess: (r) => {
@@ -54,7 +57,7 @@ export default function AdminApplications() {
             </thead>
             <tbody>
               {rows.map((a) => (
-                <tr key={a.id} className="click" onClick={() => { setSel(a); setNote(a.note ?? ""); setTier(a.tierRequested); }}>
+                <tr key={a.id} className="click" onClick={() => { setSel(a); setNote(a.note ?? ""); setTier(a.tierRequested); setChapter(""); }}>
                   <td><b>{a.name}</b><div className="eh-muted eh-sm">{a.email}</div></td>
                   <td data-label="Company">{a.company ?? "—"}</td>
                   <td className="eh-sm" data-label="Stage">{a.stage ?? "—"}</td>
@@ -94,13 +97,27 @@ export default function AdminApplications() {
             <textarea className="eh-textarea" style={{ minHeight: 70 }} value={note}
                       onChange={(e) => setNote(e.target.value)} placeholder="Visible to the team only." />
           </Field>
-          <div className="eh-grid g2" style={{ alignItems: "end" }}>
+          <div className="eh-grid g2">
             <Field label="Approve into tier">
               <select className="eh-select" value={tier} onChange={(e) => setTier(e.target.value)}>
                 {TIERS.map((t) => <option key={t} value={t}>{TIER_LABEL[t]}</option>)}
               </select>
             </Field>
-            <div className="eh-row" style={{ justifyContent: "flex-end" }}>
+            <Field label={hasChapters ? "Admit into chapter" : "Admit into chapter (create a chapter first)"}>
+              <select className="eh-select" value={chapter} onChange={(e) => setChapter(e.target.value)} disabled={!hasChapters}>
+                <option value="">{hasChapters ? "Select a chapter…" : "No chapters yet"}</option>
+                {(chapters.data ?? []).map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}{c.city ? ` — ${c.city}` : ""}</option>
+                ))}
+              </select>
+            </Field>
+          </div>
+          {sel.status !== "approved" && hasChapters && !chapter && (
+            <p className="eh-sm" style={{ color: "var(--eh-gold)", margin: ".2rem 0 .6rem" }}>
+              Members are admitted into a chapter — pick one to approve.
+            </p>
+          )}
+          <div className="eh-row" style={{ justifyContent: "flex-end" }}>
               {sel.status !== "approved" && (
                 <>
                   {sel.status === "received" && (
@@ -119,14 +136,13 @@ export default function AdminApplications() {
                           onClick={() => setStatusMut.mutate({ id: sel.id, status: "rejected", note: note || undefined })}>
                     Reject
                   </button>
-                  <button className="eh-btn gold" disabled={setStatusMut.isPending}
-                          onClick={() => setStatusMut.mutate({ id: sel.id, status: "approved", note: note || undefined, tier: tier as never })}>
+                  <button className="eh-btn gold" disabled={setStatusMut.isPending || (hasChapters && !chapter)}
+                          onClick={() => setStatusMut.mutate({ id: sel.id, status: "approved", note: note || undefined, tier: tier as never, chapterId: chapter ? Number(chapter) : undefined })}>
                     Approve & create membership ✓
                   </button>
                 </>
               )}
               {sel.status === "approved" && <Pill color="green">Approved — membership exists</Pill>}
-            </div>
           </div>
         </Modal>
       )}

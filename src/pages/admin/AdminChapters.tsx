@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { trpc } from "@/providers/trpc";
 import { EhShell, ADMIN_NAV, PageHead, Pill, Spinner, Modal, Field, Empty, toast } from "@/components/eh";
-import { fmtDate } from "@/lib/ehf";
+import { fmtDate, initials } from "@/lib/ehf";
 import { CHAPTER_STATUS_LABEL } from "@contracts/constants";
 import type { ChapterStatus } from "@contracts/constants";
 
@@ -9,13 +9,26 @@ const STATUS_COLOR: Record<string, "grey" | "blue" | "gold" | "green" | "red"> =
   seed: "grey", provisional: "blue", chartered: "gold", mature: "green", at_risk: "red",
 };
 
+type ChapterVals = {
+  name: string; code?: string; country?: string; region?: string;
+  state?: string; city?: string; zone?: string; meetingCadence?: string; status: ChapterStatus;
+};
+
+/** BNI-style location line: Zone · City · State · Region · Country. */
+function geoLine(c: { zone?: string | null; city?: string | null; state?: string | null; region?: string | null; country?: string | null }): string {
+  return [c.zone, c.city, c.state, c.region, c.country].filter(Boolean).join(" · ") || "—";
+}
+
 export default function AdminChapters() {
   const utils = trpc.useUtils();
   const list = trpc.adminEngage.chaptersAdmin.useQuery(undefined, { retry: false });
+  const transfers = trpc.adminEngage.pendingChapterTransfers.useQuery(undefined, { retry: false });
   const [sel, setSel] = useState<number | null>(null);
   const detail = trpc.adminEngage.chapterDetail.useQuery({ id: sel! }, { retry: false, enabled: sel !== null });
 
   const [chapterOpen, setChapterOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const [electionOpen, setElectionOpen] = useState(false);
   const [motionOpen, setMotionOpen] = useState(false);
   const [budgetOpen, setBudgetOpen] = useState(false);
@@ -23,10 +36,20 @@ export default function AdminChapters() {
   function refresh() {
     utils.adminEngage.chaptersAdmin.invalidate();
     utils.adminEngage.chapterDetail.invalidate();
+    utils.adminEngage.pendingChapterTransfers.invalidate();
+    utils.adminEngage.assignableMembers.invalidate();
   }
 
   const saveChapter = trpc.adminEngage.saveChapter.useMutation({
-    onSuccess: () => { toast("Chapter saved."); setChapterOpen(false); refresh(); },
+    onSuccess: () => { toast("Chapter saved."); setChapterOpen(false); setEditOpen(false); refresh(); },
+    onError: (e) => toast(e.message),
+  });
+  const setHome = trpc.adminEngage.setHomeChapter.useMutation({
+    onSuccess: () => { toast("Member assigned to this chapter."); refresh(); },
+    onError: (e) => toast(e.message),
+  });
+  const decideTransfer = trpc.adminEngage.decideChapterTransfer.useMutation({
+    onSuccess: (_r, v) => { toast(v.decision === "approve" ? "Transfer approved — home chapter moved." : "Transfer rejected."); refresh(); },
     onError: (e) => toast(e.message),
   });
   const saveElection = trpc.adminEngage.saveElection.useMutation({
@@ -60,7 +83,35 @@ export default function AdminChapters() {
   return (
     <EhShell groups={ADMIN_NAV} brandSub="Admin Portal" roleRequired="admin">
       <PageHead eyebrow="Chapters" title="Chapter lifecycle"
-                sub="Seed → Provisional → Chartered → Mature. Elections, motions and budgets run inside each chapter." />
+                sub="Seed → Provisional → Chartered → Mature. Members are admitted into a chapter; elections, motions and budgets run inside each one." />
+
+      {/* Transfer requests — always visible so requests never get missed. */}
+      {(transfers.data ?? []).length > 0 && (
+        <div className="eh-card eh-mb">
+          <div className="eh-between" style={{ marginBottom: ".6rem" }}>
+            <h3 style={{ margin: 0 }}>Chapter transfer requests</h3>
+            <Pill color="gold">{transfers.data!.length} awaiting approval</Pill>
+          </div>
+          <div className="eh-list">
+            {transfers.data!.map(({ req, memberName, memberEmail, fromName, toName }) => (
+              <div className="row" key={req.id} style={{ alignItems: "flex-start" }}>
+                <div style={{ flex: 1 }}>
+                  <div className="t">{memberName ?? memberEmail ?? "Member"}</div>
+                  <div className="d">{fromName ?? "No chapter"} → <b>{toName ?? "?"}</b></div>
+                  {req.note && <div className="d" style={{ marginTop: ".2rem" }}>“{req.note}”</div>}
+                  <div className="d eh-muted">{fmtDate(req.createdAt)}</div>
+                </div>
+                <div className="eh-row">
+                  <button className="eh-btn gold sm" disabled={decideTransfer.isPending}
+                          onClick={() => decideTransfer.mutate({ id: req.id, decision: "approve" })}>Approve</button>
+                  <button className="eh-btn ghost sm danger" disabled={decideTransfer.isPending}
+                          onClick={() => decideTransfer.mutate({ id: req.id, decision: "reject" })}>Reject</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {!ch && (
         <>
@@ -77,8 +128,8 @@ export default function AdminChapters() {
                   <Pill color={STATUS_COLOR[c.status] ?? "grey"}>{CHAPTER_STATUS_LABEL[c.status as ChapterStatus]}</Pill>
                   <span className="eh-muted eh-sm eh-num">{c.memberCount} members</span>
                 </div>
-                <h3 className="eh-mt">{c.name}</h3>
-                <p className="eh-sm eh-muted">{[c.city, c.country].filter(Boolean).join(", ") || "—"}</p>
+                <h3 className="eh-mt">{c.name}{c.code ? <span className="eh-muted eh-sm eh-num" style={{ marginLeft: ".4rem" }}>{c.code}</span> : null}</h3>
+                <p className="eh-sm eh-muted">{geoLine(c)}</p>
               </button>
             ))}
           </div>
@@ -94,14 +145,40 @@ export default function AdminChapters() {
           <div className="eh-card eh-mb">
             <div className="eh-between">
               <div>
-                <h3 style={{ margin: 0 }}>{ch.name}</h3>
-                <div className="eh-muted eh-sm">{[ch.city, ch.country].filter(Boolean).join(", ") || "—"} · {detail.data!.roster.length} members</div>
+                <h3 style={{ margin: 0 }}>{ch.name}{ch.code ? <span className="eh-muted eh-sm eh-num" style={{ marginLeft: ".5rem" }}>{ch.code}</span> : null}</h3>
+                <div className="eh-muted eh-sm">{geoLine(ch)} · {detail.data!.roster.length} members</div>
+                {ch.meetingCadence && <div className="eh-muted eh-sm">Meets: {ch.meetingCadence}</div>}
               </div>
               <Pill color={STATUS_COLOR[ch.status] ?? "grey"}>{CHAPTER_STATUS_LABEL[ch.status as ChapterStatus]}</Pill>
             </div>
             <div className="eh-row eh-mt">
+              <button className="eh-btn ghost sm" onClick={() => setEditOpen(true)}>Edit details</button>
               <ChapterStatusSelect current={ch.status} pending={saveChapter.isPending}
-                                   onChange={(status) => saveChapter.mutate({ id: ch.id, name: ch.name, city: ch.city ?? undefined, country: ch.country ?? undefined, status })} />
+                                   onChange={(status) => saveChapter.mutate({ id: ch.id, name: ch.name, status })} />
+            </div>
+          </div>
+
+          {/* members / roster */}
+          <div className="eh-between" style={{ margin: "1.25rem 0 .75rem" }}>
+            <h2 className="eh-h2" style={{ margin: 0 }}>Members</h2>
+            <button className="eh-btn sm gold" onClick={() => setAddOpen(true)}>+ Add members</button>
+          </div>
+          <div className="eh-card">
+            {detail.data!.roster.length === 0 && <Empty big="No members yet." p="Assign members to this chapter to build its roster." />}
+            <div className="eh-list">
+              {detail.data!.roster.map(({ member, user }) => (
+                <div className="row" key={member.id}>
+                  <div className="eh-row" style={{ flexWrap: "nowrap", flex: 1 }}>
+                    <span className="eh-avatar">{initials(user.name)}</span>
+                    <div>
+                      <div className="t">{user.name ?? user.email}</div>
+                      <div className="d">{member.company ?? user.email ?? ""}</div>
+                    </div>
+                  </div>
+                  <button className="eh-btn ghost sm" disabled={setHome.isPending}
+                          onClick={() => setHome.mutate({ memberId: member.id, chapterId: null })}>Remove</button>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -181,8 +258,20 @@ export default function AdminChapters() {
 
       {chapterOpen && (
         <Modal title="New chapter" onClose={() => setChapterOpen(false)}>
-          <ChapterForm pending={saveChapter.isPending}
+          <ChapterForm pending={saveChapter.isPending} submitLabel="Create seed chapter →"
                        onSubmit={(v) => saveChapter.mutate(v)} />
+        </Modal>
+      )}
+      {editOpen && ch && (
+        <Modal title="Edit chapter" onClose={() => setEditOpen(false)}>
+          <ChapterForm pending={saveChapter.isPending} submitLabel="Save chapter →"
+                       initial={ch} onSubmit={(v) => saveChapter.mutate({ ...v, id: ch.id })} />
+        </Modal>
+      )}
+      {addOpen && ch && (
+        <Modal title={`Add members to ${ch.name}`} onClose={() => setAddOpen(false)} wide>
+          <AddMembers chapterId={ch.id} pending={setHome.isPending}
+                      onAssign={(memberId) => setHome.mutate({ memberId, chapterId: ch.id })} />
         </Modal>
       )}
       {electionOpen && ch && (
@@ -222,20 +311,80 @@ function ChapterStatusSelect(props: { current: string; pending: boolean; onChang
   );
 }
 
-function ChapterForm(props: { pending: boolean; onSubmit: (v: { name: string; city?: string; country?: string; status: ChapterStatus }) => void }) {
-  const [name, setName] = useState("");
-  const [city, setCity] = useState("");
-  const [country, setCountry] = useState("");
+function AddMembers(props: { chapterId: number; pending: boolean; onAssign: (memberId: number) => void }) {
+  const [q, setQ] = useState("");
+  const res = trpc.adminEngage.assignableMembers.useQuery(
+    { q: q || undefined, excludeChapterId: props.chapterId }, { retry: false },
+  );
   return (
     <>
-      <Field label="Chapter name"><input className="eh-input" value={name} onChange={(e) => setName(e.target.value)} minLength={2} placeholder="eHive Dubai" /></Field>
-      <div className="eh-grid g2">
-        <Field label="City"><input className="eh-input" value={city} onChange={(e) => setCity(e.target.value)} /></Field>
-        <Field label="Country"><input className="eh-input" value={country} onChange={(e) => setCountry(e.target.value)} /></Field>
+      <Field label="Search members by name, email or company">
+        <input className="eh-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Start typing…" autoFocus />
+      </Field>
+      {res.isLoading && <Spinner />}
+      {res.data && res.data.length === 0 && <Empty big="No members match." p="Everyone matching is already in this chapter." />}
+      <div className="eh-list">
+        {(res.data ?? []).map((m) => (
+          <div className="row" key={m.id}>
+            <div className="eh-row" style={{ flexWrap: "nowrap", flex: 1 }}>
+              <span className="eh-avatar">{initials(m.name)}</span>
+              <div>
+                <div className="t">{m.name ?? m.email}</div>
+                <div className="d">
+                  {m.company ?? m.email ?? ""}
+                  {m.chapterName ? <> · currently <b>{m.chapterName}</b></> : <> · no chapter</>}
+                </div>
+              </div>
+            </div>
+            <button className="eh-btn sm gold" disabled={props.pending}
+                    onClick={() => props.onAssign(m.id)}>
+              {m.chapterName ? "Move here" : "Assign"}
+            </button>
+          </div>
+        ))}
       </div>
-      <button className="eh-btn gold" style={{ width: "100%" }} disabled={props.pending || name.trim().length < 2}
-              onClick={() => props.onSubmit({ name: name.trim(), city: city || undefined, country: country || undefined, status: "seed" })}>
-        {props.pending ? "Saving…" : "Create seed chapter →"}
+    </>
+  );
+}
+
+function ChapterForm(props: {
+  pending: boolean; submitLabel: string; initial?: Partial<ChapterVals>;
+  onSubmit: (v: ChapterVals) => void;
+}) {
+  const i = props.initial ?? {};
+  const [v, setV] = useState<ChapterVals>({
+    name: i.name ?? "", code: i.code ?? "", country: i.country ?? "", region: i.region ?? "",
+    state: i.state ?? "", city: i.city ?? "", zone: i.zone ?? "", meetingCadence: i.meetingCadence ?? "",
+    status: (i.status as ChapterStatus) ?? "seed",
+  });
+  const set = (k: keyof ChapterVals) => (e: React.ChangeEvent<HTMLInputElement>) => setV({ ...v, [k]: e.target.value });
+  const clean = (): ChapterVals => ({
+    name: v.name.trim(), code: v.code || undefined, country: v.country || undefined, region: v.region || undefined,
+    state: v.state || undefined, city: v.city || undefined, zone: v.zone || undefined,
+    meetingCadence: v.meetingCadence || undefined, status: v.status,
+  });
+  return (
+    <>
+      <div className="eh-grid g2">
+        <Field label="Chapter name"><input className="eh-input" value={v.name} onChange={set("name")} minLength={2} placeholder="eHive Dubai" /></Field>
+        <Field label="Chapter code"><input className="eh-input" value={v.code} onChange={set("code")} placeholder="AE-DXB-01" /></Field>
+      </div>
+      <div className="eh-eyebrow" style={{ margin: ".2rem 0 .4rem" }}>Location — Country → Region → State → City → Zone</div>
+      <div className="eh-grid g2">
+        <Field label="Country"><input className="eh-input" value={v.country} onChange={set("country")} placeholder="United Arab Emirates" /></Field>
+        <Field label="Region"><input className="eh-input" value={v.region} onChange={set("region")} placeholder="Gulf" /></Field>
+      </div>
+      <div className="eh-grid g2">
+        <Field label="State / Emirate"><input className="eh-input" value={v.state} onChange={set("state")} placeholder="Dubai" /></Field>
+        <Field label="City"><input className="eh-input" value={v.city} onChange={set("city")} placeholder="Dubai" /></Field>
+      </div>
+      <div className="eh-grid g2">
+        <Field label="Zone / Area"><input className="eh-input" value={v.zone} onChange={set("zone")} placeholder="DIFC" /></Field>
+        <Field label="Meeting cadence"><input className="eh-input" value={v.meetingCadence} onChange={set("meetingCadence")} placeholder="Weekly · Tue 7:30am" /></Field>
+      </div>
+      <button className="eh-btn gold" style={{ width: "100%" }} disabled={props.pending || v.name.trim().length < 2}
+              onClick={() => props.onSubmit(clean())}>
+        {props.pending ? "Saving…" : props.submitLabel}
       </button>
     </>
   );

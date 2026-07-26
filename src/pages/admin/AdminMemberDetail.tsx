@@ -27,6 +27,11 @@ export default function AdminMemberDetail() {
     onSuccess: () => { toast("Score adjusted."); invalidate(); setAdjust(false); },
     onError: (e) => toast(e.message),
   });
+  const chapters = trpc.adminEngage.chaptersAdmin.useQuery(undefined, { retry: false });
+  const setChapter = trpc.adminEngage.setHomeChapter.useMutation({
+    onSuccess: () => { toast("Home chapter updated."); invalidate(); },
+    onError: (e) => toast(e.message),
+  });
 
   if (q.isLoading) return <EhShell groups={ADMIN_NAV} brandSub="Admin"><Spinner /></EhShell>;
   if (!q.data) return <EhShell groups={ADMIN_NAV} brandSub="Admin"><Empty big="Member not found." /></EhShell>;
@@ -67,6 +72,15 @@ export default function AdminMemberDetail() {
                 <option value="active">active</option>
                 <option value="paused">paused</option>
                 <option value="cancelled">cancelled</option>
+              </select>
+            </Field>
+            <Field label="Home chapter">
+              <select className="eh-select" value={member.homeChapterId ?? ""}
+                      onChange={(e) => setChapter.mutate({ memberId: mid, chapterId: e.target.value ? Number(e.target.value) : null })}>
+                <option value="">Unassigned</option>
+                {(chapters.data ?? []).map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}{c.city ? ` — ${c.city}` : ""}</option>
+                ))}
               </select>
             </Field>
             <button className="eh-btn ghost sm" onClick={() => setAdjust(true)}>Adjust Hive Score →</button>
