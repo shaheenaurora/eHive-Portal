@@ -6,3 +6,9 @@
    reveals can break its fixed positioning, so hide by visibility too. */
 .step p{color:var(--mut)}
 @media(max-width:760px){body:not(.menu-open) .nav-links{visibility:hidden;pointer-events:none}body.menu-open .nav-links{visibility:visible;pointer-events:auto}}
+
+/* The scrolled nav's backdrop-filter establishes a containing block that breaks
+   the mobile menu's full-screen fixed positioning (it collapses to the header
+   bar, leaving the page visible behind the overlay). Drop the filter while the
+   menu is open so the overlay covers the whole viewport again. */
+@media(max-width:760px){body.menu-open .site-nav,body.menu-open .site-nav.scrolled{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}}
