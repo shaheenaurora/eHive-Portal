@@ -610,6 +610,24 @@ export const chapterTransfers = mysqlTable("chapter_transfers", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+/* BRD 6.7 — chapter leadership team. A member holds a named office in a chapter
+   (President, Treasurer, PODs Lead …), assigned directly or from an election.
+   One active holder per role per chapter; superseded rows are marked ended. */
+export const chapterRoles = mysqlTable("chapter_roles", {
+  id: serial("id").primaryKey(),
+  chapterId: bigint("chapterId", { mode: "number", unsigned: true }).notNull(),
+  memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+  role: varchar("role", { length: 64 }).notNull(),          // CHAPTER_ROLES key, or "other"
+  title: varchar("title", { length: 128 }),                 // custom title when role = "other"
+  responsibilities: text("responsibilities"),               // optional override of the default
+  electionId: bigint("electionId", { mode: "number", unsigned: true }), // set when elected
+  termStart: timestamp("termStart"),
+  termEnd: timestamp("termEnd"),
+  status: mysqlEnum("status", ["active", "ended"]).notNull().default("active"),
+  appointedBy: varchar("appointedBy", { length: 320 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 /* BRD 6.7 — elections: eligibility-checked candidates, secret ballot, quorum, tamper-evident results.
    Secrecy: ballots store NO voter identity; participation is recorded separately in ballotRoll. */
 export const elections = mysqlTable("elections", {

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { trpc } from "@/providers/trpc";
 import { EhShell, MEMBER_NAV, PageHead, Pill, Empty, Spinner, Modal, Field, toast } from "@/components/eh";
 import { fmtDate } from "@/lib/ehf";
-import { CHAPTER_STATUS_LABEL } from "@contracts/constants";
+import { CHAPTER_STATUS_LABEL, CHAPTER_ROLE_RESP, chapterRoleTitle } from "@contracts/constants";
 import type { ChapterStatus } from "@contracts/constants";
 
 export default function Chapter() {
@@ -96,6 +96,29 @@ export default function Chapter() {
             <div className="eh-mb" style={{ marginTop: "-.25rem" }}>
               <button className="eh-btn ghost sm" onClick={() => setTransferOpen(true)}>Request transfer to another chapter →</button>
             </div>
+          )}
+
+          {/* leadership board */}
+          {(q.data!.board ?? []).length > 0 && (
+            <>
+              <h2 className="eh-h2" style={{ margin: "1.5rem 0 .75rem" }}>Chapter leadership</h2>
+              <div className="eh-card">
+                <div className="eh-list">
+                  {q.data!.board!.map((b) => {
+                    const mine = (q.data!.myRoles ?? []).includes(b.role);
+                    return (
+                      <div className="row" key={b.id} style={{ alignItems: "flex-start" }}>
+                        <div style={{ flex: 1 }}>
+                          <div className="t">{chapterRoleTitle(b.role, b.title)} — {b.memberName} {mine && <Pill color="green">you</Pill>}</div>
+                          <div className="d">{b.responsibilities || CHAPTER_ROLE_RESP[b.role] || ""}</div>
+                        </div>
+                        {b.electionId ? <Pill color="gold">elected</Pill> : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
           )}
 
           {/* elections */}

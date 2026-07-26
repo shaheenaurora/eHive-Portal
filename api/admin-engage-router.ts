@@ -528,11 +528,63 @@ export const adminEngageRouter = createRouter({
         .where(eq(schema.motions.chapterId, chapter.id)).orderBy(desc(schema.motions.createdAt)).limit(20);
       const budgets = await db.select().from(schema.chapterBudgets)
         .where(eq(schema.chapterBudgets.chapterId, chapter.id)).orderBy(desc(schema.chapterBudgets.createdAt)).limit(40);
+      const roles = await db.select({ role: schema.chapterRoles, name: schema.users.name, email: schema.users.email })
+        .from(schema.chapterRoles)
+        .leftJoin(schema.members, eq(schema.members.id, schema.chapterRoles.memberId))
+        .leftJoin(schema.users, eq(schema.users.id, schema.members.userId))
+        .where(and(eq(schema.chapterRoles.chapterId, chapter.id), eq(schema.chapterRoles.status, "active")))
+        .orderBy(asc(schema.chapterRoles.createdAt));
       return {
         chapter,
-        roster: roster.map(r => ({ id: r.member.id, name: r.user.name ?? r.user.email ?? "Member", tier: r.member.tier })),
+        roster,
+        board: roles.map(r => ({ ...r.role, memberName: r.name ?? r.email ?? "Member" })),
         elections: els, motions: mos, budgets,
       };
+    }),
+
+  /* Assign a member of the chapter to a leadership role (directly or from an
+     election result). One active holder per role — the previous holder is
+     retired. Only members of the chapter are eligible. */
+  assignChapterRole: scopedAdmin("chapters")
+    .input(z.object({
+      chapterId: z.number(), memberId: z.number(), role: z.string().min(2).max(64),
+      title: z.string().max(128).optional(), responsibilities: z.string().max(2000).optional(),
+      electionId: z.number().optional(),
+      termStart: z.coerce.date().optional(), termEnd: z.coerce.date().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = getDb();
+      const m = (await db.select().from(schema.members).where(eq(schema.members.id, input.memberId)).limit(1)).at(0);
+      if (!m) throw new TRPCError({ code: "NOT_FOUND", message: "Member not found" });
+      if (m.homeChapterId !== input.chapterId)
+        throw new TRPCError({ code: "BAD_REQUEST", message: "A role can only go to a member of this chapter." });
+      // Retire the current holder of this role in this chapter.
+      await db.update(schema.chapterRoles)
+        .set({ status: "ended", termEnd: new Date() })
+        .where(and(eq(schema.chapterRoles.chapterId, input.chapterId),
+                   eq(schema.chapterRoles.role, input.role), eq(schema.chapterRoles.status, "active")));
+      await db.insert(schema.chapterRoles).values({
+        chapterId: input.chapterId, memberId: input.memberId, role: input.role,
+        title: input.role === "other" ? (input.title ?? "Officer") : null,
+        responsibilities: input.responsibilities, electionId: input.electionId,
+        termStart: input.termStart ?? new Date(), termEnd: input.termEnd, status: "active",
+        appointedBy: ctx.user.email,
+      });
+      await audit(ctx.user, "chapter.role.assign",
+        { type: "member", id: input.memberId, detail: `${input.role} @ chapter #${input.chapterId}` });
+      return { ok: true };
+    }),
+
+  endChapterRole: scopedAdmin("chapters")
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = getDb();
+      const row = (await db.select().from(schema.chapterRoles).where(eq(schema.chapterRoles.id, input.id)).limit(1)).at(0);
+      if (!row) throw new TRPCError({ code: "NOT_FOUND" });
+      await db.update(schema.chapterRoles).set({ status: "ended", termEnd: new Date() })
+        .where(eq(schema.chapterRoles.id, input.id));
+      await audit(ctx.user, "chapter.role.end", { type: "member", id: row.memberId, detail: `${row.role} ended` });
+      return { ok: true };
     }),
 
   saveElection: adminQuery
@@ -574,7 +626,21 @@ export const adminEngageRouter = createRouter({
         await db.update(schema.elections)
           .set({ status: "closed", closesAt: new Date(), resultHash: hash })
           .where(eq(schema.elections.id, e.id));
-        return { ok: true, turnout, memberCount, quorumMet, resultHash: hash };
+        // Winner = candidate with the most votes (only meaningful when quorum met
+        // and there's a single top scorer). Surfaced so the seat can be filled.
+        let winner: { memberId: number; name: string; votes: number } | null = null;
+        const sorted = [...tally].sort((a, b) => Number(b.n) - Number(a.n));
+        const top = sorted[0];
+        const tied = sorted.length > 1 && Number(sorted[1].n) === Number(top?.n ?? 0);
+        if (quorumMet && top && Number(top.n) > 0 && !tied) {
+          const cand = (await db.select({ memberId: schema.candidates.memberId, name: schema.users.name })
+            .from(schema.candidates)
+            .leftJoin(schema.members, eq(schema.members.id, schema.candidates.memberId))
+            .leftJoin(schema.users, eq(schema.users.id, schema.members.userId))
+            .where(eq(schema.candidates.id, top.candidateId)).limit(1)).at(0);
+          if (cand) winner = { memberId: cand.memberId, name: cand.name ?? "Member", votes: Number(top.n) };
+        }
+        return { ok: true, turnout, memberCount, quorumMet, resultHash: hash, seat: e.seat, winner };
       }
       await db.update(schema.elections).set({ status: "open" }).where(eq(schema.elections.id, e.id));
       return { ok: true };

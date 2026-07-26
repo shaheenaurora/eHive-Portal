@@ -521,7 +521,16 @@ export const engageRouter = createRouter({
       .where(and(eq(schema.chapterBudgets.chapterId, chapter.id),
                  sql`${schema.chapterBudgets.status} != 'rejected'`))
       .orderBy(desc(schema.chapterBudgets.createdAt)).limit(20);
-    return { chapter, memberCount, elections: electionOut, motions: motionOut, budgets };
+    // Leadership board — who holds each office, shown to every member.
+    const roleRows = await db.select({ role: schema.chapterRoles, name: schema.users.name })
+      .from(schema.chapterRoles)
+      .leftJoin(schema.members, eq(schema.members.id, schema.chapterRoles.memberId))
+      .leftJoin(schema.users, eq(schema.users.id, schema.members.userId))
+      .where(and(eq(schema.chapterRoles.chapterId, chapter.id), eq(schema.chapterRoles.status, "active")))
+      .orderBy(asc(schema.chapterRoles.createdAt));
+    const board = roleRows.map(r => ({ ...r.role, memberName: r.name ?? "Member" }));
+    const myRoles = board.filter(b => b.memberId === member.id).map(b => b.role);
+    return { chapter, memberCount, elections: electionOut, motions: motionOut, budgets, board, myRoles };
   }),
 
   standForElection: authedQuery
