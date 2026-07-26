@@ -120,7 +120,9 @@ function LeadDetail({ lead, onClose, onSaved }: { lead: LeadRow; onClose: () => 
           </div>
           <p className="eh-sm eh-muted" style={{ margin: ".5rem 0 1rem" }}>{report.band.copy}</p>
 
-          <div className="eh-eyebrow" style={{ marginBottom: ".5rem" }}>By area · weakest highlighted</div>
+          <div className="eh-eyebrow" style={{ marginBottom: ".5rem" }}>
+            By area{report.weakest.length ? " · weakest highlighted" : report.strongest.length ? " · strengths highlighted" : ""}
+          </div>
           <div style={{ display: "grid", gap: ".55rem" }}>
             {report.domains.map((d) => {
               const weak = report.weakest.some((w) => w.key === d.key);
