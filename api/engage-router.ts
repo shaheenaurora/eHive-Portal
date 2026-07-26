@@ -9,7 +9,12 @@ import {
 } from "./queries/circle";
 import { getVapidPublicKey } from "./lib/push";
 import { tierRank, POINT_RULE_DEFAULTS, POINT_RULE_LABEL, POINT_RULE_FACTOR, ZENITH_CAP, PUSH_CATEGORY_KEYS,
-  EVENT_CHECKIN_OPENS_BEFORE_MS, EVENT_CHECKIN_CLOSES_AFTER_MS } from "@contracts/constants";
+  EVENT_CHECKIN_OPENS_BEFORE_MS, EVENT_CHECKIN_CLOSES_AFTER_MS, BUDDY_CHECKIN_DAYS } from "@contracts/constants";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** The 30-day buddy check-in can't be completed in the first few weeks — it
+ *  opens a short grace window before day 30 so it lands around the real mark. */
+const BUDDY_CHECKIN_OPENS_AFTER_DAYS = BUDDY_CHECKIN_DAYS - 5; // day 25
 
 async function requireMember(userId: number) {
   const member = await getMemberByUserId(userId);
@@ -260,6 +265,14 @@ export const engageRouter = createRouter({
       const row = (await db.select().from(schema.buddies).where(eq(schema.buddies.id, input.id)).limit(1)).at(0);
       if (!row || row.buddyMemberId !== member.id) throw new TRPCError({ code: "FORBIDDEN" });
       if (row.checkinAt) return { ok: true };
+      // Temporal integrity: it's a *30-day* check-in — it can't be completed in
+      // the first few weeks after pairing.
+      const opensAt = new Date(row.pairedAt).getTime() + BUDDY_CHECKIN_OPENS_AFTER_DAYS * DAY_MS;
+      if (Date.now() < opensAt) {
+        const days = Math.ceil((opensAt - Date.now()) / DAY_MS);
+        throw new TRPCError({ code: "PRECONDITION_FAILED",
+          message: `The 30-day check-in opens closer to the mark — about ${days} day${days === 1 ? "" : "s"} from now.` });
+      }
       await db.update(schema.buddies).set({ checkinAt: new Date() }).where(eq(schema.buddies.id, row.id));
       await awardRulePoints(member.id, "one_to_one", "Buddy 30-day check-in");
       await notify(row.newMemberId, "Your buddy completed your 30-day check-in.", "connect");
@@ -535,6 +548,10 @@ export const engageRouter = createRouter({
       const db = getDb();
       const e = (await db.select().from(schema.elections).where(eq(schema.elections.id, input.electionId)).limit(1)).at(0);
       if (!e || e.status !== "voting") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Voting is not open" });
+      if (e.opensAt && Date.now() < new Date(e.opensAt).getTime())
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Voting hasn't opened yet." });
+      if (e.closesAt && Date.now() > new Date(e.closesAt).getTime())
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Voting has closed." });
       if (member.homeChapterId !== e.chapterId) throw new TRPCError({ code: "FORBIDDEN", message: "Not your home chapter" });
       const cand = (await db.select().from(schema.candidates)
         .where(and(eq(schema.candidates.id, input.candidateId), eq(schema.candidates.electionId, e.id))).limit(1)).at(0);
@@ -555,6 +572,8 @@ export const engageRouter = createRouter({
       const db = getDb();
       const mo = (await db.select().from(schema.motions).where(eq(schema.motions.id, input.motionId)).limit(1)).at(0);
       if (!mo || mo.status !== "open") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Motion is closed" });
+      if (mo.closesAt && Date.now() > new Date(mo.closesAt).getTime())
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Voting on this motion has closed." });
       if (member.homeChapterId !== mo.chapterId) throw new TRPCError({ code: "FORBIDDEN", message: "Not your home chapter" });
       const dup = await db.select().from(schema.motionVotes)
         .where(and(eq(schema.motionVotes.motionId, mo.id), eq(schema.motionVotes.memberId, member.id))).limit(1);
