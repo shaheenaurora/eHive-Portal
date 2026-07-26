@@ -530,7 +530,15 @@ export const engageRouter = createRouter({
       .orderBy(asc(schema.chapterRoles.createdAt));
     const board = roleRows.map(r => ({ ...r.role, memberName: r.name ?? "Member" }));
     const myRoles = board.filter(b => b.memberId === member.id).map(b => b.role);
-    return { chapter, memberCount, elections: electionOut, motions: motionOut, budgets, board, myRoles };
+    // Chapter learnings — resources officers share with the whole chapter.
+    const posts = await db.select({ post: schema.chapterPosts, name: schema.users.name })
+      .from(schema.chapterPosts)
+      .leftJoin(schema.members, eq(schema.members.id, schema.chapterPosts.authorMemberId))
+      .leftJoin(schema.users, eq(schema.users.id, schema.members.userId))
+      .where(eq(schema.chapterPosts.chapterId, chapter.id))
+      .orderBy(desc(schema.chapterPosts.createdAt)).limit(30);
+    const learnings = posts.map(p => ({ ...p.post, authorName: p.name ?? "Officer" }));
+    return { chapter, memberCount, elections: electionOut, motions: motionOut, budgets, board, myRoles, learnings };
   }),
 
   standForElection: authedQuery

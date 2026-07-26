@@ -16,10 +16,41 @@ export default function Chapter() {
   const [toChapter, setToChapter] = useState("");
   const [transferNote, setTransferNote] = useState("");
 
+  const isOfficer = (q.data?.myRoles ?? []).length > 0;
+  const overview = trpc.officer.overview.useQuery(undefined, { retry: false, enabled: isOfficer });
+  const [signupSearch, setSignupSearch] = useState("");
+  const candidates = trpc.officer.signupCandidates.useQuery(
+    { q: signupSearch || undefined }, { retry: false, enabled: isOfficer },
+  );
+  const [mentee, setMentee] = useState("");
+  const [mentor, setMentor] = useState("");
+  const [learnTitle, setLearnTitle] = useState("");
+  const [learnBody, setLearnBody] = useState("");
+  const [learnUrl, setLearnUrl] = useState("");
+
   function refresh() {
     utils.engage.myChapter.invalidate();
     utils.circle.myChapterTransfer.invalidate();
+    utils.officer.overview.invalidate();
+    utils.officer.signupCandidates.invalidate();
   }
+
+  const signup = trpc.officer.signupMember.useMutation({
+    onSuccess: () => { toast("Member added to your chapter."); refresh(); },
+    onError: (e) => toast(e.message),
+  });
+  const assignMentor = trpc.officer.assignMentor.useMutation({
+    onSuccess: () => { toast("Mentor assigned."); setMentee(""); setMentor(""); refresh(); },
+    onError: (e) => toast(e.message),
+  });
+  const postLearning = trpc.officer.postLearning.useMutation({
+    onSuccess: () => { toast("Learning posted to your chapter."); setLearnTitle(""); setLearnBody(""); setLearnUrl(""); refresh(); },
+    onError: (e) => toast(e.message),
+  });
+  const deleteLearning = trpc.officer.deleteLearning.useMutation({
+    onSuccess: () => { toast("Removed."); refresh(); },
+    onError: (e) => toast(e.message),
+  });
 
   const requestTransfer = trpc.circle.requestChapterTransfer.useMutation({
     onSuccess: () => {
@@ -116,6 +147,118 @@ export default function Chapter() {
                       </div>
                     );
                   })}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* officer console — only for members who hold a chapter role */}
+          {isOfficer && overview.data && (
+            <>
+              <div className="eh-between" style={{ margin: "1.5rem 0 .75rem" }}>
+                <h2 className="eh-h2" style={{ margin: 0 }}>Chapter console</h2>
+                <Pill color="gold">Officer</Pill>
+              </div>
+              <p className="eh-sm eh-muted" style={{ marginTop: "-.4rem" }}>
+                You lead this chapter. Sign up members, assign mentors, onboard newcomers and share learnings — scoped to {ch.name}.
+              </p>
+
+              <div className="eh-grid g2" style={{ alignItems: "start" }}>
+                {/* sign up members */}
+                <div className="eh-card">
+                  <h3>Sign up members</h3>
+                  <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>Add an unassigned member to your chapter.</p>
+                  <Field label="Search">
+                    <input className="eh-input" value={signupSearch} onChange={(e) => setSignupSearch(e.target.value)} placeholder="Name, email or company" />
+                  </Field>
+                  <div className="eh-list">
+                    {(candidates.data ?? []).length === 0 && <div className="eh-sm eh-muted">No unassigned members match.</div>}
+                    {(candidates.data ?? []).map((c) => (
+                      <div className="row" key={c.id}>
+                        <div style={{ flex: 1 }}>
+                          <div className="t">{c.name ?? c.email}</div>
+                          <div className="d">{c.company ?? c.email ?? ""}</div>
+                        </div>
+                        <button className="eh-btn sm gold" disabled={signup.isPending}
+                                onClick={() => signup.mutate({ memberId: c.id })}>Add →</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* assign mentor */}
+                <div className="eh-card">
+                  <h3>Assign a mentor</h3>
+                  <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>Pair a member with a mentor from your chapter.</p>
+                  <Field label="Member (mentee)">
+                    <select className="eh-select" value={mentee} onChange={(e) => setMentee(e.target.value)}>
+                      <option value="">Select…</option>
+                      {overview.data.roster.map((m) => <option key={m.id} value={m.id}>{m.name}{m.hasMentor ? " (has mentor)" : ""}</option>)}
+                    </select>
+                  </Field>
+                  <Field label="Mentor">
+                    <select className="eh-select" value={mentor} onChange={(e) => setMentor(e.target.value)}>
+                      <option value="">Select…</option>
+                      {overview.data.roster.filter((m) => String(m.id) !== mentee).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    </select>
+                  </Field>
+                  <button className="eh-btn gold" disabled={assignMentor.isPending || !mentee || !mentor}
+                          onClick={() => assignMentor.mutate({ menteeId: Number(mentee), mentorId: Number(mentor) })}>
+                    Assign mentor
+                  </button>
+                </div>
+              </div>
+
+              {/* onboarding queue */}
+              <div className="eh-card eh-mt">
+                <h3>Onboarding — members without a mentor</h3>
+                <div className="eh-list">
+                  {overview.data.roster.filter((m) => !m.hasMentor).length === 0 && (
+                    <div className="eh-sm eh-muted">Everyone in your chapter has a mentor. 🎉</div>
+                  )}
+                  {overview.data.roster.filter((m) => !m.hasMentor).map((m) => (
+                    <div className="row" key={m.id}>
+                      <div style={{ flex: 1 }}><div className="t">{m.name}</div><div className="d">{m.company ?? ""}</div></div>
+                      <button className="eh-btn ghost sm" onClick={() => { setMentee(String(m.id)); setMentor(""); }}>Assign mentor →</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* post a learning */}
+              <div className="eh-card eh-mt">
+                <h3>Share a learning</h3>
+                <Field label="Title"><input className="eh-input" value={learnTitle} onChange={(e) => setLearnTitle(e.target.value)} placeholder="e.g. How we filled 3 seats last month" /></Field>
+                <Field label="Details (optional)"><textarea className="eh-textarea" value={learnBody} onChange={(e) => setLearnBody(e.target.value)} maxLength={8000} /></Field>
+                <Field label="Link (optional)"><input className="eh-input" value={learnUrl} onChange={(e) => setLearnUrl(e.target.value)} placeholder="https://…" /></Field>
+                <button className="eh-btn gold" disabled={postLearning.isPending || learnTitle.trim().length < 3}
+                        onClick={() => postLearning.mutate({ title: learnTitle.trim(), body: learnBody || undefined, url: learnUrl || undefined })}>
+                  Post to chapter
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* chapter learnings — visible to all members */}
+          {(q.data!.learnings ?? []).length > 0 && (
+            <>
+              <h2 className="eh-h2" style={{ margin: "1.5rem 0 .75rem" }}>Chapter learnings</h2>
+              <div className="eh-card">
+                <div className="eh-list">
+                  {q.data!.learnings!.map((l) => (
+                    <div className="row" key={l.id} style={{ alignItems: "flex-start" }}>
+                      <div style={{ flex: 1 }}>
+                        <div className="t">{l.title}</div>
+                        {l.body && <div className="d" style={{ whiteSpace: "pre-wrap" }}>{l.body}</div>}
+                        {l.url && <a className="eh-sm" href={l.url} target="_blank" rel="noreferrer" style={{ color: "var(--eh-gold)" }}>Open link →</a>}
+                        <div className="d eh-muted">{l.authorName} · {fmtDate(l.createdAt)}</div>
+                      </div>
+                      {isOfficer && (
+                        <button className="eh-btn ghost sm danger" disabled={deleteLearning.isPending}
+                                onClick={() => deleteLearning.mutate({ id: l.id })}>Remove</button>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
             </>

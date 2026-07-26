@@ -610,6 +610,18 @@ export const chapterTransfers = mysqlTable("chapter_transfers", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+/* BRD 6.7 — chapter "learnings": notes, resources and playbooks an officer
+   shares with their chapter to drive growth. */
+export const chapterPosts = mysqlTable("chapter_posts", {
+  id: serial("id").primaryKey(),
+  chapterId: bigint("chapterId", { mode: "number", unsigned: true }).notNull(),
+  authorMemberId: bigint("authorMemberId", { mode: "number", unsigned: true }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  body: text("body"),
+  url: varchar("url", { length: 512 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 /* BRD 6.7 — chapter leadership team. A member holds a named office in a chapter
    (President, Treasurer, PODs Lead …), assigned directly or from an election.
    One active holder per role per chapter; superseded rows are marked ended. */
