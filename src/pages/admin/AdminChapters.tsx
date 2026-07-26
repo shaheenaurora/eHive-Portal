@@ -2,7 +2,7 @@ import { useState } from "react";
 import { trpc } from "@/providers/trpc";
 import { EhShell, ADMIN_NAV, PageHead, Pill, Spinner, Modal, Field, Empty, toast } from "@/components/eh";
 import { fmtDate, initials } from "@/lib/ehf";
-import { CHAPTER_STATUS_LABEL } from "@contracts/constants";
+import { CHAPTER_STATUS_LABEL, CHAPTER_ROLES, CHAPTER_ROLE_RESP, chapterRoleTitle } from "@contracts/constants";
 import type { ChapterStatus } from "@contracts/constants";
 
 const STATUS_COLOR: Record<string, "grey" | "blue" | "gold" | "green" | "red"> = {
@@ -32,6 +32,8 @@ export default function AdminChapters() {
   const [electionOpen, setElectionOpen] = useState(false);
   const [motionOpen, setMotionOpen] = useState(false);
   const [budgetOpen, setBudgetOpen] = useState(false);
+  const [roleOpen, setRoleOpen] = useState(false);
+  const [rolePrefill, setRolePrefill] = useState<{ memberId: number; name: string } | null>(null);
 
   function refresh() {
     utils.adminEngage.chaptersAdmin.invalidate();
@@ -56,11 +58,24 @@ export default function AdminChapters() {
     onSuccess: () => { toast("Election created — nominations open."); setElectionOpen(false); refresh(); },
     onError: (e) => toast(e.message),
   });
+  const assignRole = trpc.adminEngage.assignChapterRole.useMutation({
+    onSuccess: () => { toast("Role assigned."); setRoleOpen(false); setRolePrefill(null); refresh(); },
+    onError: (e) => toast(e.message),
+  });
+  const endRole = trpc.adminEngage.endChapterRole.useMutation({
+    onSuccess: () => { toast("Role ended."); refresh(); },
+    onError: (e) => toast(e.message),
+  });
   const setElStatus = trpc.adminEngage.setElectionStatus.useMutation({
     onSuccess: (r) => {
-      toast(r.quorumMet !== undefined
-        ? `Election closed — turnout ${r.turnout}/${r.memberCount}, quorum ${r.quorumMet ? "met" : "NOT met"}. Result digest published.`
-        : "Election updated.");
+      if (r.quorumMet !== undefined) {
+        toast(`Election closed — turnout ${r.turnout}/${r.memberCount}, quorum ${r.quorumMet ? "met" : "NOT met"}.`);
+        if (r.winner) {
+          toast(`Winner: ${r.winner.name} (${r.winner.votes} votes) — appoint to a role.`);
+          setRolePrefill({ memberId: r.winner.memberId, name: r.winner.name });
+          setRoleOpen(true);
+        }
+      } else toast("Election updated.");
       refresh();
     },
     onError: (e) => toast(e.message),
@@ -155,6 +170,27 @@ export default function AdminChapters() {
               <button className="eh-btn ghost sm" onClick={() => setEditOpen(true)}>Edit details</button>
               <ChapterStatusSelect current={ch.status} pending={saveChapter.isPending}
                                    onChange={(status) => saveChapter.mutate({ id: ch.id, name: ch.name, status })} />
+            </div>
+          </div>
+
+          {/* leadership board */}
+          <div className="eh-between" style={{ margin: "1.25rem 0 .75rem" }}>
+            <h2 className="eh-h2" style={{ margin: 0 }}>Leadership board</h2>
+            <button className="eh-btn sm gold" onClick={() => { setRolePrefill(null); setRoleOpen(true); }}>+ Assign role</button>
+          </div>
+          <div className="eh-card">
+            {(detail.data!.board ?? []).length === 0 && <Empty big="No officers yet." p="Assign roles directly, or close an election to appoint the winner." />}
+            <div className="eh-list">
+              {(detail.data!.board ?? []).map((b) => (
+                <div className="row" key={b.id} style={{ alignItems: "flex-start" }}>
+                  <div style={{ flex: 1 }}>
+                    <div className="t">{chapterRoleTitle(b.role, b.title)} — <b>{b.memberName}</b>{b.electionId ? <Pill color="gold">elected</Pill> : null}</div>
+                    <div className="d">{b.responsibilities || CHAPTER_ROLE_RESP[b.role] || ""}</div>
+                  </div>
+                  <button className="eh-btn ghost sm danger" disabled={endRole.isPending}
+                          onClick={() => endRole.mutate({ id: b.id })}>End term</button>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -274,6 +310,14 @@ export default function AdminChapters() {
                       onAssign={(memberId) => setHome.mutate({ memberId, chapterId: ch.id })} />
         </Modal>
       )}
+      {roleOpen && ch && (
+        <Modal title="Assign a leadership role" onClose={() => { setRoleOpen(false); setRolePrefill(null); }}>
+          <AssignRoleForm
+            roster={detail.data!.roster.map((r) => ({ id: r.member.id, name: r.user.name ?? r.user.email ?? "Member" }))}
+            prefill={rolePrefill} pending={assignRole.isPending}
+            onSubmit={(v) => assignRole.mutate({ chapterId: ch.id, ...v })} />
+        </Modal>
+      )}
       {electionOpen && ch && (
         <Modal title="New election" onClose={() => setElectionOpen(false)}>
           <ElectionForm pending={saveElection.isPending}
@@ -385,6 +429,51 @@ function ChapterForm(props: {
       <button className="eh-btn gold" style={{ width: "100%" }} disabled={props.pending || v.name.trim().length < 2}
               onClick={() => props.onSubmit(clean())}>
         {props.pending ? "Saving…" : props.submitLabel}
+      </button>
+    </>
+  );
+}
+
+function AssignRoleForm(props: {
+  roster: { id: number; name: string }[];
+  prefill: { memberId: number; name: string } | null;
+  pending: boolean;
+  onSubmit: (v: { memberId: number; role: string; title?: string; responsibilities?: string }) => void;
+}) {
+  const [memberId, setMemberId] = useState<string>(props.prefill ? String(props.prefill.memberId) : "");
+  const [role, setRole] = useState<string>("president");
+  const [title, setTitle] = useState("");
+  const [resp, setResp] = useState("");
+  const def = CHAPTER_ROLES.find((r) => r.key === role);
+  return (
+    <>
+      <Field label="Member">
+        <select className="eh-select" value={memberId} onChange={(e) => setMemberId(e.target.value)}>
+          <option value="">Select a member…</option>
+          {props.roster.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+        </select>
+      </Field>
+      {props.roster.length === 0 && <p className="eh-sm" style={{ color: "var(--eh-gold)" }}>Add members to this chapter first.</p>}
+      <Field label="Role">
+        <select className="eh-select" value={role} onChange={(e) => setRole(e.target.value)}>
+          {CHAPTER_ROLES.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
+        </select>
+      </Field>
+      {role === "other" && (
+        <Field label="Role title"><input className="eh-input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Visitor Host" /></Field>
+      )}
+      <Field label="Responsibilities">
+        <textarea className="eh-textarea" value={resp} onChange={(e) => setResp(e.target.value)}
+                  placeholder={def?.responsibilities || "What this officer owns."} maxLength={2000} />
+      </Field>
+      <button className="eh-btn gold" style={{ width: "100%" }}
+              disabled={props.pending || !memberId || (role === "other" && !title.trim())}
+              onClick={() => props.onSubmit({
+                memberId: Number(memberId), role,
+                title: role === "other" ? title.trim() : undefined,
+                responsibilities: resp.trim() || undefined,
+              })}>
+        {props.pending ? "Assigning…" : "Assign role →"}
       </button>
     </>
   );

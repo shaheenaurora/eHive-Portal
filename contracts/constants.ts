@@ -221,6 +221,32 @@ export const CHAPTER_STATUS_LABEL: Record<ChapterStatus, string> = {
   mature: "Mature",
   at_risk: "At Risk",
 };
+/* Chapter leadership team (BNI-style board). Roles are assigned to a member of
+   the chapter — directly or from an election result — for smoother governance
+   and growth. `other` allows a custom title. */
+export const CHAPTER_ROLES = [
+  { key: "president", label: "President", responsibilities: "Leads the chapter, chairs meetings, owns chapter health, standards and growth." },
+  { key: "vice_president", label: "Vice President", responsibilities: "Deputises for the President; drives membership growth and member engagement." },
+  { key: "secretary", label: "Secretary", responsibilities: "Keeps minutes and records; runs agendas, communications and attendance." },
+  { key: "treasurer", label: "Treasurer", responsibilities: "Manages the chapter budget, dues, sponsorships and financial reporting." },
+  { key: "membership_coordinator", label: "Membership Coordinator", responsibilities: "Owns applications, visitor hosting, onboarding and the buddy programme." },
+  { key: "events_coordinator", label: "Events Coordinator", responsibilities: "Plans and runs chapter events — venues, speakers and logistics." },
+  { key: "pods_lead", label: "PODs Lead", responsibilities: "Forms and oversees pods/masterminds; keeps cadence and accountability." },
+  { key: "mentorship_lead", label: "Mentorship Lead", responsibilities: "Coordinates 1-2-1s, mentoring and give-back programmes." },
+  { key: "comms_lead", label: "Communications Lead", responsibilities: "Owns chapter comms, social presence and the newsletter." },
+  { key: "other", label: "Other role", responsibilities: "" },
+] as const;
+export type ChapterRoleKey = (typeof CHAPTER_ROLES)[number]["key"];
+export const CHAPTER_ROLE_LABEL: Record<string, string> =
+  Object.fromEntries(CHAPTER_ROLES.map((r) => [r.key, r.label]));
+export const CHAPTER_ROLE_RESP: Record<string, string> =
+  Object.fromEntries(CHAPTER_ROLES.map((r) => [r.key, r.responsibilities]));
+/** Human title for a stored role row (custom title wins for `other`). */
+export function chapterRoleTitle(role: string, customTitle?: string | null): string {
+  if (role === "other") return customTitle || "Officer";
+  return CHAPTER_ROLE_LABEL[role] ?? role;
+}
+
 export const ELECTION_STATUSES = ["open", "voting", "closed"] as const;
 export const MOTION_STATUSES = ["open", "passed", "rejected"] as const;
 export const BUDGET_KINDS = ["allocation", "sponsorship", "spend"] as const;
