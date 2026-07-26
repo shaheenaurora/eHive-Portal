@@ -130,9 +130,25 @@ export async function ensureSchema(): Promise<void> {
         createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
       )`,
     );
+    stmts.push(
+      `CREATE TABLE IF NOT EXISTS health_snapshots (
+        id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        chapterId bigint unsigned NOT NULL,
+        total int NOT NULL,
+        retention int NOT NULL,
+        engagement int NOT NULL,
+        growth int NOT NULL,
+        programme int NOT NULL,
+        leadership int NOT NULL,
+        governance int NOT NULL,
+        memberCount int NOT NULL DEFAULT 0,
+        createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
+    );
     tables.add("chapter_transfers"); // so its indexes are considered this run
     tables.add("chapter_roles");
     tables.add("chapter_posts");
+    tables.add("health_snapshots");
 
     for (const s of stmts) {
       try {
@@ -193,6 +209,7 @@ export async function ensureSchema(): Promise<void> {
       ["chapter_roles", "ix_chroles_chapter_status", "chapterId, status"],
       ["chapter_roles", "ix_chroles_member", "memberId"],
       ["chapter_posts", "ix_chposts_chapter", "chapterId"],
+      ["health_snapshots", "ix_health_chapter", "chapterId, createdAt"],
     ];
     let added = 0;
     for (const [table, name, cols] of indexes) {

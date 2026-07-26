@@ -12,6 +12,9 @@ import {
   EVENT_CHECKIN_CLOSES_AFTER_MS,
   MEMBER_LIFECYCLE,
   MEMBER_LIFECYCLE_TRANSITIONS,
+  HEALTH_COMPONENTS,
+  HEALTH_BAR,
+  healthBand,
 } from "@contracts/constants";
 
 /**
@@ -102,6 +105,21 @@ describe("Member Lifecycle — the CRM state machine (M1)", () => {
     expect(MEMBER_LIFECYCLE_TRANSITIONS.at_risk.map((a) => a.to)).toContain("active"); // saved
     expect(MEMBER_LIFECYCLE_TRANSITIONS.renewal.map((a) => a.to)).toEqual(["active", "lapsed"]);
     expect(MEMBER_LIFECYCLE_TRANSITIONS.lapsed.map((a) => a.to)).toContain("alumni");
+  });
+});
+
+describe("Chapter Health Index (M7 / CH-06)", () => {
+  it("blends the six manual measures with weights summing to 100", () => {
+    expect(HEALTH_COMPONENTS.map((c) => c.key)).toEqual([
+      "retention", "engagement", "growth", "programme", "leadership", "governance",
+    ]);
+    expect(HEALTH_COMPONENTS.reduce((s, c) => s + c.weight, 0)).toBe(100);
+  });
+
+  it("bands the index — below the bar triggers remediation", () => {
+    expect(healthBand(82)).toBe("healthy");
+    expect(healthBand(HEALTH_BAR)).toBe("watch");
+    expect(healthBand(HEALTH_BAR - 1)).toBe("below");
   });
 });
 
