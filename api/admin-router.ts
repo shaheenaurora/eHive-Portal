@@ -8,7 +8,7 @@ import { createRouter, adminQuery, scopedAdmin } from "./middleware";
 import { awardPoints, awardRulePoints, promoteWaitlist, recomputeScore, autoPairBuddy } from "./queries/circle";
 import { audit } from "./lib/audit";
 import { findUserByEmail } from "./queries/users";
-import { tierRank } from "@contracts/constants";
+import { tierRank, EVENT_CHECKIN_OPENS_BEFORE_MS } from "@contracts/constants";
 
 const SCOPE_ENUM = z.enum([
   "membership", "community", "events", "chapters",
@@ -601,6 +601,13 @@ export const adminRouter = createRouter({
     )
     .mutation(async ({ input }) => {
       const db = getDb();
+      // Temporal integrity: attendance can't be recorded for a session that
+      // hasn't happened yet (opens 2h before it starts).
+      if (input.status === "attended") {
+        const s = (await db.select().from(schema.sessions).where(eq(schema.sessions.id, input.sessionId)).limit(1)).at(0);
+        if (s && Date.now() < new Date(s.startsAt).getTime() - EVENT_CHECKIN_OPENS_BEFORE_MS)
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This session hasn't started — you can't mark attendance yet." });
+      }
       const existing = await db
         .select()
         .from(schema.attendance)
@@ -652,15 +659,20 @@ export const adminRouter = createRouter({
   eventsAdmin: adminQuery.query(async () => {
     const db = getDb();
     const rows = await db.select().from(schema.events).orderBy(desc(schema.events.startsAt)).limit(100);
-    const out = [];
-    for (const e of rows) {
-      const [rc] = await db
-        .select({ n: sql<number>`count(*)` })
-        .from(schema.eventRegs)
-        .where(and(eq(schema.eventRegs.eventId, e.id), eq(schema.eventRegs.status, "registered")));
-      out.push({ ...e, regCount: rc?.n ?? 0 });
-    }
-    return out;
+    // Batch the per-event registration counts into one grouped query (was N+1).
+    const ids = rows.map((e) => e.id);
+    const counts = ids.length
+      ? await db
+          .select({ eventId: schema.eventRegs.eventId, n: sql<number>`count(*)` })
+          .from(schema.eventRegs)
+          .where(and(
+            sql`${schema.eventRegs.eventId} in (${sql.join(ids.map((i) => sql`${i}`), sql`, `)})`,
+            eq(schema.eventRegs.status, "registered"),
+          ))
+          .groupBy(schema.eventRegs.eventId)
+      : [];
+    const countMap = new Map(counts.map((c) => [c.eventId, Number(c.n)]));
+    return rows.map((e) => ({ ...e, regCount: countMap.get(e.id) ?? 0 }));
   }),
 
   createEvent: scopedAdmin("events")

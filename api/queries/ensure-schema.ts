@@ -61,10 +61,73 @@ export async function ensureSchema(): Promise<void> {
     }
 
     for (const s of stmts) {
-      console.log("[ensureSchema]", s);
-      await conn.query(s);
+      try {
+        console.log("[ensureSchema]", s);
+        await conn.query(s);
+      } catch (e) {
+        console.error("[ensureSchema] statement skipped:", e);
+      }
     }
-    if (!stmts.length) console.log("[ensureSchema] schema up to date");
+
+    // --- performance indexes on hot foreign-key / filter columns ---------------
+    // Drizzle only creates PK/unique constraints; at scale (100s of members per
+    // chapter, many chapters) these secondary indexes keep the hot paths — admin
+    // filters, per-member lookups, event rosters, governance tallies — fast.
+    // MySQL has no CREATE INDEX IF NOT EXISTS, so each is guarded by a lookup
+    // against information_schema.statistics.
+    const [idxRows] = (await conn.query(
+      `select table_name as t, index_name as i
+         from information_schema.statistics where table_schema = database()`,
+    )) as [Array<{ t: string; i: string }>, unknown];
+    const haveIdx = new Set(idxRows.map((r) => `${r.t}.${r.i}`));
+
+    const indexes: Array<[string, string, string]> = [
+      // table, index name, column list
+      ["members", "ix_members_tier_status", "tier, status"],
+      ["members", "ix_members_status_score", "status, hiveScore"],
+      ["members", "ix_members_home_chapter", "homeChapterId"],
+      ["event_regs", "ix_eventregs_event_status", "eventId, status"],
+      ["event_regs", "ix_eventregs_member", "memberId"],
+      ["event_regs", "ix_eventregs_code", "checkinCode"],
+      ["membership_events", "ix_membevents_member", "memberId"],
+      ["membership_events", "ix_membevents_status", "status"],
+      ["attendance", "ix_attendance_session", "sessionId"],
+      ["attendance", "ix_attendance_member", "memberId"],
+      ["pod_members", "ix_podmembers_pod", "podId"],
+      ["pod_members", "ix_podmembers_member", "memberId"],
+      ["sessions", "ix_sessions_pod_starts", "podId, startsAt"],
+      ["notifications", "ix_notifications_member_read", "memberId, readAt"],
+      ["score_events", "ix_scoreevents_member", "memberId"],
+      ["leads", "ix_leads_status", "status"],
+      ["leads", "ix_leads_created", "createdAt"],
+      ["one_to_ones", "ix_o2o_a", "aMemberId"],
+      ["one_to_ones", "ix_o2o_b", "bMemberId"],
+      ["referrals", "ix_referrals_member", "memberId"],
+      ["ballot_roll", "ix_ballotroll_election_member", "electionId, memberId"],
+      ["motion_votes", "ix_motionvotes_motion_member", "motionId, memberId"],
+      ["candidates", "ix_candidates_election", "electionId"],
+      ["event_feedback", "ix_eventfb_event", "eventId"],
+      ["applications", "ix_applications_user", "userId"],
+      ["applications", "ix_applications_status", "status"],
+      ["endorsements", "ix_endorsements_app", "appId"],
+      ["gov_roles", "ix_govroles_body", "bodyId"],
+      ["elections", "ix_elections_chapter", "chapterId"],
+      ["motions", "ix_motions_chapter", "chapterId"],
+    ];
+    let added = 0;
+    for (const [table, name, cols] of indexes) {
+      if (!tables.has(table) || haveIdx.has(`${table}.${name}`)) continue;
+      const ddl = `CREATE INDEX ${name} ON ${table} (${cols})`;
+      try {
+        console.log("[ensureSchema]", ddl);
+        await conn.query(ddl);
+        added++;
+      } catch (e) {
+        console.error("[ensureSchema] index skipped:", name, e);
+      }
+    }
+
+    if (!stmts.length && !added) console.log("[ensureSchema] schema up to date");
   } finally {
     await conn.end();
   }
