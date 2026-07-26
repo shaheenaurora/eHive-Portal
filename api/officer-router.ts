@@ -7,6 +7,8 @@ import { createRouter, authedQuery } from "./middleware";
 import { getMemberByUserId, notify } from "./queries/circle";
 import { computeChapterHealth } from "./queries/health";
 import { computeOnboarding } from "./queries/onboarding";
+import { ensureCadenceTemplates, listCadences, recordCadence } from "./queries/cadence";
+import { CADENCE_STATUSES } from "@contracts/cadence";
 
 /**
  * Resolve the caller's chapter-officer context: the member must hold an active
@@ -56,6 +58,7 @@ export const officerRouter = createRouter({
       .where(eq(schema.chapterPosts.chapterId, chapterId))
       .orderBy(desc(schema.chapterPosts.createdAt)).limit(50);
     const health = await computeChapterHealth(chapterId);
+    const cadence = await listCadences(chapterId);
     // Onboarding cohort — members still in their first 90 days (ML-03).
     const onboardingMembers = roster.filter((r) => r.member.lifecycleState === "onboarding");
     const onboarding = await Promise.all(onboardingMembers.map(async (r) => {
@@ -63,7 +66,7 @@ export const officerRouter = createRouter({
       return { id: r.member.id, name: r.user.name ?? r.user.email ?? "Member", percent: p.percent, doneCount: p.doneCount, total: p.total, dayCount: p.dayCount, stage: p.stage };
     }));
     return {
-      chapter, roleKeys, health, onboarding,
+      chapter, roleKeys, health, cadence, onboarding,
       roster: roster.map((r) => ({
         id: r.member.id, name: r.user.name ?? r.user.email ?? "Member",
         company: r.member.company, tier: r.member.tier, status: r.member.status,
@@ -147,6 +150,24 @@ export const officerRouter = createRouter({
       const { chapterId } = await requireOfficer(ctx.user.id);
       await getDb().delete(schema.chapterPosts)
         .where(and(eq(schema.chapterPosts.id, input.id), eq(schema.chapterPosts.chapterId, chapterId)));
+      return { ok: true };
+    }),
+
+  /* Set the chapter's operating rhythm up to standard (the recurring cadences). */
+  setupCadences: authedQuery.mutation(async ({ ctx }) => {
+    const { chapterId } = await requireOfficer(ctx.user.id);
+    const added = await ensureCadenceTemplates(chapterId);
+    return { ok: true, added };
+  }),
+
+  /* One-tap "cadence kept / rescheduled" for the current period (§A2). */
+  markCadence: authedQuery
+    .input(z.object({ cadenceId: z.number(), status: z.enum(CADENCE_STATUSES), note: z.string().max(500).optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const { member, chapterId } = await requireOfficer(ctx.user.id);
+      const cad = (await getDb().select().from(schema.cadences).where(eq(schema.cadences.id, input.cadenceId)).limit(1)).at(0);
+      if (!cad || cad.chapterId !== chapterId) throw new TRPCError({ code: "FORBIDDEN", message: "Not your chapter's cadence." });
+      await recordCadence(input.cadenceId, input.status, input.note, member.id);
       return { ok: true };
     }),
 });

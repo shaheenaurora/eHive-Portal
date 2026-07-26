@@ -4,7 +4,12 @@ import { EhShell, ADMIN_NAV, PageHead, Pill, Spinner, Modal, Field, Empty, Bar, 
 import { fmtDate, initials } from "@/lib/ehf";
 import { CHAPTER_STATUS_LABEL, CHAPTER_ROLES, CHAPTER_ROLE_RESP, CHAPTER_ROLE_METRIC, chapterRoleTitle,
   HEALTH_COMPONENTS, HEALTH_BAND_LABEL, HEALTH_BAND_COLOR, HEALTH_BAR, healthBand } from "@contracts/constants";
+import { FREQUENCY_LABEL, periodLabel, type Frequency } from "@contracts/cadence";
 import type { ChapterStatus } from "@contracts/constants";
+
+const CADENCE_STATUS_COLOR: Record<string, "green" | "gold" | "red" | "grey"> = {
+  kept: "green", rescheduled: "gold", missed: "red", open: "grey",
+};
 
 const STATUS_COLOR: Record<string, "grey" | "blue" | "gold" | "green" | "red"> = {
   seed: "grey", provisional: "blue", chartered: "gold", mature: "green", at_risk: "red",
@@ -47,6 +52,14 @@ export default function AdminChapters() {
 
   const saveSnapshot = trpc.adminEngage.saveHealthSnapshot.useMutation({
     onSuccess: (r) => { toast(`Quarterly snapshot saved — index ${r.total}.`); refresh(); },
+    onError: (e) => toast(e.message),
+  });
+  const setupCadences = trpc.adminEngage.setupChapterCadences.useMutation({
+    onSuccess: (r) => { toast(r.added ? `Operating rhythm set up — ${r.added} cadences.` : "Already set up."); refresh(); },
+    onError: (e) => toast(e.message),
+  });
+  const markCadence = trpc.adminEngage.markChapterCadence.useMutation({
+    onSuccess: () => { toast("Cadence updated."); refresh(); },
     onError: (e) => toast(e.message),
   });
 
@@ -227,6 +240,48 @@ export default function AdminChapters() {
               </div>
             </div>
           )}
+
+          {/* operating rhythm */}
+          <div className="eh-between" style={{ margin: "1.25rem 0 .75rem" }}>
+            <h2 className="eh-h2" style={{ margin: 0 }}>Operating rhythm</h2>
+            {detail.data!.cadence && detail.data!.cadence.cadences.length > 0 && (
+              <Pill color={detail.data!.cadence.adherence >= 80 ? "green" : detail.data!.cadence.adherence >= 60 ? "gold" : "red"}>
+                {detail.data!.cadence.adherence}% kept
+              </Pill>
+            )}
+          </div>
+          <div className="eh-card">
+            {(!detail.data!.cadence || detail.data!.cadence.cadences.length === 0) ? (
+              <div style={{ textAlign: "center", padding: ".5rem 0" }}>
+                <Empty big="No cadences yet." p="Set the chapter's recurring rhythm — meetings, huddle, board, financial close — to standard." />
+                <button className="eh-btn gold" disabled={setupCadences.isPending} onClick={() => setupCadences.mutate({ id: ch.id })}>
+                  Set up the operating rhythm →
+                </button>
+              </div>
+            ) : (
+              <div className="eh-list">
+                {detail.data!.cadence.cadences.map((c) => (
+                  <div className="row" key={c.id} style={{ alignItems: "flex-start" }}>
+                    <div style={{ flex: 1 }}>
+                      <div className="t">{c.title} <span className="eh-muted eh-sm">· {FREQUENCY_LABEL[c.frequency as Frequency]}{c.sop ? ` · ${c.sop}` : ""}</span></div>
+                      <div className="d">Last {c.expected}: {c.kept} kept{c.missed ? `, ${c.missed} missed` : ""}</div>
+                    </div>
+                    <div className="eh-row" style={{ gap: ".4rem" }}>
+                      <Pill color={CADENCE_STATUS_COLOR[c.currentStatus]}>{c.currentStatus === "open" ? `due ${periodLabel(c.frequency as Frequency)}` : c.currentStatus}</Pill>
+                      {c.currentStatus !== "kept" && (
+                        <>
+                          <button className="eh-btn sm gold" disabled={markCadence.isPending}
+                                  onClick={() => markCadence.mutate({ cadenceId: c.id, status: "kept" })}>Kept</button>
+                          <button className="eh-btn sm ghost" disabled={markCadence.isPending}
+                                  onClick={() => markCadence.mutate({ cadenceId: c.id, status: "rescheduled" })}>Rescheduled</button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* leadership board */}
           <div className="eh-between" style={{ margin: "1.25rem 0 .75rem" }}>

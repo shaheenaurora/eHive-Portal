@@ -16,6 +16,7 @@ import {
   HEALTH_BAR,
   healthBand,
 } from "@contracts/constants";
+import { periodKey, recentPeriodKeys, shiftPeriods, CADENCE_TEMPLATES } from "@contracts/cadence";
 
 /**
  * Guards the consolidated business rules in the eHive Portal BRD §7.
@@ -120,6 +121,39 @@ describe("Chapter Health Index (M7 / CH-06)", () => {
     expect(healthBand(82)).toBe("healthy");
     expect(healthBand(HEALTH_BAR)).toBe("watch");
     expect(healthBand(HEALTH_BAR - 1)).toBe("below");
+  });
+});
+
+describe("Operating rhythm — cadence period math (§A2)", () => {
+  it("keys each frequency to a distinct, stable period", () => {
+    const d = new Date("2026-07-15T12:00:00Z");
+    expect(periodKey("monthly", d)).toBe("2026-07");
+    expect(periodKey("quarterly", d)).toBe("2026-Q3");
+    expect(periodKey("annually", d)).toBe("2026");
+    expect(periodKey("weekly", d)).toMatch(/^2026-W\d\d$/);
+    expect(periodKey("biweekly", d)).toMatch(/^2026-B\d\d$/);
+  });
+
+  it("shifting one period changes the key; the same period keeps it", () => {
+    const d = new Date("2026-07-15T12:00:00Z");
+    expect(periodKey("monthly", shiftPeriods("monthly", d, -1))).toBe("2026-06");
+    expect(periodKey("quarterly", shiftPeriods("quarterly", d, -1))).toBe("2026-Q2");
+    expect(periodKey("weekly", shiftPeriods("weekly", d, 0))).toBe(periodKey("weekly", d));
+  });
+
+  it("recentPeriodKeys returns the current plus N distinct past periods", () => {
+    const { current, history } = recentPeriodKeys("monthly", new Date("2026-07-15T12:00:00Z"), 8);
+    expect(current).toBe("2026-07");
+    expect(history).toHaveLength(8);
+    expect(new Set(history).size).toBe(8);           // all distinct
+    expect(history).not.toContain(current);          // history excludes current
+  });
+
+  it("ships the standard chapter cadences with valid frequencies", () => {
+    expect(CADENCE_TEMPLATES.length).toBeGreaterThanOrEqual(6);
+    expect(CADENCE_TEMPLATES.map((t) => t.type)).toContain("chapter_meeting");
+    for (const t of CADENCE_TEMPLATES)
+      expect(["weekly", "biweekly", "monthly", "quarterly", "annually"]).toContain(t.freq);
   });
 });
 
