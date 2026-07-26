@@ -149,6 +149,7 @@ export const adminRouter = createRouter({
         status: z.enum(["received", "screening", "interview", "approved", "rejected"]),
         note: z.string().max(2000).optional(),
         tier: TIER.optional(),
+        chapterId: z.number().int().positive().optional(), // home chapter at admission
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -188,6 +189,7 @@ export const adminRouter = createRouter({
             status: "active",
             company: app.company,
             renewalAt: renewal,
+            homeChapterId: input.chapterId ?? null, // admitted into a chapter
           });
           const memberId = Number(res[0].insertId);
           await db.insert(schema.membershipEvents).values({

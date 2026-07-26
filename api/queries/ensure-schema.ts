@@ -48,6 +48,19 @@ export async function ensureSchema(): Promise<void> {
         );
     }
 
+    // --- chapters: BNI-style geographic formation standards ---
+    if (tables.has("chapters")) {
+      const add: Array<[string, string]> = [
+        ["code", "varchar(24) NULL"],
+        ["region", "varchar(128) NULL"],
+        ["state", "varchar(128) NULL"],
+        ["zone", "varchar(128) NULL"],
+        ["meetingCadence", "varchar(64) NULL"],
+      ];
+      for (const [col, def] of add)
+        if (!cols.has(`chapters.${col}`)) stmts.push(`ALTER TABLE chapters ADD COLUMN ${col} ${def}`);
+    }
+
     // --- membership_events: tier-change approval workflow ---
     if (tables.has("membership_events")) {
       if (!cols.has("membership_events.status"))
@@ -60,9 +73,27 @@ export async function ensureSchema(): Promise<void> {
         stmts.push("ALTER TABLE membership_events ADD COLUMN decidedAt timestamp NULL");
     }
 
+    // New tables added after the initial schema — created here so a deploy that
+    // introduces them doesn't need a manual db:push. CREATE TABLE IF NOT EXISTS
+    // is inherently idempotent.
+    stmts.push(
+      `CREATE TABLE IF NOT EXISTS chapter_transfers (
+        id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        memberId bigint unsigned NOT NULL,
+        fromChapterId bigint unsigned NULL,
+        toChapterId bigint unsigned NOT NULL,
+        note varchar(500) NULL,
+        status enum('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+        actorEmail varchar(320) NULL,
+        decidedAt timestamp NULL,
+        createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
+    );
+    tables.add("chapter_transfers"); // so its indexes are considered this run
+
     for (const s of stmts) {
       try {
-        console.log("[ensureSchema]", s);
+        console.log("[ensureSchema]", s.replace(/\s+/g, " ").slice(0, 70));
         await conn.query(s);
       } catch (e) {
         console.error("[ensureSchema] statement skipped:", e);
@@ -113,6 +144,8 @@ export async function ensureSchema(): Promise<void> {
       ["gov_roles", "ix_govroles_body", "bodyId"],
       ["elections", "ix_elections_chapter", "chapterId"],
       ["motions", "ix_motions_chapter", "chapterId"],
+      ["chapter_transfers", "ix_chtransfers_status", "status"],
+      ["chapter_transfers", "ix_chtransfers_member", "memberId"],
     ];
     let added = 0;
     for (const [table, name, cols] of indexes) {

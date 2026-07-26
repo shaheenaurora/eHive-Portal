@@ -209,6 +209,47 @@ export const circleRouter = createRouter({
       .orderBy(desc(schema.membershipEvents.createdAt)).limit(30);
   }),
 
+  /* ---- chapter transfers (BRD 6.7): member requests, management approves ---- */
+  /* The chapters a member can request to move to (all but their current one). */
+  chaptersDirectory: authedQuery.query(async ({ ctx }) => {
+    const member = await requireMember(ctx.user.id);
+    const rows = await getDb().select({
+      id: schema.chapters.id, name: schema.chapters.name, code: schema.chapters.code,
+      country: schema.chapters.country, region: schema.chapters.region,
+      state: schema.chapters.state, city: schema.chapters.city, zone: schema.chapters.zone,
+      status: schema.chapters.status,
+    }).from(schema.chapters)
+      .orderBy(asc(schema.chapters.country), asc(schema.chapters.name)).limit(200);
+    return { chapters: rows, homeChapterId: member.homeChapterId ?? null };
+  }),
+
+  myChapterTransfer: authedQuery.query(async ({ ctx }) => {
+    const member = await requireMember(ctx.user.id);
+    return (await getDb().select().from(schema.chapterTransfers)
+      .where(and(eq(schema.chapterTransfers.memberId, member.id), eq(schema.chapterTransfers.status, "pending")))
+      .orderBy(desc(schema.chapterTransfers.createdAt)).limit(1)).at(0) ?? null;
+  }),
+
+  requestChapterTransfer: authedQuery
+    .input(z.object({ toChapterId: z.number().int().positive(), note: z.string().max(500).optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const member = await requireMember(ctx.user.id);
+      const db = getDb();
+      if (member.homeChapterId === input.toChapterId)
+        throw new TRPCError({ code: "BAD_REQUEST", message: "That's already your home chapter." });
+      const target = (await db.select().from(schema.chapters).where(eq(schema.chapters.id, input.toChapterId)).limit(1)).at(0);
+      if (!target) throw new TRPCError({ code: "NOT_FOUND", message: "Chapter not found" });
+      const existing = await db.select().from(schema.chapterTransfers)
+        .where(and(eq(schema.chapterTransfers.memberId, member.id), eq(schema.chapterTransfers.status, "pending"))).limit(1);
+      if (existing.length)
+        throw new TRPCError({ code: "CONFLICT", message: "You already have a transfer request awaiting approval." });
+      await db.insert(schema.chapterTransfers).values({
+        memberId: member.id, fromChapterId: member.homeChapterId ?? null,
+        toChapterId: input.toChapterId, note: input.note, status: "pending",
+      });
+      return { ok: true };
+    }),
+
   /* ---- pods & masterminds (BRD 9.2) ---- */
   myPods: authedQuery.query(async ({ ctx }) => {
     const member = await requireMember(ctx.user.id);

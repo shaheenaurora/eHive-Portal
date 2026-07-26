@@ -8,10 +8,26 @@ import type { ChapterStatus } from "@contracts/constants";
 export default function Chapter() {
   const utils = trpc.useUtils();
   const q = trpc.engage.myChapter.useQuery(undefined, { retry: false });
+  const dir = trpc.circle.chaptersDirectory.useQuery(undefined, { retry: false });
+  const myTransfer = trpc.circle.myChapterTransfer.useQuery(undefined, { retry: false });
   const [standFor, setStandFor] = useState<number | null>(null);
   const [statement, setStatement] = useState("");
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [toChapter, setToChapter] = useState("");
+  const [transferNote, setTransferNote] = useState("");
 
-  function refresh() { utils.engage.myChapter.invalidate(); }
+  function refresh() {
+    utils.engage.myChapter.invalidate();
+    utils.circle.myChapterTransfer.invalidate();
+  }
+
+  const requestTransfer = trpc.circle.requestChapterTransfer.useMutation({
+    onSuccess: () => {
+      toast("Transfer request submitted — the Circle team will review it.");
+      setTransferOpen(false); setToChapter(""); setTransferNote(""); refresh();
+    },
+    onError: (e) => toast(e.message),
+  });
 
   const stand = trpc.engage.standForElection.useMutation({
     onSuccess: () => { toast("You're on the ballot."); setStandFor(null); setStatement(""); refresh(); },
@@ -27,6 +43,10 @@ export default function Chapter() {
   });
 
   const ch = q.data?.chapter;
+  const chapters = dir.data?.chapters ?? [];
+  const chapterName = (id: number | null | undefined) => chapters.find((c) => c.id === id)?.name ?? "another chapter";
+  const pending = myTransfer.data ?? null;
+  const options = chapters.filter((c) => c.id !== (ch?.id ?? dir.data?.homeChapterId));
 
   return (
     <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif>
@@ -35,10 +55,23 @@ export default function Chapter() {
 
       {q.isLoading && <Spinner />}
 
+      {pending && (
+        <div className="eh-banner eh-mb">
+          <span className="eh-sm">
+            <b>Transfer to {chapterName(pending.toChapterId)}</b> is awaiting management approval.
+          </span>
+        </div>
+      )}
+
       {q.data && !ch && (
         <div className="eh-card">
           <Empty big="No home chapter yet."
-                 p="Chapters are opening city by city. The Circle team will assign your home chapter as yours charters — we'll notify you the moment it's live." />
+                 p="Members belong to a home chapter. If a chapter in your city is open, you can request to join — the Circle team confirms your placement." />
+          {!pending && options.length > 0 && (
+            <div style={{ textAlign: "center", marginTop: ".5rem" }}>
+              <button className="eh-btn gold" onClick={() => setTransferOpen(true)}>Request a chapter →</button>
+            </div>
+          )}
         </div>
       )}
 
@@ -55,9 +88,15 @@ export default function Chapter() {
             </div>
             <div className="eh-card eh-stat">
               <div className="k">Location</div>
-              <div className="v" style={{ fontSize: "1.1rem" }}>{[ch.city, ch.country].filter(Boolean).join(", ") || "—"}</div>
+              <div className="v" style={{ fontSize: "1.1rem" }}>{[ch.zone, ch.city, ch.state, ch.country].filter(Boolean).join(", ") || "—"}</div>
             </div>
           </div>
+
+          {!pending && options.length > 0 && (
+            <div className="eh-mb" style={{ marginTop: "-.25rem" }}>
+              <button className="eh-btn ghost sm" onClick={() => setTransferOpen(true)}>Request transfer to another chapter →</button>
+            </div>
+          )}
 
           {/* elections */}
           <h2 className="eh-h2" style={{ margin: "1.5rem 0 .75rem" }}>Elections</h2>
@@ -191,6 +230,33 @@ export default function Chapter() {
           <button className="eh-btn gold" style={{ width: "100%" }} disabled={stand.isPending}
                   onClick={() => stand.mutate({ electionId: standFor, statement: statement || undefined })}>
             {stand.isPending ? "Submitting…" : "Put me on the ballot →"}
+          </button>
+        </Modal>
+      )}
+
+      {transferOpen && (
+        <Modal title={ch ? "Request a chapter transfer" : "Request to join a chapter"} onClose={() => setTransferOpen(false)}>
+          <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>
+            {ch ? "Choose the chapter you'd like to move to. " : "Choose the chapter you'd like to join. "}
+            The Circle team reviews and confirms every placement — your home chapter changes once it's approved.
+          </p>
+          <Field label="Chapter">
+            <select className="eh-select" value={toChapter} onChange={(e) => setToChapter(e.target.value)}>
+              <option value="">Select a chapter…</option>
+              {options.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}{[c.zone, c.city, c.country].filter(Boolean).length ? ` — ${[c.zone, c.city, c.country].filter(Boolean).join(", ")}` : ""}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Reason (optional)">
+            <textarea className="eh-textarea" value={transferNote} onChange={(e) => setTransferNote(e.target.value)}
+                      maxLength={500} placeholder="e.g. I've relocated to Abu Dhabi." />
+          </Field>
+          <button className="eh-btn gold" style={{ width: "100%" }} disabled={requestTransfer.isPending || !toChapter}
+                  onClick={() => requestTransfer.mutate({ toChapterId: Number(toChapter), note: transferNote || undefined })}>
+            {requestTransfer.isPending ? "Submitting…" : "Submit request →"}
           </button>
         </Modal>
       )}
