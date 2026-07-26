@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { trpc } from "@/providers/trpc";
-import { EhShell, ADMIN_NAV, PageHead, Pill, Spinner, Modal, Field, Empty, toast } from "@/components/eh";
+import { EhShell, ADMIN_NAV, PageHead, Pill, Spinner, Modal, Field, Empty, Bar, toast } from "@/components/eh";
 import { fmtDate, initials } from "@/lib/ehf";
-import { CHAPTER_STATUS_LABEL, CHAPTER_ROLES, CHAPTER_ROLE_RESP, CHAPTER_ROLE_METRIC, chapterRoleTitle } from "@contracts/constants";
+import { CHAPTER_STATUS_LABEL, CHAPTER_ROLES, CHAPTER_ROLE_RESP, CHAPTER_ROLE_METRIC, chapterRoleTitle,
+  HEALTH_COMPONENTS, HEALTH_BAND_LABEL, HEALTH_BAND_COLOR, HEALTH_BAR, healthBand } from "@contracts/constants";
 import type { ChapterStatus } from "@contracts/constants";
 
 const STATUS_COLOR: Record<string, "grey" | "blue" | "gold" | "green" | "red"> = {
@@ -25,6 +26,7 @@ export default function AdminChapters() {
   const transfers = trpc.adminEngage.pendingChapterTransfers.useQuery(undefined, { retry: false });
   const [sel, setSel] = useState<number | null>(null);
   const detail = trpc.adminEngage.chapterDetail.useQuery({ id: sel! }, { retry: false, enabled: sel !== null });
+  const health = trpc.adminEngage.chapterHealth.useQuery({ id: sel! }, { retry: false, enabled: sel !== null });
 
   const [chapterOpen, setChapterOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -38,9 +40,15 @@ export default function AdminChapters() {
   function refresh() {
     utils.adminEngage.chaptersAdmin.invalidate();
     utils.adminEngage.chapterDetail.invalidate();
+    utils.adminEngage.chapterHealth.invalidate();
     utils.adminEngage.pendingChapterTransfers.invalidate();
     utils.adminEngage.assignableMembers.invalidate();
   }
+
+  const saveSnapshot = trpc.adminEngage.saveHealthSnapshot.useMutation({
+    onSuccess: (r) => { toast(`Quarterly snapshot saved — index ${r.total}.`); refresh(); },
+    onError: (e) => toast(e.message),
+  });
 
   const saveChapter = trpc.adminEngage.saveChapter.useMutation({
     onSuccess: () => { toast("Chapter saved."); setChapterOpen(false); setEditOpen(false); refresh(); },
@@ -141,7 +149,10 @@ export default function AdminChapters() {
                       onClick={() => setSel(c.id)}>
                 <div className="eh-between">
                   <Pill color={STATUS_COLOR[c.status] ?? "grey"}>{CHAPTER_STATUS_LABEL[c.status as ChapterStatus]}</Pill>
-                  <span className="eh-muted eh-sm eh-num">{c.memberCount} members</span>
+                  <span className="eh-row" style={{ gap: ".4rem" }}>
+                    {c.lastHealth != null && <Pill color={HEALTH_BAND_COLOR[healthBand(c.lastHealth)]}>health {c.lastHealth}</Pill>}
+                    <span className="eh-muted eh-sm eh-num">{c.memberCount} members</span>
+                  </span>
                 </div>
                 <h3 className="eh-mt">{c.name}{c.code ? <span className="eh-muted eh-sm eh-num" style={{ marginLeft: ".4rem" }}>{c.code}</span> : null}</h3>
                 <p className="eh-sm eh-muted">{geoLine(c)}</p>
@@ -172,6 +183,50 @@ export default function AdminChapters() {
                                    onChange={(status) => saveChapter.mutate({ id: ch.id, name: ch.name, status })} />
             </div>
           </div>
+
+          {/* chapter health index */}
+          {health.data && (
+            <div className="eh-card eh-mb">
+              <div className="eh-between" style={{ alignItems: "flex-start" }}>
+                <div>
+                  <h3 style={{ margin: 0 }}>Chapter Health Index</h3>
+                  <div className="eh-muted eh-sm">The single number the chapter owns · reviewed with the Zone each quarter.</div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div className="eh-num" style={{ fontSize: "2.4rem", fontWeight: 700, lineHeight: 1, color: "var(--eh-gold)" }}>{health.data.total}</div>
+                  <Pill color={HEALTH_BAND_COLOR[healthBand(health.data.total)]}>{HEALTH_BAND_LABEL[healthBand(health.data.total)]}</Pill>
+                </div>
+              </div>
+              {health.data.total < HEALTH_BAR && (
+                <div className="eh-banner eh-mt" style={{ borderColor: "#e5c0b9" }}>
+                  <span className="eh-sm" style={{ color: "var(--eh-red)" }}>Below the health bar ({HEALTH_BAR}) — remediation recommended with the Zone (CH-06 / ZO-03).</span>
+                </div>
+              )}
+              <div className="eh-mt" style={{ display: "grid", gap: ".5rem" }}>
+                {HEALTH_COMPONENTS.map((c) => {
+                  const v = (health.data!.components as Record<string, number>)[c.key];
+                  return (
+                    <div key={c.key} style={{ display: "grid", gridTemplateColumns: "10rem 1fr 2.6rem", alignItems: "center", gap: ".6rem" }}>
+                      <span className="eh-sm" title={c.desc}>{c.label} <span className="eh-muted">·{c.weight}%</span></span>
+                      <Bar pct={v} />
+                      <span className="eh-num eh-sm" style={{ textAlign: "right" }}>{v}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="eh-row eh-mt">
+                <button className="eh-btn sm gold" disabled={saveSnapshot.isPending}
+                        onClick={() => saveSnapshot.mutate({ id: ch.id })}>Save quarterly snapshot</button>
+                {health.data.lastSnapshot && (
+                  <span className="eh-muted eh-sm">
+                    Last snapshot {health.data.lastSnapshot.total} · {fmtDate(health.data.lastSnapshot.createdAt)}
+                    {(() => { const d = health.data!.total - health.data!.lastSnapshot!.total;
+                      return d === 0 ? "" : <b style={{ color: d > 0 ? "var(--eh-green)" : "var(--eh-red)", marginLeft: ".4rem" }}>{d > 0 ? "▲" : "▼"} {Math.abs(d)}</b>; })()}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* leadership board */}
           <div className="eh-between" style={{ margin: "1.25rem 0 .75rem" }}>

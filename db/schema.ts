@@ -615,6 +615,22 @@ export const chapterTransfers = mysqlTable("chapter_transfers", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+/* Operations Manual M7 / CH-06 — chapter health snapshots. Time-stamped index +
+   its six components, saved for trend and Zone comparison. */
+export const healthSnapshots = mysqlTable("health_snapshots", {
+  id: serial("id").primaryKey(),
+  chapterId: bigint("chapterId", { mode: "number", unsigned: true }).notNull(),
+  total: int("total").notNull(),
+  retention: int("retention").notNull(),
+  engagement: int("engagement").notNull(),
+  growth: int("growth").notNull(),
+  programme: int("programme").notNull(),
+  leadership: int("leadership").notNull(),
+  governance: int("governance").notNull(),
+  memberCount: int("memberCount").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 /* BRD 6.7 — chapter "learnings": notes, resources and playbooks an officer
    shares with their chapter to drive growth. */
 export const chapterPosts = mysqlTable("chapter_posts", {

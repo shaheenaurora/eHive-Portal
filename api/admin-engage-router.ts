@@ -10,6 +10,7 @@ import { audit } from "./lib/audit";
 import {
   awardRulePoints, notify, evaluateDormancy, introEligibility,
 } from "./queries/circle";
+import { computeChapterHealth } from "./queries/health";
 import {
   POINT_RULE_KEYS, POINT_RULE_LABEL, POINT_RULE_FACTOR, POINT_RULE_DEFAULTS,
   ZENITH_CAP, INVESTOR_COOLDOWN_DAYS,
@@ -400,13 +401,42 @@ export const adminEngageRouter = createRouter({
   chaptersAdmin: adminQuery.query(async () => {
     const db = getDb();
     const rows = await db.select().from(schema.chapters).orderBy(asc(schema.chapters.name));
-    const out: Array<(typeof rows)[number] & { memberCount: number }> = [];
-    for (const c of rows) {
-      const n = (await db.select({ n: sql<number>`count(*)` }).from(schema.members)
-        .where(eq(schema.members.homeChapterId, c.id))).at(0)?.n ?? 0;
-      out.push({ ...c, memberCount: n });
-    }
-    return out;
+    // Batch member counts (was N+1) and the latest saved health snapshot per chapter.
+    const ids = rows.map((r) => r.id);
+    const counts = ids.length
+      ? await db.select({ chapterId: schema.members.homeChapterId, n: sql<number>`count(*)` })
+          .from(schema.members)
+          .where(sql`${schema.members.homeChapterId} in (${sql.join(ids.map((i) => sql`${i}`), sql`, `)})`)
+          .groupBy(schema.members.homeChapterId)
+      : [];
+    const countMap = new Map(counts.map((c) => [c.chapterId, Number(c.n)]));
+    const snaps = ids.length
+      ? await db.select().from(schema.healthSnapshots)
+          .where(sql`${schema.healthSnapshots.chapterId} in (${sql.join(ids.map((i) => sql`${i}`), sql`, `)})`)
+          .orderBy(desc(schema.healthSnapshots.createdAt))
+      : [];
+    const latestHealth = new Map<number, number>();
+    for (const s of snaps) if (!latestHealth.has(s.chapterId)) latestHealth.set(s.chapterId, s.total);
+    return rows.map((c) => ({ ...c, memberCount: countMap.get(c.id) ?? 0, lastHealth: latestHealth.get(c.id) ?? null }));
+  }),
+
+  /* Chapter Health Index — live compute + last snapshot for trend (CH-06). */
+  chapterHealth: adminQuery.input(z.object({ id: z.number() })).query(async ({ input }) => {
+    const health = await computeChapterHealth(input.id);
+    const last = (await getDb().select().from(schema.healthSnapshots)
+      .where(eq(schema.healthSnapshots.chapterId, input.id))
+      .orderBy(desc(schema.healthSnapshots.createdAt)).limit(1)).at(0) ?? null;
+    return { ...health, lastSnapshot: last };
+  }),
+
+  /* Save the quarterly snapshot (CH-06) — for trend and Zone comparison. */
+  saveHealthSnapshot: scopedAdmin("chapters").input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
+    const h = await computeChapterHealth(input.id);
+    await getDb().insert(schema.healthSnapshots).values({
+      chapterId: input.id, total: h.total, memberCount: h.memberCount, ...h.components,
+    });
+    await audit(ctx.user, "chapter.health.snapshot", { type: "chapter", id: input.id, detail: `index ${h.total} (${h.band})` });
+    return { ok: true, total: h.total };
   }),
 
   saveChapter: scopedAdmin("chapters")

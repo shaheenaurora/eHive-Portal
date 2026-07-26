@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { trpc } from "@/providers/trpc";
-import { EhShell, MEMBER_NAV, PageHead, Pill, Empty, Spinner, Modal, Field, toast } from "@/components/eh";
+import { EhShell, MEMBER_NAV, PageHead, Pill, Empty, Spinner, Modal, Field, Bar, toast } from "@/components/eh";
 import { fmtDate } from "@/lib/ehf";
-import { CHAPTER_STATUS_LABEL, CHAPTER_ROLE_RESP, CHAPTER_ROLE_METRIC, chapterRoleTitle } from "@contracts/constants";
+import { CHAPTER_STATUS_LABEL, CHAPTER_ROLE_RESP, CHAPTER_ROLE_METRIC, chapterRoleTitle,
+  HEALTH_COMPONENTS, HEALTH_BAND_LABEL, HEALTH_BAND_COLOR, healthBand } from "@contracts/constants";
 import type { ChapterStatus } from "@contracts/constants";
 
 export default function Chapter() {
@@ -163,6 +164,30 @@ export default function Chapter() {
               <p className="eh-sm eh-muted" style={{ marginTop: "-.4rem" }}>
                 You lead this chapter. Sign up members, assign mentors, onboard newcomers and share learnings — scoped to {ch.name}.
               </p>
+
+              {overview.data.health && (
+                <div className="eh-card eh-mb">
+                  <div className="eh-between" style={{ alignItems: "flex-start" }}>
+                    <div><h3 style={{ margin: 0 }}>Chapter Health Index</h3><div className="eh-muted eh-sm">The number your chapter is measured on.</div></div>
+                    <div style={{ textAlign: "right" }}>
+                      <div className="eh-num" style={{ fontSize: "2.2rem", fontWeight: 700, lineHeight: 1, color: "var(--eh-gold)" }}>{overview.data.health.total}</div>
+                      <Pill color={HEALTH_BAND_COLOR[healthBand(overview.data.health.total)]}>{HEALTH_BAND_LABEL[healthBand(overview.data.health.total)]}</Pill>
+                    </div>
+                  </div>
+                  <div className="eh-mt" style={{ display: "grid", gap: ".45rem" }}>
+                    {HEALTH_COMPONENTS.map((c) => {
+                      const v = (overview.data!.health.components as Record<string, number>)[c.key];
+                      return (
+                        <div key={c.key} style={{ display: "grid", gridTemplateColumns: "9.5rem 1fr 2.4rem", alignItems: "center", gap: ".5rem" }}>
+                          <span className="eh-sm" title={c.desc}>{c.label}</span>
+                          <Bar pct={v} />
+                          <span className="eh-num eh-sm" style={{ textAlign: "right" }}>{v}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               <div className="eh-grid g2" style={{ alignItems: "start" }}>
                 {/* sign up members */}

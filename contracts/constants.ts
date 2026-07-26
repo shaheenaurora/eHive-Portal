@@ -295,6 +295,30 @@ export function chapterRoleTitle(role: string, customTitle?: string | null): str
   return CHAPTER_ROLE_LABEL[role] ?? role;
 }
 
+/* Chapter Health Index (Operations Manual M7 / §4.4 / CH-06). The single number
+   the President owns — a weighted blend of six measures, each 0–100. */
+export const HEALTH_COMPONENTS = [
+  { key: "retention",  label: "Retention",           weight: 25, desc: "Share of members who stay — the truest test of value." },
+  { key: "engagement", label: "Engagement",          weight: 25, desc: "Active participation, not just headcount on the roll." },
+  { key: "growth",     label: "Growth",              weight: 15, desc: "Net new members against the chapter's stage target." },
+  { key: "programme",  label: "Programme",           weight: 15, desc: "A consistent calendar delivered, not promised." },
+  { key: "leadership", label: "Leadership pipeline", weight: 10, desc: "Enough members developing toward office." },
+  { key: "governance", label: "Governance & finance",weight: 10, desc: "Clean records, compliant spend, elections on time." },
+] as const;
+export type HealthComponentKey = (typeof HEALTH_COMPONENTS)[number]["key"];
+/** Below this index a chapter is under the health bar — remediation recommended. */
+export const HEALTH_BAR = 60;
+export type HealthBand = "healthy" | "watch" | "below";
+export function healthBand(total: number): HealthBand {
+  return total >= 75 ? "healthy" : total >= HEALTH_BAR ? "watch" : "below";
+}
+export const HEALTH_BAND_LABEL: Record<HealthBand, string> = {
+  healthy: "Healthy", watch: "Watch", below: "Below the bar",
+};
+export const HEALTH_BAND_COLOR: Record<HealthBand, "green" | "gold" | "red"> = {
+  healthy: "green", watch: "gold", below: "red",
+};
+
 export const ELECTION_STATUSES = ["open", "voting", "closed"] as const;
 export const MOTION_STATUSES = ["open", "passed", "rejected"] as const;
 export const BUDGET_KINDS = ["allocation", "sponsorship", "spend"] as const;

@@ -5,6 +5,7 @@ import * as schema from "@db/schema";
 import { getDb } from "./queries/connection";
 import { createRouter, authedQuery } from "./middleware";
 import { getMemberByUserId, notify } from "./queries/circle";
+import { computeChapterHealth } from "./queries/health";
 
 /**
  * Resolve the caller's chapter-officer context: the member must hold an active
@@ -53,8 +54,9 @@ export const officerRouter = createRouter({
       .leftJoin(schema.users, eq(schema.users.id, schema.members.userId))
       .where(eq(schema.chapterPosts.chapterId, chapterId))
       .orderBy(desc(schema.chapterPosts.createdAt)).limit(50);
+    const health = await computeChapterHealth(chapterId);
     return {
-      chapter, roleKeys,
+      chapter, roleKeys, health,
       roster: roster.map((r) => ({
         id: r.member.id, name: r.user.name ?? r.user.email ?? "Member",
         company: r.member.company, tier: r.member.tier, status: r.member.status,
