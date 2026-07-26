@@ -221,7 +221,7 @@
     </div>
 
     <h2>Area by area</h2>
-    <p class="lede" style="margin-bottom:18px;font-size:15.5px">Gold marks your weakest area — that's where attention pays back fastest.</p>
+    <p class="lede" id="areaHint" style="margin-bottom:18px;font-size:15.5px">Gold marks your weakest area — that's where attention pays back fastest.</p>
     <div class="bars" id="bars"></div>
 
     <div class="rec">
@@ -459,14 +459,25 @@
     $("bandName").textContent = band.name;
     $("bandCopy").textContent = band.copy;
 
-    // weakest domain (ties -> earliest in the journey)
+    // A domain is only a "weak point" when it's the lowest AND genuinely low.
+    // If every area ties, or the lowest is still healthy, nothing is flagged —
+    // a perfect score shows no gold/alert bars.
     var min = Math.min.apply(null, ds.map(function(d){ return d.raw; }));
-    var weakest = ds.filter(function(d){ return d.raw === min; });
+    var max = Math.max.apply(null, ds.map(function(d){ return d.raw; }));
+    var spread = max - min;
+    var minPct = Math.min.apply(null, ds.map(function(d){ return d.pct; }));
+    var WEAK = 64;                       // below the "solid, with gaps" band
+    var showWeak = minPct < WEAK;
+    var weakest = showWeak ? ds.filter(function(d){ return d.raw === min; }) : [];
     var lead = weakest[0];
+
+    // Show the "gold marks your weakest area" hint only when there is one.
+    var hint = $("areaHint");
+    if(hint) hint.style.display = showWeak ? "" : "none";
 
     var bars = $("bars"); bars.innerHTML = "";
     ds.forEach(function(d){
-      var isWeak = d.raw === min;
+      var isWeak = showWeak && d.raw === min;
       var row = document.createElement("div");
       row.className = "bar" + (isWeak ? " weakest" : "");
       row.innerHTML =
@@ -480,22 +491,22 @@
       });
     });
 
-    // If everything is uniformly low, a single-area fix is the wrong advice.
-    var spread = Math.max.apply(null, ds.map(function(d){return d.raw;})) - min;
     var route;
-    if(pct < 45 && spread <= 3){
+    if(pct >= 82 && !showWeak){
+      route = {p:"Momentum90™", c:"You don't need a rebuild. What protects a business at this level is execution discipline — clear owners, visible KPIs and a weekly rhythm that holds when things get busy."};
+    } else if(pct < 45 && spread <= 3){
       route = {p:"GapNavigator™", c:"Your scores are low across the board rather than in one place — so fixing a single area wouldn't get you far. A full GapNavigator diagnostic scores the whole business on evidence and ranks the three to seven moves that actually matter."};
     } else if(weakest.length >= 3){
-      route = {p:"GapNavigator™", c:"Several areas are tied at the bottom, which means the real bottleneck isn't obvious from a short questionnaire. A GapNavigator diagnostic goes deeper and ranks what to fix first."};
-    } else if(pct >= 82){
-      route = {p:"Momentum90™", c:"You don't need a rebuild. What protects a business at this level is execution discipline — clear owners, visible KPIs and a weekly rhythm that holds when things get busy."};
-    } else {
+      route = {p:"GapNavigator™", c:"Several areas are weak at once, which means the real bottleneck isn't obvious from a short questionnaire. A GapNavigator diagnostic goes deeper and ranks what to fix first."};
+    } else if(weakest.length >= 1){
       route = ROUTES[lead.key];
+    } else {
+      route = {p:"GapNavigator™", c:"Your business scores evenly with no single weak point — a full GapNavigator diagnostic finds the highest-leverage move to lift the whole score."};
     }
 
     $("recTitle").textContent = route.p;
     $("recCopy").textContent = route.c;
-    $("ctaBtn").textContent = pct >= 82 ? "Talk to us about Momentum90" : "Book a conversation";
+    $("ctaBtn").textContent = route.p === "Momentum90™" ? "Talk to us about Momentum90" : "Book a conversation";
 
     // Route the CTA into the matching booking page, carrying the recommendation.
     var SLUG = {

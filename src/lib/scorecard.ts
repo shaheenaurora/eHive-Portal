@@ -41,16 +41,28 @@ export function buildScorecardReport(payload: Record<string, unknown>): Scorecar
   const band = BANDS.find((b) => total >= b.min) ?? BANDS[BANDS.length - 1];
   const min = Math.min(...domains.map((d) => d.raw));
   const max = Math.max(...domains.map((d) => d.raw));
-  const weakest = domains.filter((d) => d.raw === min);
-  const strongest = domains.filter((d) => d.raw === max);
   const spread = max - min;
+  const minPct = Math.min(...domains.map((d) => d.pct));
 
-  // Mirror the scorecard's routing: uniformly-low or many-tied → full diagnostic.
+  // A domain is a "weak point" only when it's the lowest AND genuinely low
+  // (below the "solid" band). If every area ties, or the lowest area is still
+  // healthy, nothing is flagged — a 100/100 has no weak points, no alerts.
+  const WEAK_PCT = 64;
+  const hasConcern = minPct < WEAK_PCT;
+  const weakest = hasConcern ? domains.filter((d) => d.raw === min) : [];
+  // Strengths are only worth highlighting when there's a spread to compare.
+  const strongest = spread > 0 ? domains.filter((d) => d.raw === max) : [];
+
   let recommendation: { product: string; why: string };
-  if (total < 45 && spread <= 3) {
+  if (weakest.length === 0) {
+    // Nothing is genuinely lagging.
+    recommendation = total >= 82
+      ? { product: "Momentum90", why: "Nothing is lagging — at this level the job is protecting what works: clear owners, visible KPIs and a weekly rhythm that holds while the business scales." }
+      : { product: "GapNavigator", why: "The business scores evenly with no single weak point — a full diagnostic finds the highest-leverage move to lift the whole score." };
+  } else if (total < 45 && spread <= 3) {
     recommendation = { product: "GapNavigator", why: "Scores are low across the board rather than in one place — a full diagnostic ranks the 3–7 moves that actually matter." };
   } else if (weakest.length >= 3) {
-    recommendation = { product: "GapNavigator", why: "Several areas tie at the bottom — the real bottleneck isn't obvious from a short questionnaire; a diagnostic goes deeper." };
+    recommendation = { product: "GapNavigator", why: "Several areas are weak at once — the real bottleneck isn't obvious from a short questionnaire; a diagnostic goes deeper." };
   } else {
     recommendation = ROUTES[weakest[0].key] ?? { product: "GapNavigator", why: "A full diagnostic will rank what to fix first." };
   }
