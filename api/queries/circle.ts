@@ -252,6 +252,14 @@ export async function evaluateDormancy(): Promise<{ evaluated: number; transitio
       next = "dormant"; reason = "No recorded engagement this quarter.";
     }
     if (next !== cur) { await setDormancyStage(m.id, cur, next, reason); transitions++; }
+    // ML-04: keep the CRM lifecycle in step with engagement — auto-flag at-risk
+    // and auto-clear on recovery, without disturbing onboarding/renewal/etc.
+    const lc = (m as { lifecycleState?: string }).lifecycleState;
+    if (lc === "active" && (next === "at_risk" || next === "dormant" || next === "non_renewal")) {
+      await db.update(schema.members).set({ lifecycleState: "at_risk" }).where(eq(schema.members.id, m.id));
+    } else if (lc === "at_risk" && next === "active") {
+      await db.update(schema.members).set({ lifecycleState: "active" }).where(eq(schema.members.id, m.id));
+    }
   }
   return { evaluated: all.length, transitions };
 }

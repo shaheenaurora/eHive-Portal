@@ -3,17 +3,19 @@ import { Link } from "react-router";
 import { trpc } from "@/providers/trpc";
 import { EhShell, ADMIN_NAV, PageHead, Pill, StatusPill, TierPill, Empty, Spinner, toast } from "@/components/eh";
 import { fmtDate, initials } from "@/lib/ehf";
-import { TIERS, MEMBER_STATUSES } from "@contracts/constants";
+import { TIERS, MEMBER_STATUSES, MEMBER_LIFECYCLE, MEMBER_LIFECYCLE_LABEL, MEMBER_LIFECYCLE_COLOR } from "@contracts/constants";
 
 export default function AdminMembers() {
   const [q2, setQ2] = useState("");
   const [tier, setTier] = useState("");
   const [status, setStatus] = useState("");
+  const [lifecycle, setLifecycle] = useState("");
   const utils = trpc.useUtils();
   const q = trpc.admin.members.useQuery(
-    { q: q2 || undefined, tier: (tier || undefined) as never, status: (status || undefined) as never },
+    { q: q2 || undefined, tier: (tier || undefined) as never, status: (status || undefined) as never, lifecycle: lifecycle || undefined },
     { retry: false },
   );
+  const counts = trpc.admin.lifecycleCounts.useQuery(undefined, { retry: false });
   const requests = trpc.admin.pendingTierRequests.useQuery(undefined, { retry: false });
   const decide = trpc.admin.decideTierRequest.useMutation({
     onSuccess: (_r, v) => {
@@ -28,6 +30,24 @@ export default function AdminMembers() {
     <EhShell groups={ADMIN_NAV} brandSub="Admin">
       <PageHead eyebrow="Directory" title="Members"
                 sub="Every membership, every tier. Click a row for the 360° view." />
+
+      {/* Member Lifecycle — the CRM state machine (M1). Click a stage to filter. */}
+      <div className="eh-card eh-mb">
+        <div className="eh-eyebrow" style={{ marginBottom: ".5rem" }}>Member lifecycle · the CRM pipeline</div>
+        <div className="eh-row" style={{ gap: ".4rem", flexWrap: "wrap" }}>
+          <button className={"eh-btn sm" + (lifecycle === "" ? " gold" : " ghost")} onClick={() => setLifecycle("")}>
+            All
+          </button>
+          {MEMBER_LIFECYCLE.map((s) => (
+            <button key={s.key}
+                    className={"eh-btn sm" + (lifecycle === s.key ? " gold" : " ghost")}
+                    onClick={() => setLifecycle(lifecycle === s.key ? "" : s.key)}
+                    title={s.desc}>
+              {s.label} <b className="eh-num">{counts.data?.[s.key] ?? 0}</b>
+            </button>
+          ))}
+        </div>
+      </div>
 
       {(requests.data ?? []).length > 0 && (
         <div className="eh-card eh-mb">
@@ -85,7 +105,7 @@ export default function AdminMembers() {
         <div className="eh-card" style={{ padding: ".4rem 1.25rem" }}>
           <table className="eh-table stack">
             <thead>
-              <tr><th>Member</th><th>Company</th><th>Tier</th><th>Status</th><th>Score</th><th>Joined</th><th></th></tr>
+              <tr><th>Member</th><th>Company</th><th>Tier</th><th>Lifecycle</th><th>Status</th><th>Score</th><th></th></tr>
             </thead>
             <tbody>
               {q.data.map(({ member, userName, userEmail }) => (
@@ -99,9 +119,9 @@ export default function AdminMembers() {
                   </td>
                   <td className="eh-sm" data-label="Company">{member.company ?? "—"}</td>
                   <td data-label="Tier"><TierPill tier={member.tier} /></td>
+                  <td data-label="Lifecycle"><Pill color={MEMBER_LIFECYCLE_COLOR[member.lifecycleState] ?? "grey"}>{MEMBER_LIFECYCLE_LABEL[member.lifecycleState] ?? member.lifecycleState}</Pill></td>
                   <td data-label="Status"><StatusPill status={member.status} /></td>
                   <td className="eh-num" data-label="Score"><b>{member.hiveScore}</b></td>
-                  <td className="eh-sm eh-muted" data-label="Joined">{fmtDate(member.joinedAt)}</td>
                   <td><Link className="eh-btn ghost sm" to={`/admin/members/${member.id}`}
                             onClick={(e) => e.stopPropagation()}>360° →</Link></td>
                 </tr>

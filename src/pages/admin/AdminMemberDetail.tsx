@@ -3,7 +3,8 @@ import { Link, useParams } from "react-router";
 import { trpc } from "@/providers/trpc";
 import { EhShell, ADMIN_NAV, StatusPill, TierPill, Empty, Spinner, Modal, Field, Pill, toast } from "@/components/eh";
 import { fmtDate, fmtDateTime, initials, relDay } from "@/lib/ehf";
-import { SCORE_FACTORS, SCORE_FACTOR_LABEL, TIERS, TIER_LABEL } from "@contracts/constants";
+import { SCORE_FACTORS, SCORE_FACTOR_LABEL, TIERS, TIER_LABEL,
+  MEMBER_LIFECYCLE_LABEL, MEMBER_LIFECYCLE_COLOR, MEMBER_LIFECYCLE_DESC, MEMBER_LIFECYCLE_TRANSITIONS } from "@contracts/constants";
 
 export default function AdminMemberDetail() {
   const { id } = useParams<{ id: string }>();
@@ -32,6 +33,10 @@ export default function AdminMemberDetail() {
     onSuccess: () => { toast("Home chapter updated."); invalidate(); },
     onError: (e) => toast(e.message),
   });
+  const setLifecycle = trpc.admin.setLifecycleState.useMutation({
+    onSuccess: () => { toast("Lifecycle updated."); invalidate(); },
+    onError: (e) => toast(e.message),
+  });
 
   if (q.isLoading) return <EhShell groups={ADMIN_NAV} brandSub="Admin"><Spinner /></EhShell>;
   if (!q.data) return <EhShell groups={ADMIN_NAV} brandSub="Admin"><Empty big="Member not found." /></EhShell>;
@@ -51,6 +56,7 @@ export default function AdminMemberDetail() {
         </div>
         <div className="eh-row">
           <TierPill tier={member.tier} />
+          <Pill color={MEMBER_LIFECYCLE_COLOR[member.lifecycleState] ?? "grey"}>{MEMBER_LIFECYCLE_LABEL[member.lifecycleState] ?? member.lifecycleState}</Pill>
           <StatusPill status={member.status} />
           <Pill color="gold">Score {member.hiveScore}</Pill>
         </div>
@@ -58,6 +64,22 @@ export default function AdminMemberDetail() {
 
       <div className="eh-grid g3" style={{ alignItems: "start" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <div className="eh-card">
+            <h3>Lifecycle</h3>
+            <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>{MEMBER_LIFECYCLE_DESC[member.lifecycleState] ?? ""}</p>
+            <div className="eh-row" style={{ gap: ".4rem", flexWrap: "wrap" }}>
+              {(MEMBER_LIFECYCLE_TRANSITIONS[member.lifecycleState] ?? []).map((t) => (
+                <button key={t.to} className="eh-btn sm ghost" disabled={setLifecycle.isPending}
+                        onClick={() => setLifecycle.mutate({ memberId: mid, state: t.to as never })}>
+                  {t.label} →
+                </button>
+              ))}
+              {(MEMBER_LIFECYCLE_TRANSITIONS[member.lifecycleState] ?? []).length === 0 && (
+                <span className="eh-sm eh-muted">No onward transitions.</span>
+              )}
+            </div>
+          </div>
+
           <div className="eh-card">
             <h3>Controls</h3>
             <Field label="Tier">

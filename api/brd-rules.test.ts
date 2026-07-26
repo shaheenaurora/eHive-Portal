@@ -10,6 +10,8 @@ import {
   memberCanAccessEvent,
   EVENT_CHECKIN_OPENS_BEFORE_MS,
   EVENT_CHECKIN_CLOSES_AFTER_MS,
+  MEMBER_LIFECYCLE,
+  MEMBER_LIFECYCLE_TRANSITIONS,
 } from "@contracts/constants";
 
 /**
@@ -75,6 +77,31 @@ describe("Activity audience governance", () => {
     expect(memberCanAccessEvent("ascent", ev)).toBe(false);
     expect(memberCanAccessEvent("vanguard", ev)).toBe(true);
     expect(memberCanAccessEvent("zenith", ev)).toBe(true);
+  });
+});
+
+describe("Member Lifecycle — the CRM state machine (M1)", () => {
+  const keys = new Set(MEMBER_LIFECYCLE.map((s) => s.key));
+
+  it("covers the ten lifecycle states from the operations manual", () => {
+    expect([...keys]).toEqual([
+      "prospect", "guest", "applicant", "onboarding", "active",
+      "at_risk", "renewal", "lapsed", "alumni", "suspended",
+    ]);
+  });
+
+  it("only allows transitions to real states", () => {
+    for (const [from, arrows] of Object.entries(MEMBER_LIFECYCLE_TRANSITIONS)) {
+      expect(keys.has(from)).toBe(true);
+      for (const a of arrows) expect(keys.has(a.to)).toBe(true);
+    }
+  });
+
+  it("routes admission and the save/renewal arrows correctly", () => {
+    expect(MEMBER_LIFECYCLE_TRANSITIONS.applicant.map((a) => a.to)).toContain("onboarding");
+    expect(MEMBER_LIFECYCLE_TRANSITIONS.at_risk.map((a) => a.to)).toContain("active"); // saved
+    expect(MEMBER_LIFECYCLE_TRANSITIONS.renewal.map((a) => a.to)).toEqual(["active", "lapsed"]);
+    expect(MEMBER_LIFECYCLE_TRANSITIONS.lapsed.map((a) => a.to)).toContain("alumni");
   });
 });
 

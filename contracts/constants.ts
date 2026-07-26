@@ -42,6 +42,47 @@ export type SelfServeTier = (typeof SELF_SERVE_TIERS)[number];
 export const MEMBER_STATUSES = ["active", "paused", "cancelled"] as const;
 export type MemberStatus = (typeof MEMBER_STATUSES)[number];
 
+/* Member Lifecycle — the CRM state machine (Operations Manual M1 / Figure 2).
+   `status` above is access/billing; this is the member's journey state. Each
+   transition is an SOP with an owner, a trigger and a notification. */
+export const MEMBER_LIFECYCLE = [
+  { key: "prospect",   label: "Prospect",   kind: "top",    desc: "Captured and nurtured — top of the funnel." },
+  { key: "guest",      label: "Guest",      kind: "top",    desc: "Attending as a visitor." },
+  { key: "applicant",  label: "Applicant",  kind: "top",    desc: "Applied to join; in screening." },
+  { key: "onboarding", label: "Onboarding", kind: "new",    desc: "First 30/60/90 days — orientation, POD placement, first contribution." },
+  { key: "active",     label: "Active",     kind: "good",   desc: "Engaged, in a POD, contributing." },
+  { key: "at_risk",    label: "At-Risk",    kind: "risk",   desc: "Early-warning flag — disengaging; needs a personal save." },
+  { key: "renewal",    label: "Renewal",    kind: "renew",  desc: "Annual decision point — value conversation, year in review." },
+  { key: "lapsed",     label: "Lapsed",     kind: "risk",   desc: "Did not renew." },
+  { key: "alumni",     label: "Alumni",     kind: "top",    desc: "Stays in the network; win-back preserved." },
+  { key: "suspended",  label: "Suspended",  kind: "risk",   desc: "Under a conduct process." },
+] as const;
+export type MemberLifecycle = (typeof MEMBER_LIFECYCLE)[number]["key"];
+export const MEMBER_LIFECYCLE_LABEL: Record<string, string> =
+  Object.fromEntries(MEMBER_LIFECYCLE.map((s) => [s.key, s.label]));
+export const MEMBER_LIFECYCLE_DESC: Record<string, string> =
+  Object.fromEntries(MEMBER_LIFECYCLE.map((s) => [s.key, s.desc]));
+/** Pill colour per lifecycle state for the CRM board. */
+export const MEMBER_LIFECYCLE_COLOR: Record<string, "grey" | "blue" | "gold" | "green" | "red" | "purple"> = {
+  prospect: "grey", guest: "blue", applicant: "purple", onboarding: "gold", active: "green",
+  at_risk: "red", renewal: "gold", lapsed: "red", alumni: "grey", suspended: "red",
+};
+/** The transitions an admin may drive from each state (the arrows in Figure 2),
+ *  each with the label shown on the button. Auto-transitions (admission,
+ *  at-risk detection, renewal window) also exist server-side. */
+export const MEMBER_LIFECYCLE_TRANSITIONS: Record<string, { to: string; label: string }[]> = {
+  prospect:   [{ to: "guest", label: "Invited" }, { to: "applicant", label: "Applied" }],
+  guest:      [{ to: "applicant", label: "Applied" }, { to: "alumni", label: "Stay in network" }],
+  applicant:  [{ to: "onboarding", label: "Admit" }],
+  onboarding: [{ to: "active", label: "Activate" }, { to: "at_risk", label: "Flag at-risk" }],
+  active:     [{ to: "at_risk", label: "Flag at-risk" }, { to: "renewal", label: "Open renewal" }, { to: "suspended", label: "Suspend (conduct)" }],
+  at_risk:    [{ to: "active", label: "Saved" }, { to: "renewal", label: "Open renewal" }, { to: "suspended", label: "Suspend (conduct)" }],
+  renewal:    [{ to: "active", label: "Renewed" }, { to: "lapsed", label: "Not renewed" }],
+  lapsed:     [{ to: "alumni", label: "Re-home to Alumni" }, { to: "onboarding", label: "Win-back → re-admit" }],
+  alumni:     [{ to: "applicant", label: "Win-back → apply" }],
+  suspended:  [{ to: "active", label: "Reinstate" }, { to: "alumni", label: "Remove → Alumni" }],
+};
+
 /* Membership change events carry an approval state. Self-serve actions (pause,
    cancel, renew) are recorded as `applied`; tier upgrades/downgrades a member
    requests are `pending` until management approves or rejects them. */
