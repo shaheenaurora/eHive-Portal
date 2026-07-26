@@ -5,7 +5,7 @@ import { alias } from "drizzle-orm/mysql-core";
 import * as schema from "@db/schema";
 import { getDb } from "./queries/connection";
 import { createRouter, adminQuery, scopedAdmin } from "./middleware";
-import { awardPoints, awardRulePoints, promoteWaitlist, recomputeScore, autoPairBuddy } from "./queries/circle";
+import { awardPoints, awardRulePoints, promoteWaitlist, recomputeScore, autoPairBuddy, notify } from "./queries/circle";
 import { audit } from "./lib/audit";
 import { findUserByEmail } from "./queries/users";
 import { tierRank, EVENT_CHECKIN_OPENS_BEFORE_MS } from "@contracts/constants";
@@ -190,6 +190,7 @@ export const adminRouter = createRouter({
             company: app.company,
             renewalAt: renewal,
             homeChapterId: input.chapterId ?? null, // admitted into a chapter
+            lifecycleState: "onboarding",           // ML-03: first 30/60/90 days
           });
           const memberId = Number(res[0].insertId);
           await db.insert(schema.membershipEvents).values({
@@ -217,6 +218,7 @@ export const adminRouter = createRouter({
           q: z.string().max(120).optional(),
           tier: TIER.optional(),
           status: z.enum(["active", "paused", "cancelled"]).optional(),
+          lifecycle: z.string().max(24).optional(),
         })
         .optional(),
     )
@@ -225,6 +227,7 @@ export const adminRouter = createRouter({
       const conds = [];
       if (input?.tier) conds.push(eq(schema.members.tier, input.tier));
       if (input?.status) conds.push(eq(schema.members.status, input.status));
+      if (input?.lifecycle) conds.push(eq(schema.members.lifecycleState, input.lifecycle as never));
       if (input?.q) {
         const q = `%${input.q}%`;
         conds.push(
@@ -247,6 +250,46 @@ export const adminRouter = createRouter({
         .where(conds.length ? and(...conds) : undefined)
         .orderBy(desc(schema.members.hiveScore))
         .limit(300);
+    }),
+
+  /* Member Lifecycle CRM board — count of members in each state (M1 / Figure 2). */
+  lifecycleCounts: adminQuery.query(async () => {
+    const rows = await getDb()
+      .select({ state: schema.members.lifecycleState, n: sql<number>`count(*)` })
+      .from(schema.members)
+      .groupBy(schema.members.lifecycleState);
+    return Object.fromEntries(rows.map((r) => [r.state, Number(r.n)]));
+  }),
+
+  /* Drive a member along the lifecycle state machine. Every transition is an SOP
+     with an owner (the acting admin), a trigger and a notification (ML-01–06). */
+  setLifecycleState: scopedAdmin("membership")
+    .input(z.object({
+      memberId: z.number().int().positive(),
+      state: z.enum(["prospect", "guest", "applicant", "onboarding", "active", "at_risk", "renewal", "lapsed", "alumni", "suspended"]),
+      note: z.string().max(500).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = getDb();
+      const m = await mustMember(input.memberId);
+      if (m.lifecycleState === input.state) return { ok: true };
+      const patch: Record<string, unknown> = { lifecycleState: input.state };
+      // Keep access/billing status coherent with the journey state.
+      if (input.state === "active" || input.state === "onboarding" || input.state === "renewal" || input.state === "at_risk") patch.status = "active";
+      if (input.state === "suspended") patch.status = "paused";
+      if (input.state === "alumni" || input.state === "lapsed") patch.status = "cancelled";
+      await db.update(schema.members).set(patch).where(eq(schema.members.id, m.id));
+      // Member-facing notification for the transitions that should reach them.
+      const NOTE: Record<string, string> = {
+        active: "Welcome to Active membership — you're all set.",
+        at_risk: "We've missed you lately — your chapter would love to see you back.",
+        renewal: "Your renewal window is open. Here's your year in review.",
+        suspended: "Your membership is under review.",
+        alumni: "You're now an eHive Alumnus — the door stays open.",
+      };
+      if (NOTE[input.state]) { try { await notify(m.id, NOTE[input.state], "membership"); } catch { /* non-fatal */ } }
+      await audit(ctx.user, "member.lifecycle", { type: "member", id: m.id, detail: `${m.lifecycleState} → ${input.state}${input.note ? ` (${input.note})` : ""}` });
+      return { ok: true };
     }),
 
   memberDetail: adminQuery.input(idInput).query(async ({ input }) => {

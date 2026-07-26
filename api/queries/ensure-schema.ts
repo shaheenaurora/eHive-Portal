@@ -48,6 +48,22 @@ export async function ensureSchema(): Promise<void> {
         );
     }
 
+    // --- members: lifecycle state machine (M1) ---
+    if (tables.has("members") && !cols.has("members.lifecycleState")) {
+      stmts.push(
+        "ALTER TABLE members ADD COLUMN lifecycleState enum('prospect','guest','applicant','onboarding','active','at_risk','renewal','lapsed','alumni','suspended') NOT NULL DEFAULT 'active'",
+      );
+      // One-time backfill from existing status/dormancy so the CRM board is
+      // populated the moment the column exists.
+      stmts.push(
+        "UPDATE members SET lifecycleState = CASE " +
+          "WHEN status = 'cancelled' THEN 'alumni' " +
+          "WHEN status = 'paused' THEN 'at_risk' " +
+          "WHEN dormancyStage IN ('at_risk','dormant','non_renewal') THEN 'at_risk' " +
+          "ELSE 'active' END",
+      );
+    }
+
     // --- chapters: BNI-style geographic formation standards ---
     if (tables.has("chapters")) {
       const add: Array<[string, string]> = [
@@ -144,6 +160,7 @@ export async function ensureSchema(): Promise<void> {
       ["members", "ix_members_tier_status", "tier, status"],
       ["members", "ix_members_status_score", "status, hiveScore"],
       ["members", "ix_members_home_chapter", "homeChapterId"],
+      ["members", "ix_members_lifecycle", "lifecycleState"],
       ["event_regs", "ix_eventregs_event_status", "eventId, status"],
       ["event_regs", "ix_eventregs_member", "memberId"],
       ["event_regs", "ix_eventregs_code", "checkinCode"],

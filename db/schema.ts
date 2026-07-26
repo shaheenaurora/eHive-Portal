@@ -52,6 +52,11 @@ export const members = mysqlTable("members", {
   userId: bigint("userId", { mode: "number", unsigned: true }).notNull().unique(),
   tier: mysqlEnum("tier", ["horizon", "ascent", "vanguard", "zenith"]).notNull().default("horizon"),
   status: mysqlEnum("status", ["active", "paused", "cancelled"]).notNull().default("active"),
+  /* Member Lifecycle — the CRM state machine (Operations Manual M1 / Figure 2).
+     Distinct from `status` (access/billing): this is the member's journey. */
+  lifecycleState: mysqlEnum("lifecycleState",
+    ["prospect", "guest", "applicant", "onboarding", "active", "at_risk", "renewal", "lapsed", "alumni", "suspended"])
+    .notNull().default("active"),
   hiveScore: int("hiveScore").notNull().default(0),
   company: varchar("company", { length: 255 }),
   title: varchar("title", { length: 255 }),
