@@ -42,6 +42,15 @@ export type SelfServeTier = (typeof SELF_SERVE_TIERS)[number];
 export const MEMBER_STATUSES = ["active", "paused", "cancelled"] as const;
 export type MemberStatus = (typeof MEMBER_STATUSES)[number];
 
+/* Membership change events carry an approval state. Self-serve actions (pause,
+   cancel, renew) are recorded as `applied`; tier upgrades/downgrades a member
+   requests are `pending` until management approves or rejects them. */
+export const MEMBERSHIP_EVENT_STATUSES = ["applied", "pending", "approved", "rejected"] as const;
+export type MembershipEventStatus = (typeof MEMBERSHIP_EVENT_STATUSES)[number];
+export const MEMBERSHIP_EVENT_STATUS_LABEL: Record<MembershipEventStatus, string> = {
+  applied: "Applied", pending: "Pending approval", approved: "Approved", rejected: "Rejected",
+};
+
 export const APPLICATION_STATUSES = [
   "received",
   "screening",
@@ -69,8 +78,63 @@ export const SCORE_FACTOR_LABEL: Record<ScoreFactor, string> = {
   tenure: "Tenure",
 };
 
-export const EVENT_KINDS = ["spark", "meetup", "circle", "retreat", "summit"] as const;
+/* Activity master — the full catalogue of eHive Circle activity types. Any of
+   these can be scheduled from Calendar management with its own audience. Keep in
+   sync with the `kind` enum in db/schema.ts (and boot.ts ensureSchema). */
+export const EVENT_KINDS = [
+  "spark", "meetup", "circle", "retreat", "summit",
+  "conference", "conclave", "roundtable", "workshop", "masterclass",
+  "breakfast", "lunch", "dinner", "social", "webinar",
+] as const;
 export type EventKind = (typeof EVENT_KINDS)[number];
+export const EVENT_KIND_LABEL: Record<EventKind, string> = {
+  spark: "Spark Evening", meetup: "Meetup", circle: "Circle Dinner",
+  retreat: "Retreat", summit: "Summit", conference: "Conference",
+  conclave: "Conclave", roundtable: "Roundtable", workshop: "Workshop",
+  masterclass: "Masterclass", breakfast: "Breakfast", lunch: "Lunch",
+  dinner: "Dinner", social: "Social", webinar: "Webinar",
+};
+export const EVENT_KIND_COLOR: Record<EventKind, "blue" | "purple" | "green" | "gold" | "grey"> = {
+  spark: "blue", meetup: "grey", circle: "purple", retreat: "green", summit: "gold",
+  conference: "gold", conclave: "purple", roundtable: "blue", workshop: "blue", masterclass: "gold",
+  breakfast: "green", lunch: "green", dinner: "purple", social: "grey", webinar: "blue",
+};
+
+/* Who an activity is for. `public` shows it to everyone (incl. prospects);
+   `members` opens it to every tier; `tiers` restricts it to a named set. */
+export const EVENT_AUDIENCES = ["public", "members", "tiers"] as const;
+export type EventAudience = (typeof EVENT_AUDIENCES)[number];
+export const EVENT_AUDIENCE_LABEL: Record<EventAudience, string> = {
+  public: "Public — open to everyone",
+  members: "All members — every tier",
+  tiers: "Specific tiers only",
+};
+
+/** Attendance can only be recorded inside this window around the start time —
+ *  a member cannot check in to an event that hasn't happened yet. */
+export const EVENT_CHECKIN_OPENS_BEFORE_MS = 2 * 60 * 60 * 1000;   // 2h before start
+export const EVENT_CHECKIN_CLOSES_AFTER_MS = 12 * 60 * 60 * 1000;  // 12h after start
+
+/** The tiers eligible to see & join an event, given its audience settings.
+ *  `members`/`public` → every tier at or above the (legacy) tier gate;
+ *  `tiers` → exactly the named set. Shared by client and server. */
+export function eventEligibleTiers(ev: {
+  audience?: string | null; audienceTiers?: string | null; tierGate?: string | null;
+}): Tier[] {
+  if (ev.audience === "tiers") {
+    const set = (ev.audienceTiers ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+    const valid = set.filter((t): t is Tier => (TIERS as readonly string[]).includes(t));
+    return valid.length ? valid : [...TIERS];
+  }
+  const floor = tierRank(ev.tierGate || "horizon");
+  return TIERS.filter((t) => tierRank(t) >= floor);
+}
+/** Whether a member of `tier` may access an event under its audience rules. */
+export function memberCanAccessEvent(tier: string, ev: {
+  audience?: string | null; audienceTiers?: string | null; tierGate?: string | null;
+}): boolean {
+  return (eventEligibleTiers(ev) as string[]).includes(tier);
+}
 
 export const MILESTONE_KEYS = ["deck", "model", "dataroom"] as const;
 export type MilestoneKey = (typeof MILESTONE_KEYS)[number];

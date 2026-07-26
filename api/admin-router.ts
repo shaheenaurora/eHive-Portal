@@ -22,6 +22,28 @@ function isFullAdmin(user: { adminScopes?: string | null }): boolean {
 const TIER = z.enum(["horizon", "ascent", "vanguard", "zenith"]);
 const idInput = z.object({ id: z.number().int().positive() });
 
+/* Activity master — full catalogue of activity kinds and audience scopes.
+   Keep the kind list in sync with EVENT_KINDS (contracts/constants). */
+const EVENT_KIND = z.enum([
+  "spark", "meetup", "circle", "retreat", "summit",
+  "conference", "conclave", "roundtable", "workshop", "masterclass",
+  "breakfast", "lunch", "dinner", "social", "webinar",
+]);
+const AUDIENCE = z.enum(["public", "members", "tiers"]);
+
+/* Normalise the audience choice into the stored columns. `tierGate` is kept in
+   step (lowest eligible tier) so legacy gate checks still behave sensibly. */
+function resolveAudience(audience: "public" | "members" | "tiers", tiers?: string[]) {
+  if (audience === "tiers") {
+    const valid = (tiers ?? []).filter((t) => ["horizon", "ascent", "vanguard", "zenith"].includes(t));
+    const set = valid.length ? valid : ["horizon", "ascent", "vanguard", "zenith"];
+    const gate = set.reduce((lo, t) => (tierRank(t) < tierRank(lo) ? t : lo), set[0]) as
+      "horizon" | "ascent" | "vanguard" | "zenith";
+    return { audience, audienceTiers: set.join(","), tierGate: gate };
+  }
+  return { audience, audienceTiers: null, tierGate: "horizon" as const };
+}
+
 async function mustMember(memberId: number) {
   const rows = await getDb()
     .select()
@@ -294,9 +316,63 @@ export const adminRouter = createRouter({
         fromTier: m.tier,
         toTier: input.tier,
         note: input.note,
+        status: "approved",
+        actorEmail: ctx.user.email,
+        decidedAt: new Date(),
       });
       await audit(ctx.user, `member.${type}`, { type: "member", id: m.id, detail: `${m.tier} → ${input.tier}` });
       return { ok: true, type };
+    }),
+
+  /* Tier-change requests members have submitted, awaiting management approval. */
+  pendingTierRequests: scopedAdmin("membership").query(async () => {
+    const db = getDb();
+    return db
+      .select({
+        req: schema.membershipEvents,
+        member: schema.members,
+        userName: schema.users.name,
+        userEmail: schema.users.email,
+      })
+      .from(schema.membershipEvents)
+      .innerJoin(schema.members, eq(schema.members.id, schema.membershipEvents.memberId))
+      .leftJoin(schema.users, eq(schema.users.id, schema.members.userId))
+      .where(eq(schema.membershipEvents.status, "pending"))
+      .orderBy(desc(schema.membershipEvents.createdAt))
+      .limit(100);
+  }),
+
+  /* Approve or reject a member's pending tier change. The member's tier moves
+     only on approval — this is the sole path a member-requested change applies. */
+  decideTierRequest: scopedAdmin("membership")
+    .input(z.object({
+      id: z.number().int().positive(),
+      decision: z.enum(["approve", "reject"]),
+      note: z.string().max(500).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = getDb();
+      const req = (await db.select().from(schema.membershipEvents)
+        .where(eq(schema.membershipEvents.id, input.id)).limit(1)).at(0);
+      if (!req) throw new TRPCError({ code: "NOT_FOUND", message: "Request not found" });
+      if (req.status !== "pending") throw new TRPCError({ code: "CONFLICT", message: "This request was already decided." });
+      const m = await mustMember(req.memberId);
+
+      if (input.decision === "approve") {
+        // Guard against a stale request whose starting tier has since changed.
+        if (req.toTier && tierRank(req.toTier) !== tierRank(m.tier)) {
+          await db.update(schema.members).set({ tier: req.toTier as never }).where(eq(schema.members.id, m.id));
+        }
+      }
+      await db.update(schema.membershipEvents).set({
+        status: input.decision === "approve" ? "approved" : "rejected",
+        actorEmail: ctx.user.email,
+        decidedAt: new Date(),
+        note: input.note ?? req.note,
+      }).where(eq(schema.membershipEvents.id, req.id));
+      await audit(ctx.user, `member.tier_request.${input.decision}`,
+        { type: "member", id: m.id, detail: `${req.fromTier ?? m.tier} → ${req.toTier ?? "?"}` });
+      return { ok: true };
     }),
 
   setMemberStatus: scopedAdmin("membership")
@@ -587,39 +663,46 @@ export const adminRouter = createRouter({
     return out;
   }),
 
-  createEvent: adminQuery
+  createEvent: scopedAdmin("events")
     .input(
       z.object({
         title: z.string().min(2).max(255),
-        kind: z.enum(["spark", "meetup", "circle", "retreat", "summit"]).default("meetup"),
+        kind: EVENT_KIND.default("meetup"),
         description: z.string().max(4000).optional(),
         startsAt: z.coerce.date(),
         location: z.string().max(255).optional(),
-        tierGate: TIER.default("horizon"),
+        audience: AUDIENCE.default("members"),
+        audienceTiers: z.array(TIER).optional(),
         capacity: z.number().int().min(1).max(2000).default(40),
       }),
     )
-    .mutation(async ({ input }) => {
-      const res = await getDb().insert(schema.events).values(input);
-      return { ok: true, id: Number(res[0].insertId) };
+    .mutation(async ({ ctx, input }) => {
+      const { audience, audienceTiers, ...rest } = input;
+      const scope = resolveAudience(audience, audienceTiers);
+      const res = await getDb().insert(schema.events).values({ ...rest, ...scope });
+      const id = Number(res[0].insertId);
+      await audit(ctx.user, "event.create", { type: "event", id, detail: `${input.kind} · ${audience}` });
+      return { ok: true, id };
     }),
 
-  updateEvent: adminQuery
+  updateEvent: scopedAdmin("events")
     .input(
       z.object({
         id: z.number().int().positive(),
         title: z.string().min(2).max(255).optional(),
-        kind: z.enum(["spark", "meetup", "circle", "retreat", "summit"]).optional(),
+        kind: EVENT_KIND.optional(),
         description: z.string().max(4000).optional(),
         startsAt: z.coerce.date().optional(),
         location: z.string().max(255).optional(),
-        tierGate: TIER.optional(),
+        audience: AUDIENCE.optional(),
+        audienceTiers: z.array(TIER).optional(),
         capacity: z.number().int().min(1).max(2000).optional(),
       }),
     )
     .mutation(async ({ input }) => {
-      const { id, ...patch } = input;
-      await getDb().update(schema.events).set(patch).where(eq(schema.events.id, id));
+      const { id, audience, audienceTiers, ...patch } = input;
+      const scope = audience ? resolveAudience(audience, audienceTiers) : {};
+      await getDb().update(schema.events).set({ ...patch, ...scope }).where(eq(schema.events.id, id));
       return { ok: true };
     }),
 

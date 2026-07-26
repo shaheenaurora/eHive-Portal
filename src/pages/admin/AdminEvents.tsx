@@ -3,7 +3,8 @@ import type { FormEvent } from "react";
 import { trpc } from "@/providers/trpc";
 import { EhShell, ADMIN_NAV, PageHead, Pill, StatusPill, Empty, TierPill, Spinner, Modal, Field, toast } from "@/components/eh";
 import { fmtDateTime, fmtDay, initials } from "@/lib/ehf";
-import { EVENT_KINDS, TIERS, TIER_LABEL } from "@contracts/constants";
+import { EVENT_KINDS, EVENT_KIND_LABEL, EVENT_KIND_COLOR, EVENT_AUDIENCES, EVENT_AUDIENCE_LABEL,
+  TIERS, TIER_LABEL } from "@contracts/constants";
 
 // Camera scanner (html5-qrcode) is heavy and admin-only — load it on demand
 // so members never download it.
@@ -18,7 +19,10 @@ export default function AdminEvents() {
   const invalidate = () => utils.admin.eventsAdmin.invalidate();
 
   const createEvent = trpc.admin.createEvent.useMutation({
-    onSuccess: () => { toast("Event published — visible to members at once."); invalidate(); setCreate(false); },
+    onSuccess: () => {
+      toast("Activity published — visible to its audience at once.");
+      invalidate(); setCreate(false); setAudience("members"); setAudTiers(new Set(["vanguard", "zenith"]));
+    },
     onError: (e) => toast(e.message),
   });
   const markAtt = trpc.admin.markEventAttendance.useMutation({
@@ -37,6 +41,9 @@ export default function AdminEvents() {
   const [doorCode, setDoorCode] = useState("");
   const [scanning, setScanning] = useState(false);
   const [fbFor, setFbFor] = useState<number | null>(null);
+  // Activity-master audience picker (controlled — the rest of the form is FormData).
+  const [audience, setAudience] = useState<"public" | "members" | "tiers">("members");
+  const [audTiers, setAudTiers] = useState<Set<string>>(new Set(["vanguard", "zenith"]));
 
   // Stable callbacks so the scanner's camera isn't torn down on every render.
   const handleScan = useCallback((code: string) => {
@@ -51,6 +58,7 @@ export default function AdminEvents() {
 
   function onCreate(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (audience === "tiers" && audTiers.size === 0) { toast("Pick at least one tier for this activity."); return; }
     const f = new FormData(e.currentTarget);
     createEvent.mutate({
       title: String(f.get("title")),
@@ -58,7 +66,8 @@ export default function AdminEvents() {
       description: String(f.get("description")) || undefined,
       startsAt: new Date(String(f.get("startsAt"))),
       location: String(f.get("location")) || undefined,
-      tierGate: String(f.get("tierGate")) as never,
+      audience,
+      audienceTiers: audience === "tiers" ? ([...audTiers] as never) : undefined,
       capacity: Number(f.get("capacity")) || 40,
     });
   }
@@ -103,15 +112,20 @@ export default function AdminEvents() {
         <div className="eh-card" style={{ padding: ".4rem 1.25rem" }}>
           <table className="eh-table stack">
             <thead>
-              <tr><th>Event</th><th>Kind</th><th>When</th><th>Gate</th><th>Registered</th><th></th></tr>
+              <tr><th>Event</th><th>Kind</th><th>When</th><th>Audience</th><th>Registered</th><th></th></tr>
             </thead>
             <tbody>
               {q.data.map((e) => (
                 <tr key={e.id}>
                   <td><b>{e.title}</b><div className="eh-muted eh-sm">{e.location ?? "TBA"}</div></td>
-                  <td data-label="Kind"><Pill>{e.kind}</Pill></td>
+                  <td data-label="Kind"><Pill color={EVENT_KIND_COLOR[e.kind as keyof typeof EVENT_KIND_COLOR] ?? "grey"}>{EVENT_KIND_LABEL[e.kind as keyof typeof EVENT_KIND_LABEL] ?? e.kind}</Pill></td>
                   <td className="eh-sm" data-label="When">{fmtDay(e.startsAt)} {fmtDateTime(e.startsAt).split("·")[1]}</td>
-                  <td data-label="Gate"><TierPill tier={e.tierGate} /></td>
+                  <td data-label="Audience">
+                    {e.audience === "public" ? <Pill color="green">Public</Pill>
+                      : e.audience === "tiers"
+                        ? <span className="eh-sm">{(e.audienceTiers ?? "").split(",").filter(Boolean).map((t) => TIER_LABEL[t as keyof typeof TIER_LABEL] ?? t).join(", ") || <TierPill tier={e.tierGate} />}</span>
+                        : <Pill color="blue">All members</Pill>}
+                  </td>
                   <td className="eh-num" data-label="Registered">{e.regCount}/{e.capacity}</td>
                   <td style={{ whiteSpace: "nowrap" }}>
                     <button className="eh-btn ghost sm" onClick={() => setRegsFor(e.id)}>Registrations →</button>{" "}
@@ -125,38 +139,68 @@ export default function AdminEvents() {
       )}
 
       {create && (
-        <Modal title="New event" onClose={() => setCreate(false)}>
+        <Modal title="New activity" onClose={() => setCreate(false)}>
           <form onSubmit={onCreate}>
             <Field label="Title">
               <input className="eh-input" name="title" required minLength={2} placeholder="Spark Evening — …" />
             </Field>
             <div className="eh-grid g2">
-              <Field label="Kind">
-                <select className="eh-select" name="kind">
-                  {EVENT_KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
+              <Field label="Activity type">
+                <select className="eh-select" name="kind" defaultValue="meetup">
+                  {EVENT_KINDS.map((k) => <option key={k} value={k}>{EVENT_KIND_LABEL[k]}</option>)}
                 </select>
               </Field>
-              <Field label="Tier gate">
-                <select className="eh-select" name="tierGate" defaultValue="horizon">
-                  {TIERS.map((t) => <option key={t} value={t}>{TIER_LABEL[t]}+</option>)}
-                </select>
+              <Field label="Capacity">
+                <input className="eh-input" name="capacity" type="number" min={1} defaultValue={40} />
               </Field>
             </div>
             <div className="eh-grid g2">
               <Field label="Starts at">
                 <input className="eh-input" name="startsAt" type="datetime-local" required />
               </Field>
-              <Field label="Capacity">
-                <input className="eh-input" name="capacity" type="number" min={1} defaultValue={40} />
+              <Field label="Location">
+                <input className="eh-input" name="location" placeholder="eHive Majlis, DIFC" />
               </Field>
             </div>
-            <Field label="Location">
-              <input className="eh-input" name="location" placeholder="eHive Majlis, DIFC" />
+
+            <Field label="Who is this for?">
+              <select className="eh-select" value={audience}
+                      onChange={(e) => setAudience(e.target.value as "public" | "members" | "tiers")}>
+                {EVENT_AUDIENCES.map((a) => <option key={a} value={a}>{EVENT_AUDIENCE_LABEL[a]}</option>)}
+              </select>
             </Field>
+            {audience === "tiers" && (
+              <div className="eh-banner" style={{ marginBottom: ".75rem" }}>
+                <div className="eh-eyebrow" style={{ marginBottom: ".4rem" }}>Eligible tiers</div>
+                <div className="eh-row" style={{ gap: ".5rem", flexWrap: "wrap" }}>
+                  {TIERS.map((t) => {
+                    const on = audTiers.has(t);
+                    return (
+                      <button type="button" key={t}
+                              className={"eh-btn sm" + (on ? " gold" : " ghost")}
+                              onClick={() => {
+                                const next = new Set(audTiers);
+                                if (next.has(t)) next.delete(t); else next.add(t);
+                                setAudTiers(next);
+                              }}>
+                        {on ? "✓ " : ""}{TIER_LABEL[t]}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="eh-sm eh-muted" style={{ margin: ".5rem 0 0" }}>
+                  Only members in these tiers can see and register for this activity.
+                </p>
+              </div>
+            )}
+            {audience === "public" && (
+              <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>Open to everyone — visible to prospects as well as all members.</p>
+            )}
+
             <Field label="Description">
               <textarea className="eh-textarea" name="description" />
             </Field>
-            <button className="eh-btn gold" type="submit" disabled={createEvent.isPending}>Publish event →</button>
+            <button className="eh-btn gold" type="submit" disabled={createEvent.isPending}>Publish activity →</button>
           </form>
         </Modal>
       )}

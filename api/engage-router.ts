@@ -8,7 +8,8 @@ import {
   getMemberByUserId, awardRulePoints, notify, engagementCounts, quarterStart,
 } from "./queries/circle";
 import { getVapidPublicKey } from "./lib/push";
-import { tierRank, POINT_RULE_DEFAULTS, POINT_RULE_LABEL, POINT_RULE_FACTOR, ZENITH_CAP, PUSH_CATEGORY_KEYS } from "@contracts/constants";
+import { tierRank, POINT_RULE_DEFAULTS, POINT_RULE_LABEL, POINT_RULE_FACTOR, ZENITH_CAP, PUSH_CATEGORY_KEYS,
+  EVENT_CHECKIN_OPENS_BEFORE_MS, EVENT_CHECKIN_CLOSES_AFTER_MS } from "@contracts/constants";
 
 async function requireMember(userId: number) {
   const member = await getMemberByUserId(userId);
@@ -332,6 +333,16 @@ export const engageRouter = createRouter({
       if (!reg || reg.status === "cancelled") throw new TRPCError({ code: "NOT_FOUND", message: "No registration found" });
       if (reg.status === "waitlisted") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "You're on the waitlist" });
       if (reg.status === "attended") return { ok: true, score: member.hiveScore, already: true };
+      // Temporal integrity: you can only check in around the event itself — never
+      // before it happens (BRD 6.4: check-in writes score in real time at the door).
+      const ev = (await db.select().from(schema.events).where(eq(schema.events.id, input.eventId)).limit(1)).at(0);
+      if (!ev) throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
+      const start = new Date(ev.startsAt).getTime();
+      const now = Date.now();
+      if (now < start - EVENT_CHECKIN_OPENS_BEFORE_MS)
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Check-in opens closer to the event — you can't check in before it starts." });
+      if (now > start + EVENT_CHECKIN_CLOSES_AFTER_MS)
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Check-in for this event has closed." });
       if ((reg.checkinCode ?? "").toUpperCase() !== input.code.trim().toUpperCase())
         throw new TRPCError({ code: "BAD_REQUEST", message: "Check-in code doesn't match" });
       await db.update(schema.eventRegs).set({ status: "attended" }).where(eq(schema.eventRegs.id, reg.id));

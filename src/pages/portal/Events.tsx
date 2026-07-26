@@ -4,10 +4,7 @@ import { EhShell, MEMBER_NAV, PageHead, Pill, Empty, TierPill, Spinner, Modal, F
 import { QrCode } from "@/components/QrCode";
 import { useAuth } from "@/hooks/useAuth";
 import { fmtDateTime, fmtDay } from "@/lib/ehf";
-
-const KIND_COLOR: Record<string, "blue" | "purple" | "green" | "gold" | "grey"> = {
-  spark: "blue", meetup: "grey", circle: "purple", retreat: "green", summit: "gold",
-};
+import { EVENT_KIND_COLOR, EVENT_KIND_LABEL, TIER_LABEL } from "@contracts/constants";
 
 export default function Events() {
   const utils = trpc.useUtils();
@@ -78,8 +75,8 @@ export default function Events() {
           return (
             <div className="eh-card" key={e.id} style={{ display: "flex", flexDirection: "column" }}>
               <div className="eh-between">
-                <Pill color={KIND_COLOR[e.kind] ?? "grey"}>{e.kind}</Pill>
-                <TierPill tier={e.tierGate} />
+                <Pill color={EVENT_KIND_COLOR[e.kind as keyof typeof EVENT_KIND_COLOR] ?? "grey"}>{EVENT_KIND_LABEL[e.kind as keyof typeof EVENT_KIND_LABEL] ?? e.kind}</Pill>
+                {e.audience === "public" ? <Pill color="green">Public</Pill> : <TierPill tier={e.tierGate} />}
               </div>
               <h3 className="eh-mt">{e.title}</h3>
               <p className="eh-sm eh-muted" style={{ flex: 1 }}>{e.description}</p>
@@ -91,7 +88,14 @@ export default function Events() {
               </div>
               <div className="eh-mt">
                 {!e.allowed ? (
-                  <div className="eh-locked"><Pill>{e.tierGate}+</Pill><span className="eh-sm">Opens at {e.tierGate} tier — see Membership to upgrade.</span></div>
+                  <div className="eh-locked">
+                    <Pill>invite</Pill>
+                    <span className="eh-sm">
+                      {e.audience === "tiers"
+                        ? `For ${(e.eligibleTiers ?? []).map((t) => TIER_LABEL[t as keyof typeof TIER_LABEL] ?? t).join(", ")} members — see Membership to upgrade.`
+                        : `Opens at ${TIER_LABEL[e.tierGate as keyof typeof TIER_LABEL] ?? e.tierGate} tier — see Membership to upgrade.`}
+                    </span>
+                  </div>
                 ) : e.regStatus === "attended" ? (
                   <Pill color="green">Attended ✓</Pill>
                 ) : e.regStatus === "waitlisted" ? (

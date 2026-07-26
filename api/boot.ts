@@ -196,6 +196,15 @@ app.get("/sitemap.xml", (c) => {
 export default app;
 
 if (env.isProduction) {
+  // Self-healing, additive schema reconciliation so a deploy that adds columns
+  // works without a manual db:push. Never blocks boot if it fails.
+  try {
+    const { ensureSchema } = await import("./queries/ensure-schema");
+    await ensureSchema();
+  } catch (e) {
+    console.error("[ensureSchema] skipped:", e);
+  }
+
   const { serve } = await import("@hono/node-server");
   const { serveStaticFiles } = await import("./lib/vite");
   const { serveStatic } = await import("@hono/node-server/serve-static");
