@@ -12,6 +12,7 @@ import {
 import {
   POINT_RULE_KEYS, POINT_RULE_LABEL, POINT_RULE_FACTOR, POINT_RULE_DEFAULTS,
   ZENITH_CAP, INVESTOR_COOLDOWN_DAYS,
+  EVENT_CHECKIN_OPENS_BEFORE_MS, EVENT_CHECKIN_CLOSES_AFTER_MS,
 } from "@contracts/constants";
 
 export const adminEngageRouter = createRouter({
@@ -241,6 +242,16 @@ export const adminEngageRouter = createRouter({
       if (!reg) throw new TRPCError({ code: "NOT_FOUND", message: "Code not found" });
       if (reg.status === "attended") return { ok: true, already: true, memberId: reg.memberId };
       if (reg.status !== "registered") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Registration is " + reg.status });
+      // Door check-in only records attendance around the event itself.
+      const ev = (await db.select().from(schema.events).where(eq(schema.events.id, reg.eventId)).limit(1)).at(0);
+      if (ev) {
+        const start = new Date(ev.startsAt).getTime();
+        const now = Date.now();
+        if (now < start - EVENT_CHECKIN_OPENS_BEFORE_MS)
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This event hasn't started — check-in opens 2 hours before it begins." });
+        if (now > start + EVENT_CHECKIN_CLOSES_AFTER_MS)
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Check-in for this event has closed." });
+      }
       await db.update(schema.eventRegs).set({ status: "attended" }).where(eq(schema.eventRegs.id, reg.id));
       await awardRulePoints(reg.memberId, "event_attend", "Event check-in");
       return { ok: true, memberId: reg.memberId };

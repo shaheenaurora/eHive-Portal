@@ -12,6 +12,7 @@ export default function Membership() {
   const utils = trpc.useUtils();
   const me = trpc.circle.me.useQuery(undefined, { retry: false });
   const hist = trpc.circle.membershipHistory.useQuery(undefined, { retry: false, enabled: !!me.data?.member });
+  const pendingReq = trpc.circle.pendingTierRequest.useQuery(undefined, { retry: false, enabled: !!me.data?.member });
   const eng = trpc.engage.myEngagement.useQuery(undefined, { retry: false, enabled: !!me.data?.member });
   const dataReqs = trpc.engage.myDataRequests.useQuery(undefined, { retry: false, enabled: !!me.data?.member });
 
@@ -28,10 +29,13 @@ export default function Membership() {
     onError: (e) => toast(e.message),
   });
   const change = trpc.circle.requestMembershipChange.useMutation({
-    onSuccess: () => {
-      toast("Done — your membership is updated.");
+    onSuccess: (r) => {
+      toast(r.pending
+        ? "Request submitted — management will review your tier change and confirm."
+        : "Done — your membership is updated.");
       utils.circle.me.invalidate();
       utils.circle.membershipHistory.invalidate();
+      utils.circle.pendingTierRequest.invalidate();
       setConfirm(null);
     },
     onError: (e) => toast(e.message),
@@ -64,8 +68,8 @@ export default function Membership() {
   }
 
   const CONFIRM_COPY: Record<string, { title: string; body: string; cta: string; danger?: boolean }> = {
-    upgrade: { title: "Upgrade tier", body: "Your tier changes immediately — new events, library items and programme gates unlock now. Billing is adjusted pro-rata by the team.", cta: "Upgrade now →" },
-    downgrade: { title: "Downgrade tier", body: "Your tier changes at once. Tier-gated events and library items above the new tier close.", cta: "Downgrade" },
+    upgrade: { title: "Request an upgrade", body: "Tier changes are reviewed by the eHive Circle team. We'll confirm your new tier and adjust billing pro-rata — you'll see it here once it's approved.", cta: "Submit request →" },
+    downgrade: { title: "Request a downgrade", body: "Tier changes are reviewed by the eHive Circle team before they take effect. We'll be in touch to confirm and adjust your plan.", cta: "Submit request →" },
     pause: { title: "Pause membership", body: "Your seat in every pod is held for 90 days. Billing pauses; the Hive Score freezes. Resume any time from this page.", cta: "Pause membership" },
     cancel: { title: "Cancel membership", body: "This ends your membership. Pod seats are released and portal access closes at month end. This is reversible only by reapplying.", cta: "Cancel membership", danger: true },
     renew: { title: "Renew for another year", body: "Extends your renewal date by 12 months at your current tier.", cta: "Renew →" },
@@ -121,10 +125,21 @@ export default function Membership() {
 
           <div className="eh-card">
             <h3>Change tier</h3>
+            <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>
+              Request a change and the eHive Circle team reviews it — tiers move once approved.
+            </p>
+            {pendingReq.data && (
+              <div className="eh-banner eh-mb">
+                <span className="eh-sm">
+                  <b>{pendingReq.data.type === "upgrade" ? "Upgrade" : "Downgrade"} to {TIER_LABEL[pendingReq.data.toTier as never] ?? pendingReq.data.toTier}</b> is awaiting management approval.
+                </span>
+              </div>
+            )}
             <div className="eh-list">
               {TIERS.map((t) => {
                 const isCurrent = t === member.tier;
                 const isUp = tierRank(t) > tierRank(member.tier);
+                const blocked = !!pendingReq.data;
                 return (
                   <div className="row" key={t}>
                     <div>
@@ -132,9 +147,10 @@ export default function Membership() {
                       <div className="d eh-num">{TIER_PRICE[t]}</div>
                     </div>
                     {!isCurrent && member.status === "active" && (
-                      <button className={"eh-btn sm" + (isUp ? " gold" : " ghost")}
+                      <button className={"eh-btn sm" + (isUp ? " gold" : " ghost")} disabled={blocked}
+                              title={blocked ? "You already have a tier change pending approval." : undefined}
                               onClick={() => setConfirm({ type: isUp ? "upgrade" : "downgrade", toTier: t })}>
-                        {isUp ? "Upgrade" : "Downgrade"}
+                        {isUp ? "Request upgrade" : "Request downgrade"}
                       </button>
                     )}
                   </div>
@@ -261,6 +277,9 @@ export default function Membership() {
                 <div className="x">
                   {h.type.charAt(0).toUpperCase() + h.type.slice(1)}
                   {h.toTier && h.toTier !== h.fromTier ? ` → ${TIER_LABEL[h.toTier as never] ?? h.toTier}` : ""}
+                  {" "}
+                  {h.status === "pending" && <Pill color="gold">pending approval</Pill>}
+                  {h.status === "rejected" && <Pill color="red">rejected</Pill>}
                 </div>
                 {h.note && <div className="n">{h.note}</div>}
               </div>

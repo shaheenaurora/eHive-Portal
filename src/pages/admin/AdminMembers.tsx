@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { trpc } from "@/providers/trpc";
-import { EhShell, ADMIN_NAV, PageHead, StatusPill, TierPill, Empty, Spinner } from "@/components/eh";
+import { EhShell, ADMIN_NAV, PageHead, Pill, StatusPill, TierPill, Empty, Spinner, toast } from "@/components/eh";
 import { fmtDate, initials } from "@/lib/ehf";
 import { TIERS, MEMBER_STATUSES } from "@contracts/constants";
 
@@ -9,15 +9,61 @@ export default function AdminMembers() {
   const [q2, setQ2] = useState("");
   const [tier, setTier] = useState("");
   const [status, setStatus] = useState("");
+  const utils = trpc.useUtils();
   const q = trpc.admin.members.useQuery(
     { q: q2 || undefined, tier: (tier || undefined) as never, status: (status || undefined) as never },
     { retry: false },
   );
+  const requests = trpc.admin.pendingTierRequests.useQuery(undefined, { retry: false });
+  const decide = trpc.admin.decideTierRequest.useMutation({
+    onSuccess: (_r, v) => {
+      toast(v.decision === "approve" ? "Approved — the member's tier has been updated." : "Request rejected.");
+      utils.admin.pendingTierRequests.invalidate();
+      utils.admin.members.invalidate();
+    },
+    onError: (e) => toast(e.message),
+  });
 
   return (
     <EhShell groups={ADMIN_NAV} brandSub="Admin">
       <PageHead eyebrow="Directory" title="Members"
                 sub="Every membership, every tier. Click a row for the 360° view." />
+
+      {(requests.data ?? []).length > 0 && (
+        <div className="eh-card eh-mb">
+          <div className="eh-between" style={{ marginBottom: ".6rem" }}>
+            <h3 style={{ margin: 0 }}>Tier change requests</h3>
+            <Pill color="gold">{requests.data!.length} awaiting approval</Pill>
+          </div>
+          <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>
+            Members request tier changes — a change takes effect only when you approve it.
+          </p>
+          <div className="eh-list">
+            {requests.data!.map(({ req, member, userName, userEmail }) => (
+              <div className="row" key={req.id} style={{ alignItems: "flex-start" }}>
+                <div className="eh-row" style={{ flexWrap: "nowrap", flex: 1 }}>
+                  <span className="eh-avatar">{initials(userName)}</span>
+                  <div>
+                    <div className="t">{userName ?? userEmail ?? "Member"}</div>
+                    <div className="d">
+                      {req.type === "upgrade" ? "Upgrade" : "Downgrade"}:{" "}
+                      <TierPill tier={member.tier} /> → <TierPill tier={(req.toTier as never) ?? member.tier} />
+                    </div>
+                    {req.note && <div className="d" style={{ marginTop: ".2rem" }}>“{req.note}”</div>}
+                    <div className="d eh-muted">{fmtDate(req.createdAt)}</div>
+                  </div>
+                </div>
+                <div className="eh-row">
+                  <button className="eh-btn gold sm" disabled={decide.isPending}
+                          onClick={() => decide.mutate({ id: req.id, decision: "approve" })}>Approve</button>
+                  <button className="eh-btn ghost sm danger" disabled={decide.isPending}
+                          onClick={() => decide.mutate({ id: req.id, decision: "reject" })}>Reject</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="eh-row eh-mb">
         <input className="eh-input" style={{ maxWidth: 260 }} placeholder="Search name, email, company…"

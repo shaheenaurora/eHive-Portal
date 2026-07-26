@@ -6,7 +6,7 @@ import { getDb } from "./queries/connection";
 import { createRouter, authedQuery } from "./middleware";
 import { getMemberByUserId, awardPoints, nextSessionForMember, newCheckinCode, promoteWaitlist } from "./queries/circle";
 import { paymentsEnabled, getPaymentProvider } from "./lib/payments";
-import { tierRank, TIER_PRICE_AED, SELF_SERVE_TIERS } from "@contracts/constants";
+import { tierRank, TIER_PRICE_AED, SELF_SERVE_TIERS, memberCanAccessEvent, eventEligibleTiers } from "@contracts/constants";
 
 async function requireMember(userId: number) {
   const member = await getMemberByUserId(userId);
@@ -154,9 +154,31 @@ export const circleRouter = createRouter({
     .mutation(async ({ ctx, input }) => {
       const member = await requireMember(ctx.user.id);
       const db = getDb();
+
+      // Governance: a tier change is a *request* the member submits — management
+      // reviews and approves it. The member's tier is NOT changed here; it moves
+      // only when an admin approves the pending request (admin.decideTierRequest).
+      if (input.type === "upgrade" || input.type === "downgrade") {
+        if (!input.toTier) throw new TRPCError({ code: "BAD_REQUEST", message: "Pick a tier to change to." });
+        if (input.toTier === member.tier) throw new TRPCError({ code: "BAD_REQUEST", message: "That's already your tier." });
+        const existingPending = await db.select().from(schema.membershipEvents)
+          .where(and(eq(schema.membershipEvents.memberId, member.id), eq(schema.membershipEvents.status, "pending")))
+          .limit(1);
+        if (existingPending.length)
+          throw new TRPCError({ code: "CONFLICT", message: "You already have a tier change awaiting approval." });
+        // Direction is derived server-side so it always matches the tiers.
+        const type = tierRank(input.toTier) > tierRank(member.tier) ? "upgrade" : "downgrade";
+        await db.insert(schema.membershipEvents).values({
+          memberId: member.id, type, fromTier: member.tier, toTier: input.toTier,
+          note: input.note, status: "pending",
+        });
+        return { ok: true, pending: true };
+      }
+
+      // Self-serve actions (the member's own right): applied immediately.
       await db.insert(schema.membershipEvents).values({
         memberId: member.id, type: input.type, fromTier: member.tier,
-        toTier: input.toTier ?? member.tier, note: input.note,
+        toTier: member.tier, note: input.note, status: "applied",
       });
       if (input.type === "pause" || input.type === "cancel") {
         await db.update(schema.members)
@@ -167,12 +189,18 @@ export const circleRouter = createRouter({
         next.setFullYear(next.getFullYear() + 1);
         await db.update(schema.members).set({ renewalAt: next, status: "active" })
           .where(eq(schema.members.id, member.id));
-      } else if ((input.type === "upgrade" || input.type === "downgrade") && input.toTier) {
-        await db.update(schema.members).set({ tier: input.toTier })
-          .where(eq(schema.members.id, member.id));
       }
-      return { ok: true };
+      return { ok: true, pending: false };
     }),
+
+  /* Any tier change the member has awaiting management approval (0 or 1). */
+  pendingTierRequest: authedQuery.query(async ({ ctx }) => {
+    const member = await requireMember(ctx.user.id);
+    const row = (await getDb().select().from(schema.membershipEvents)
+      .where(and(eq(schema.membershipEvents.memberId, member.id), eq(schema.membershipEvents.status, "pending")))
+      .orderBy(desc(schema.membershipEvents.createdAt)).limit(1)).at(0);
+    return row ?? null;
+  }),
 
   membershipHistory: authedQuery.query(async ({ ctx }) => {
     const member = await requireMember(ctx.user.id);
@@ -293,7 +321,10 @@ export const circleRouter = createRouter({
         regStatus: reg?.status ?? null,
         checkinCode: reg?.status === "registered" ? reg.checkinCode : null,
         seatsLeft: e.capacity - (countMap.get(e.id) ?? 0),
-        allowed: tierRank(member.tier) >= tierRank(e.tierGate),
+        // Eligibility now follows the activity's audience settings, not just a
+        // single tier floor. `eligibleTiers` lets the client explain the gate.
+        allowed: memberCanAccessEvent(member.tier, e),
+        eligibleTiers: eventEligibleTiers(e),
       };
     });
   }),
@@ -305,8 +336,11 @@ export const circleRouter = createRouter({
       const db = getDb();
       const ev = (await db.select().from(schema.events).where(eq(schema.events.id, input.eventId)).limit(1)).at(0);
       if (!ev) throw new TRPCError({ code: "NOT_FOUND" });
-      if (tierRank(member.tier) < tierRank(ev.tierGate))
-        throw new TRPCError({ code: "FORBIDDEN", message: "This event is gated to a higher tier" });
+      // Temporal integrity: can't register for an event that has already started.
+      if (new Date(ev.startsAt).getTime() <= Date.now())
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This event has already started — registration is closed." });
+      if (!memberCanAccessEvent(member.tier, ev))
+        throw new TRPCError({ code: "FORBIDDEN", message: "This activity isn't open to your tier." });
       const existing = await db.select().from(schema.eventRegs)
         .where(and(eq(schema.eventRegs.eventId, ev.id), eq(schema.eventRegs.memberId, member.id))).limit(1);
       if (existing.length && existing[0].status !== "cancelled")

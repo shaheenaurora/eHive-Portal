@@ -99,6 +99,11 @@ export const membershipEvents = mysqlTable("membership_events", {
   fromTier: varchar("fromTier", { length: 32 }),
   toTier: varchar("toTier", { length: 32 }),
   note: text("note"),
+  /* Approval state — tier changes a member requests stay `pending` until
+     management approves/rejects; self-serve actions are `applied`. */
+  status: mysqlEnum("status", ["applied", "pending", "approved", "rejected"]).notNull().default("applied"),
+  actorEmail: varchar("actorEmail", { length: 320 }), // admin who decided a pending request
+  decidedAt: timestamp("decidedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -167,11 +172,20 @@ export type ActionItem = typeof actionItems.$inferSelect;
 export const events = mysqlTable("events", {
   id: serial("id").primaryKey(),
   title: varchar("title", { length: 255 }).notNull(),
-  kind: mysqlEnum("kind", ["spark", "meetup", "circle", "retreat", "summit"]).notNull().default("meetup"),
+  /* Activity master — keep in sync with EVENT_KINDS (contracts/constants) and
+     ensureSchema() in api/boot.ts. */
+  kind: mysqlEnum("kind", [
+    "spark", "meetup", "circle", "retreat", "summit",
+    "conference", "conclave", "roundtable", "workshop", "masterclass",
+    "breakfast", "lunch", "dinner", "social", "webinar",
+  ]).notNull().default("meetup"),
   description: text("description"),
   startsAt: timestamp("startsAt").notNull(),
   location: varchar("location", { length: 255 }),
   tierGate: mysqlEnum("tierGate", ["horizon", "ascent", "vanguard", "zenith"]).notNull().default("horizon"),
+  /* Audience governance: who may see & join. `tiers` restricts to audienceTiers. */
+  audience: mysqlEnum("audience", ["public", "members", "tiers"]).notNull().default("members"),
+  audienceTiers: varchar("audienceTiers", { length: 128 }), // CSV of tiers when audience = 'tiers'
   capacity: int("capacity").notNull().default(40),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
