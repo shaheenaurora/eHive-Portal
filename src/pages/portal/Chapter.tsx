@@ -189,6 +189,25 @@ export default function Chapter() {
                 </div>
               )}
 
+              {(overview.data.onboarding ?? []).length > 0 && (
+                <div className="eh-card eh-mb">
+                  <h3>Onboarding cohort · first 90 days</h3>
+                  <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>New members and how far through onboarding they are. POD placement is due by day 60.</p>
+                  <div className="eh-list">
+                    {overview.data.onboarding.map((o) => (
+                      <div className="row" key={o.id}>
+                        <div style={{ flex: 1 }}>
+                          <div className="t">{o.name}</div>
+                          <div className="d">Day {o.dayCount} · {o.doneCount}/{o.total} milestones{o.dayCount > 60 && o.stage < 3 ? " · behind" : ""}</div>
+                        </div>
+                        <div style={{ width: "6rem" }}><Bar pct={o.percent} /></div>
+                        <span className="eh-num eh-sm" style={{ width: "2.4rem", textAlign: "right" }}>{o.percent}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="eh-grid g2" style={{ alignItems: "start" }}>
                 {/* sign up members */}
                 <div className="eh-card">

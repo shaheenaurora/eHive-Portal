@@ -87,10 +87,12 @@ async function main() {
   const mOther = await mkMember(uOther, { homeChapterId: chB });
 
   console.log("\n\x1b[1mB. Member lifecycle (admission → journey)\x1b[0m");
+  let mApplicant = 0;
   await check("admission creates member in Onboarding, in the chapter", async () => {
     const ap = await db.insert(schema.applications).values({ userId: uApplicant.id, name: "Applicant", email: uApplicant.email, tierRequested: "ascent", status: "received" });
     const r = await MA.admin.setApplicationStatus({ id: Number(ap[0].insertId), status: "approved", tier: "ascent", chapterId: chA });
-    const m = (await db.select().from(schema.members).where(eq(schema.members.id, (r as { memberId?: number }).memberId!)).limit(1))[0];
+    mApplicant = (r as { memberId?: number }).memberId!;
+    const m = (await db.select().from(schema.members).where(eq(schema.members.id, mApplicant)).limit(1))[0];
     assert(m.lifecycleState === "onboarding" && m.homeChapterId === chA, "not onboarding-in-chapter");
   });
   await check("lifecycle onboarding→active→at_risk→active→renewal→lapsed→alumni w/ status coherence", async () => {
@@ -213,6 +215,38 @@ async function main() {
     const r = await MA.adminEngage.saveHealthSnapshot({ id: chA });
     const hv = await MA.adminEngage.chapterHealth({ id: chA });
     assert(!!hv.lastSnapshot && hv.lastSnapshot.total === (r as { total: number }).total, "snapshot not persisted");
+  });
+
+  console.log("\n\x1b[1mI. Onboarding 30/60/90 (ML-03)\x1b[0m");
+  await check("myOnboarding returns the ten staged milestones", async () => {
+    const p = await caller(uApplicant).circle.myOnboarding();
+    assert(p.milestones.length === 10 && p.lifecycleState === "onboarding", "wrong milestone set");
+    assert(p.milestones.some((m) => m.stage === 1) && p.milestones.some((m) => m.stage === 3), "no stages");
+  });
+  await expectErr("cannot check off an auto-tracked step", () => caller(uApplicant).circle.completeOnboardingStep({ milestone: "profile_complete" }), /tracked automatically/i);
+  await check("manual step records and lifts progress", async () => {
+    const before = (await caller(uApplicant).circle.myOnboarding()).doneCount;
+    await caller(uApplicant).circle.completeOnboardingStep({ milestone: "ask_offer" });
+    const after = (await caller(uApplicant).circle.myOnboarding()).doneCount;
+    assert(after === before + 1, "progress did not increase");
+  });
+  await check("completing every milestone auto-confirms Active", async () => {
+    // satisfy the auto milestones with minimal real data
+    await db.update(schema.members).set({ company: "Acme", title: "Founder" }).where(eq(schema.members.id, mApplicant));
+    const ev = Number((await db.insert(schema.events).values({ title: "Onb", kind: "spark", startsAt: new Date(Date.now() - 3600000), capacity: 40, tierGate: "horizon", audience: "members" }))[0].insertId);
+    await db.insert(schema.eventRegs).values({ eventId: ev, memberId: mApplicant, status: "attended" });
+    await db.insert(schema.buddies).values({ newMemberId: mApplicant, buddyMemberId: mPres, pairedAt: new Date() });
+    const pod = Number((await db.insert(schema.pods).values({ name: "Pod X", kind: "pod" }))[0].insertId);
+    await db.insert(schema.podMembers).values({ podId: pod, memberId: mApplicant });
+    const ses = Number((await db.insert(schema.sessions).values({ podId: pod, startsAt: new Date(Date.now() - 3600000) }))[0].insertId);
+    await db.insert(schema.attendance).values({ sessionId: ses, memberId: mApplicant, status: "attended" });
+    // check off the remaining manual milestones
+    for (const k of ["three_connections", "first_contribution", "benefit_used", "check_in_90"])
+      await caller(uApplicant).circle.completeOnboardingStep({ milestone: k });
+    const p = await caller(uApplicant).circle.myOnboarding();
+    assert(p.complete, "not complete: " + p.doneCount + "/" + p.total);
+    const m = (await db.select().from(schema.members).where(eq(schema.members.id, mApplicant)).limit(1))[0];
+    assert(m.lifecycleState === "active", "not auto-promoted to Active");
   });
 
   console.log("\n\x1b[1mH. Cross-cutting RBAC\x1b[0m");

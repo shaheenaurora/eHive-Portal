@@ -4,7 +4,9 @@ import { eq, and, desc, asc, gte, sql } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "./queries/connection";
 import { createRouter, authedQuery } from "./middleware";
-import { getMemberByUserId, awardPoints, nextSessionForMember, newCheckinCode, promoteWaitlist } from "./queries/circle";
+import { getMemberByUserId, awardPoints, nextSessionForMember, newCheckinCode, promoteWaitlist, notify } from "./queries/circle";
+import { computeOnboarding } from "./queries/onboarding";
+import { ONBOARDING_MANUAL_KEYS } from "@contracts/constants";
 import { paymentsEnabled, getPaymentProvider } from "./lib/payments";
 import { tierRank, TIER_PRICE_AED, SELF_SERVE_TIERS, memberCanAccessEvent, eventEligibleTiers } from "@contracts/constants";
 
@@ -208,6 +210,34 @@ export const circleRouter = createRouter({
       .where(eq(schema.membershipEvents.memberId, member.id))
       .orderBy(desc(schema.membershipEvents.createdAt)).limit(30);
   }),
+
+  /* ---- onboarding: the first 30/60/90 days (ML-03) ---- */
+  myOnboarding: authedQuery.query(async ({ ctx }) => {
+    const member = await requireMember(ctx.user.id);
+    const progress = await computeOnboarding(member);
+    return { ...progress, lifecycleState: member.lifecycleState };
+  }),
+
+  completeOnboardingStep: authedQuery
+    .input(z.object({ milestone: z.string().max(48), note: z.string().max(500).optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const member = await requireMember(ctx.user.id);
+      if (!ONBOARDING_MANUAL_KEYS.includes(input.milestone))
+        throw new TRPCError({ code: "BAD_REQUEST", message: "That step is tracked automatically." });
+      const db = getDb();
+      const existing = await db.select().from(schema.onboardingMilestones)
+        .where(and(eq(schema.onboardingMilestones.memberId, member.id), eq(schema.onboardingMilestones.milestone, input.milestone))).limit(1);
+      if (!existing.length) {
+        await db.insert(schema.onboardingMilestones).values({ memberId: member.id, milestone: input.milestone, note: input.note });
+      }
+      // Confirm Active once every milestone is met (ML-03 day-90 outcome).
+      const progress = await computeOnboarding(member);
+      if (progress.complete && member.lifecycleState === "onboarding") {
+        await db.update(schema.members).set({ lifecycleState: "active" }).where(eq(schema.members.id, member.id));
+        try { await notify(member.id, "You've completed onboarding — welcome to full membership. 🎉", "membership"); } catch { /* non-fatal */ }
+      }
+      return { ok: true, complete: progress.complete };
+    }),
 
   /* ---- chapter transfers (BRD 6.7): member requests, management approves ---- */
   /* The chapters a member can request to move to (all but their current one). */

@@ -6,6 +6,7 @@ import { getDb } from "./queries/connection";
 import { createRouter, authedQuery } from "./middleware";
 import { getMemberByUserId, notify } from "./queries/circle";
 import { computeChapterHealth } from "./queries/health";
+import { computeOnboarding } from "./queries/onboarding";
 
 /**
  * Resolve the caller's chapter-officer context: the member must hold an active
@@ -55,8 +56,14 @@ export const officerRouter = createRouter({
       .where(eq(schema.chapterPosts.chapterId, chapterId))
       .orderBy(desc(schema.chapterPosts.createdAt)).limit(50);
     const health = await computeChapterHealth(chapterId);
+    // Onboarding cohort — members still in their first 90 days (ML-03).
+    const onboardingMembers = roster.filter((r) => r.member.lifecycleState === "onboarding");
+    const onboarding = await Promise.all(onboardingMembers.map(async (r) => {
+      const p = await computeOnboarding(r.member);
+      return { id: r.member.id, name: r.user.name ?? r.user.email ?? "Member", percent: p.percent, doneCount: p.doneCount, total: p.total, dayCount: p.dayCount, stage: p.stage };
+    }));
     return {
-      chapter, roleKeys, health,
+      chapter, roleKeys, health, onboarding,
       roster: roster.map((r) => ({
         id: r.member.id, name: r.user.name ?? r.user.email ?? "Member",
         company: r.member.company, tier: r.member.tier, status: r.member.status,

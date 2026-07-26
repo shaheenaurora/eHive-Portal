@@ -4,11 +4,32 @@ import { trpc } from "@/providers/trpc";
 import { useAuth } from "@/hooks/useAuth";
 import { EhShell, MEMBER_NAV, PageHead, Stat, Ring, Pill, Empty, TierPill, Spinner, toast, LoadError } from "@/components/eh";
 import { fmtDateTime, fmtDay, relDay } from "@/lib/ehf";
+import { ONBOARDING_STAGES } from "@contracts/constants";
+
+/** Where to go to complete an auto-tracked onboarding milestone. */
+const OB_LINK: Record<string, { to: string; cta: string }> = {
+  profile_complete: { to: "/portal/membership", cta: "Add details" },
+  first_meeting: { to: "/portal/events", cta: "See events" },
+  buddy_assigned: { to: "/portal/connect", cta: "Connect" },
+  pod_placed: { to: "/portal/pods", cta: "Browse pods" },
+  pod_meeting: { to: "/portal/pods", cta: "Your pod" },
+};
 
 export default function Dashboard() {
   const d = trpc.circle.dashboard.useQuery(undefined, { retry: false });
+  const ob = trpc.circle.myOnboarding.useQuery(undefined, { retry: false });
+  const utils = trpc.useUtils();
   const { user } = useAuth();
   const [params, setParams] = useSearchParams();
+
+  const completeStep = trpc.circle.completeOnboardingStep.useMutation({
+    onSuccess: (r) => {
+      toast(r.complete ? "Onboarding complete — welcome to full membership! 🎉" : "Nice — step done.");
+      utils.circle.myOnboarding.invalidate();
+      utils.circle.dashboard.invalidate();
+    },
+    onError: (e) => toast(e.message),
+  });
 
   useEffect(() => {
     if (params.get("paid") === "1") {
@@ -23,17 +44,9 @@ export default function Dashboard() {
   if (d.isLoading) return <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif><Spinner /></EhShell>;
   if (!d.data) return <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif><LoadError what="your dashboard" onRetry={() => d.refetch()} /></EhShell>;
 
-  const { member, nextSession, openActionItems, upcomingEvents, podCount, onboarding, onboardingDone } = d.data;
+  const { member, nextSession, openActionItems, upcomingEvents, podCount } = d.data;
   const first = (user?.name ?? "there").split(" ")[0];
-
-  const steps: { key: keyof typeof onboarding; label: string; to: string; cta: string }[] = [
-    { key: "profile", label: "Complete your profile", to: "/portal/membership", cta: "Add your details" },
-    { key: "buddy", label: "Meet your welcome buddy", to: "/portal/connect", cta: "Say hello" },
-    { key: "pod", label: "Join a pod", to: "/portal/pods", cta: "Browse pods" },
-    { key: "event", label: "RSVP your first event", to: "/portal/events", cta: "See the calendar" },
-    { key: "oneToOne", label: "Log your first 1-2-1", to: "/portal/connect", cta: "Log a chat" },
-  ];
-  const doneCount = steps.filter((s) => onboarding[s.key]).length;
+  const showOnboarding = ob.data && !ob.data.complete && ob.data.lifecycleState === "onboarding";
 
   return (
     <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif>
@@ -44,19 +57,40 @@ export default function Dashboard() {
         actions={<TierPill tier={member.tier} />}
       />
 
-      {!onboardingDone && (
+      {showOnboarding && (
         <div className="eh-banner eh-mb">
-          <div className="eh-eyebrow" style={{ color: "var(--eh-gold-2)" }}>Getting started · {doneCount} of {steps.length}</div>
-          <h2 style={{ margin: ".2rem 0 .1rem" }}>Your first week at eHive</h2>
-          <p className="eh-sm" style={{ marginBottom: ".6rem" }}>Members who finish this in week one are far more likely to thrive here.</p>
-          <div className="eh-list">
-            {steps.map((s) => (
-              <div className="row" key={s.key}>
-                <span style={{ fontSize: "1.05rem", width: "1.5rem" }}>{onboarding[s.key] ? "✅" : "⬜"}</span>
-                <span className="t" style={{ flex: 1, textDecoration: onboarding[s.key] ? "line-through" : "none", opacity: onboarding[s.key] ? 0.6 : 1 }}>{s.label}</span>
-                {!onboarding[s.key] && <Link className="eh-btn ghost sm" to={s.to}>{s.cta} →</Link>}
-              </div>
-            ))}
+          <div className="eh-between" style={{ alignItems: "flex-start" }}>
+            <div>
+              <div className="eh-eyebrow" style={{ color: "var(--eh-gold-2)" }}>Your first 90 days · Day {ob.data!.dayCount}</div>
+              <h2 style={{ margin: ".2rem 0 .1rem" }}>Onboarding · {ob.data!.doneCount} of {ob.data!.total}</h2>
+              <p className="eh-sm" style={{ marginBottom: 0 }}>Members who complete this are far more likely to thrive. POD placement is due by day 60.</p>
+            </div>
+            <Ring pct={ob.data!.percent} />
+          </div>
+          <div style={{ marginTop: ".7rem", display: "grid", gap: ".9rem" }}>
+            {ONBOARDING_STAGES.map((st) => {
+              const items = ob.data!.milestones.filter((m) => m.stage === st.stage);
+              return (
+                <div key={st.stage}>
+                  <div className="eh-eyebrow" style={{ marginBottom: ".3rem" }}>{st.label} · {st.window}</div>
+                  <div className="eh-list">
+                    {items.map((m) => (
+                      <div className="row" key={m.key}>
+                        <span style={{ fontSize: "1.05rem", width: "1.5rem" }}>{m.done ? "✅" : "⬜"}</span>
+                        <span className="t" style={{ flex: 1, textDecoration: m.done ? "line-through" : "none", opacity: m.done ? 0.6 : 1 }}>{m.label}</span>
+                        {!m.done && !m.auto && (
+                          <button className="eh-btn ghost sm" disabled={completeStep.isPending}
+                                  onClick={() => completeStep.mutate({ milestone: m.key })}>Mark done</button>
+                        )}
+                        {!m.done && m.auto && OB_LINK[m.key] && (
+                          <Link className="eh-btn ghost sm" to={OB_LINK[m.key].to}>{OB_LINK[m.key].cta} →</Link>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
