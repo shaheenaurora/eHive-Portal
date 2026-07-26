@@ -221,26 +221,33 @@ export const CHAPTER_STATUS_LABEL: Record<ChapterStatus, string> = {
   mature: "Mature",
   at_risk: "At Risk",
 };
-/* Chapter leadership team (BNI-style board). Roles are assigned to a member of
-   the chapter — directly or from an election result — for smoother governance
-   and growth. `other` allows a custom title. */
+/* Chapter Board — the elected leadership of a chapter, per the eHive Circle
+   Member Governance & Leadership Hierarchy (§4.1). Each office carries its
+   responsibilities and the number it is accountable for ("every leader owns a
+   number"). Terms are one year with a two-consecutive-term limit; `other`
+   allows an optional Member Experience Officer or a custom seat. */
 export const CHAPTER_ROLES = [
-  { key: "president", label: "President", responsibilities: "Leads the chapter, chairs meetings, owns chapter health, standards and growth." },
-  { key: "vice_president", label: "Vice President", responsibilities: "Deputises for the President; drives membership growth and member engagement." },
-  { key: "secretary", label: "Secretary", responsibilities: "Keeps minutes and records; runs agendas, communications and attendance." },
-  { key: "treasurer", label: "Treasurer", responsibilities: "Manages the chapter budget, dues, sponsorships and financial reporting." },
-  { key: "membership_coordinator", label: "Membership Coordinator", responsibilities: "Owns applications, visitor hosting, onboarding and the buddy programme." },
-  { key: "events_coordinator", label: "Events Coordinator", responsibilities: "Plans and runs chapter events — venues, speakers and logistics." },
-  { key: "pods_lead", label: "PODs Lead", responsibilities: "Forms and oversees pods/masterminds; keeps cadence and accountability." },
-  { key: "mentorship_lead", label: "Mentorship Lead", responsibilities: "Coordinates 1-2-1s, mentoring and give-back programmes." },
-  { key: "comms_lead", label: "Communications Lead", responsibilities: "Owns chapter comms, social presence and the newsletter." },
-  { key: "other", label: "Other role", responsibilities: "" },
+  { key: "president", label: "President", responsibilities: "Chairs the board and the chapter. Owns overall chapter health, represents the chapter on the Zone Council, sets the annual plan, and is custodian of chapter culture and the code of conduct.", metric: "Chapter health index; member retention" },
+  { key: "vice_president", label: "Vice President / President-Elect", responsibilities: "Deputises for the President, owns one major portfolio for the year, and prepares to assume the presidency — the succession mechanism that makes each handover deliberate.", metric: "Readiness to lead; portfolio delivery" },
+  { key: "secretary", label: "Secretary", responsibilities: "Guardian of governance: agendas, minutes, the member roll, the chapter charter, elections administration and compliance with Circle rules.", metric: "Governance compliance; accurate records & roll" },
+  { key: "treasurer", label: "Treasurer", responsibilities: "Owns the chapter budget and any locally raised funds within eHive's financial controls. Reconciles, reports monthly, and enforces spend limits.", metric: "Financial compliance; budget accuracy; clean audit" },
+  { key: "vp_membership", label: "VP Membership", responsibilities: "Owns growth and retention: the prospect pipeline, guest experience, onboarding of new members, and the early-warning system for members at risk of lapsing.", metric: "Net member growth; retention rate; onboarding completion" },
+  { key: "vp_programming", label: "VP Programming", responsibilities: "Owns the calendar: regular meetings, signature events, speakers and formats that make attendance worth the members' time.", metric: "Event cadence & attendance; programme satisfaction" },
+  { key: "vp_learning", label: "VP Learning & Mentorship", responsibilities: "Owns member development: peer mentoring, connection to eHive's methodology and content, and the deliberate matching that turns a room of strangers into a network.", metric: "Mentoring pairs active; member development participation" },
+  { key: "vp_communications", label: "VP Communications", responsibilities: "Owns the chapter's voice within brand guardrails: member stories, internal communication and the chapter's public presence, with the Community Manager.", metric: "Communication reach; brand compliance" },
+  { key: "past_president", label: "Immediate Past President", responsibilities: "Continuity and counsel. Chairs Nominations & Elections, mentors the President, and holds institutional memory across the handover.", metric: "Election integrity; leadership pipeline depth" },
+  { key: "member_experience", label: "Member Experience Officer", responsibilities: "Optional in larger chapters: owns in-room culture, new-member integration and the standard of conduct at events.", metric: "In-room culture; new-member integration" },
+  { key: "other", label: "Other role", responsibilities: "", metric: "" },
 ] as const;
 export type ChapterRoleKey = (typeof CHAPTER_ROLES)[number]["key"];
 export const CHAPTER_ROLE_LABEL: Record<string, string> =
   Object.fromEntries(CHAPTER_ROLES.map((r) => [r.key, r.label]));
 export const CHAPTER_ROLE_RESP: Record<string, string> =
   Object.fromEntries(CHAPTER_ROLES.map((r) => [r.key, r.responsibilities]));
+export const CHAPTER_ROLE_METRIC: Record<string, string> =
+  Object.fromEntries(CHAPTER_ROLES.map((r) => [r.key, r.metric]));
+/** Chapter offices are one-year terms, max two consecutive (§9). */
+export const CHAPTER_TERM_LIMIT_CONSECUTIVE = 2;
 /** Human title for a stored role row (custom title wins for `other`). */
 export function chapterRoleTitle(role: string, customTitle?: string | null): string {
   if (role === "other") return customTitle || "Officer";

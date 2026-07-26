@@ -2,7 +2,7 @@ import { useState } from "react";
 import { trpc } from "@/providers/trpc";
 import { EhShell, MEMBER_NAV, PageHead, Pill, Empty, Spinner, Modal, Field, toast } from "@/components/eh";
 import { fmtDate } from "@/lib/ehf";
-import { CHAPTER_STATUS_LABEL, CHAPTER_ROLE_RESP, chapterRoleTitle } from "@contracts/constants";
+import { CHAPTER_STATUS_LABEL, CHAPTER_ROLE_RESP, CHAPTER_ROLE_METRIC, chapterRoleTitle } from "@contracts/constants";
 import type { ChapterStatus } from "@contracts/constants";
 
 export default function Chapter() {
@@ -142,6 +142,7 @@ export default function Chapter() {
                         <div style={{ flex: 1 }}>
                           <div className="t">{chapterRoleTitle(b.role, b.title)} — {b.memberName} {mine && <Pill color="green">you</Pill>}</div>
                           <div className="d">{b.responsibilities || CHAPTER_ROLE_RESP[b.role] || ""}</div>
+                          {CHAPTER_ROLE_METRIC[b.role] && <div className="d eh-muted">Accountable for: {CHAPTER_ROLE_METRIC[b.role]}</div>}
                         </div>
                         {b.electionId ? <Pill color="gold">elected</Pill> : null}
                       </div>
