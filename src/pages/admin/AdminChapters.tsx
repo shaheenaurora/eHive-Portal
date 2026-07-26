@@ -2,7 +2,7 @@ import { useState } from "react";
 import { trpc } from "@/providers/trpc";
 import { EhShell, ADMIN_NAV, PageHead, Pill, Spinner, Modal, Field, Empty, toast } from "@/components/eh";
 import { fmtDate, initials } from "@/lib/ehf";
-import { CHAPTER_STATUS_LABEL, CHAPTER_ROLES, CHAPTER_ROLE_RESP, chapterRoleTitle } from "@contracts/constants";
+import { CHAPTER_STATUS_LABEL, CHAPTER_ROLES, CHAPTER_ROLE_RESP, CHAPTER_ROLE_METRIC, chapterRoleTitle } from "@contracts/constants";
 import type { ChapterStatus } from "@contracts/constants";
 
 const STATUS_COLOR: Record<string, "grey" | "blue" | "gold" | "green" | "red"> = {
@@ -186,6 +186,7 @@ export default function AdminChapters() {
                   <div style={{ flex: 1 }}>
                     <div className="t">{chapterRoleTitle(b.role, b.title)} — <b>{b.memberName}</b>{b.electionId ? <Pill color="gold">elected</Pill> : null}</div>
                     <div className="d">{b.responsibilities || CHAPTER_ROLE_RESP[b.role] || ""}</div>
+                    {CHAPTER_ROLE_METRIC[b.role] && <div className="d eh-muted">Accountable for: {CHAPTER_ROLE_METRIC[b.role]}</div>}
                   </div>
                   <button className="eh-btn ghost sm danger" disabled={endRole.isPending}
                           onClick={() => endRole.mutate({ id: b.id })}>End term</button>
@@ -459,6 +460,12 @@ function AssignRoleForm(props: {
           {CHAPTER_ROLES.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
         </select>
       </Field>
+      {def && def.key !== "other" && (
+        <div className="eh-banner" style={{ marginBottom: ".75rem" }}>
+          <div className="eh-sm">{def.responsibilities}</div>
+          {def.metric && <div className="eh-sm eh-muted" style={{ marginTop: ".3rem" }}><b>Accountable for:</b> {def.metric}</div>}
+        </div>
+      )}
       {role === "other" && (
         <Field label="Role title"><input className="eh-input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Visitor Host" /></Field>
       )}
