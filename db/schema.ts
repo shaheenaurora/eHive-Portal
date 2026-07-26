@@ -78,6 +78,17 @@ export const members = mysqlTable("members", {
 });
 export type Member = typeof members.$inferSelect;
 
+/* Operations Manual ML-03 — completed onboarding milestones a member (or the VP
+   Membership) has checked off. Auto milestones are derived from activity and not
+   stored here; this holds the manual check-offs. */
+export const onboardingMilestones = mysqlTable("onboarding_milestones", {
+  id: serial("id").primaryKey(),
+  memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+  milestone: varchar("milestone", { length: 48 }).notNull(),
+  note: varchar("note", { length: 500 }),
+  completedAt: timestamp("completedAt").defaultNow().notNull(),
+});
+
 export const applications = mysqlTable("applications", {
   id: serial("id").primaryKey(),
   userId: bigint("userId", { mode: "number", unsigned: true }).notNull(),

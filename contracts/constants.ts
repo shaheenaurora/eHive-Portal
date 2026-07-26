@@ -42,6 +42,33 @@ export type SelfServeTier = (typeof SELF_SERVE_TIERS)[number];
 export const MEMBER_STATUSES = ["active", "paused", "cancelled"] as const;
 export type MemberStatus = (typeof MEMBER_STATUSES)[number];
 
+/* Onboarding — the first 30/60/90 days (Operations Manual ML-03). The single
+   biggest driver of retention: staged milestones the platform tracks and nudges
+   against. `auto` milestones are detected from activity; the rest are checked
+   off by the member (or confirmed by the VP Membership). */
+export const ONBOARDING_STAGES = [
+  { stage: 1, label: "Orientation", window: "Days 0–30" },
+  { stage: 2, label: "Integration", window: "Days 31–60" },
+  { stage: 3, label: "Contribution", window: "Days 61–90" },
+] as const;
+export const ONBOARDING_MILESTONES = [
+  { key: "profile_complete",   stage: 1, auto: true,  label: "Complete your profile" },
+  { key: "first_meeting",      stage: 1, auto: true,  label: "Attend your first meeting" },
+  { key: "buddy_assigned",     stage: 1, auto: true,  label: "Get paired with a buddy" },
+  { key: "ask_offer",          stage: 1, auto: false, label: "Post your first ask & offer" },
+  { key: "pod_placed",         stage: 2, auto: true,  label: "Join a POD" },
+  { key: "pod_meeting",        stage: 2, auto: true,  label: "Attend your first POD meeting" },
+  { key: "three_connections",  stage: 2, auto: false, label: "Make three connections" },
+  { key: "first_contribution", stage: 3, auto: false, label: "Make your first contribution — a win, an ask or a spotlight" },
+  { key: "benefit_used",       stage: 3, auto: false, label: "Use a member benefit" },
+  { key: "check_in_90",        stage: 3, auto: false, label: "Complete your 90-day check-in" },
+] as const;
+export type OnboardingKey = (typeof ONBOARDING_MILESTONES)[number]["key"];
+export const ONBOARDING_MANUAL_KEYS = ONBOARDING_MILESTONES.filter((m) => !m.auto).map((m) => m.key) as string[];
+/** POD placement is due by day 60 (ML-03). */
+export const ONBOARDING_POD_BY_DAY = 60;
+export const ONBOARDING_DAYS = 90;
+
 /* Member Lifecycle — the CRM state machine (Operations Manual M1 / Figure 2).
    `status` above is access/billing; this is the member's journey state. Each
    transition is an SOP with an owner, a trigger and a notification. */
