@@ -3,6 +3,9 @@ import { getDb } from "../api/queries/connection";
 import * as schema from "./schema";
 import { recomputeScore } from "../api/queries/circle";
 import { hashPassword } from "../api/lib/password";
+import { ensureCadenceTemplates } from "../api/queries/cadence";
+import { computeChapterHealth } from "../api/queries/health";
+import { recentPeriodKeys, type Frequency } from "../contracts/cadence";
 
 /* Every seeded account can sign in with this password (demo/testing only). */
 const DEMO_PASSWORD = "ehive1234";
@@ -45,11 +48,20 @@ async function clearCircle() {
   await db.delete(schema.podMembers);
   await db.delete(schema.pods);
   await db.delete(schema.membershipEvents);
+  await db.delete(schema.onboardingMilestones);
   await db.delete(schema.applications);
   await db.delete(schema.members);
   await db.delete(schema.libraryItems);
   await db.delete(schema.offers);
   await db.delete(schema.leads);
+  // Chapters & governance (Operations Manual)
+  await db.delete(schema.cadenceLog);
+  await db.delete(schema.cadences);
+  await db.delete(schema.healthSnapshots);
+  await db.delete(schema.chapterPosts);
+  await db.delete(schema.chapterRoles);
+  await db.delete(schema.chapterTransfers);
+  await db.delete(schema.chapters);
 }
 
 async function user(unionId: string, name: string, email: string, role: "user" | "admin" = "user") {
@@ -569,10 +581,121 @@ async function seed() {
     },
   ]);
 
+  /* ===================================================================== */
+  /* Chapters, board, cadence, onboarding & health (Operations Manual)     */
+  /* ===================================================================== */
+  type Tier = "horizon" | "ascent" | "vanguard" | "zenith";
+  type LC = "onboarding" | "active" | "at_risk" | "renewal" | "alumni" | "lapsed" | "suspended";
+
+  const chDubai = Number((await db.insert(schema.chapters).values({
+    name: "eHive Dubai", code: "AE-DXB-01", country: "United Arab Emirates",
+    region: "Gulf", state: "Dubai", city: "Dubai", zone: "DIFC",
+    meetingCadence: "Bi-weekly · Tue 7:30pm", status: "chartered", charterDate: daysAgo(220),
+  }))[0].insertId);
+  const chAbu = Number((await db.insert(schema.chapters).values({
+    name: "eHive Abu Dhabi", code: "AE-AUH-01", country: "United Arab Emirates",
+    region: "Gulf", state: "Abu Dhabi", city: "Abu Dhabi", zone: "Al Maryah Island",
+    meetingCadence: "Bi-weekly · Wed 6:30pm", status: "chartered", charterDate: daysAgo(120),
+  }))[0].insertId);
+  const chSharjah = Number((await db.insert(schema.chapters).values({
+    name: "eHive Sharjah", code: "AE-SHJ-01", country: "United Arab Emirates",
+    region: "Gulf", state: "Sharjah", city: "Sharjah", zone: "Al Majaz",
+    meetingCadence: "Forming", status: "provisional",
+  }))[0].insertId);
+
+  const enrich = (id: number, chapterId: number, lifecycle: LC, sector: string, stage: string, goals: string) =>
+    db.update(schema.members).set({ homeChapterId: chapterId, lifecycleState: lifecycle, sector, stage, goals })
+      .where(eq(schema.members.id, id));
+  await enrich(mOmar, chDubai, "active", "Logistics", "Scaling", "Hire senior operators");
+  await enrich(mSara, chDubai, "active", "FinTech", "Growth", "Sharpen outbound");
+  await enrich(mLayla, chDubai, "onboarding", "Retail", "Early", "First 10 customers");
+  await enrich(mJon, chAbu, "active", "Payments", "Scale", "Board-level peers");
+  await enrich(mPetr, chAbu, "at_risk", "AI", "Growth", "Re-engage with the Circle");
+
+  const extra = async (u: string, name: string, email: string, tier: Tier, chapterId: number, lifecycle: LC,
+                       company: string, title: string, sector: string, stage: string, joinedDaysAgo: number) => {
+    const status: "active" | "paused" | "cancelled" =
+      lifecycle === "alumni" || lifecycle === "lapsed" ? "cancelled" : lifecycle === "suspended" ? "paused" : "active";
+    const uid = await user(u, name, email);
+    const res = await db.insert(schema.members).values({
+      userId: uid, tier, status, lifecycleState: lifecycle, company, title, sector, stage,
+      homeChapterId: chapterId, joinedAt: daysAgo(joinedDaysAgo), renewalAt: renewal,
+    });
+    const id = Number(res[0].insertId);
+    await db.insert(schema.membershipEvents).values({ memberId: id, type: "approved", toTier: tier, note: "Seed cohort" });
+    return id;
+  };
+  const mFarah  = await extra("seed-farah", "Farah Aziz", "farah@sabil.ae", "ascent", chDubai, "active", "Sabil", "COO", "HealthTech", "Growth", 150);
+  const mZaid   = await extra("seed-zaid", "Zaid Karam", "zaid@ledgerly.io", "vanguard", chDubai, "active", "Ledgerly", "Founder", "FinTech", "Scaling", 180);
+  const mNoor   = await extra("seed-noor", "Noor Salem", "noor@driftco.ae", "horizon", chDubai, "onboarding", "DriftCo", "Founder", "Marketing", "Early", 14);
+  const mHassan = await extra("seed-hassan", "Hassan Ali", "hassan@paloma.ae", "ascent", chDubai, "renewal", "Paloma", "MD", "Hospitality", "Scaling", 330);
+  const mLena   = await extra("seed-lena", "Lena Costa", "lena@verdeco.io", "vanguard", chAbu, "active", "Verdeco", "CEO", "CleanTech", "Scale", 160);
+  const mYousef = await extra("seed-yousef", "Yousef Amari", "yousef@northstar.ae", "zenith", chAbu, "active", "NorthStar", "Chairman", "Investments", "Scale", 240);
+  const mAmal   = await extra("seed-amal", "Amal Firas", "amal@tazej.ae", "horizon", chSharjah, "onboarding", "Tazej", "Founder", "F&B", "Early", 8);
+  const mRami   = await extra("seed-rami", "Rami Odeh", "rami@boltgrid.ae", "ascent", chSharjah, "active", "BoltGrid", "Founder", "Energy", "Growth", 40);
+  await extra("seed-tariq", "Tariq Nabil", "tariq@oldco.ae", "ascent", chDubai, "alumni", "OldCo", "ex-Founder", "Media", "—", 420);
+
+  const role = (chapterId: number, memberId: number, r: string) =>
+    db.insert(schema.chapterRoles).values({ chapterId, memberId, role: r, status: "active", termStart: daysAgo(60), appointedBy: "amina@ehive.ae" });
+  await role(chDubai, mOmar, "president");
+  await role(chDubai, mSara, "vp_membership");
+  await role(chDubai, mFarah, "secretary");
+  await role(chDubai, mZaid, "treasurer");
+  await role(chDubai, mHassan, "vp_programming");
+  await role(chAbu, mJon, "president");
+  await role(chAbu, mLena, "vp_membership");
+  await role(chAbu, mYousef, "treasurer");
+
+  // POD confidentiality + place a newcomer so onboarding autos fire.
+  await db.update(schema.podMembers).set({ confidentialityAt: daysAgo(20) }).where(eq(schema.podMembers.memberId, mOmar));
+  await db.insert(schema.podMembers).values({ podId: pod1, memberId: mNoor, role: "member", confidentialityAt: daysAgo(3) });
+  await db.insert(schema.buddies).values({ newMemberId: mNoor, buddyMemberId: mSara, pairedAt: daysAgo(10) });
+  await db.insert(schema.onboardingMilestones).values([
+    { memberId: mNoor, milestone: "ask_offer" },
+    { memberId: mNoor, milestone: "three_connections" },
+    { memberId: mAmal, milestone: "ask_offer" },
+  ]);
+
+  // A past chapter meeting with real attendance → feeds programme + first_meeting.
+  const evPast = Number((await db.insert(schema.events).values({
+    title: "Chapter Meeting — July", kind: "meetup", description: "The bi-weekly chapter meeting.",
+    startsAt: daysAgo(9, 19), location: "eHive Majlis, DIFC", tierGate: "horizon", audience: "members", capacity: 60,
+  }))[0].insertId);
+  await db.insert(schema.eventRegs).values([
+    { eventId: evPast, memberId: mOmar, status: "attended" },
+    { eventId: evPast, memberId: mSara, status: "attended" },
+    { eventId: evPast, memberId: mNoor, status: "attended" },
+    { eventId: evPast, memberId: mFarah, status: "attended" },
+    { eventId: evPast, memberId: mZaid, status: "registered" },
+  ]);
+
+  // Operating rhythm (§A2) — cadences + adherence history.
+  await ensureCadenceTemplates(chDubai);
+  await ensureCadenceTemplates(chAbu);
+  const seedAdherence = async (chapterId: number, keptOfEight: number) => {
+    const cads = await db.select().from(schema.cadences).where(eq(schema.cadences.chapterId, chapterId));
+    for (const c of cads) {
+      const { current, history } = recentPeriodKeys(c.frequency as Frequency, new Date(), 8);
+      const rows = [{ cadenceId: c.id, periodKey: current, status: "kept" as const, actorMemberId: mOmar }];
+      for (const k of history.slice(0, keptOfEight)) rows.push({ cadenceId: c.id, periodKey: k, status: "kept" as const, actorMemberId: mOmar });
+      await db.insert(schema.cadenceLog).values(rows);
+    }
+  };
+  await seedAdherence(chDubai, 6); // healthy
+  await seedAdherence(chAbu, 3);   // watch
+
+  for (const m of [mFarah, mZaid, mNoor, mHassan, mLena, mYousef, mAmal, mRami]) await recomputeScore(m);
+  for (const ch of [chDubai, chAbu, chSharjah]) {
+    const h = await computeChapterHealth(ch);
+    await db.insert(schema.healthSnapshots).values({ chapterId: ch, total: Math.max(0, h.total - 4), memberCount: h.memberCount, ...h.components, createdAt: daysAgo(90) });
+    await db.insert(schema.healthSnapshots).values({ chapterId: ch, total: h.total, memberCount: h.memberCount, ...h.components });
+  }
+
   console.log("Seeded:");
-  console.log("  users: admin Amina (seed-admin), demo Omar (seed-demo) + 8 more");
-  console.log("  members: 6 · pods: 2 · sessions: 3 · events: 4 · library: 6 · offers: 4");
-  console.log("  score: weights 30/20/15/15/10/10, recomputed for 5 members");
+  console.log("  users: admin Amina (amina@ehive.ae) + 14 members — password 'ehive1234'");
+  console.log("  chapters: 3 (Dubai, Abu Dhabi, Sharjah) with boards, cadences & health snapshots");
+  console.log("  members span all 4 tiers and lifecycle states (onboarding/active/at-risk/renewal/alumni)");
+  console.log("  pods: 2 (+confidentiality) · events: 5 · onboarding milestones · leads · applications");
   process.exit(0);
 }
 
