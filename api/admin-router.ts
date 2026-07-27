@@ -6,6 +6,7 @@ import * as schema from "@db/schema";
 import { getDb } from "./queries/connection";
 import { createRouter, adminQuery, scopedAdmin } from "./middleware";
 import { awardPoints, awardRulePoints, promoteWaitlist, recomputeScore, autoPairBuddy, notify } from "./queries/circle";
+import { computePodHealth, suggestPods } from "./queries/pods";
 import { audit } from "./lib/audit";
 import { findUserByEmail } from "./queries/users";
 import { tierRank, EVENT_CHECKIN_OPENS_BEFORE_MS } from "@contracts/constants";
@@ -569,7 +570,13 @@ export const adminRouter = createRouter({
       .where(eq(schema.actionItems.podId, input.id))
       .orderBy(desc(schema.actionItems.createdAt))
       .limit(50);
-    return { pod, roster, sessions: sess, notes, attendance: att, actionItems: items, allMembers };
+    const health = await computePodHealth(input.id);
+    return { pod, roster, sessions: sess, notes, attendance: att, actionItems: items, allMembers, health };
+  }),
+
+  /* PD-01 matching engine — ranked pod suggestions for placing a member. */
+  suggestPodPlacement: adminQuery.input(idInput).query(async ({ input }) => {
+    return suggestPods(input.id);
   }),
 
   addToPod: adminQuery

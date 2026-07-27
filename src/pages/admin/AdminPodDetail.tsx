@@ -51,7 +51,7 @@ export default function AdminPodDetail() {
   if (q.isLoading) return <EhShell groups={ADMIN_NAV} brandSub="Admin"><Spinner /></EhShell>;
   if (!q.data) return <EhShell groups={ADMIN_NAV} brandSub="Admin"><Empty big="Pod not found." /></EhShell>;
 
-  const { pod, roster, sessions, notes, attendance, actionItems, allMembers } = q.data;
+  const { pod, roster, sessions, notes, attendance, actionItems, allMembers, health } = q.data;
   const noteMap = new Map(notes.map((n) => [n.sessionId, n]));
   const rosterIds = new Set(roster.map((r) => r.member.id));
   const notInPod = allMembers.filter((m) => !rosterIds.has(m.id));
@@ -90,6 +90,12 @@ export default function AdminPodDetail() {
           <p className="eh-sub">{pod.cadence ?? ""} · {pod.facilitator ?? "No facilitator"}</p>
         </div>
         <div className="eh-row">
+          {health && (
+            <Pill color={health.total >= 75 ? "green" : health.total >= 55 ? "gold" : "red"}
+                  title={`Attendance ${health.attendance}% · Commitments kept ${health.commitments}% · ${health.sessions} recent sessions`}>
+              health {health.total}
+            </Pill>
+          )}
           <Pill color={pod.kind === "mastermind" ? "purple" : "blue"}>{pod.kind}</Pill>
           <TierPill tier={pod.tierGate} />
           <button className="eh-btn gold sm" onClick={() => setAddSession(true)}>+ Session</button>

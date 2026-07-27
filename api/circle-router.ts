@@ -139,7 +139,10 @@ export const circleRouter = createRouter({
 
   updateProfile: authedQuery
     .input(z.object({ company: z.string().max(255).optional(), title: z.string().max(255).optional(),
-                    phone: z.string().max(64).optional() }))
+                    phone: z.string().max(64).optional(),
+                    // POD profile (PD-01) — feeds the matching engine.
+                    sector: z.string().max(128).optional(), stage: z.string().max(64).optional(),
+                    goals: z.string().max(500).optional() }))
     .mutation(async ({ ctx, input }) => {
       const member = await requireMember(ctx.user.id);
       await getDb().update(schema.members).set(input).where(eq(schema.members.id, member.id));
@@ -323,6 +326,12 @@ export const circleRouter = createRouter({
         .innerJoin(schema.members, eq(schema.podMembers.memberId, schema.members.id))
         .innerJoin(schema.users, eq(schema.members.userId, schema.users.id))
         .where(eq(schema.podMembers.podId, input.id));
+      // PD-03 — POD content (notes, commitments, sessions) is confidential and
+      // withheld until the member accepts the confidentiality agreement.
+      const confidentialityAccepted = !!inRoster[0].confidentialityAt;
+      if (!confidentialityAccepted) {
+        return { pod, roster, sessions: [], notes: [], myAttendance: [], actionItems: [], me: member, confidentialityAccepted: false };
+      }
       const sess = await db.select().from(schema.sessions)
         .where(eq(schema.sessions.podId, input.id))
         .orderBy(desc(schema.sessions.startsAt)).limit(12);
@@ -342,7 +351,20 @@ export const circleRouter = createRouter({
         .innerJoin(schema.users, eq(schema.members.userId, schema.users.id))
         .where(eq(schema.actionItems.podId, input.id))
         .orderBy(desc(schema.actionItems.createdAt)).limit(40);
-      return { pod, roster, sessions: sess, notes, myAttendance, actionItems: items, me: member };
+      return { pod, roster, sessions: sess, notes, myAttendance, actionItems: items, me: member, confidentialityAccepted: true };
+    }),
+
+  acceptPodConfidentiality: authedQuery
+    .input(z.object({ podId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const member = await requireMember(ctx.user.id);
+      const db = getDb();
+      const row = (await db.select().from(schema.podMembers)
+        .where(and(eq(schema.podMembers.podId, input.podId), eq(schema.podMembers.memberId, member.id))).limit(1)).at(0);
+      if (!row) throw new TRPCError({ code: "FORBIDDEN", message: "Not in this pod" });
+      if (!row.confidentialityAt)
+        await db.update(schema.podMembers).set({ confidentialityAt: new Date() }).where(eq(schema.podMembers.id, row.id));
+      return { ok: true };
     }),
 
   completeActionItem: authedQuery
