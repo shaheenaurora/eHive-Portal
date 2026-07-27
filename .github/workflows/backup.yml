@@ -1,11 +1,13 @@
 name: Weekly database backup
 
-# Safety-net backup for the free-tier database (SRS NFR-OPS-02). Dumps the
+# Safety-net backup for the production database (SRS NFR-OPS-02). Dumps the
 # database weekly and stores it as a downloadable workflow artifact (90 days).
 #
-# Setup (one-time): add a repository secret DATABASE_BACKUP_URL set to the
-# MySQL connection URL. On Railway use the MySQL service's *public* URL
-# (MYSQL_PUBLIC_URL), since GitHub's runners are outside Railway's network.
+# DISABLED UNTIL CONFIGURED: this only does real work once you add a repository
+# secret DATABASE_BACKUP_URL set to the MySQL connection URL. On Railway use the
+# MySQL service's *public* URL (MYSQL_PUBLIC_URL), since GitHub's runners are
+# outside Railway's network. Until the secret is set the job skips cleanly (it
+# does NOT fail), so there are no failure emails while you're pre-launch.
 
 on:
   schedule:
@@ -16,17 +18,27 @@ jobs:
   backup:
     runs-on: ubuntu-latest
     steps:
-      - name: Install MySQL client
-        run: sudo apt-get update && sudo apt-get install -y mysql-client
-
-      - name: Dump database
+      - name: Check backup is configured
+        id: cfg
         env:
           DB_URL: ${{ secrets.DATABASE_BACKUP_URL }}
         run: |
           if [ -z "$DB_URL" ]; then
-            echo "::error::Set the DATABASE_BACKUP_URL repository secret (Railway MySQL public URL)."
-            exit 1
+            echo "::notice::DATABASE_BACKUP_URL secret is not set — skipping backup. Add it (Railway MySQL public URL) to enable weekly backups."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Install MySQL client
+        if: steps.cfg.outputs.configured == 'true'
+        run: sudo apt-get update && sudo apt-get install -y mysql-client
+
+      - name: Dump database
+        if: steps.cfg.outputs.configured == 'true'
+        env:
+          DB_URL: ${{ secrets.DATABASE_BACKUP_URL }}
+        run: |
           # Parse mysql://user:pass@host:port/dbname
           rest=${DB_URL#mysql://}
           creds=${rest%@*}; hostpart=${rest#*@}
@@ -40,6 +52,7 @@ jobs:
           gzip "ehive-$STAMP.sql"
 
       - name: Upload backup artifact
+        if: steps.cfg.outputs.configured == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: ehive-db-backup
