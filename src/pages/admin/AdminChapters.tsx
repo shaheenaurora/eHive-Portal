@@ -503,7 +503,8 @@ function AddMembers(props: { chapterId: number; pending: boolean; onAssign: (mem
 }
 
 function ChapterForm(props: {
-  pending: boolean; submitLabel: string; initial?: Partial<ChapterVals>;
+  pending: boolean; submitLabel: string;
+  initial?: Partial<{ [K in keyof ChapterVals]: ChapterVals[K] | null }>;
   onSubmit: (v: ChapterVals) => void;
 }) {
   const i = props.initial ?? {};

@@ -85,7 +85,7 @@ describe("Activity audience governance", () => {
 });
 
 describe("Member Lifecycle — the CRM state machine (M1)", () => {
-  const keys = new Set(MEMBER_LIFECYCLE.map((s) => s.key));
+  const keys = new Set<string>(MEMBER_LIFECYCLE.map((s) => s.key));
 
   it("covers the ten lifecycle states from the operations manual", () => {
     expect([...keys]).toEqual([

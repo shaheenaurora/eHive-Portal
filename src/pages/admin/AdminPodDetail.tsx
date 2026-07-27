@@ -91,10 +91,9 @@ export default function AdminPodDetail() {
         </div>
         <div className="eh-row">
           {health && (
-            <Pill color={health.total >= 75 ? "green" : health.total >= 55 ? "gold" : "red"}
-                  title={`Attendance ${health.attendance}% · Commitments kept ${health.commitments}% · ${health.sessions} recent sessions`}>
-              health {health.total}
-            </Pill>
+            <span title={`Attendance ${health.attendance}% · Commitments kept ${health.commitments}% · ${health.sessions} recent sessions`}>
+              <Pill color={health.total >= 75 ? "green" : health.total >= 55 ? "gold" : "red"}>health {health.total}</Pill>
+            </span>
           )}
           <Pill color={pod.kind === "mastermind" ? "purple" : "blue"}>{pod.kind}</Pill>
           <TierPill tier={pod.tierGate} />
