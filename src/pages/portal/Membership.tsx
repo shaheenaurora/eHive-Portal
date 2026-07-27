@@ -48,10 +48,11 @@ export default function Membership() {
   /* Profile form is seeded from the member record and becomes locally editable
      once the member types — derived here rather than synced via effect. */
   const serverForm = useMemo(
-    () => ({ company: member?.company ?? "", title: member?.title ?? "", phone: member?.phone ?? "" }),
+    () => ({ company: member?.company ?? "", title: member?.title ?? "", phone: member?.phone ?? "",
+             sector: member?.sector ?? "", stage: member?.stage ?? "", goals: member?.goals ?? "" }),
     [member],
   );
-  const [edited, setEdited] = useState<{ company: string; title: string; phone: string } | null>(null);
+  const [edited, setEdited] = useState<{ company: string; title: string; phone: string; sector: string; stage: string; goals: string } | null>(null);
   const form = edited ?? serverForm;
   const setForm = setEdited;
 
@@ -64,6 +65,9 @@ export default function Membership() {
       company: form.company || undefined,
       title: form.title || undefined,
       phone: form.phone || undefined,
+      sector: form.sector || undefined,
+      stage: form.stage || undefined,
+      goals: form.goals || undefined,
     });
   }
 
@@ -172,6 +176,18 @@ export default function Membership() {
               </Field>
               <Field label="Phone (only the Circle team sees this)">
                 <input className="eh-input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              </Field>
+              <div className="eh-eyebrow" style={{ margin: ".3rem 0 .1rem" }}>POD profile · helps us match you</div>
+              <div className="eh-grid g2">
+                <Field label="Sector">
+                  <input className="eh-input" value={form.sector} onChange={(e) => setForm({ ...form, sector: e.target.value })} placeholder="e.g. FinTech" />
+                </Field>
+                <Field label="Business stage">
+                  <input className="eh-input" value={form.stage} onChange={(e) => setForm({ ...form, stage: e.target.value })} placeholder="e.g. Scaling" />
+                </Field>
+              </div>
+              <Field label="Your goals for a POD">
+                <input className="eh-input" value={form.goals} onChange={(e) => setForm({ ...form, goals: e.target.value })} placeholder="What you want from a peer group" />
               </Field>
               <button className="eh-btn" type="submit" disabled={updateProfile.isPending}>Save profile</button>
             </form>

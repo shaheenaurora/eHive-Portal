@@ -19,6 +19,10 @@ export default function PodDetail() {
     },
     onError: (e) => toast(e.message),
   });
+  const accept = trpc.circle.acceptPodConfidentiality.useMutation({
+    onSuccess: () => { toast("Thank you — welcome to the pod."); utils.circle.podDetail.invalidate({ id: podId }); },
+    onError: (e) => toast(e.message),
+  });
 
   if (q.isLoading) return <EhShell groups={MEMBER_NAV} brandSub="Member Portal"><Spinner /></EhShell>;
   if (q.error || !q.data)
@@ -30,7 +34,7 @@ export default function PodDetail() {
       </EhShell>
     );
 
-  const { pod, roster, sessions, notes, myAttendance, actionItems, me } = q.data;
+  const { pod, roster, sessions, notes, myAttendance, actionItems, me, confidentialityAccepted } = q.data;
   const noteMap = new Map(notes.map((n) => [n.sessionId, n]));
   const attMap = new Map(myAttendance.map((a) => [a.sessionId, a]));
   const upcoming = sessions.filter((s) => new Date(s.startsAt).getTime() >= now && s.status === "scheduled");
@@ -53,6 +57,15 @@ export default function PodDetail() {
         </div>
       </div>
 
+      {!confidentialityAccepted ? (
+        <div className="eh-card" style={{ maxWidth: 640 }}>
+          <h3>Confidentiality agreement</h3>
+          <p className="eh-sm eh-muted">What's said in a POD stays in the POD. It's the trust the whole thing runs on. Before you can see this pod's sessions, commitments and notes, please confirm you'll keep everything shared here strictly confidential — a breach is a conduct matter.</p>
+          <button className="eh-btn gold" disabled={accept.isPending} onClick={() => accept.mutate({ podId })}>
+            I agree — keep it confidential →
+          </button>
+        </div>
+      ) : (
       <div className="eh-grid g3" style={{ alignItems: "start" }}>
         <div className="eh-span2" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           {myOpen.length > 0 && (
@@ -155,6 +168,7 @@ export default function PodDetail() {
           </div>
         </div>
       </div>
+      )}
     </EhShell>
   );
 }

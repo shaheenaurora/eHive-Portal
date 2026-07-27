@@ -64,6 +64,15 @@ export async function ensureSchema(): Promise<void> {
       );
     }
 
+    // --- members: POD profile (PD-01 matching) ---
+    if (tables.has("members")) {
+      for (const [col, def] of [["sector", "varchar(128) NULL"], ["stage", "varchar(64) NULL"], ["goals", "varchar(500) NULL"]] as Array<[string, string]>)
+        if (!cols.has(`members.${col}`)) stmts.push(`ALTER TABLE members ADD COLUMN ${col} ${def}`);
+    }
+    // --- pod_members: confidentiality gate (PD-03) ---
+    if (tables.has("pod_members") && !cols.has("pod_members.confidentialityAt"))
+      stmts.push("ALTER TABLE pod_members ADD COLUMN confidentialityAt timestamp NULL");
+
     // --- chapters: BNI-style geographic formation standards ---
     if (tables.has("chapters")) {
       const add: Array<[string, string]> = [

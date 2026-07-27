@@ -274,6 +274,32 @@ async function main() {
     assert(m.lifecycleState === "active", "not auto-promoted to Active");
   });
 
+  console.log("\n\x1b[1mK. PODs — confidentiality, matching, health (PD-01/02/03)\x1b[0m");
+  const podId = Number((await db.insert(schema.pods).values({ name: "Pod " + uniq, kind: "pod", capacity: 8, tierGate: "horizon" }))[0].insertId);
+  await db.insert(schema.podMembers).values({ podId, memberId: mMem2 });
+  await check("POD content is withheld until confidentiality is accepted", async () => {
+    const before = await caller(uMem2).circle.podDetail({ id: podId });
+    assert(before.confidentialityAccepted === false, "should start not accepted");
+    await db.insert(schema.sessions).values({ podId, startsAt: new Date(Date.now() - 3600000), topic: "secret" });
+    const stillHidden = await caller(uMem2).circle.podDetail({ id: podId });
+    assert(stillHidden.sessions.length === 0, "sessions leaked before acceptance");
+    await caller(uMem2).circle.acceptPodConfidentiality({ podId });
+    const after = await caller(uMem2).circle.podDetail({ id: podId });
+    assert(after.confidentialityAccepted === true && after.sessions.length === 1, "content not revealed after acceptance");
+  });
+  await expectErr("a non-member cannot open a POD's space", () => caller(uPres).circle.podDetail({ id: podId }), /Not in this pod|FORBIDDEN/i);
+  await check("matching engine ranks pods and blocks conflicts", async () => {
+    await db.update(schema.members).set({ company: "Acme", sector: "FinTech" }).where(eq(schema.members.id, mMem3));
+    await db.update(schema.members).set({ company: "Acme" }).where(eq(schema.members.id, mMem2)); // same company as mMem3, already in pod
+    const sug = await MA.admin.suggestPodPlacement({ id: mMem3 });
+    const row = sug.find((s) => s.podId === podId);
+    assert(!!row && row.blocked === "competition", "non-competition not enforced");
+  });
+  await check("POD health computes from attendance + commitments", async () => {
+    const pd = await MA.admin.podAdmin({ id: podId });
+    assert(pd.health && pd.health.total >= 0 && pd.health.total <= 100, "no pod health");
+  });
+
   console.log("\n\x1b[1mH. Cross-cutting RBAC\x1b[0m");
   await expectErr("unauthenticated cannot list members", () => caller(undefined).admin.members(), /Authentication|UNAUTHORIZED/i);
   await expectErr("member cannot approve applications", () => caller(uPres).admin.setApplicationStatus({ id: 1, status: "approved" }), /permission|admin|FORBIDDEN|UNAUTHORIZED/i);

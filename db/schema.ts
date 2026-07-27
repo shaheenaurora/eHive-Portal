@@ -61,6 +61,10 @@ export const members = mysqlTable("members", {
   company: varchar("company", { length: 255 }),
   title: varchar("title", { length: 255 }),
   phone: varchar("phone", { length: 64 }),
+  /* POD profile (Operations Manual PD-01) — drives the matching engine. */
+  sector: varchar("sector", { length: 128 }),
+  stage: varchar("stage", { length: 64 }),
+  goals: varchar("goals", { length: 500 }),
   joinedAt: timestamp("joinedAt").defaultNow().notNull(),
   renewalAt: timestamp("renewalAt"),
   /* BRD 6.3 — dormancy ladder + engagement */
@@ -142,6 +146,8 @@ export const podMembers = mysqlTable("pod_members", {
   memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
   role: varchar("role", { length: 32 }).notNull().default("member"),
   joinedAt: timestamp("joinedAt").defaultNow().notNull(),
+  /* PD-03 — POD content is gated until the member accepts confidentiality. */
+  confidentialityAt: timestamp("confidentialityAt"),
 });
 
 export const sessions = mysqlTable("sessions", {

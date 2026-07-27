@@ -37,6 +37,11 @@ export default function AdminMemberDetail() {
     onSuccess: () => { toast("Lifecycle updated."); invalidate(); },
     onError: (e) => toast(e.message),
   });
+  const suggest = trpc.admin.suggestPodPlacement.useQuery({ id: mid }, { retry: false });
+  const addToPod = trpc.admin.addToPod.useMutation({
+    onSuccess: () => { toast("Added to the pod."); invalidate(); utils.admin.suggestPodPlacement.invalidate({ id: mid }); },
+    onError: (e) => toast(e.message),
+  });
 
   if (q.isLoading) return <EhShell groups={ADMIN_NAV} brandSub="Admin"><Spinner /></EhShell>;
   if (!q.data) return <EhShell groups={ADMIN_NAV} brandSub="Admin"><Empty big="Member not found." /></EhShell>;
@@ -158,6 +163,30 @@ export default function AdminMemberDetail() {
                 </div>
               ))}
             </div>
+          </div>
+
+          <div className="eh-card">
+            <h3>Suggested PODs</h3>
+            <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>Matched on sector mix, peer tier and non-competition (PD-01).</p>
+            {(() => {
+              const fits = (suggest.data ?? []).filter((s) => !s.blocked).slice(0, 3);
+              if (suggest.data && fits.length === 0)
+                return <Empty big="No suitable pod." p="Pods are full, tier-mismatched, or would create a conflict of interest." />;
+              return (
+                <div className="eh-list">
+                  {fits.map((s) => (
+                    <div className="row" key={s.podId}>
+                      <div style={{ flex: 1 }}>
+                        <div className="t">{s.name} <Pill color={s.score >= 70 ? "green" : "gold"}>match {s.score}</Pill></div>
+                        <div className="d">{s.reason}</div>
+                      </div>
+                      <button className="eh-btn sm gold" disabled={addToPod.isPending}
+                              onClick={() => addToPod.mutate({ podId: s.podId, memberId: mid })}>Add</button>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
 
           <div className="eh-card">
