@@ -29,6 +29,11 @@ const FORM_META: Record<string, { label: string; subject: string; intro: string 
     subject: "Your eHive Clarity Scorecard results",
     intro: "Thank you for completing the eHive Clarity Scorecard. Your results are summarised below. One of our advisors will follow up with the recommended next step for your business.",
   },
+  "brand-check": {
+    label: "Brand Check",
+    subject: "Thanks for completing the eHive Brand Check",
+    intro: "Thank you for completing the eHive Brand Check. Once we've been through your answers, we'll share what we're seeing — where things are genuinely solid, and where the biggest opportunity sits. No cost, no obligation.",
+  },
 };
 
 const GENERIC = {
@@ -47,10 +52,35 @@ const prettyKey = (k: string) =>
 /* Keys that are plumbing rather than something a human wants to read. */
 const HIDDEN_KEYS = new Set(["form", "source_page", "user_agent", "referrer", "timestamp"]);
 
+/** Brand Check "sections" → grouped question/answer rows (kept out of JSON.stringify). */
+function sectionRows(sections: unknown[]): string {
+  return sections
+    .map((s) => {
+      if (!s || typeof s !== "object") return "";
+      const sec = s as Record<string, unknown>;
+      const head = `<tr><td colspan="2" style="padding:14px 12px 4px;color:#b8862e;font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:700">${esc(sec.title)}</td></tr>`;
+      const items = Array.isArray(sec.items)
+        ? (sec.items as unknown[])
+            .map((it) => {
+              if (!it || typeof it !== "object") return "";
+              const r = it as Record<string, unknown>;
+              return `<tr>
+                <td style="padding:6px 12px;color:#5d6f82;font-size:13px;vertical-align:top;width:48%">${esc(r.q)}</td>
+                <td style="padding:6px 12px;color:#101d2c;font-size:14px;font-weight:600;white-space:pre-wrap">${esc(r.a)}</td>
+              </tr>`;
+            })
+            .join("")
+        : "";
+      return head + items;
+    })
+    .join("");
+}
+
 function fieldRows(payload: Record<string, unknown>): string {
   return Object.entries(payload)
     .filter(([k, v]) => !HIDDEN_KEYS.has(k) && v !== "" && v != null)
     .map(([k, v]) => {
+      if (k === "sections" && Array.isArray(v)) return sectionRows(v);
       const val = typeof v === "object" ? JSON.stringify(v) : String(v);
       return `<tr>
         <td style="padding:6px 12px;color:#5d6f82;font-size:13px;white-space:nowrap;vertical-align:top">${esc(prettyKey(k))}</td>
