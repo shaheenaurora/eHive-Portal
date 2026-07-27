@@ -65,7 +65,7 @@ export default function Dashboard() {
               <h2 style={{ margin: ".2rem 0 .1rem" }}>Onboarding · {ob.data!.doneCount} of {ob.data!.total}</h2>
               <p className="eh-sm" style={{ marginBottom: 0 }}>Members who complete this are far more likely to thrive. POD placement is due by day 60.</p>
             </div>
-            <Ring pct={ob.data!.percent} />
+            <Ring value={ob.data!.percent} />
           </div>
           <div style={{ marginTop: ".7rem", display: "grid", gap: ".9rem" }}>
             {ONBOARDING_STAGES.map((st) => {
