@@ -116,7 +116,11 @@ export default function Apply() {
         </form>
 
         <div className="eh-card">
-          <h3>Pick your tier</h3>
+          <h3>Pick the tier you're applying for</h3>
+          <p className="eh-muted eh-sm" style={{ marginTop: "-.35rem", marginBottom: ".75rem" }}>
+            You're not on any tier yet — this is the tier you'd like to be considered for.
+            Membership begins only after the Circle team approves your application (or you join &amp; pay).
+          </p>
           <div className="eh-list">
             {TIERS.map((t) => (
               <label key={t} className="row" style={{ cursor: "pointer", alignItems: "flex-start" }}>
@@ -124,7 +128,12 @@ export default function Apply() {
                        style={{ marginTop: ".35rem", accentColor: "#b8862e" }} />
                 <div style={{ flex: 1 }}>
                   <div className="eh-between">
-                    <span className="t">{TIER_LABEL[t]}</span>
+                    <span className="t">
+                      {TIER_LABEL[t]}
+                      {t === "ascent" && (
+                        <span style={{ marginLeft: ".4rem" }}><Pill>Recommended</Pill></span>
+                      )}
+                    </span>
                     <span className="eh-muted eh-sm eh-num">{TIER_PRICE[t]}</span>
                   </div>
                   <div className="d">
