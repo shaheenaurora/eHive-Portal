@@ -173,6 +173,8 @@ async function main() {
     const reg = (await db.select().from(schema.eventRegs).where(eq(schema.eventRegs.eventId, evFuture)))[0];
     return caller(uPres).engage.checkinEvent({ eventId: evFuture, code: reg.checkinCode! });
   }, /can't check in|hasn't started/i);
+  await expectErr("admin cannot Mark attended before the event starts", () =>
+    MA.admin.markEventAttendance({ eventId: evFuture, memberId: mPres, status: "attended" }), /hasn't started/i);
   await check("check-in inside the window records attendance", async () => {
     await db.update(schema.events).set({ startsAt: new Date() }).where(eq(schema.events.id, evFuture));
     const reg = (await db.select().from(schema.eventRegs).where(eq(schema.eventRegs.eventId, evFuture)))[0];

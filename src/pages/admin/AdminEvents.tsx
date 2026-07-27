@@ -41,6 +41,8 @@ export default function AdminEvents() {
   const [doorCode, setDoorCode] = useState("");
   const [scanning, setScanning] = useState(false);
   const [fbFor, setFbFor] = useState<number | null>(null);
+  // Stable "now" for the attendance-window check (avoids impure Date.now in render).
+  const [now] = useState(() => Date.now());
   // Activity-master audience picker (controlled — the rest of the form is FormData).
   const [audience, setAudience] = useState<"public" | "members" | "tiers">("members");
   const [audTiers, setAudTiers] = useState<Set<string>>(new Set(["vanguard", "zenith"]));
@@ -55,6 +57,11 @@ export default function AdminEvents() {
   }, []);
   const regs = trpc.admin.eventRegs.useQuery({ id: regsFor! }, { enabled: regsFor !== null, retry: false });
   const fb = trpc.adminEngage.eventFeedbackAdmin.useQuery({ eventId: fbFor! }, { enabled: fbFor !== null, retry: false });
+
+  // Attendance can only be recorded once the event is under way (opens 2h
+  // before start) — the same rule the server enforces. Register/undo stay open.
+  const selEvent = regsFor !== null ? (q.data ?? []).find((e) => e.id === regsFor) : undefined;
+  const attendanceOpen = !selEvent || now >= new Date(selEvent.startsAt).getTime() - 2 * 60 * 60 * 1000;
 
   function onCreate(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -224,7 +231,7 @@ export default function AdminEvents() {
                   {reg.checkinCode && reg.status === "registered" && (
                     <span className="eh-muted eh-sm eh-num">{reg.checkinCode}</span>
                   )}
-                  {reg.status === "registered" && (
+                  {reg.status === "registered" && (attendanceOpen ? (
                     <>
                       <button className="eh-btn gold sm"
                               onClick={() => markAtt.mutate({ eventId: regsFor, memberId: member.id, status: "attended" })}>
@@ -239,7 +246,9 @@ export default function AdminEvents() {
                         Excused
                       </button>
                     </>
-                  )}
+                  ) : (
+                    <span className="eh-muted eh-sm">Attendance opens when the event starts</span>
+                  ))}
                   {reg.status === "attended" && (
                     <button className="eh-btn ghost sm"
                             onClick={() => markAtt.mutate({ eventId: regsFor, memberId: member.id, status: "registered" })}>
