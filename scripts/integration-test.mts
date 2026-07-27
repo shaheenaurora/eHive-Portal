@@ -217,6 +217,31 @@ async function main() {
     assert(!!hv.lastSnapshot && hv.lastSnapshot.total === (r as { total: number }).total, "snapshot not persisted");
   });
 
+  console.log("\n\x1b[1mJ. Operating rhythm (cadence engine, §A2)\x1b[0m");
+  await check("officer sets up the standard cadences", async () => {
+    const r = await caller(uPres).officer.setupCadences();
+    assert((r as { added: number }).added >= 6, "cadences not seeded");
+    const ov = await caller(uPres).officer.overview();
+    assert(ov.cadence.cadences.some((c) => c.type === "chapter_meeting"), "no chapter meeting cadence");
+    assert(ov.cadence.cadences.every((c) => c.currentStatus === "open"), "should start open");
+  });
+  await check("setup is idempotent", async () => {
+    const r = await caller(uPres).officer.setupCadences();
+    assert((r as { added: number }).added === 0, "re-seeded cadences");
+  });
+  await check("marking a cadence kept updates its current status", async () => {
+    const ov = await caller(uPres).officer.overview();
+    const cad = ov.cadence.cadences[0];
+    await caller(uPres).officer.markCadence({ cadenceId: cad.id, status: "kept" });
+    const ov2 = await caller(uPres).officer.overview();
+    assert(ov2.cadence.cadences.find((c) => c.id === cad.id)!.currentStatus === "kept", "not kept");
+  });
+  await expectErr("officer of another chapter cannot mark this chapter's cadence", async () => {
+    const ov = await caller(uPres).officer.overview();
+    // uMem2 is not an officer at all → denied at requireOfficer
+    return caller(uMem2).officer.markCadence({ cadenceId: ov.cadence.cadences[0].id, status: "kept" });
+  }, /leadership role|don't lead/i);
+
   console.log("\n\x1b[1mI. Onboarding 30/60/90 (ML-03)\x1b[0m");
   await check("myOnboarding returns the ten staged milestones", async () => {
     const p = await caller(uApplicant).circle.myOnboarding();

@@ -626,6 +626,32 @@ export const chapterTransfers = mysqlTable("chapter_transfers", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+/* Operations Manual A2 — the chapter operating rhythm. A recurring obligation
+   the platform schedules and rolls up ("cadence is the product"). */
+export const cadences = mysqlTable("cadences", {
+  id: serial("id").primaryKey(),
+  chapterId: bigint("chapterId", { mode: "number", unsigned: true }).notNull(),
+  type: varchar("type", { length: 48 }).notNull(),          // CADENCE_TEMPLATES type
+  title: varchar("title", { length: 128 }).notNull(),
+  frequency: varchar("frequency", { length: 16 }).notNull(), // weekly | biweekly | ...
+  ownerRole: varchar("ownerRole", { length: 48 }),           // accountable chapter role
+  sop: varchar("sop", { length: 16 }),
+  active: int("active").notNull().default(1),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+/* One row per cadence occurrence a leader records — kept / rescheduled / missed
+   (§A2 "the one rule of the calendar"). Keyed by the period it belongs to. */
+export const cadenceLog = mysqlTable("cadence_log", {
+  id: serial("id").primaryKey(),
+  cadenceId: bigint("cadenceId", { mode: "number", unsigned: true }).notNull(),
+  periodKey: varchar("periodKey", { length: 16 }).notNull(),
+  status: mysqlEnum("status", ["kept", "rescheduled", "missed"]).notNull(),
+  note: varchar("note", { length: 500 }),
+  actorMemberId: bigint("actorMemberId", { mode: "number", unsigned: true }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 /* Operations Manual M7 / CH-06 — chapter health snapshots. Time-stamped index +
    its six components, saved for trend and Zone comparison. */
 export const healthSnapshots = mysqlTable("health_snapshots", {

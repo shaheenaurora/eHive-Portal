@@ -4,6 +4,11 @@ import { EhShell, MEMBER_NAV, PageHead, Pill, Empty, Spinner, Modal, Field, Bar,
 import { fmtDate } from "@/lib/ehf";
 import { CHAPTER_STATUS_LABEL, CHAPTER_ROLE_RESP, CHAPTER_ROLE_METRIC, chapterRoleTitle,
   HEALTH_COMPONENTS, HEALTH_BAND_LABEL, HEALTH_BAND_COLOR, healthBand } from "@contracts/constants";
+import { FREQUENCY_LABEL, periodLabel, type Frequency } from "@contracts/cadence";
+
+const CADENCE_STATUS_COLOR: Record<string, "green" | "gold" | "red" | "grey"> = {
+  kept: "green", rescheduled: "gold", missed: "red", open: "grey",
+};
 import type { ChapterStatus } from "@contracts/constants";
 
 export default function Chapter() {
@@ -42,6 +47,14 @@ export default function Chapter() {
   });
   const assignMentor = trpc.officer.assignMentor.useMutation({
     onSuccess: () => { toast("Mentor assigned."); setMentee(""); setMentor(""); refresh(); },
+    onError: (e) => toast(e.message),
+  });
+  const setupCadences = trpc.officer.setupCadences.useMutation({
+    onSuccess: (r) => { toast(r.added ? `Operating rhythm set up — ${r.added} cadences.` : "Already set up."); refresh(); },
+    onError: (e) => toast(e.message),
+  });
+  const markCadence = trpc.officer.markCadence.useMutation({
+    onSuccess: () => { toast("Cadence updated."); refresh(); },
     onError: (e) => toast(e.message),
   });
   const postLearning = trpc.officer.postLearning.useMutation({
@@ -188,6 +201,42 @@ export default function Chapter() {
                   </div>
                 </div>
               )}
+
+              {/* operating rhythm */}
+              <div className="eh-card eh-mb">
+                <div className="eh-between">
+                  <h3 style={{ margin: 0 }}>Operating rhythm</h3>
+                  {overview.data.cadence && overview.data.cadence.cadences.length > 0 && (
+                    <Pill color={overview.data.cadence.adherence >= 80 ? "green" : overview.data.cadence.adherence >= 60 ? "gold" : "red"}>{overview.data.cadence.adherence}% kept</Pill>
+                  )}
+                </div>
+                {(!overview.data.cadence || overview.data.cadence.cadences.length === 0) ? (
+                  <div style={{ textAlign: "center", padding: ".4rem 0" }}>
+                    <p className="eh-sm eh-muted">Set your chapter's recurring rhythm — meetings, huddle, board, financial close.</p>
+                    <button className="eh-btn gold" disabled={setupCadences.isPending} onClick={() => setupCadences.mutate()}>Set up the operating rhythm →</button>
+                  </div>
+                ) : (
+                  <div className="eh-list eh-mt">
+                    {overview.data.cadence.cadences.map((c) => (
+                      <div className="row" key={c.id} style={{ alignItems: "flex-start" }}>
+                        <div style={{ flex: 1 }}>
+                          <div className="t">{c.title} <span className="eh-muted eh-sm">· {FREQUENCY_LABEL[c.frequency as Frequency]}</span></div>
+                          <div className="d">Last {c.expected}: {c.kept} kept{c.missed ? `, ${c.missed} missed` : ""}</div>
+                        </div>
+                        <div className="eh-row" style={{ gap: ".4rem" }}>
+                          <Pill color={CADENCE_STATUS_COLOR[c.currentStatus]}>{c.currentStatus === "open" ? `due ${periodLabel(c.frequency as Frequency)}` : c.currentStatus}</Pill>
+                          {c.currentStatus !== "kept" && (
+                            <>
+                              <button className="eh-btn sm gold" disabled={markCadence.isPending} onClick={() => markCadence.mutate({ cadenceId: c.id, status: "kept" })}>Kept</button>
+                              <button className="eh-btn sm ghost" disabled={markCadence.isPending} onClick={() => markCadence.mutate({ cadenceId: c.id, status: "rescheduled" })}>Resched.</button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {(overview.data.onboarding ?? []).length > 0 && (
                 <div className="eh-card eh-mb">

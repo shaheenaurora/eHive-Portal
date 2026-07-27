@@ -157,8 +157,32 @@ export async function ensureSchema(): Promise<void> {
     tables.add("chapter_transfers"); // so its indexes are considered this run
     tables.add("chapter_roles");
     tables.add("chapter_posts");
+    stmts.push(
+      `CREATE TABLE IF NOT EXISTS cadences (
+        id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        chapterId bigint unsigned NOT NULL,
+        type varchar(48) NOT NULL,
+        title varchar(128) NOT NULL,
+        frequency varchar(16) NOT NULL,
+        ownerRole varchar(48) NULL,
+        sop varchar(16) NULL,
+        active int NOT NULL DEFAULT 1,
+        createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS cadence_log (
+        id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        cadenceId bigint unsigned NOT NULL,
+        periodKey varchar(16) NOT NULL,
+        status enum('kept','rescheduled','missed') NOT NULL,
+        note varchar(500) NULL,
+        actorMemberId bigint unsigned NULL,
+        createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
+    );
     tables.add("health_snapshots");
     tables.add("onboarding_milestones");
+    tables.add("cadences");
+    tables.add("cadence_log");
 
     for (const s of stmts) {
       try {
@@ -221,6 +245,8 @@ export async function ensureSchema(): Promise<void> {
       ["chapter_posts", "ix_chposts_chapter", "chapterId"],
       ["health_snapshots", "ix_health_chapter", "chapterId, createdAt"],
       ["onboarding_milestones", "ix_onboarding_member", "memberId"],
+      ["cadences", "ix_cadences_chapter", "chapterId"],
+      ["cadence_log", "ix_cadencelog_cadence_period", "cadenceId, periodKey"],
     ];
     let added = 0;
     for (const [table, name, cols] of indexes) {

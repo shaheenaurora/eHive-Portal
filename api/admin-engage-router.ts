@@ -11,6 +11,8 @@ import {
   awardRulePoints, notify, evaluateDormancy, introEligibility,
 } from "./queries/circle";
 import { computeChapterHealth } from "./queries/health";
+import { ensureCadenceTemplates, listCadences, recordCadence } from "./queries/cadence";
+import { CADENCE_STATUSES } from "@contracts/cadence";
 import {
   POINT_RULE_KEYS, POINT_RULE_LABEL, POINT_RULE_FACTOR, POINT_RULE_DEFAULTS,
   ZENITH_CAP, INVESTOR_COOLDOWN_DAYS,
@@ -564,12 +566,29 @@ export const adminEngageRouter = createRouter({
         .leftJoin(schema.users, eq(schema.users.id, schema.members.userId))
         .where(and(eq(schema.chapterRoles.chapterId, chapter.id), eq(schema.chapterRoles.status, "active")))
         .orderBy(asc(schema.chapterRoles.createdAt));
+      const cadence = await listCadences(chapter.id);
       return {
         chapter,
         roster,
         board: roles.map(r => ({ ...r.role, memberName: r.name ?? r.email ?? "Member" })),
+        cadence,
         elections: els, motions: mos, budgets,
       };
+    }),
+
+  /* Set the chapter's operating rhythm up to standard (the recurring cadences). */
+  setupChapterCadences: scopedAdmin("chapters").input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
+    const added = await ensureCadenceTemplates(input.id);
+    await audit(ctx.user, "chapter.cadences.setup", { type: "chapter", id: input.id, detail: `+${added} cadences` });
+    return { ok: true, added };
+  }),
+
+  markChapterCadence: scopedAdmin("chapters")
+    .input(z.object({ cadenceId: z.number(), status: z.enum(CADENCE_STATUSES), note: z.string().max(500).optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const { chapterId } = await recordCadence(input.cadenceId, input.status, input.note, null);
+      await audit(ctx.user, "chapter.cadence.mark", { type: "chapter", id: chapterId, detail: `${input.cadenceId} → ${input.status}` });
+      return { ok: true };
     }),
 
   /* Assign a member of the chapter to a leadership role (directly or from an
