@@ -41,6 +41,8 @@ export default function AdminAccess() {
         </div>
       )}
 
+      {iAmFull && <MailSettings />}
+
       {roster.isLoading && <Spinner />}
       {roster.isError && (
         <div className="eh-card"><Empty big="Couldn't load the team." p="There was a problem reaching the server." />
@@ -100,6 +102,61 @@ export default function AdminAccess() {
         </div>
       )}
     </EhShell>
+  );
+}
+
+function MailSettings() {
+  const status = trpc.admin.mailStatus.useQuery(undefined, { retry: false });
+  const { user } = useAuth();
+  const [to, setTo] = useState(user?.email ?? "");
+  const test = trpc.admin.sendTestEmail.useMutation({
+    onSuccess: () => toast(`Test email sent to ${to}. Check the inbox (and spam).`),
+    onError: (e) => toast(e.message),
+  });
+  const s = status.data;
+
+  return (
+    <div className="eh-card eh-mb">
+      <div className="eh-between" style={{ marginBottom: ".6rem" }}>
+        <h3 style={{ margin: 0 }}>Email &amp; deliverability</h3>
+        {s && (s.configured
+          ? <Pill color="green">SMTP configured</Pill>
+          : <Pill color="gold">Not configured</Pill>)}
+      </div>
+
+      {status.isLoading && <Spinner />}
+
+      {s && !s.configured && (
+        <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>
+          Outbound email is off — leads and applications are still saved, but no alerts, confirmations,
+          verification or password-reset emails are sent. Set <code>SMTP_HOST</code>, <code>SMTP_USER</code> and
+          <code> SMTP_PASS</code> in your Railway service variables to switch it on, then send a test below.
+        </p>
+      )}
+
+      {s && s.configured && (
+        <div className="eh-list eh-mb">
+          <div className="row"><span className="d">Server</span><span className="t">{s.host}:{s.port}{s.secure ? " · TLS" : " · STARTTLS"}</span></div>
+          <div className="row"><span className="d">From</span><span className="t">{s.from ?? "—"}</span></div>
+          <div className="row"><span className="d">Lead alerts to</span><span className="t">{s.notifyTo ?? "—"}</span></div>
+        </div>
+      )}
+
+      <div className="eh-eyebrow" style={{ marginBottom: ".4rem" }}>Send a test email</div>
+      <div className="eh-row" style={{ alignItems: "flex-end", flexWrap: "wrap", gap: ".6rem" }}>
+        <Field label="Send to">
+          <input className="eh-input" type="email" placeholder="you@ehiveglobal.com"
+                 value={to} onChange={(e) => setTo(e.target.value)} />
+        </Field>
+        <button className="eh-btn gold" disabled={!to || test.isPending}
+                onClick={() => test.mutate({ to })}>
+          {test.isPending ? "Sending…" : "Send test"}
+        </button>
+      </div>
+      <p className="eh-sm eh-muted" style={{ marginBottom: 0 }}>
+        If it fails, the exact SMTP error (auth, port, DNS) shows here so you can fix the variables.
+      </p>
+    </div>
   );
 }
 

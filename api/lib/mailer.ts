@@ -61,3 +61,55 @@ function htmlToText(html: string): string {
     .replace(/\s+/g, " ")
     .trim();
 }
+
+/** Non-secret view of the mail configuration for the admin panel. Never exposes
+ *  the SMTP password. */
+export function mailStatus() {
+  return {
+    configured: mailEnabled(),
+    host: env.smtpHost || null,
+    port: env.smtpPort,
+    secure: env.smtpSecure || env.smtpPort === 465,
+    user: env.smtpUser || null,
+    from: env.mailFrom || env.smtpUser || null,
+    notifyTo: env.leadNotifyEmail || null,
+  };
+}
+
+/**
+ * Send a one-off test email so an admin can verify SMTP end-to-end from the
+ * portal. Unlike sendMail this surfaces the real transport error (auth, port,
+ * DNS…) so setup problems are diagnosable without server logs.
+ */
+export async function sendTestEmail(to: string): Promise<{ ok: boolean; error?: string }> {
+  if (!mailEnabled()) {
+    return { ok: false, error: "SMTP is not configured yet. Set SMTP_HOST, SMTP_USER and SMTP_PASS, then try again." };
+  }
+  const html = `<div style="font-family:Inter,Arial,sans-serif;padding:24px;background:#faf7f1">
+    <div style="max-width:520px;margin:0 auto;background:#fff;border:1px solid #efe9dd;border-radius:14px;overflow:hidden">
+      <div style="background:#101d2c;padding:18px 24px"><span style="color:#f5efe2;font-family:Georgia,serif;font-size:18px;font-weight:600">eHive</span></div>
+      <div style="padding:24px;color:#33465e;font-size:15px;line-height:1.55">
+        <h1 style="font-family:Georgia,serif;font-size:20px;color:#101d2c;margin:0 0 12px">Your email is working ✓</h1>
+        <p style="margin:0">This is a test message from your eHive portal. If it reached your inbox, outbound
+        email (lead alerts, member confirmations, verification and password-reset emails) is configured correctly.</p>
+        <p style="margin:16px 0 0;color:#8a97a6;font-size:12px">Sent from ${esc(fromAddress())} · ${esc(env.smtpHost)}:${env.smtpPort}</p>
+      </div>
+    </div>
+  </div>`;
+  try {
+    await getTransport().sendMail({
+      from: `eHive <${fromAddress()}>`,
+      to,
+      subject: "eHive test email — SMTP is working",
+      text: "Your eHive portal email is working. If you can read this, outbound email is configured correctly.",
+      html,
+    });
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+const esc = (v: unknown) =>
+  String(v ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));

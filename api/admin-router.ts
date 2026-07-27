@@ -9,6 +9,7 @@ import { awardPoints, awardRulePoints, promoteWaitlist, recomputeScore, autoPair
 import { computePodHealth, suggestPods } from "./queries/pods";
 import { audit } from "./lib/audit";
 import { findUserByEmail } from "./queries/users";
+import { mailStatus, sendTestEmail } from "./lib/mailer";
 import { tierRank, EVENT_CHECKIN_OPENS_BEFORE_MS } from "@contracts/constants";
 
 const SCOPE_ENUM = z.enum([
@@ -121,6 +122,28 @@ export const adminRouter = createRouter({
       scoreDist,
     };
   }),
+
+  /* ------------------------- email (SMTP) config ------------------------- */
+  /* Non-secret status of outbound mail + a full-admin-only test send, so SMTP
+     can be verified from the portal after setting the Railway variables. */
+  mailStatus: adminQuery.query(({ ctx }) => {
+    if (!isFullAdmin(ctx.user as never)) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Only a full administrator can view email settings." });
+    }
+    return mailStatus();
+  }),
+
+  sendTestEmail: adminQuery
+    .input(z.object({ to: z.string().email() }))
+    .mutation(async ({ ctx, input }) => {
+      if (!isFullAdmin(ctx.user as never)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only a full administrator can send a test email." });
+      }
+      const res = await sendTestEmail(input.to);
+      if (!res.ok) throw new TRPCError({ code: "BAD_REQUEST", message: res.error ?? "The test email could not be sent." });
+      await audit(ctx.user, "mail.test", { detail: input.to });
+      return { ok: true };
+    }),
 
   /* ---------------------------- applications ----------------------------- */
   applications: adminQuery
