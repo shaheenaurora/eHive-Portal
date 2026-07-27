@@ -93,6 +93,7 @@ function LeadDetail({ lead, onClose, onSaved }: { lead: LeadRow; onClose: () => 
   let data: Record<string, unknown> = {};
   try { data = lead.payload ? JSON.parse(lead.payload) : {}; } catch { /* ignore */ }
   const report = buildScorecardReport(data);
+  const bcSections = lead.form === "brand-check" ? brandCheckSections(data) : null;
   const str = (k: string) => (typeof data[k] === "string" && data[k] ? String(data[k]) : null);
   const contact: [string, string | null][] = [
     ["Name", str("name")], ["Email", lead.email ?? str("email")], ["Phone", str("phone")],
@@ -144,6 +145,27 @@ function LeadDetail({ lead, onClose, onSaved }: { lead: LeadRow; onClose: () => 
             <b>{report.recommendation.product}</b>
             <div className="eh-sm eh-muted" style={{ marginTop: ".2rem" }}>{report.recommendation.why}</div>
           </div>
+        </div>
+      )}
+
+      {/* ---- Brand Check discovery answers ---- */}
+      {bcSections && (
+        <div className="eh-card eh-mb" style={{ background: "var(--eh-paper)" }}>
+          <div className="eh-eyebrow" style={{ color: "var(--eh-gold)" }}>Brand Check</div>
+          <h3 style={{ margin: ".1rem 0 1rem" }}>Discovery answers</h3>
+          {bcSections.map((s) => (
+            <div key={s.title} style={{ marginBottom: "1.1rem" }}>
+              <div className="eh-eyebrow" style={{ marginBottom: ".4rem" }}>{s.title}</div>
+              <div className="eh-list">
+                {s.items.map((it, i) => (
+                  <div className="row" key={i} style={{ display: "block", padding: ".5rem 0" }}>
+                    <div className="eh-sm" style={{ fontWeight: 600 }}>{it.q}</div>
+                    <div className="eh-sm eh-muted" style={{ marginTop: ".15rem", whiteSpace: "pre-wrap" }}>{it.a}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -213,14 +235,17 @@ function leadName(l: { payload: string | null }): string | null {
   catch { return null; }
 }
 const FORM_LABELS: Record<string, string> = {
-  "clarity-scorecard": "Clarity Scorecard", "get-started": "Get Started", booking: "Booking",
-  "calculator-breakdown": "Setup calculator", newsletter: "Newsletter",
+  "clarity-scorecard": "Clarity Scorecard", "brand-check": "Brand Check", "get-started": "Get Started",
+  booking: "Booking", "calculator-breakdown": "Setup calculator", newsletter: "Newsletter",
 };
 function formLabel(f: string): string { return FORM_LABELS[f] ?? f; }
 
 const CONTACT_KEYS = new Set(["name", "email", "phone", "company", "business", "location", "industry"]);
 const PLUMBING_KEYS = new Set(["form", "source_page", "user_agent", "referrer", "timestamp"]);
 const SCORECARD_INTERNAL = new Set(["total", "domains"]);
+// Brand Check discovery answers render in their own block (BrandCheckReport), so
+// keep the raw "sections" array out of the generic "what they submitted" list.
+const BRANDCHECK_INTERNAL = new Set(["sections"]);
 const prettyKey = (k: string) => k.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
 function fmtVal(v: unknown): string {
@@ -239,8 +264,30 @@ function fmtVal(v: unknown): string {
  *  are never hidden from admins. */
 function extraFields(data: Record<string, unknown>): [string, string][] {
   return Object.entries(data)
-    .filter(([k, v]) => !CONTACT_KEYS.has(k) && !PLUMBING_KEYS.has(k) && !SCORECARD_INTERNAL.has(k) && v !== "" && v != null)
+    .filter(([k, v]) => !CONTACT_KEYS.has(k) && !PLUMBING_KEYS.has(k) && !SCORECARD_INTERNAL.has(k)
+      && !BRANDCHECK_INTERNAL.has(k) && v !== "" && v != null)
     .map(([k, v]) => [prettyKey(k), fmtVal(v)] as [string, string]);
+}
+
+/** Brand Check discovery answers, grouped by the form's nine sections. */
+type BrandCheckSection = { title: string; items: { q: string; a: string }[] };
+function brandCheckSections(data: Record<string, unknown>): BrandCheckSection[] | null {
+  const raw = data.sections;
+  if (!Array.isArray(raw)) return null;
+  const out: BrandCheckSection[] = [];
+  for (const s of raw) {
+    if (!s || typeof s !== "object") continue;
+    const sec = s as Record<string, unknown>;
+    const items = Array.isArray(sec.items)
+      ? (sec.items as unknown[]).flatMap((it) => {
+          if (!it || typeof it !== "object") return [];
+          const r = it as Record<string, unknown>;
+          return [{ q: String(r.q ?? ""), a: String(r.a ?? "—") }];
+        })
+      : [];
+    out.push({ title: String(sec.title ?? ""), items });
+  }
+  return out.length ? out : null;
 }
 
 /** At-a-glance value for the list: score for the scorecard, else the form's
@@ -253,6 +300,7 @@ function leadHighlight(l: LeadRow): ReactNode {
     return <Pill color={band as never}>Score {d.total as number}/100</Pill>;
   }
   const pick = (k: string) => (typeof d[k] === "string" && d[k] ? String(d[k]) : null);
+  if (l.form === "brand-check") return [pick("company"), pick("industry")].filter(Boolean).join(" · ") || "—";
   if (l.form === "get-started") return [pick("door"), pick("product_or_tier") ?? pick("detail"), pick("question")].filter(Boolean).join(" · ") || "—";
   if (l.form === "booking") return [pick("product"), pick("when")].filter(Boolean).join(" · ") || "—";
   if (l.form === "calculator-breakdown") {

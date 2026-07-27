@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>eHive Brand Check</title>
+<meta name="description" content="A short brand discovery form we ask every prospective client to complete before we recommend anything. No scoring, no wrong answers.">
+<style>
+  :root{
+    --navy:#1A1A2E;
+    --navy-soft:#242440;
+    --gold:#B8862E;
+    --gold-lite:#E8D9BB;
+    --cream:#F3E9D2;
+    --paper:#FBF9F5;
+    --ink:#1A1A2E;
+    --muted:#5A6473;
+    --white:#fff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:Calibri,"Segoe UI",system-ui,-apple-system,sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:32px 20px 64px}
+  .brand{display:inline-block;line-height:0;background:var(--navy);padding:9px 14px;border-radius:9px}
+  .brand img{height:22px;width:auto;display:block}
+  body.embed .wrap{padding-top:18px}
+  .rule{height:3px;width:56px;background:var(--gold);margin:10px 0 0}
+  h1{font-family:Georgia,serif;font-size:clamp(27px,5vw,40px);line-height:1.15;font-weight:700;margin:22px 0 14px}
+  h2{font-family:Georgia,serif;font-size:clamp(20px,3.4vw,26px);line-height:1.25;font-weight:700;margin:0 0 10px}
+  p.lede{font-size:17px;color:var(--muted);max-width:60ch}
+  .meta{display:flex;gap:22px;flex-wrap:wrap;margin:26px 0 30px;padding:16px 0;border-top:1px solid var(--gold-lite);border-bottom:1px solid var(--gold-lite)}
+  .meta div{font-size:13px;color:var(--muted)}
+  .meta b{display:block;font-family:Georgia,serif;font-size:17px;color:var(--navy)}
+  button{font-family:inherit;font-size:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  .btn{
+    display:inline-block;background:var(--navy);color:var(--white);
+    padding:14px 28px;border-radius:4px;font-size:16px;font-weight:600;
+    transition:background .18s ease,transform .12s ease;
+  }
+  .btn:hover{background:#2c2c50}
+  .btn:active{transform:translateY(1px)}
+  .btn:disabled{opacity:.35;cursor:not-allowed}
+  .btn-ghost{background:none;color:var(--muted);padding:12px 4px;font-size:14px;text-decoration:underline;text-underline-offset:3px}
+  :focus-visible{outline:2.5px solid var(--gold);outline-offset:3px;border-radius:3px}
+
+  /* progress */
+  .prog{margin:0 0 22px}
+  .prog-track{height:6px;background:var(--gold-lite);border-radius:5px;overflow:hidden}
+  .prog-fill{height:100%;background:var(--gold);border-radius:5px;width:0;transition:width .4s cubic-bezier(.22,1,.36,1)}
+  .prog-label{display:flex;justify-content:space-between;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:8px}
+
+  .section-no{font-family:Georgia,serif;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:4px}
+  .section-title{font-family:Georgia,serif;font-size:clamp(21px,3.4vw,27px);line-height:1.2;font-weight:700;margin:0 0 22px}
+
+  /* question blocks */
+  .q{margin:0 0 22px}
+  .q > .qlabel{display:block;font-size:16px;font-weight:600;color:var(--ink);margin:0 0 4px;letter-spacing:0;text-transform:none}
+  .q > .qhint{font-size:13.5px;color:var(--muted);margin:0 0 9px}
+  label{display:block;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 6px;font-weight:600}
+  textarea,input,select{
+    width:100%;padding:12px 14px;font-family:inherit;font-size:16px;
+    border:1.5px solid var(--gold-lite);border-radius:4px;background:var(--white);color:var(--ink);
+    appearance:none;-webkit-appearance:none;
+  }
+  textarea{min-height:84px;resize:vertical;line-height:1.5}
+  select{
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23B8862E' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 14px center;padding-right:38px;cursor:pointer;
+  }
+  textarea:focus,input:focus,select:focus{border-color:var(--gold);outline:none}
+
+  /* 1-5 scale */
+  .scale-row{display:flex;gap:8px;flex-wrap:wrap}
+  .sopt{
+    flex:1 1 0;min-width:52px;display:flex;flex-direction:column;align-items:center;gap:4px;
+    background:var(--white);border:1.5px solid var(--gold-lite);border-radius:6px;padding:11px 6px;
+    font-size:12px;color:var(--muted);transition:border-color .15s,background .15s,color .15s;
+  }
+  .sopt .snum{font-family:Georgia,serif;font-weight:700;font-size:17px;color:var(--navy)}
+  .sopt:hover{border-color:var(--gold);background:#fffdf8}
+  .sopt.sel{border-color:var(--navy);background:var(--navy);color:var(--white)}
+  .sopt.sel .snum{color:var(--gold)}
+  .scale-ends{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:7px}
+
+  .field{margin-bottom:16px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media (max-width:540px){.grid2{grid-template-columns:1fr}}
+  .err{color:#A5342B;font-size:13.5px;margin-top:8px;display:none}
+  .fineprint{font-size:12.5px;color:var(--muted);margin-top:14px}
+  .consent{display:flex;gap:11px;align-items:flex-start;font-size:13.5px;color:var(--muted);margin:6px 0 4px;cursor:pointer}
+  .consent input{width:auto;margin-top:3px;accent-color:var(--gold)}
+
+  .nav{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:26px}
+
+  .hidden{display:none}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<script>if(new URLSearchParams(location.search).get("embed")==="1")document.body.classList.add("embed");</script>
+<div class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section id="intro">
+    <a class="brand" href="/" aria-label="eHive — home"><img src="/assets/ehive-wordmark.png" alt="eHive"></a>
+    <div class="rule"></div>
+    <h1>The Brand Check</h1>
+    <p class="lede">A short discovery form we ask every prospective client to complete before we recommend
+      anything. There's no scoring and no wrong answers.</p>
+    <div class="meta">
+      <div><b>~8 minutes</b>9 short sections</div>
+      <div><b>No score</b>A read, not a grade</div>
+      <div><b>Free</b>No obligation</div>
+    </div>
+    <p class="lede" style="font-size:15px;margin-bottom:26px">Some of these questions are more specific than
+      most marketing forms ask — that's intentional. Answer as precisely as you can. If something makes you
+      pause, write that down too; a pause is useful information in itself.</p>
+    <button class="btn" id="start">Begin the Brand Check</button>
+    <p class="fineprint">Take your time — you can move back and forth. Nothing is shared with anyone.</p>
+  </section>
+
+  <!-- ============ STEPS (business info → 9 sections → contact) ============ -->
+  <section id="quiz" class="hidden">
+    <div class="prog">
+      <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+      <div class="prog-label"><span id="progStep"></span><span id="progName"></span></div>
+    </div>
+    <div id="stepBody"></div>
+    <p class="err" id="stepErr">Please complete the highlighted fields to continue.</p>
+    <div class="nav">
+      <button class="btn-ghost" id="back">← Back</button>
+      <button class="btn" id="nextBtn">Continue →</button>
+    </div>
+  </section>
+
+  <!-- ============ DONE ============ -->
+  <section id="done" class="hidden">
+    <a class="brand" href="/" aria-label="eHive — home"><img src="/assets/ehive-wordmark.png" alt="eHive"></a>
+    <div class="rule"></div>
+    <h1>Thank you — that's everything we need.</h1>
+    <h2>What happens next</h2>
+    <p class="lede">Once we've been through your answers, we'll share what we're seeing — where things are
+      genuinely solid, and where the biggest opportunity sits. No cost, no obligation.</p>
+    <p class="lede" style="font-size:15px;margin-top:14px">If a few of these questions were harder to answer
+      than expected, that's a normal outcome of this exercise, not a failing on your part — it's simply where
+      the clearest opportunity usually is.</p>
+    <div style="margin-top:28px">
+      <a class="btn" id="bookBtn" href="/book.html?product=brand-3d&src=brand-check">Book a conversation</a>
+    </div>
+    <p class="fineprint">A copy of your responses is on its way to your inbox.</p>
+  </section>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---- The About-your-business step ----
+  var BUSINESS = [
+    {k:"company",   label:"Company name",                    type:"text", ph:"Your company", required:true},
+    {k:"website",   label:"Website / primary social handles",type:"text", ph:"example.com · @handle"},
+    {k:"industry",  label:"Industry / sector",               type:"text", ph:"e.g. Food & Beverage"},
+    {k:"years",     label:"Years in operation",              type:"text", ph:"e.g. 4"},
+    {k:"team_size", label:"Team size",                       type:"text", ph:"e.g. 12"}
+  ];
+
+  // ---- 9 sections, verbatim from the eHive Brand Clarity Check ----
+  var SECTIONS = [
+    {no:"01", title:"Positioning & Clarity", qs:[
+      {k:"pos_one_sentence", type:"textarea", q:"In one sentence: what do you do, and for whom?", hint:"No lists, no “and also.” One sentence."},
+      {k:"pos_only_choice",  type:"textarea", q:"What makes you the only sensible choice over your closest competitor? Name the competitor."},
+      {k:"pos_team_agree",   type:"scale",    q:"If you asked three people on your team “what do we stand for?” separately, they’d give the same answer.", lo:"Not at all", hi:"Completely true"},
+      {k:"pos_changed",      type:"textarea", q:"Has your positioning changed in the last 12 months? If yes, why — and was that a deliberate decision or a drift?"}
+    ]},
+    {no:"02", title:"Target Audience", qs:[
+      {k:"aud_ideal",     type:"textarea", q:"Describe your ideal customer in specific terms.", hint:"“Everyone” or “SMEs in the region” doesn't count — be specific: role, size, behaviour, budget."},
+      {k:"aud_why_you",   type:"textarea", q:"In the customer's own words, not yours — why do they actually choose you?"},
+      {k:"aud_personas",  type:"textarea", q:"Do you have documented buyer personas? If yes, when were they last updated?"}
+    ]},
+    {no:"03", title:"Product & Offer", qs:[
+      {k:"off_core",      type:"textarea", q:"List your core products or services, and mark which one actually drives the most profit — not revenue."},
+      {k:"off_hardest",   type:"textarea", q:"Which of your offers is hardest to explain to a brand-new customer in one breath? Why do you think that is?"},
+      {k:"off_unreviewed",type:"text",     q:"What percentage of your current offers have not been reviewed or repriced in the last 12 months?", ph:"e.g. 60%"}
+    ]},
+    {no:"04", title:"Pricing", qs:[
+      {k:"price_set",     type:"textarea", q:"How was your current pricing actually set?", hint:"Matched a competitor / cost-plus / gut feel / value-based / other — describe."},
+      {k:"price_raise",   type:"textarea", q:"When did you last raise prices, and what happened afterward?"},
+      {k:"price_cac",     type:"scale",    q:"You know your true cost to acquire a customer, by channel — not an estimate, an actual number.", lo:"Not at all", hi:"Completely true"}
+    ]},
+    {no:"05", title:"Marketing Strategy & Campaigns", qs:[
+      {k:"mkt_channels",  type:"textarea", q:"List every channel you are currently active on."},
+      {k:"mkt_strategy",  type:"textarea", q:"Of those channels, which have a written strategy behind them versus “we just post there”?"},
+      {k:"mkt_objective", type:"textarea", q:"What was the specific, measurable objective of your last campaign?", hint:"“Brand awareness” is not specific — what number were you moving?"},
+      {k:"mkt_owner",     type:"textarea", q:"Who owns marketing decisions internally, and roughly how many hours a week do they spend on it?"}
+    ]},
+    {no:"06", title:"Metrics, KPIs & ROI", qs:[
+      {k:"met_kpis",  type:"textarea", q:"What are your top three marketing KPIs right now?"},
+      {k:"met_roi",   type:"textarea", q:"What was your marketing ROI last quarter — with actual numbers, not a general sense of “it's working”?"},
+      {k:"met_tools", type:"textarea", q:"What tools do you currently use to track performance?"}
+    ]},
+    {no:"07", title:"Team & Process", qs:[
+      {k:"team_setup",   type:"textarea", q:"Is marketing run in-house, through an agency, freelance, or a mix? Briefly describe the setup."},
+      {k:"team_underperform", type:"textarea", q:"Walk us through what actually happens, step by step, when a campaign underperforms."}
+    ]},
+    {no:"08", title:"Competitive Landscape", qs:[
+      {k:"comp_top3",  type:"textarea", q:"Name your top three competitors."},
+      {k:"comp_better",type:"textarea", q:"Pick one thing at least one of them genuinely does better than you. Be honest — this one's just for you."}
+    ]},
+    {no:"09", title:"Ambition", qs:[
+      {k:"amb_12m",    type:"textarea", q:"Where do you want the brand to be in 12 months? Be specific enough that someone else could tell if you got there."},
+      {k:"amb_blocked",type:"textarea", q:"What's actually stopped you from getting there so far?"},
+      {k:"amb_first",  type:"textarea", q:"If budget and time weren't a constraint, what's the first thing you'd fix?"}
+    ]}
+  ];
+
+  var SCALE = ["Not at all","","","","Completely true"];
+
+  // Ordered content steps: business, each section, then the contact gate.
+  var STEPS = [{type:"business"}];
+  SECTIONS.forEach(function(s,i){ STEPS.push({type:"section", i:i}); });
+  STEPS.push({type:"gate"});
+
+  var answers = {};   // keyed by question/business/contact key
+  var step = 0;
+
+  var $ = function(id){ return document.getElementById(id); };
+  function show(id){
+    ["intro","quiz","done"].forEach(function(s){ $(s).classList.add("hidden"); });
+    $(id).classList.remove("hidden");
+    window.scrollTo({top:0,behavior:"smooth"});
+  }
+  function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); }
+
+  function fieldHtml(f){
+    var val = answers[f.k] != null ? esc(answers[f.k]) : "";
+    if(f.type === "textarea"){
+      return '<textarea data-k="'+f.k+'" placeholder="'+esc(f.ph||"Type your answer…")+'">'+val+'</textarea>';
+    }
+    if(f.type === "scale"){
+      var cur = answers[f.k];
+      var opts = "";
+      for(var v=1; v<=5; v++){
+        var lbl = SCALE[v-1] ? '<span>'+esc(SCALE[v-1])+'</span>' : '<span>&nbsp;</span>';
+        opts += '<button type="button" class="sopt'+(String(cur)===String(v)?' sel':'')+'" data-k="'+f.k+'" data-v="'+v+'">'
+              + '<span class="snum">'+v+'</span>'+lbl+'</button>';
+      }
+      return '<div class="scale-row">'+opts+'</div>';
+    }
+    return '<input type="text" data-k="'+f.k+'" value="'+val+'" placeholder="'+esc(f.ph||"")+'">';
+  }
+
+  function renderStep(){
+    var s = STEPS[step];
+    var body = $("stepBody");
+    $("stepErr").style.display = "none";
+    // progress across content steps
+    var pct = Math.round(((step) / (STEPS.length - 1)) * 100);
+    $("progFill").style.width = pct + "%";
+
+    if(s.type === "business"){
+      $("progStep").textContent = "About your business";
+      $("progName").textContent = "Step 1 of " + STEPS.length;
+      var rows = BUSINESS.map(function(f){
+        return '<div class="field"><label>'+esc(f.label)+(f.required?' *':'')+'</label>'+fieldHtml(f)+'</div>';
+      }).join("");
+      body.innerHTML = '<div class="section-no">Before we start</div>'
+        + '<div class="section-title">A little context</div>'
+        + '<div class="grid2">'+rows+'</div>';
+    } else if(s.type === "section"){
+      var sec = SECTIONS[s.i];
+      $("progStep").textContent = "Section " + sec.no;
+      $("progName").textContent = "Step " + (step+1) + " of " + STEPS.length;
+      var qhtml = sec.qs.map(function(q){
+        var hint = q.hint ? '<div class="qhint">'+esc(q.hint)+'</div>' : '';
+        return '<div class="q"><span class="qlabel">'+esc(q.q)+'</span>'+hint+fieldHtml(q)+'</div>';
+      }).join("");
+      body.innerHTML = '<div class="section-no">'+sec.no+'</div>'
+        + '<div class="section-title">'+esc(sec.title)+'</div>' + qhtml;
+    } else {
+      $("progStep").textContent = "Almost done";
+      $("progName").textContent = "Step " + (step+1) + " of " + STEPS.length;
+      body.innerHTML =
+        '<div class="section-no">Where to send our read</div>'
+      + '<div class="section-title">Your details</div>'
+      + '<div class="grid2">'
+      +   '<div class="field"><label>Your name *</label><input type="text" data-k="name" value="'+esc(answers.name||"")+'" autocomplete="name" placeholder="Full name"></div>'
+      +   '<div class="field"><label>Your role</label><input type="text" data-k="role" value="'+esc(answers.role||"")+'" autocomplete="organization-title" placeholder="e.g. Founder / CMO"></div>'
+      +   '<div class="field"><label>Email *</label><input type="email" data-k="email" value="'+esc(answers.email||"")+'" autocomplete="email" placeholder="you@company.com"></div>'
+      +   '<div class="field"><label>Phone *</label><input type="tel" data-k="phone" value="'+esc(answers.phone||"")+'" autocomplete="tel" inputmode="tel" placeholder="+971 50 000 0000"></div>'
+      + '</div>'
+      + '<label class="consent"><input type="checkbox" id="bcConsent"'+(answers._consent?' checked':'')+'>'
+      +   '<span>I\'m happy for the eHive team to review these answers and contact me about them. '
+      +   'I can request deletion of my data at any time.</span></label>';
+    }
+
+    // wire inputs
+    wireInputs(body);
+    $("back").style.visibility = step === 0 ? "hidden" : "visible";
+    $("nextBtn").textContent = (step === STEPS.length - 1) ? "Send my answers →" : "Continue →";
+  }
+
+  function wireInputs(root){
+    var fields = root.querySelectorAll("[data-k]");
+    for(var i=0;i<fields.length;i++){
+      (function(el){
+        if(el.classList.contains("sopt")){
+          el.addEventListener("click", function(){
+            var k = el.getAttribute("data-k");
+            answers[k] = Number(el.getAttribute("data-v"));
+            var sibs = el.parentNode.querySelectorAll(".sopt");
+            for(var j=0;j<sibs.length;j++) sibs[j].classList.remove("sel");
+            el.classList.add("sel");
+          });
+        } else {
+          var ev = (el.tagName === "SELECT") ? "change" : "input";
+          el.addEventListener(ev, function(){ answers[el.getAttribute("data-k")] = el.value; });
+        }
+      })(fields[i]);
+    }
+    var consent = root.querySelector("#bcConsent");
+    if(consent) consent.addEventListener("change", function(){ answers._consent = consent.checked; });
+  }
+
+  function emailOk(e){ return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e||""); }
+  function phoneOk(p){ return (String(p||"").replace(/[^\d]/g,"").length >= 7); }
+
+  function validateStep(){
+    var s = STEPS[step];
+    if(s.type === "business"){
+      return (answers.company && String(answers.company).trim()) ? null : "company";
+    }
+    if(s.type === "gate"){
+      if(!answers.name || !String(answers.name).trim()) return "name";
+      if(!emailOk(answers.email)) return "email";
+      if(!phoneOk(answers.phone)) return "phone";
+      if(!answers._consent) return "consent";
+      return null;
+    }
+    return null; // sections are optional by design
+  }
+
+  function submitLead(){
+    var sections = SECTIONS.map(function(sec){
+      return {
+        title: sec.no + " " + sec.title,
+        items: sec.qs.map(function(q){
+          var a = answers[q.k];
+          if(q.type === "scale" && a) a = a + " / 5" + (SCALE[a-1] ? " — " + SCALE[a-1] : "");
+          return { q: q.q, a: (a == null || a === "") ? "—" : String(a) };
+        })
+      };
+    });
+    var payload = {
+      form: "brand-check",
+      name: answers.name || "",
+      role: answers.role || "",
+      email: answers.email || "",
+      phone: answers.phone || "",
+      company: answers.company || "",
+      website: answers.website || "",
+      industry: answers.industry || "",
+      years: answers.years || "",
+      team_size: answers.team_size || "",
+      source_page: (function(){
+        try { return document.referrer && document.referrer.indexOf(location.host) !== -1
+          ? new URL(document.referrer).pathname : "/brand-check.html"; }
+        catch(e){ return "/brand-check.html"; }
+      })(),
+      sections: sections
+    };
+    try {
+      fetch("/api/lead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        keepalive: true,
+        body: JSON.stringify(payload)
+      }).catch(function(){});
+    } catch(e){ /* never block the UX on lead capture */ }
+  }
+
+  function next(){
+    var bad = validateStep();
+    if(bad){
+      $("stepErr").style.display = "block";
+      var el = $("stepBody").querySelector('[data-k="'+bad+'"]') || $("bcConsent");
+      if(el && el.focus) el.focus();
+      return;
+    }
+    if(step === STEPS.length - 1){
+      submitLead();
+      show("done");
+      return;
+    }
+    step++; renderStep();
+  }
+
+  $("start").addEventListener("click", function(){ step = 0; renderStep(); show("quiz"); });
+  $("nextBtn").addEventListener("click", next);
+  $("back").addEventListener("click", function(){ if(step > 0){ step--; renderStep(); } });
+
+})();
+</script>
+</body>
+</html>
