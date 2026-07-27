@@ -802,6 +802,13 @@ export const adminRouter = createRouter({
         .limit(1);
       const reg = rows.at(0);
       if (!reg) throw new TRPCError({ code: "NOT_FOUND", message: "Registration not found" });
+      // Temporal integrity: attendance can't be recorded before the event runs,
+      // even by an admin (opens 2h before it starts). Register/cancel/undo are fine.
+      if (input.status === "attended") {
+        const ev = (await db.select().from(schema.events).where(eq(schema.events.id, input.eventId)).limit(1)).at(0);
+        if (ev && Date.now() < new Date(ev.startsAt).getTime() - EVENT_CHECKIN_OPENS_BEFORE_MS)
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This event hasn't started — attendance can't be marked until it begins." });
+      }
       await db.update(schema.eventRegs).set({ status: input.status }).where(eq(schema.eventRegs.id, reg.id));
       if (input.status === "attended" && reg.status !== "attended") {
         await awardRulePoints(input.memberId, "event_attend", "Event attendance");
