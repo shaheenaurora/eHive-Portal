@@ -614,6 +614,18 @@ export const orgUnits = mysqlTable("org_units", {
 });
 export type OrgUnit = typeof orgUnits.$inferSelect;
 
+/* Leadership at a Zone/Region/Country level — the councils above the chapter
+   (ZO/RE/NA). Mirrors chapterRoles but keyed to an org unit. */
+export const unitRoles = mysqlTable("unit_roles", {
+  id: serial("id").primaryKey(),
+  unitId: bigint("unitId", { mode: "number", unsigned: true }).notNull(),
+  level: mysqlEnum("level", ["zone", "region", "country"]).notNull(),
+  memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+  role: varchar("role", { length: 96 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type UnitRole = typeof unitRoles.$inferSelect;
+
 export const chapters = mysqlTable("chapters", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),

@@ -214,6 +214,14 @@ export async function ensureSchema(): Promise<void> {
         parentId bigint unsigned NULL,
         createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
       )`,
+      `CREATE TABLE IF NOT EXISTS unit_roles (
+        id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        unitId bigint unsigned NOT NULL,
+        level enum('zone','region','country') NOT NULL,
+        memberId bigint unsigned NOT NULL,
+        role varchar(96) NOT NULL,
+        createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
       // ML-01 — top-of-funnel prospects/guests.
       `CREATE TABLE IF NOT EXISTS prospects (
         id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -253,6 +261,7 @@ export async function ensureSchema(): Promise<void> {
     tables.add("conduct_cases");
     tables.add("prospects");
     tables.add("org_units");
+    tables.add("unit_roles");
 
     // --- chapters: link to the Zone it rolls up to ---
     if (tables.has("chapters") && !cols.has("chapters.zoneId"))

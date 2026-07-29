@@ -863,10 +863,24 @@ export const adminEngageRouter = createRouter({
     const counts = await db.select({ chapterId: schema.members.homeChapterId, n: sql<number>`count(*)` })
       .from(schema.members).where(eq(schema.members.status, "active")).groupBy(schema.members.homeChapterId);
     const memberBy = new Map(counts.map((c) => [c.chapterId, Number(c.n)]));
-    // Live chapter health, rolled up the tree (M7 at higher tiers).
+    // Chapter health: prefer the latest snapshot (CH-06 record); fall back to a
+    // live compute only for chapters that have never been snapshotted.
+    const snaps = await db.select({ chapterId: schema.healthSnapshots.chapterId, total: schema.healthSnapshots.total })
+      .from(schema.healthSnapshots).orderBy(desc(schema.healthSnapshots.createdAt));
     const healthBy = new Map<number, number>();
+    for (const s of snaps) if (!healthBy.has(s.chapterId)) healthBy.set(s.chapterId, s.total);
     for (const c of chapters) {
+      if (healthBy.has(c.id)) continue;
       try { healthBy.set(c.id, (await computeChapterHealth(c.id)).total); } catch { /* skip */ }
+    }
+    // Leaders at every unit level (councils above the chapter).
+    const leaderRows = await db.select({ unitId: schema.unitRoles.unitId, role: schema.unitRoles.role, name: schema.users.name, email: schema.users.email })
+      .from(schema.unitRoles)
+      .innerJoin(schema.members, eq(schema.members.id, schema.unitRoles.memberId))
+      .innerJoin(schema.users, eq(schema.users.id, schema.members.userId));
+    const leadersBy = new Map<number, { role: string; name: string }[]>();
+    for (const l of leaderRows) {
+      const a = leadersBy.get(l.unitId) ?? []; a.push({ role: l.role, name: l.name ?? l.email ?? "Member" }); leadersBy.set(l.unitId, a);
     }
     const avg = (xs: number[]): number | null => xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : null;
     const chs = chapters.map((c) => ({ ...c, members: memberBy.get(c.id) ?? 0, health: healthBy.get(c.id) ?? null }));
@@ -875,18 +889,21 @@ export const adminEngageRouter = createRouter({
     const zoneNode = (z: schema.OrgUnit) => {
       const zc = chs.filter((c) => c.zoneId === z.id);
       return { id: z.id, name: z.name, code: z.code, chapters: zc, chapterCount: zc.length,
+        leaders: leadersBy.get(z.id) ?? [],
         members: zc.reduce((a, c) => a + c.members, 0),
         health: avg(zc.map((c) => c.health).filter((h): h is number => h != null)) };
     };
     const regionNode = (r: schema.OrgUnit) => {
       const zones = kids("zone", r.id).map(zoneNode);
       return { id: r.id, name: r.name, code: r.code, zones, chapterCount: zones.reduce((a, z) => a + z.chapterCount, 0),
+        leaders: leadersBy.get(r.id) ?? [],
         members: zones.reduce((a, z) => a + z.members, 0),
         health: avg(zones.map((z) => z.health).filter((h): h is number => h != null)) };
     };
     const countryNode = (c: schema.OrgUnit) => {
       const regions = kids("region", c.id).map(regionNode);
       return { id: c.id, name: c.name, code: c.code, regions, chapterCount: regions.reduce((a, r) => a + r.chapterCount, 0),
+        leaders: leadersBy.get(c.id) ?? [],
         members: regions.reduce((a, r) => a + r.members, 0),
         health: avg(regions.map((r) => r.health).filter((h): h is number => h != null)) };
     };
