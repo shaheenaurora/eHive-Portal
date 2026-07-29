@@ -62,6 +62,7 @@ async function clearCircle() {
   await db.delete(schema.chapterRoles);
   await db.delete(schema.chapterTransfers);
   await db.delete(schema.chapters);
+  await db.delete(schema.orgUnits);
 }
 
 async function user(unionId: string, name: string, email: string, role: "user" | "admin" = "user") {
@@ -587,18 +588,25 @@ async function seed() {
   type Tier = "horizon" | "ascent" | "vanguard" | "zenith";
   type LC = "onboarding" | "active" | "at_risk" | "renewal" | "alumni" | "lapsed" | "suspended";
 
+  // Governance hierarchy for simulation: Country → Region → Zones.
+  const uae = Number((await db.insert(schema.orgUnits).values({ level: "country", name: "United Arab Emirates", code: "AE" }))[0].insertId);
+  const gulf = Number((await db.insert(schema.orgUnits).values({ level: "region", name: "Gulf", code: "GULF", parentId: uae }))[0].insertId);
+  const zDubai = Number((await db.insert(schema.orgUnits).values({ level: "zone", name: "Dubai Zone", code: "DXB", parentId: gulf }))[0].insertId);
+  const zAbu = Number((await db.insert(schema.orgUnits).values({ level: "zone", name: "Abu Dhabi Zone", code: "AUH", parentId: gulf }))[0].insertId);
+  const zNorth = Number((await db.insert(schema.orgUnits).values({ level: "zone", name: "Northern Emirates Zone", code: "NE", parentId: gulf }))[0].insertId);
+
   const chDubai = Number((await db.insert(schema.chapters).values({
-    name: "eHive Dubai", code: "AE-DXB-01", country: "United Arab Emirates",
+    name: "eHive Dubai", code: "AE-DXB-01", country: "United Arab Emirates", zoneId: zDubai,
     region: "Gulf", state: "Dubai", city: "Dubai", zone: "DIFC",
     meetingCadence: "Bi-weekly · Tue 7:30pm", status: "chartered", charterDate: daysAgo(220),
   }))[0].insertId);
   const chAbu = Number((await db.insert(schema.chapters).values({
-    name: "eHive Abu Dhabi", code: "AE-AUH-01", country: "United Arab Emirates",
+    name: "eHive Abu Dhabi", code: "AE-AUH-01", country: "United Arab Emirates", zoneId: zAbu,
     region: "Gulf", state: "Abu Dhabi", city: "Abu Dhabi", zone: "Al Maryah Island",
     meetingCadence: "Bi-weekly · Wed 6:30pm", status: "chartered", charterDate: daysAgo(120),
   }))[0].insertId);
   const chSharjah = Number((await db.insert(schema.chapters).values({
-    name: "eHive Sharjah", code: "AE-SHJ-01", country: "United Arab Emirates",
+    name: "eHive Sharjah", code: "AE-SHJ-01", country: "United Arab Emirates", zoneId: zNorth,
     region: "Gulf", state: "Sharjah", city: "Sharjah", zone: "Al Majaz",
     meetingCadence: "Forming", status: "provisional",
   }))[0].insertId);

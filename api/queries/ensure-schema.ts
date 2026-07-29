@@ -205,6 +205,15 @@ export async function ensureSchema(): Promise<void> {
         memberId bigint unsigned NOT NULL,
         status enum('present','absent','excused') NOT NULL DEFAULT 'present'
       )`,
+      // Governance hierarchy above the chapter (Zone → Region → Country).
+      `CREATE TABLE IF NOT EXISTS org_units (
+        id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        level enum('zone','region','country') NOT NULL,
+        name varchar(255) NOT NULL,
+        code varchar(24) NULL,
+        parentId bigint unsigned NULL,
+        createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
       // ML-01 — top-of-funnel prospects/guests.
       `CREATE TABLE IF NOT EXISTS prospects (
         id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -243,6 +252,11 @@ export async function ensureSchema(): Promise<void> {
     tables.add("cadence_log");
     tables.add("conduct_cases");
     tables.add("prospects");
+    tables.add("org_units");
+
+    // --- chapters: link to the Zone it rolls up to ---
+    if (tables.has("chapters") && !cols.has("chapters.zoneId"))
+      stmts.push("ALTER TABLE chapters ADD COLUMN zoneId bigint unsigned NULL");
 
     // --- chapter_budgets: spend-approval trail (AF-02) ---
     if (tables.has("chapter_budgets")) {
