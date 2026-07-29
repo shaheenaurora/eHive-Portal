@@ -417,6 +417,7 @@ export const ADMIN_NAV: NavGroup[] = [
   {
     label: "Administration",
     items: [
+      { to: "/admin/conduct", label: "Conduct & Safeguarding", icon: "⚖" },
       { to: "/admin/access", label: "Team & Access", icon: "⚿" },
       { to: "/admin/audit", label: "Audit Trail", icon: "❑" },
     ],

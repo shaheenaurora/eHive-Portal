@@ -187,11 +187,28 @@ export async function ensureSchema(): Promise<void> {
         actorMemberId bigint unsigned NULL,
         createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
       )`,
+      // XC-04 — conduct & incident cases.
+      `CREATE TABLE IF NOT EXISTS conduct_cases (
+        id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        reporterMemberId bigint unsigned NULL,
+        subjectMemberId bigint unsigned NULL,
+        chapterId bigint unsigned NULL,
+        category varchar(64) NOT NULL,
+        severity enum('low','moderate','high','safeguarding') NOT NULL DEFAULT 'moderate',
+        status enum('open','reviewing','actioned','escalated','closed') NOT NULL DEFAULT 'open',
+        summary varchar(255) NOT NULL,
+        detail text NULL,
+        handledByUserId bigint unsigned NULL,
+        resolution text NULL,
+        createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updatedAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
     );
     tables.add("health_snapshots");
     tables.add("onboarding_milestones");
     tables.add("cadences");
     tables.add("cadence_log");
+    tables.add("conduct_cases");
 
     for (const s of stmts) {
       try {

@@ -400,8 +400,25 @@ export const ADMIN_SCOPES = [
   { key: "partnerships", label: "Partnerships & Member Value — offers, deals & investor intros" },
   { key: "content", label: "Content & Editorial — Hive Journal, library & insights" },
   { key: "finance", label: "Finance & Compliance — payments, leads & PDPL data requests" },
+  { key: "conduct", label: "Conduct & Safeguarding — incident reports, cases & member removal" },
 ] as const;
 export type AdminScope = (typeof ADMIN_SCOPES)[number]["key"];
+
+/* XC-04 — Conduct & incident handling. */
+export const CONDUCT_CATEGORIES = [
+  "Respect & behaviour", "Confidentiality breach", "Harassment", "Conflict of interest",
+  "Solicitation / spam", "Safeguarding", "Other",
+] as const;
+export const CONDUCT_SEVERITIES = ["low", "moderate", "high", "safeguarding"] as const;
+export type ConductSeverity = (typeof CONDUCT_SEVERITIES)[number];
+export const CONDUCT_SEVERITY_LABEL: Record<ConductSeverity, string> = {
+  low: "Low", moderate: "Moderate", high: "High", safeguarding: "Safeguarding",
+};
+export const CONDUCT_STATUSES = ["open", "reviewing", "actioned", "escalated", "closed"] as const;
+export type ConductStatus = (typeof CONDUCT_STATUSES)[number];
+export const CONDUCT_STATUS_LABEL: Record<ConductStatus, string> = {
+  open: "Open", reviewing: "Under review", actioned: "Actioned", escalated: "Escalated", closed: "Closed",
+};
 export const ADMIN_SCOPE_KEYS = ADMIN_SCOPES.map((s) => s.key);
 
 /** Leads CRM pipeline. */

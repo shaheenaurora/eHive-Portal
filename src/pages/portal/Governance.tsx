@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { trpc } from "@/providers/trpc";
-import { EhShell, MEMBER_NAV, PageHead, Pill, StatusPill, Empty, Spinner, Modal, toast } from "@/components/eh";
+import { EhShell, MEMBER_NAV, PageHead, Pill, StatusPill, Empty, Spinner, Modal, Field, toast } from "@/components/eh";
 import { fmtDate, initials } from "@/lib/ehf";
+import { CONDUCT_CATEGORIES, CONDUCT_SEVERITIES, CONDUCT_SEVERITY_LABEL } from "@contracts/constants";
+import type { ConductSeverity } from "@contracts/constants";
 
 export default function Governance() {
   const utils = trpc.useUtils();
@@ -12,6 +14,7 @@ export default function Governance() {
   });
   const [readPolicy, setReadPolicy] = useState<{ id: number; title: string; body: string | null; acknowledged: boolean } | null>(null);
   const [readMinutes, setReadMinutes] = useState<{ title: string; text: string | null } | null>(null);
+  const [reportOpen, setReportOpen] = useState(false);
 
   if (q.isLoading) return <EhShell groups={MEMBER_NAV} brandSub="Member Portal"><Spinner /></EhShell>;
   if (!q.data) return <EhShell groups={MEMBER_NAV} brandSub="Member Portal"><Empty big="Governance unavailable." /></EhShell>;
@@ -22,6 +25,18 @@ export default function Governance() {
     <EhShell groups={MEMBER_NAV} brandSub="Member Portal">
       <PageHead eyebrow="Governance" title="Who steers the circle"
                 sub="Members steer eHive — through the elected Circle Council, published minutes and policies you can actually read." />
+
+      <div className="eh-card eh-mb" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
+        <div>
+          <h3 style={{ margin: 0 }}>Raise a concern</h3>
+          <p className="eh-sm eh-muted" style={{ margin: ".2rem 0 0", maxWidth: "60ch" }}>
+            A confidential channel to the Circle's standards team for anything that breaches our code of conduct —
+            behaviour, confidentiality, or safeguarding. You can report anonymously.
+          </p>
+        </div>
+        <button className="eh-btn gold" onClick={() => setReportOpen(true)}>Report a concern</button>
+      </div>
+      {reportOpen && <ReportConcernModal onClose={() => setReportOpen(false)} />}
 
       {myRoles.length > 0 && (
         <div className="eh-card" style={{ borderColor: "#e8d5ac", background: "#fdfaf3" }}>
@@ -124,5 +139,56 @@ export default function Governance() {
         </Modal>
       )}
     </EhShell>
+  );
+}
+
+function ReportConcernModal({ onClose }: { onClose: () => void }) {
+  const [category, setCategory] = useState<string>(CONDUCT_CATEGORIES[0]);
+  const [severity, setSeverity] = useState<ConductSeverity>("moderate");
+  const [summary, setSummary] = useState("");
+  const [detail, setDetail] = useState("");
+  const [anonymous, setAnonymous] = useState(false);
+
+  const report = trpc.conduct.report.useMutation({
+    onSuccess: () => { toast("Report received — the standards team will review it confidentially."); onClose(); },
+    onError: (e) => toast(e.message),
+  });
+
+  return (
+    <Modal title="Report a concern" onClose={onClose}>
+      <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>
+        This goes only to the Circle's Conduct &amp; Safeguarding team. Share as much as you can — a pause or an
+        uncertainty is useful too.
+      </p>
+      <div className="eh-grid g2">
+        <Field label="Category">
+          <select className="eh-select" value={category} onChange={(e) => setCategory(e.target.value)}>
+            {CONDUCT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </Field>
+        <Field label="How serious is it?">
+          <select className="eh-select" value={severity} onChange={(e) => setSeverity(e.target.value as ConductSeverity)}>
+            {CONDUCT_SEVERITIES.map((s) => <option key={s} value={s}>{CONDUCT_SEVERITY_LABEL[s]}</option>)}
+          </select>
+        </Field>
+      </div>
+      <Field label="In one line, what happened?">
+        <input className="eh-input" value={summary} maxLength={255}
+               onChange={(e) => setSummary(e.target.value)} placeholder="A short summary" />
+      </Field>
+      <Field label="Tell us more (optional)">
+        <textarea className="eh-textarea" value={detail} maxLength={5000}
+                  onChange={(e) => setDetail(e.target.value)} placeholder="What happened, when, who was involved, and anything else that helps." />
+      </Field>
+      <label className="row eh-sm" style={{ cursor: "pointer", alignItems: "flex-start", margin: ".25rem 0 1rem" }}>
+        <input type="checkbox" checked={anonymous} onChange={(e) => setAnonymous(e.target.checked)}
+               style={{ marginTop: ".2rem", accentColor: "#b8862e" }} />
+        <span className="eh-muted">Report anonymously — your name won't be attached to this case.</span>
+      </label>
+      <button className="eh-btn gold" disabled={report.isPending || summary.trim().length < 3}
+              onClick={() => report.mutate({ category, severity, summary, detail: detail || undefined, anonymous })}>
+        {report.isPending ? "Sending…" : "Submit report"}
+      </button>
+    </Modal>
   );
 }

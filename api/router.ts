@@ -7,6 +7,7 @@ import { adminRouter } from "./admin-router";
 import { engageRouter } from "./engage-router";
 import { adminEngageRouter } from "./admin-engage-router";
 import { officerRouter } from "./officer-router";
+import { conductRouter } from "./conduct-router";
 import { createRouter, publicQuery } from "./middleware";
 import { getDb } from "./queries/connection";
 
@@ -18,6 +19,7 @@ export const appRouter = createRouter({
   engage: engageRouter,
   adminEngage: adminEngageRouter,
   officer: officerRouter,
+  conduct: conductRouter,
 
   /* ---- public content (marketing site): published insights + newsletter archive ---- */
   insightsPublic: publicQuery.query(async () => {

@@ -15,7 +15,7 @@ import { tierRank, EVENT_CHECKIN_OPENS_BEFORE_MS } from "@contracts/constants";
 
 const SCOPE_ENUM = z.enum([
   "membership", "community", "events", "chapters",
-  "member_success", "partnerships", "content", "finance",
+  "member_success", "partnerships", "content", "finance", "conduct",
 ]);
 function isFullAdmin(user: { adminScopes?: string | null }): boolean {
   const s = (user.adminScopes ?? "").trim();
