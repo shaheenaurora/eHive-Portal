@@ -10,6 +10,7 @@ import { computePodHealth, suggestPods } from "./queries/pods";
 import { audit } from "./lib/audit";
 import { findUserByEmail } from "./queries/users";
 import { mailStatus, sendTestEmail } from "./lib/mailer";
+import { runDailyJobs } from "./lib/scheduler";
 import { tierRank, EVENT_CHECKIN_OPENS_BEFORE_MS } from "@contracts/constants";
 
 const SCOPE_ENUM = z.enum([
@@ -144,6 +145,26 @@ export const adminRouter = createRouter({
       await audit(ctx.user, "mail.test", { detail: input.to });
       return { ok: true };
     }),
+
+  /* ---------------------- automation scheduler ---------------------- */
+  /* Last daily-pass marker + a full-admin manual "run now" so timed jobs can be
+     observed and forced without waiting for the next tick. */
+  schedulerStatus: adminQuery.query(async () => {
+    const row = (await getDb().select().from(schema.appConfig)
+      .where(eq(schema.appConfig.key, "scheduler:lastDaily")).limit(1)).at(0);
+    return { lastDaily: row?.value ?? null };
+  }),
+
+  runScheduler: adminQuery.mutation(async ({ ctx }) => {
+    if (!isFullAdmin(ctx.user as never)) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Only a full administrator can run the scheduler." });
+    }
+    // Force a run regardless of the daily guard.
+    await getDb().delete(schema.appConfig).where(eq(schema.appConfig.key, "scheduler:lastDaily"));
+    const ran = await runDailyJobs();
+    await audit(ctx.user, "scheduler.run", { detail: ran ? "ran" : "skipped" });
+    return { ran };
+  }),
 
   /* ---------------------------- applications ----------------------------- */
   applications: adminQuery

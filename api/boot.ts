@@ -241,4 +241,12 @@ if (env.isProduction) {
   serve({ fetch: app.fetch, port, hostname: "0.0.0.0" }, () => {
     console.log(`Server running on http://0.0.0.0:${port}/`);
   });
+
+  // Timed operations (M8): at-risk detection, renewal windows, … run in-process.
+  try {
+    const { startScheduler } = await import("./lib/scheduler");
+    startScheduler();
+  } catch (e) {
+    console.error("[scheduler] failed to start:", e);
+  }
 }

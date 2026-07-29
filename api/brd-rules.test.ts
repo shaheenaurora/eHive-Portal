@@ -10,6 +10,7 @@ import {
   memberCanAccessEvent,
   EVENT_CHECKIN_OPENS_BEFORE_MS,
   EVENT_CHECKIN_CLOSES_AFTER_MS,
+  renewalStage,
   MEMBER_LIFECYCLE,
   MEMBER_LIFECYCLE_TRANSITIONS,
   HEALTH_COMPONENTS,
@@ -172,5 +173,23 @@ describe("Event check-in temporal integrity", () => {
   });
   it("closes check-in after the event window ends", () => {
     expect(withinWindow(start + 24 * 60 * 60 * 1000)).toBe(false); // next day
+  });
+});
+
+describe("ML-05 renewal window (renewalStage)", () => {
+  const now = new Date("2026-07-29T00:00:00Z");
+  const days = (n: number) => new Date(now.getTime() + n * 86_400_000);
+  it("is 'none' well before the window", () => {
+    expect(renewalStage(days(60), now)).toBe("none"); // 60d out, window is 30
+  });
+  it("opens the window inside 30 days", () => {
+    expect(renewalStage(days(20), now)).toBe("window");
+    expect(renewalStage(days(0), now)).toBe("window"); // due today
+  });
+  it("stays 'window' during the grace period after the due date", () => {
+    expect(renewalStage(days(-10), now)).toBe("window"); // 10d overdue, grace 14
+  });
+  it("lapses past the grace period", () => {
+    expect(renewalStage(days(-15), now)).toBe("lapse"); // beyond 14d grace
   });
 });

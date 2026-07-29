@@ -110,6 +110,25 @@ export const MEMBER_LIFECYCLE_TRANSITIONS: Record<string, { to: string; label: s
   suspended:  [{ to: "active", label: "Reinstate" }, { to: "alumni", label: "Remove → Alumni" }],
 };
 
+/* ML-05 Renewal — the annual decision window. The scheduler opens the window
+   RENEWAL_WINDOW_DAYS before the renewal date and auto-lapses a membership that
+   stays unrenewed RENEWAL_GRACE_DAYS past it. */
+export const RENEWAL_WINDOW_DAYS = 30;
+export const RENEWAL_GRACE_DAYS = 14;
+
+/** Where a membership sits relative to its renewal date (pure — testable, and
+ *  shared by the scheduler and any UI countdown). */
+export function renewalStage(
+  renewalAt: Date, now: Date,
+  windowDays = RENEWAL_WINDOW_DAYS, graceDays = RENEWAL_GRACE_DAYS,
+): "none" | "window" | "lapse" {
+  const dayMs = 86_400_000;
+  const diffDays = (renewalAt.getTime() - now.getTime()) / dayMs;
+  if (diffDays < -graceDays) return "lapse";   // past due beyond grace
+  if (diffDays <= windowDays) return "window";  // window open (incl. grace period)
+  return "none";
+}
+
 /* Membership change events carry an approval state. Self-serve actions (pause,
    cancel, renew) are recorded as `applied`; tier upgrades/downgrades a member
    requests are `pending` until management approves or rejects them. */
