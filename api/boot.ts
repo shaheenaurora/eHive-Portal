@@ -211,16 +211,21 @@ if (env.isProduction) {
   const fs = await import("fs");
   const path = await import("path");
 
-  /* SPA client-side routes: /login, /portal/* and /admin/* are rendered by the
-     React app (portal.html). Registered before the static middlewares so deep
-     links (and direct hits to /login) resolve to the SPA, not marketing pages. */
+  /* SPA client-side routes are rendered by the React app (portal.html).
+     Registered before the static middlewares so deep links (and direct hits,
+     e.g. an emailed /verify-email?token=… link) resolve to the SPA, not the
+     marketing 404. Keep this list in step with the auth/portal routes in
+     src/App.tsx. */
   const portalPath = path.resolve(import.meta.dirname, "../dist/public/portal.html");
   let portalHtml: string | null = null;
   const readPortal = () => {
     if (!portalHtml) portalHtml = fs.readFileSync(portalPath, "utf-8");
     return portalHtml;
   };
-  for (const p of ["/login", "/portal", "/portal/*", "/admin", "/admin/*"]) {
+  for (const p of [
+    "/login", "/forgot-password", "/reset-password", "/verify-email",
+    "/portal", "/portal/*", "/admin", "/admin/*",
+  ]) {
     app.get(p, (c) => c.html(readPortal()));
   }
 
