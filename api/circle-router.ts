@@ -4,7 +4,7 @@ import { eq, and, desc, asc, gte, sql } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "./queries/connection";
 import { createRouter, authedQuery } from "./middleware";
-import { getMemberByUserId, awardPoints, nextSessionForMember, newCheckinCode, promoteWaitlist, notify } from "./queries/circle";
+import { getMemberByUserId, awardPoints, nextSessionForMember, newCheckinCode, promoteWaitlist, notify, engagementCounts } from "./queries/circle";
 import { computeOnboarding } from "./queries/onboarding";
 import { ONBOARDING_MANUAL_KEYS } from "@contracts/constants";
 import { paymentsEnabled, getPaymentProvider } from "./lib/payments";
@@ -46,6 +46,49 @@ export const circleRouter = createRouter({
       });
       return { url };
     }),
+
+  /* ---- ML-05 renewal: pay to renew the current tier for another year ---- */
+  startRenewal: authedQuery.mutation(async ({ ctx }) => {
+    if (!paymentsEnabled())
+      throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Online payment isn't enabled yet — the Circle team will help you renew." });
+    const m = await getMemberByUserId(ctx.user.id);
+    if (!m) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "You don't have a membership to renew." });
+    const tier = m.tier;
+    const amount = TIER_PRICE_AED[tier] * 100; // AED → fils
+    const origin = ctx.req.headers.get("origin") ?? new URL(ctx.req.url).origin;
+    const provider = getPaymentProvider();
+    const { url, providerRef } = await provider.createCheckoutSession({
+      tier, userId: ctx.user.id, email: ctx.user.email ?? "", amount, currency: "aed",
+      successUrl: `${origin}/portal/membership?renewed=1`,
+      cancelUrl: `${origin}/portal/membership?canceled=1`,
+    });
+    await getDb().insert(schema.paymentRecords).values({
+      userId: ctx.user.id, provider: provider.name, providerRef,
+      tier, amount, currency: "aed", status: "pending", purpose: "renewal",
+    });
+    return { url };
+  }),
+
+  /* ---- ML-05 year-in-review: the member's year, shown at the renewal moment ---- */
+  yearInReview: authedQuery.query(async ({ ctx }) => {
+    const m = await getMemberByUserId(ctx.user.id);
+    if (!m) return null;
+    const yearStart = new Date(new Date().getFullYear(), 0, 1);
+    const counts = await engagementCounts(m.id, yearStart);
+    const pods = (await getDb().select({ n: sql<number>`count(*)` }).from(schema.podMembers)
+      .where(eq(schema.podMembers.memberId, m.id))).at(0)?.n ?? 0;
+    return {
+      tier: m.tier,
+      hiveScore: m.hiveScore,
+      memberSince: m.createdAt,
+      renewalAt: m.renewalAt,
+      lifecycleState: (m as { lifecycleState?: string }).lifecycleState ?? "active",
+      sessions: counts.sessions,
+      oneToOnes: counts.oneToOnes,
+      giveBack: counts.giveBack,
+      pods,
+    };
+  }),
 
   /* ---- identity: user + member + latest application ---- */
   me: authedQuery.query(async ({ ctx }) => {

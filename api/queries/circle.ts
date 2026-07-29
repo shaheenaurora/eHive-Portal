@@ -170,6 +170,27 @@ export async function activateMembership(userId: number, tier: Tier, note = "Mem
   return memberId;
 }
 
+/**
+ * ML-05 — renew a membership for another year. Extends the renewal date by one
+ * year (from the later of now / the current date so early renewals don't lose
+ * time), returns the CRM lifecycle to Active, and logs the event. Used by the
+ * paid-renewal webhook and by an admin recording an offline renewal.
+ */
+export async function renewMembership(userId: number, note = "Membership renewed"): Promise<number | null> {
+  const db = getDb();
+  const m = (await db.select().from(schema.members).where(eq(schema.members.userId, userId)).limit(1)).at(0);
+  if (!m) return null;
+  const base = m.renewalAt && new Date(m.renewalAt) > new Date() ? new Date(m.renewalAt) : new Date();
+  base.setFullYear(base.getFullYear() + 1);
+  await db.update(schema.members)
+    .set({ renewalAt: base, lifecycleState: "active", status: "active" })
+    .where(eq(schema.members.id, m.id));
+  await db.insert(schema.membershipEvents).values({ memberId: m.id, type: "renew", toTier: m.tier, note });
+  await awardPoints(m.id, "tenure", 5, "Renewed membership");
+  await notify(m.id, "Thank you for renewing — your membership is active for another year. 🎉", "membership");
+  return m.id;
+}
+
 /** Start of the current quarter. */
 export function quarterStart(d = new Date()): Date {
   const q = Math.floor(d.getMonth() / 3) * 3;

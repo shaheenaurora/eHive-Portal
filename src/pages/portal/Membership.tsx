@@ -15,6 +15,11 @@ export default function Membership() {
   const pendingReq = trpc.circle.pendingTierRequest.useQuery(undefined, { retry: false, enabled: !!me.data?.member });
   const eng = trpc.engage.myEngagement.useQuery(undefined, { retry: false, enabled: !!me.data?.member });
   const dataReqs = trpc.engage.myDataRequests.useQuery(undefined, { retry: false, enabled: !!me.data?.member });
+  const yir = trpc.circle.yearInReview.useQuery(undefined, { retry: false, enabled: !!me.data?.member });
+  const renew = trpc.circle.startRenewal.useMutation({
+    onSuccess: ({ url }) => { window.location.href = url; },
+    onError: (e) => toast(e.message),
+  });
 
   const updateProfile = trpc.circle.updateProfile.useMutation({
     onSuccess: () => { toast("Profile saved."); utils.circle.me.invalidate(); },
@@ -83,6 +88,36 @@ export default function Membership() {
     <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif>
       <PageHead eyebrow="Membership" title="Your membership"
                 sub="Tier, status, renewal and your profile — everything in one place, no emails required." />
+
+      {(member as { lifecycleState?: string }).lifecycleState === "renewal" && (
+        <div className="eh-card eh-mb" style={{ borderColor: "#e8d5ac", background: "#fdfaf3" }}>
+          <div className="eh-between" style={{ alignItems: "flex-start", flexWrap: "wrap", gap: "1rem" }}>
+            <div style={{ flex: "1 1 340px" }}>
+              <div className="eh-eyebrow" style={{ color: "var(--eh-gold)" }}>Renewal window open</div>
+              <h3 style={{ margin: ".1rem 0 .4rem" }}>It's time to renew — here's your year.</h3>
+              {yir.data && (
+                <div className="eh-row" style={{ gap: ".5rem", flexWrap: "wrap", margin: ".2rem 0 .6rem" }}>
+                  <Pill>Hive Score {yir.data.hiveScore}</Pill>
+                  <Pill>{yir.data.sessions} sessions</Pill>
+                  <Pill>{yir.data.oneToOnes} 1-2-1s</Pill>
+                  <Pill>{yir.data.giveBack} mentoring</Pill>
+                  <Pill>{yir.data.pods} pod{yir.data.pods === 1 ? "" : "s"}</Pill>
+                </div>
+              )}
+              <p className="eh-sm eh-muted" style={{ margin: 0, maxWidth: "56ch" }}>
+                Renewing keeps your {TIER_LABEL[member.tier]} membership and chapter access for another year
+                {member.renewalAt ? <> — your date moves to {fmtDate(new Date(new Date(member.renewalAt).setFullYear(new Date(member.renewalAt).getFullYear() + 1)))}</> : null}.
+              </p>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div className="eh-num" style={{ fontFamily: "Georgia, serif", fontSize: "1.4rem", fontWeight: 700 }}>{TIER_PRICE[member.tier]}</div>
+              <button className="eh-btn gold eh-mt" disabled={renew.isPending} onClick={() => renew.mutate()}>
+                {renew.isPending ? "Redirecting…" : "Renew & pay →"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="eh-grid g3" style={{ alignItems: "start" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
