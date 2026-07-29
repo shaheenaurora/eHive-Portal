@@ -129,14 +129,17 @@ function MailSettings() {
       {s && !s.configured && (
         <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>
           Outbound email is off — leads and applications are still saved, but no alerts, confirmations,
-          verification or password-reset emails are sent. Set <code>SMTP_HOST</code>, <code>SMTP_USER</code> and
-          <code> SMTP_PASS</code> in your Railway service variables to switch it on, then send a test below.
+          verification or password-reset emails are sent. Set <code>ZEPTOMAIL_TOKEN</code> (recommended — works
+          where hosts block SMTP), or <code>SMTP_HOST</code>/<code>SMTP_USER</code>/<code>SMTP_PASS</code>, in your
+          Railway service variables to switch it on, then send a test below.
         </p>
       )}
 
       {s && s.configured && (
         <div className="eh-list eh-mb">
-          <div className="row"><span className="d">Server</span><span className="t">{s.host}:{s.port}{s.secure ? " · TLS" : " · STARTTLS"}</span></div>
+          <div className="row"><span className="d">Sending via</span>
+            <span className="t">{s.provider === "zeptomail" ? "Zoho ZeptoMail (HTTPS API)" : `SMTP · ${s.host}:${s.port}${s.secure ? " · TLS" : " · STARTTLS"}`}</span>
+          </div>
           <div className="row"><span className="d">From</span><span className="t">{s.from ?? "—"}</span></div>
           <div className="row"><span className="d">Lead alerts to</span><span className="t">{s.notifyTo ?? "—"}</span></div>
         </div>

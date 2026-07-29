@@ -28,4 +28,10 @@ export const env = {
   mailFrom: process.env.MAIL_FROM ?? "",
   // Where new-lead notifications are sent. Falls back to OWNER_EMAIL.
   leadNotifyEmail: process.env.LEAD_NOTIFY_EMAIL ?? process.env.OWNER_EMAIL ?? "",
+  // Zoho ZeptoMail HTTP API — sends over HTTPS, so it works where hosts block
+  // outbound SMTP ports (e.g. Railway). When the token is set it takes priority
+  // over SMTP. Get the token from ZeptoMail → Mail Agent → SMTP/API → Send Mail.
+  zeptoToken: process.env.ZEPTOMAIL_TOKEN ?? "",
+  // Regional API host: api.zeptomail.com (default), api.zeptomail.eu, etc.
+  zeptoApiUrl: process.env.ZEPTOMAIL_API_URL ?? "https://api.zeptomail.com/v1.1/email",
 };
