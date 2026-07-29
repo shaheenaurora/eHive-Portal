@@ -187,6 +187,24 @@ export async function ensureSchema(): Promise<void> {
         actorMemberId bigint unsigned NULL,
         createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
       )`,
+      // M3 — chapter & board meetings + attendance.
+      `CREATE TABLE IF NOT EXISTS meetings (
+        id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        chapterId bigint unsigned NOT NULL,
+        kind enum('chapter_meeting','board_meeting','huddle','other') NOT NULL DEFAULT 'chapter_meeting',
+        title varchar(255) NOT NULL,
+        scheduledAt timestamp NULL,
+        status enum('scheduled','held','cancelled') NOT NULL DEFAULT 'scheduled',
+        agenda text NULL,
+        minutes text NULL,
+        createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS meeting_attendance (
+        id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        meetingId bigint unsigned NOT NULL,
+        memberId bigint unsigned NOT NULL,
+        status enum('present','absent','excused') NOT NULL DEFAULT 'present'
+      )`,
       // XC-04 — conduct & incident cases.
       `CREATE TABLE IF NOT EXISTS conduct_cases (
         id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,

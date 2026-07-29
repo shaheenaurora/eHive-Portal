@@ -803,3 +803,27 @@ export const conductCases = mysqlTable("conduct_cases", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
 });
 export type ConductCase = typeof conductCases.$inferSelect;
+
+/* M3 / CH-01 · CH-04 — structured Chapter & Board meetings: a default agenda
+   (pre-loaded from the manual templates), attendance and minutes. */
+export const meetings = mysqlTable("meetings", {
+  id: serial("id").primaryKey(),
+  chapterId: bigint("chapterId", { mode: "number", unsigned: true }).notNull(),
+  kind: mysqlEnum("kind", ["chapter_meeting", "board_meeting", "huddle", "other"]).notNull().default("chapter_meeting"),
+  title: varchar("title", { length: 255 }).notNull(),
+  scheduledAt: timestamp("scheduledAt"),
+  status: mysqlEnum("status", ["scheduled", "held", "cancelled"]).notNull().default("scheduled"),
+  agenda: text("agenda"),
+  minutes: text("minutes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type Meeting = typeof meetings.$inferSelect;
+
+/* Attendance for a meeting (M3). One row per member per meeting. */
+export const meetingAttendance = mysqlTable("meeting_attendance", {
+  id: serial("id").primaryKey(),
+  meetingId: bigint("meetingId", { mode: "number", unsigned: true }).notNull(),
+  memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+  status: mysqlEnum("status", ["present", "absent", "excused"]).notNull().default("present"),
+});
+export type MeetingAttendance = typeof meetingAttendance.$inferSelect;
