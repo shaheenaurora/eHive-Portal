@@ -827,3 +827,21 @@ export const meetingAttendance = mysqlTable("meeting_attendance", {
   status: mysqlEnum("status", ["present", "absent", "excused"]).notNull().default("present"),
 });
 export type MeetingAttendance = typeof meetingAttendance.$inferSelect;
+
+/* ML-01 — top-of-funnel: prospects captured and nurtured to guest, then invited
+   to apply. A lightweight CRM that sits before the Application. */
+export const prospects = mysqlTable("prospects", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  email: varchar("email", { length: 320 }),
+  phone: varchar("phone", { length: 40 }),
+  company: varchar("company", { length: 255 }),
+  chapterId: bigint("chapterId", { mode: "number", unsigned: true }),
+  stage: mysqlEnum("stage", ["prospect", "guest", "invited", "converted", "declined"]).notNull().default("prospect"),
+  source: varchar("source", { length: 120 }),
+  notes: text("notes"),
+  ownerUserId: bigint("ownerUserId", { mode: "number", unsigned: true }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+});
+export type Prospect = typeof prospects.$inferSelect;

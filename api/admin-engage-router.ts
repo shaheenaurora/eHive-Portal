@@ -807,6 +807,51 @@ export const adminEngageRouter = createRouter({
       return { ok: true };
     }),
 
+  /* ---- ML-01 prospect funnel (membership scope) ---- */
+  prospects: scopedAdmin("membership")
+    .input(z.object({ stage: z.enum(["prospect", "guest", "invited", "converted", "declined"]).optional() }).optional())
+    .query(async ({ input }) => {
+      const db = getDb();
+      return input?.stage
+        ? db.select().from(schema.prospects).where(eq(schema.prospects.stage, input.stage)).orderBy(desc(schema.prospects.updatedAt))
+        : db.select().from(schema.prospects).orderBy(desc(schema.prospects.updatedAt));
+    }),
+
+  addProspect: scopedAdmin("membership")
+    .input(z.object({
+      name: z.string().min(2).max(255),
+      email: z.string().email().max(320).optional().or(z.literal("")),
+      phone: z.string().max(40).optional(),
+      company: z.string().max(255).optional(),
+      chapterId: z.number().optional(),
+      source: z.string().max(120).optional(),
+      notes: z.string().max(5000).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const res = await getDb().insert(schema.prospects).values({
+        name: input.name, email: input.email || null, phone: input.phone ?? null,
+        company: input.company ?? null, chapterId: input.chapterId ?? null,
+        source: input.source ?? null, notes: input.notes ?? null, ownerUserId: ctx.user.id,
+      });
+      await audit(ctx.user, "prospect.add", { type: "prospect", id: Number(res[0].insertId), detail: input.name });
+      return { ok: true, id: Number(res[0].insertId) };
+    }),
+
+  updateProspect: scopedAdmin("membership")
+    .input(z.object({
+      id: z.number(),
+      stage: z.enum(["prospect", "guest", "invited", "converted", "declined"]).optional(),
+      notes: z.string().max(5000).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const patch: Partial<typeof schema.prospects.$inferInsert> = {};
+      if (input.stage) patch.stage = input.stage;
+      if (input.notes !== undefined) patch.notes = input.notes;
+      await getDb().update(schema.prospects).set(patch).where(eq(schema.prospects.id, input.id));
+      await audit(ctx.user, "prospect.update", { type: "prospect", id: input.id, detail: input.stage });
+      return { ok: true };
+    }),
+
   /* AF-02 — decide a proposed spend, gated by the approval threshold. A spend
      over SPEND_APPROVAL_THRESHOLD_AED needs a full administrator to approve. */
   decideBudgetLine: adminQuery

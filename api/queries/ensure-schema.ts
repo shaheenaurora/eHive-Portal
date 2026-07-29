@@ -205,6 +205,21 @@ export async function ensureSchema(): Promise<void> {
         memberId bigint unsigned NOT NULL,
         status enum('present','absent','excused') NOT NULL DEFAULT 'present'
       )`,
+      // ML-01 — top-of-funnel prospects/guests.
+      `CREATE TABLE IF NOT EXISTS prospects (
+        id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        name varchar(255) NOT NULL,
+        email varchar(320) NULL,
+        phone varchar(40) NULL,
+        company varchar(255) NULL,
+        chapterId bigint unsigned NULL,
+        stage enum('prospect','guest','invited','converted','declined') NOT NULL DEFAULT 'prospect',
+        source varchar(120) NULL,
+        notes text NULL,
+        ownerUserId bigint unsigned NULL,
+        createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updatedAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
       // XC-04 — conduct & incident cases.
       `CREATE TABLE IF NOT EXISTS conduct_cases (
         id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -227,6 +242,7 @@ export async function ensureSchema(): Promise<void> {
     tables.add("cadences");
     tables.add("cadence_log");
     tables.add("conduct_cases");
+    tables.add("prospects");
 
     // --- chapter_budgets: spend-approval trail (AF-02) ---
     if (tables.has("chapter_budgets")) {

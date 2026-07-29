@@ -51,6 +51,7 @@ const AdminNewsletters = lazy(() => import("./pages/admin/AdminNewsletters"));
 const AdminAccess = lazy(() => import("./pages/admin/AdminAccess"));
 const AdminAudit = lazy(() => import("./pages/admin/AdminAudit"));
 const AdminConduct = lazy(() => import("./pages/admin/AdminConduct"));
+const AdminProspects = lazy(() => import("./pages/admin/AdminProspects"));
 
 function RouteFallback() {
   return <div className="eh-spin" role="status" aria-label="Loading" />;
@@ -107,6 +108,7 @@ export default function App() {
           <Route path="/admin/access" element={<AdminAccess />} />
           <Route path="/admin/audit" element={<AdminAudit />} />
           <Route path="/admin/conduct" element={<AdminConduct />} />
+          <Route path="/admin/prospects" element={<AdminProspects />} />
 
           <Route path="*" element={<NotFound />} />
         </Routes>
