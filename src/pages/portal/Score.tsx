@@ -16,6 +16,7 @@ const FACTOR_HINT: Record<string, string> = {
 export default function Score() {
   const q = trpc.circle.myScore.useQuery(undefined, { retry: false });
   const eng = trpc.engage.myEngagement.useQuery(undefined, { retry: false });
+  const lb = trpc.engage.leaderboard.useQuery(undefined, { retry: false });
 
   if (q.isLoading) return <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif><Spinner /></EhShell>;
   if (q.isError) return <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif><LoadError what="your Hive Score" onRetry={() => q.refetch()} /></EhShell>;
@@ -65,6 +66,27 @@ export default function Score() {
           </div>
         </div>
       </div>
+
+      {lb.data && lb.data.rows.length > 0 && (
+        <div className="eh-card eh-mt">
+          <h3>{lb.data.scoped ? "Chapter recognition" : "Circle recognition"} · this quarter's most engaged</h3>
+          <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>Celebrating contribution, not competition — the members showing up for everyone else.</p>
+          <div className="eh-list">
+            {lb.data.rows.map((r) => {
+              const isMe = r.id === lb.data!.meId;
+              return (
+                <div className="row" key={r.id} style={isMe ? { background: "var(--eh-paper)", borderRadius: ".4rem" } : undefined}>
+                  <div className="eh-row" style={{ flexWrap: "nowrap", gap: ".6rem" }}>
+                    <span className="eh-num" style={{ width: "1.6rem", textAlign: "right", color: r.rank <= 3 ? "var(--eh-gold)" : "var(--eh-mut)", fontWeight: 700 }}>{r.rank}</span>
+                    <span className="t">{r.name}{isMe ? " (you)" : ""}</span>
+                  </div>
+                  <span className="eh-num eh-strong">{r.score}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {eng.data && (
         <div className="eh-card eh-mt">

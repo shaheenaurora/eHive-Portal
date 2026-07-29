@@ -222,6 +222,33 @@ export const engageRouter = createRouter({
     }),
 
   /* directory of members for picking a 1-2-1 counterpart (respects visibility) */
+  /* M10 — recognition leaderboard: top members by Hive Score, scoped to the
+     member's chapter when they have one (else across the Circle). */
+  leaderboard: authedQuery.query(async ({ ctx }) => {
+    const member = await getMemberByUserId(ctx.user.id);
+    if (!member) return null;
+    const scope = member.homeChapterId;
+    const rows = await getDb()
+      .select({ id: schema.members.id, name: schema.users.name, email: schema.users.email, score: schema.members.hiveScore })
+      .from(schema.members)
+      .innerJoin(schema.users, eq(schema.members.userId, schema.users.id))
+      .where(and(
+        eq(schema.members.status, "active"),
+        scope ? eq(schema.members.homeChapterId, scope) : sql`1 = 1`,
+      ))
+      .orderBy(desc(schema.members.hiveScore))
+      .limit(10);
+    return {
+      scoped: !!scope,
+      meId: member.id,
+      rows: rows.map((r, i) => ({
+        rank: i + 1, id: r.id,
+        name: r.name?.trim() || r.email?.split("@")[0] || "Member",
+        score: r.score,
+      })),
+    };
+  }),
+
   memberDirectory: authedQuery.query(async ({ ctx }) => {
     const member = await requireMember(ctx.user.id);
     const rows = await getDb()
