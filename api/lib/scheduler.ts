@@ -9,10 +9,12 @@
  * pass so a container restart can't double-run it, and each job only acts on
  * rows that still need acting on.
  */
-import { eq, isNotNull } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "../queries/connection";
 import { evaluateDormancy, notify } from "../queries/circle";
+import { computeOnboarding } from "../queries/onboarding";
+import { listCadences } from "../queries/cadence";
 import { renewalStage } from "@contracts/constants";
 
 const DAILY_MARKER = "scheduler:lastDaily";
@@ -74,12 +76,66 @@ async function jobRenewal(now = new Date()): Promise<void> {
   if (opened || lapsed) console.log(`[scheduler] renewal: ${opened} window(s) opened, ${lapsed} lapsed`);
 }
 
+/**
+ * ML-03 — nudge members whose onboarding milestones have slipped past their
+ * 30/60/90-day target. A per-member+stage marker means each slip is flagged
+ * once, not every day.
+ */
+async function jobOnboardingSlip(): Promise<void> {
+  const db = getDb();
+  const members = await db.select().from(schema.members).where(eq(schema.members.lifecycleState, "onboarding"));
+  let flagged = 0;
+  for (const m of members) {
+    const prog = await computeOnboarding(m);
+    if (prog.complete) continue;
+    const overdueStage = prog.dayCount > 90 ? 3 : prog.dayCount > 60 ? 2 : prog.dayCount > 30 ? 1 : 0;
+    if (overdueStage === 0) continue;
+    const behind = prog.milestones.some((ms) => ms.stage <= overdueStage && !ms.done);
+    if (!behind) continue;
+    const markerKey = `onbslip:${m.id}`;
+    if (await getMarker(markerKey) === String(overdueStage)) continue; // already flagged this stage
+    await notify(m.id, "A couple of your onboarding steps are still open past their target — let's get you fully set up. Open your dashboard to finish them.", "onboarding");
+    await setMarker(markerKey, String(overdueStage));
+    flagged++;
+  }
+  if (flagged) console.log(`[scheduler] onboarding-slip: ${flagged} member(s) nudged`);
+}
+
+/**
+ * CH cadences — remind a chapter's officers when a cadence period is still
+ * unlogged (due). One reminder per cadence per period.
+ */
+async function jobCadenceReminders(now = new Date()): Promise<void> {
+  const db = getDb();
+  const chapters = await db.select({ id: schema.chapters.id }).from(schema.chapters);
+  let sent = 0;
+  for (const ch of chapters) {
+    const officers = await db.select({ memberId: schema.chapterRoles.memberId }).from(schema.chapterRoles)
+      .where(and(eq(schema.chapterRoles.chapterId, ch.id), eq(schema.chapterRoles.status, "active")));
+    if (!officers.length) continue;
+    const { cadences } = await listCadences(ch.id, now);
+    for (const c of cadences) {
+      if (c.currentStatus !== "open") continue; // already logged this period
+      const markerKey = `cadence:${c.id}:${c.currentKey}`;
+      if (await getMarker(markerKey)) continue;
+      for (const o of officers) {
+        await notify(o.memberId, `Reminder: "${c.title}" is due this period. Log it on the chapter page once it's done.`, "cadence");
+      }
+      await setMarker(markerKey, "sent");
+      sent++;
+    }
+  }
+  if (sent) console.log(`[scheduler] cadence reminders: ${sent} cadence(s) nudged`);
+}
+
 /** Run all daily jobs at most once per UTC day. */
 export async function runDailyJobs(now = new Date()): Promise<boolean> {
   const today = todayKey(now);
   if (await getMarker(DAILY_MARKER) === today) return false; // already ran today
   await safe("dormancy", () => jobDormancy());
   await safe("renewal", () => jobRenewal(now));
+  await safe("onboarding-slip", () => jobOnboardingSlip());
+  await safe("cadence-reminders", () => jobCadenceReminders(now));
   await setMarker(DAILY_MARKER, today);
   console.log(`[scheduler] daily pass complete for ${today}`);
   return true;
