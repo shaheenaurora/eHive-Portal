@@ -185,8 +185,8 @@ function AutomationSettings() {
       </div>
       <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>
         The daily pass runs the timed operations the manual expects the platform to carry on its own —
-        at-risk detection, the renewal window, onboarding-slip nudges and chapter-cadence reminders. It runs
-        automatically; use “Run now” to force it.
+        at-risk detection, the renewal window, onboarding-slip nudges, chapter-cadence reminders, officer-term
+        retirement and chapter-health alerts. It runs automatically; use “Run now” to force it.
       </p>
       <div className="eh-list eh-mb">
         <div className="row"><span className="d">Last daily pass</span><span className="t">{last ?? "not yet run"}</span></div>
