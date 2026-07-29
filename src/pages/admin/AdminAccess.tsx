@@ -42,6 +42,7 @@ export default function AdminAccess() {
       )}
 
       {iAmFull && <MailSettings />}
+      {iAmFull && <AutomationSettings />}
 
       {roster.isLoading && <Spinner />}
       {roster.isError && (
@@ -159,6 +160,40 @@ function MailSettings() {
       <p className="eh-sm eh-muted" style={{ marginBottom: 0 }}>
         If it fails, the exact SMTP error (auth, port, DNS) shows here so you can fix the variables.
       </p>
+    </div>
+  );
+}
+
+function AutomationSettings() {
+  const status = trpc.admin.schedulerStatus.useQuery(undefined, { retry: false });
+  const utils = trpc.useUtils();
+  const run = trpc.admin.runScheduler.useMutation({
+    onSuccess: (r) => { toast(r.ran ? "Scheduler run complete." : "Nothing due right now."); utils.admin.schedulerStatus.invalidate(); },
+    onError: (e) => toast(e.message),
+  });
+  const today = new Date().toISOString().slice(0, 10);
+  const last = status.data?.lastDaily ?? null;
+  const ranToday = last === today;
+
+  return (
+    <div className="eh-card eh-mb">
+      <div className="eh-between" style={{ marginBottom: ".6rem" }}>
+        <h3 style={{ margin: 0 }}>Automation</h3>
+        {status.data && (ranToday
+          ? <Pill color="green">Ran today</Pill>
+          : <Pill color="gold">Pending</Pill>)}
+      </div>
+      <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>
+        The daily pass runs the timed operations the manual expects the platform to carry on its own —
+        at-risk detection and the renewal window (more jobs land here as they're built). It runs
+        automatically; use “Run now” to force it.
+      </p>
+      <div className="eh-list eh-mb">
+        <div className="row"><span className="d">Last daily pass</span><span className="t">{last ?? "not yet run"}</span></div>
+      </div>
+      <button className="eh-btn gold" disabled={run.isPending} onClick={() => run.mutate()}>
+        {run.isPending ? "Running…" : "Run now"}
+      </button>
     </div>
   );
 }
