@@ -76,14 +76,34 @@ function sectionRows(sections: unknown[]): string {
     .join("");
 }
 
+/** Clarity Scorecard "domains" → a readable per-area breakdown (never raw JSON). */
+function domainRows(domains: unknown[]): string {
+  const head = `<tr><td colspan="2" style="padding:14px 12px 4px;color:#b8862e;font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:700">Score by area</td></tr>`;
+  const items = domains
+    .map((d) => {
+      if (!d || typeof d !== "object") return "";
+      const o = d as Record<string, unknown>;
+      const pct = typeof o.pct === "number" ? o.pct : (typeof o.raw === "number" ? Math.round((o.raw / 10) * 100) : 0);
+      return `<tr>
+        <td style="padding:5px 12px;color:#5d6f82;font-size:13px">${esc(o.key)}</td>
+        <td style="padding:5px 12px;color:#101d2c;font-size:14px;font-weight:600">${pct}%</td>
+      </tr>`;
+    })
+    .join("");
+  return head + items;
+}
+
 function fieldRows(payload: Record<string, unknown>): string {
   return Object.entries(payload)
     .filter(([k, v]) => !HIDDEN_KEYS.has(k) && v !== "" && v != null)
     .map(([k, v]) => {
       if (k === "sections" && Array.isArray(v)) return sectionRows(v);
-      const val = typeof v === "object" ? JSON.stringify(v) : String(v);
+      if (k === "domains" && Array.isArray(v)) return domainRows(v);
+      const label = k === "total" ? "Overall score" : prettyKey(k);
+      const val = k === "total" ? `${String(v)} / 100`
+        : typeof v === "object" ? JSON.stringify(v) : String(v);
       return `<tr>
-        <td style="padding:6px 12px;color:#5d6f82;font-size:13px;white-space:nowrap;vertical-align:top">${esc(prettyKey(k))}</td>
+        <td style="padding:6px 12px;color:#5d6f82;font-size:13px;white-space:nowrap;vertical-align:top">${esc(label)}</td>
         <td style="padding:6px 12px;color:#101d2c;font-size:14px;font-weight:600">${esc(val)}</td>
       </tr>`;
     })
