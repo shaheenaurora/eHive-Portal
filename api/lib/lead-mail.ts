@@ -76,17 +76,29 @@ function sectionRows(sections: unknown[]): string {
     .join("");
 }
 
-/** Clarity Scorecard "domains" → a readable per-area breakdown (never raw JSON). */
+/** One email-safe horizontal bar: a track table with a single fill cell whose
+ *  width is the percentage. Uses nested tables + inline styles (Gmail-safe). */
+function barCell(pct: number, weak: boolean): string {
+  const w = Math.max(3, Math.min(100, Math.round(pct)));
+  const fill = weak ? "#c0603a" : "#b8862e"; // terracotta flags a weak area, gold otherwise
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;background:#eaddc4;border-radius:6px;">
+    <tr><td style="width:${w}%;height:11px;background:${fill};border-radius:6px;font-size:0;line-height:0;">&nbsp;</td><td style="font-size:0;line-height:0;">&nbsp;</td></tr>
+  </table>`;
+}
+
+/** Clarity Scorecard "domains" → a graphical per-area bar chart (never raw JSON). */
 function domainRows(domains: unknown[]): string {
-  const head = `<tr><td colspan="2" style="padding:14px 12px 4px;color:#b8862e;font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:700">Score by area</td></tr>`;
+  const head = `<tr><td colspan="3" style="padding:16px 12px 6px;color:#b8862e;font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:700">Score by area</td></tr>`;
   const items = domains
     .map((d) => {
       if (!d || typeof d !== "object") return "";
       const o = d as Record<string, unknown>;
       const pct = typeof o.pct === "number" ? o.pct : (typeof o.raw === "number" ? Math.round((o.raw / 10) * 100) : 0);
+      const weak = pct < 50;
       return `<tr>
-        <td style="padding:5px 12px;color:#5d6f82;font-size:13px">${esc(o.key)}</td>
-        <td style="padding:5px 12px;color:#101d2c;font-size:14px;font-weight:600">${pct}%</td>
+        <td style="padding:6px 12px;color:#5d6f82;font-size:13px;white-space:nowrap;vertical-align:middle;width:130px">${esc(o.key)}</td>
+        <td style="padding:6px 8px;vertical-align:middle;">${barCell(pct, weak)}</td>
+        <td style="padding:6px 12px;color:${weak ? "#c0603a" : "#101d2c"};font-size:13px;font-weight:700;text-align:right;vertical-align:middle;width:44px">${pct}%</td>
       </tr>`;
     })
     .join("");
@@ -99,12 +111,21 @@ function fieldRows(payload: Record<string, unknown>): string {
     .map(([k, v]) => {
       if (k === "sections" && Array.isArray(v)) return sectionRows(v);
       if (k === "domains" && Array.isArray(v)) return domainRows(v);
-      const label = k === "total" ? "Overall score" : prettyKey(k);
-      const val = k === "total" ? `${String(v)} / 100`
-        : typeof v === "object" ? JSON.stringify(v) : String(v);
+      if (k === "total") {
+        const n = Number(v) || 0;
+        return `<tr><td colspan="3" style="padding:14px 12px 4px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;background:#101d2c;border-radius:10px;">
+            <tr>
+              <td style="padding:16px 20px;color:#f5efe2;font-size:13px;letter-spacing:.1em;text-transform:uppercase;">Overall clarity score</td>
+              <td style="padding:16px 20px;text-align:right;color:#ffffff;font-family:Georgia,serif;font-size:30px;font-weight:700;white-space:nowrap;">${n}<span style="font-size:16px;color:#c9b487;"> / 100</span></td>
+            </tr>
+          </table>
+        </td></tr>`;
+      }
+      const val = typeof v === "object" ? JSON.stringify(v) : String(v);
       return `<tr>
-        <td style="padding:6px 12px;color:#5d6f82;font-size:13px;white-space:nowrap;vertical-align:top">${esc(label)}</td>
-        <td style="padding:6px 12px;color:#101d2c;font-size:14px;font-weight:600">${esc(val)}</td>
+        <td style="padding:6px 12px;color:#5d6f82;font-size:13px;white-space:nowrap;vertical-align:top">${esc(prettyKey(k))}</td>
+        <td colspan="2" style="padding:6px 12px;color:#101d2c;font-size:14px;font-weight:600">${esc(val)}</td>
       </tr>`;
     })
     .join("");
