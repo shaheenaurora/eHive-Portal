@@ -602,9 +602,22 @@ export const dataRequests = mysqlTable("data_requests", {
 
 /* BRD 6.7 — chapters. Formation follows a BNI-style geographic hierarchy:
    Country → Region → State/Emirate → City → Zone, with a short chapter code. */
+/* The governance hierarchy above the chapter: Zone → Region → Country. A single
+   self-referencing table (parentId) so roll-ups nest cleanly (M7/M11). */
+export const orgUnits = mysqlTable("org_units", {
+  id: serial("id").primaryKey(),
+  level: mysqlEnum("level", ["zone", "region", "country"]).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  code: varchar("code", { length: 24 }),
+  parentId: bigint("parentId", { mode: "number", unsigned: true }), // zone→region→country→null
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type OrgUnit = typeof orgUnits.$inferSelect;
+
 export const chapters = mysqlTable("chapters", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
+  zoneId: bigint("zoneId", { mode: "number", unsigned: true }), // the Zone this chapter rolls up to
   code: varchar("code", { length: 24 }),        // short chapter code, e.g. "AE-DXB-01"
   country: varchar("country", { length: 128 }),
   region: varchar("region", { length: 128 }),   // operating region (e.g. "Gulf", "UAE")

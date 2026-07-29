@@ -852,6 +852,62 @@ export const adminEngageRouter = createRouter({
       return { ok: true };
     }),
 
+  /* ---- Governance hierarchy (Zone → Region → Country) + roll-ups ---- */
+  orgTree: scopedAdmin("chapters").query(async () => {
+    const db = getDb();
+    const units = await db.select().from(schema.orgUnits);
+    const chapters = await db.select({
+      id: schema.chapters.id, name: schema.chapters.name,
+      zoneId: schema.chapters.zoneId, status: schema.chapters.status,
+    }).from(schema.chapters);
+    const counts = await db.select({ chapterId: schema.members.homeChapterId, n: sql<number>`count(*)` })
+      .from(schema.members).where(eq(schema.members.status, "active")).groupBy(schema.members.homeChapterId);
+    const memberBy = new Map(counts.map((c) => [c.chapterId, Number(c.n)]));
+    const chs = chapters.map((c) => ({ ...c, members: memberBy.get(c.id) ?? 0 }));
+    const kids = (level: "zone" | "region" | "country", pid: number | null) =>
+      units.filter((u) => u.level === level && (u.parentId ?? null) === pid);
+    const zoneNode = (z: schema.OrgUnit) => {
+      const zc = chs.filter((c) => c.zoneId === z.id);
+      return { id: z.id, name: z.name, code: z.code, chapters: zc, chapterCount: zc.length, members: zc.reduce((a, c) => a + c.members, 0) };
+    };
+    const regionNode = (r: schema.OrgUnit) => {
+      const zones = kids("zone", r.id).map(zoneNode);
+      return { id: r.id, name: r.name, code: r.code, zones, chapterCount: zones.reduce((a, z) => a + z.chapterCount, 0), members: zones.reduce((a, z) => a + z.members, 0) };
+    };
+    const countryNode = (c: schema.OrgUnit) => {
+      const regions = kids("region", c.id).map(regionNode);
+      return { id: c.id, name: c.name, code: c.code, regions, chapterCount: regions.reduce((a, r) => a + r.chapterCount, 0), members: regions.reduce((a, r) => a + r.members, 0) };
+    };
+    return {
+      countries: kids("country", null).map(countryNode),
+      unassigned: chs.filter((c) => !c.zoneId),
+      zones: units.filter((u) => u.level === "zone").map((z) => ({ id: z.id, name: z.name })),
+    };
+  }),
+
+  createOrgUnit: scopedAdmin("chapters")
+    .input(z.object({
+      level: z.enum(["zone", "region", "country"]),
+      name: z.string().min(2).max(255),
+      code: z.string().max(24).optional(),
+      parentId: z.number().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const res = await getDb().insert(schema.orgUnits).values({
+        level: input.level, name: input.name, code: input.code ?? null, parentId: input.parentId ?? null,
+      });
+      await audit(ctx.user, "org.create", { type: "org_unit", id: Number(res[0].insertId), detail: `${input.level}: ${input.name}` });
+      return { ok: true, id: Number(res[0].insertId) };
+    }),
+
+  setChapterZone: scopedAdmin("chapters")
+    .input(z.object({ chapterId: z.number(), zoneId: z.number().nullable() }))
+    .mutation(async ({ ctx, input }) => {
+      await getDb().update(schema.chapters).set({ zoneId: input.zoneId }).where(eq(schema.chapters.id, input.chapterId));
+      await audit(ctx.user, "org.assignChapter", { type: "chapter", id: input.chapterId, detail: `zone #${input.zoneId ?? "none"}` });
+      return { ok: true };
+    }),
+
   /* AF-02 — decide a proposed spend, gated by the approval threshold. A spend
      over SPEND_APPROVAL_THRESHOLD_AED needs a full administrator to approve. */
   decideBudgetLine: adminQuery
