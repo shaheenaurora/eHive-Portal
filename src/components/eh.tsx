@@ -381,6 +381,7 @@ export const ADMIN_NAV: NavGroup[] = [
   {
     items: [
       { to: "/admin", label: "Dashboard", icon: "⬡", end: true },
+      { to: "/admin/prospects", label: "Prospects & Guests", icon: "◎" },
       { to: "/admin/applications", label: "Applications", icon: "⇥" },
       { to: "/admin/admissions", label: "Zenith & Investors", icon: "✧" },
       { to: "/admin/members", label: "Members", icon: "◍" },

@@ -404,6 +404,13 @@ export const ADMIN_SCOPES = [
 ] as const;
 export type AdminScope = (typeof ADMIN_SCOPES)[number]["key"];
 
+/* ML-01 — prospect funnel stages. */
+export const PROSPECT_STAGES = ["prospect", "guest", "invited", "converted", "declined"] as const;
+export type ProspectStage = (typeof PROSPECT_STAGES)[number];
+export const PROSPECT_STAGE_LABEL: Record<ProspectStage, string> = {
+  prospect: "Prospect", guest: "Guest", invited: "Invited to apply", converted: "Converted", declined: "Declined",
+};
+
 /* M10 — recognition badges, derived from real data (tenure + contribution).
    Pure and testable; shown on the member's page. */
 export function memberBadges(
