@@ -15,6 +15,7 @@ import { getDb } from "../queries/connection";
 import { evaluateDormancy, notify } from "../queries/circle";
 import { computeOnboarding } from "../queries/onboarding";
 import { listCadences } from "../queries/cadence";
+import { computeChapterHealth } from "../queries/health";
 import { renewalStage } from "@contracts/constants";
 
 const DAILY_MARKER = "scheduler:lastDaily";
@@ -147,6 +148,35 @@ async function jobRoleTerms(now = new Date()): Promise<void> {
   if (ended) console.log(`[scheduler] role terms: ${ended} ended`);
 }
 
+/**
+ * CH-06 — when a chapter's health index drops below the healthy line, alert its
+ * officers with a remediation prompt. Fires once on the transition into
+ * "below" (and re-arms once it recovers), so it doesn't repeat daily.
+ */
+async function jobHealthThreshold(): Promise<void> {
+  const db = getDb();
+  const chapters = await db.select({ id: schema.chapters.id, name: schema.chapters.name }).from(schema.chapters);
+  let alerted = 0;
+  for (const ch of chapters) {
+    let total: number, below: boolean;
+    try { const h = await computeChapterHealth(ch.id); total = h.total; below = h.band === "below"; }
+    catch { continue; }
+    const markerKey = `health:${ch.id}`;
+    const state = below ? "below" : "ok";
+    if (await getMarker(markerKey) === state) continue; // no change since last pass
+    if (below) {
+      const officers = await db.select({ memberId: schema.chapterRoles.memberId }).from(schema.chapterRoles)
+        .where(and(eq(schema.chapterRoles.chapterId, ch.id), eq(schema.chapterRoles.status, "active")));
+      for (const o of officers) {
+        await notify(o.memberId, `Chapter health for ${ch.name} has dropped below the healthy line (index ${total}). Time for a health review and a remediation plan.`, "health");
+      }
+      alerted++;
+    }
+    await setMarker(markerKey, state);
+  }
+  if (alerted) console.log(`[scheduler] health threshold: ${alerted} chapter(s) alerted`);
+}
+
 /** Run all daily jobs at most once per UTC day. */
 export async function runDailyJobs(now = new Date()): Promise<boolean> {
   const today = todayKey(now);
@@ -156,6 +186,7 @@ export async function runDailyJobs(now = new Date()): Promise<boolean> {
   await safe("onboarding-slip", () => jobOnboardingSlip());
   await safe("cadence-reminders", () => jobCadenceReminders(now));
   await safe("role-terms", () => jobRoleTerms(now));
+  await safe("health-threshold", () => jobHealthThreshold());
   await setMarker(DAILY_MARKER, today);
   console.log(`[scheduler] daily pass complete for ${today}`);
   return true;
