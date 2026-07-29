@@ -128,6 +128,25 @@ async function jobCadenceReminders(now = new Date()): Promise<void> {
   if (sent) console.log(`[scheduler] cadence reminders: ${sent} cadence(s) nudged`);
 }
 
+/**
+ * XC-03 — retire chapter-officer terms on schedule. A role whose term-end date
+ * has passed is ended (access transfers "not before, not after"), and the
+ * outgoing officer is thanked and pointed at the handover checklist.
+ */
+async function jobRoleTerms(now = new Date()): Promise<void> {
+  const db = getDb();
+  const roles = await db.select().from(schema.chapterRoles)
+    .where(and(eq(schema.chapterRoles.status, "active"), isNotNull(schema.chapterRoles.termEnd)));
+  let ended = 0;
+  for (const r of roles) {
+    if (!r.termEnd || new Date(r.termEnd) > now) continue;
+    await db.update(schema.chapterRoles).set({ status: "ended" }).where(eq(schema.chapterRoles.id, r.id));
+    await notify(r.memberId, "Your term as a chapter officer has ended — thank you for serving. Please complete the handover with the incoming officer.", "governance");
+    ended++;
+  }
+  if (ended) console.log(`[scheduler] role terms: ${ended} ended`);
+}
+
 /** Run all daily jobs at most once per UTC day. */
 export async function runDailyJobs(now = new Date()): Promise<boolean> {
   const today = todayKey(now);
@@ -136,6 +155,7 @@ export async function runDailyJobs(now = new Date()): Promise<boolean> {
   await safe("renewal", () => jobRenewal(now));
   await safe("onboarding-slip", () => jobOnboardingSlip());
   await safe("cadence-reminders", () => jobCadenceReminders(now));
+  await safe("role-terms", () => jobRoleTerms(now));
   await setMarker(DAILY_MARKER, today);
   console.log(`[scheduler] daily pass complete for ${today}`);
   return true;
