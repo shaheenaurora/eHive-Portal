@@ -394,6 +394,7 @@ export default function AdminChapters() {
             <h2 className="eh-h2" style={{ margin: 0 }}>Budget</h2>
             <button className="eh-btn sm gold" onClick={() => setBudgetOpen(true)}>Add line →</button>
           </div>
+          <FinanceSummary budgets={detail.data!.budgets ?? []} />
           <div className="eh-card">
             {(detail.data!.budgets ?? []).length === 0 && <Empty big="No budget lines." />}
             <div className="eh-list">
@@ -827,5 +828,35 @@ function MeetingEditor({ meetingId, meeting, roster, onClose, onSaved }: {
         </button>
       )}
     </Modal>
+  );
+}
+
+type BudgetLine = { kind: string; amount: number; status: string };
+function FinanceSummary({ budgets }: { budgets: BudgetLine[] }) {
+  if (!budgets.length) return null;
+  const sum = (kind: string, statuses: string[]) =>
+    budgets.filter((b) => b.kind === kind && statuses.includes(b.status)).reduce((a, b) => a + b.amount, 0);
+  const allocations = sum("allocation", ["approved", "spent"]);
+  const sponsorship = sum("sponsorship", ["approved", "spent"]);
+  const spent = sum("spend", ["approved", "spent"]);
+  const pending = budgets.filter((b) => b.kind === "spend" && b.status === "proposed").reduce((a, b) => a + b.amount, 0);
+  const available = allocations + sponsorship;
+  const remaining = available - spent;
+  const cell = (label: string, value: number, tone?: string) => (
+    <div style={{ flex: "1 1 120px" }}>
+      <div className="eh-eyebrow" style={{ marginBottom: ".2rem" }}>{label}</div>
+      <div className="eh-num" style={{ fontFamily: "Georgia, serif", fontSize: "1.3rem", fontWeight: 700, color: tone }}>
+        AED {value.toLocaleString()}
+      </div>
+    </div>
+  );
+  return (
+    <div className="eh-card eh-mb" style={{ display: "flex", flexWrap: "wrap", gap: "1rem" }}>
+      {cell("Allocated", allocations)}
+      {cell("Sponsorship", sponsorship)}
+      {cell("Spent", spent)}
+      {cell("Remaining", remaining, remaining < 0 ? "var(--eh-red)" : "var(--eh-green)")}
+      {pending > 0 && cell("Pending approval", pending, "var(--eh-gold)")}
+    </div>
   );
 }
