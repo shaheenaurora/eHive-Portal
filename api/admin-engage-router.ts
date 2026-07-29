@@ -863,20 +863,32 @@ export const adminEngageRouter = createRouter({
     const counts = await db.select({ chapterId: schema.members.homeChapterId, n: sql<number>`count(*)` })
       .from(schema.members).where(eq(schema.members.status, "active")).groupBy(schema.members.homeChapterId);
     const memberBy = new Map(counts.map((c) => [c.chapterId, Number(c.n)]));
-    const chs = chapters.map((c) => ({ ...c, members: memberBy.get(c.id) ?? 0 }));
+    // Live chapter health, rolled up the tree (M7 at higher tiers).
+    const healthBy = new Map<number, number>();
+    for (const c of chapters) {
+      try { healthBy.set(c.id, (await computeChapterHealth(c.id)).total); } catch { /* skip */ }
+    }
+    const avg = (xs: number[]): number | null => xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : null;
+    const chs = chapters.map((c) => ({ ...c, members: memberBy.get(c.id) ?? 0, health: healthBy.get(c.id) ?? null }));
     const kids = (level: "zone" | "region" | "country", pid: number | null) =>
       units.filter((u) => u.level === level && (u.parentId ?? null) === pid);
     const zoneNode = (z: schema.OrgUnit) => {
       const zc = chs.filter((c) => c.zoneId === z.id);
-      return { id: z.id, name: z.name, code: z.code, chapters: zc, chapterCount: zc.length, members: zc.reduce((a, c) => a + c.members, 0) };
+      return { id: z.id, name: z.name, code: z.code, chapters: zc, chapterCount: zc.length,
+        members: zc.reduce((a, c) => a + c.members, 0),
+        health: avg(zc.map((c) => c.health).filter((h): h is number => h != null)) };
     };
     const regionNode = (r: schema.OrgUnit) => {
       const zones = kids("zone", r.id).map(zoneNode);
-      return { id: r.id, name: r.name, code: r.code, zones, chapterCount: zones.reduce((a, z) => a + z.chapterCount, 0), members: zones.reduce((a, z) => a + z.members, 0) };
+      return { id: r.id, name: r.name, code: r.code, zones, chapterCount: zones.reduce((a, z) => a + z.chapterCount, 0),
+        members: zones.reduce((a, z) => a + z.members, 0),
+        health: avg(zones.map((z) => z.health).filter((h): h is number => h != null)) };
     };
     const countryNode = (c: schema.OrgUnit) => {
       const regions = kids("region", c.id).map(regionNode);
-      return { id: c.id, name: c.name, code: c.code, regions, chapterCount: regions.reduce((a, r) => a + r.chapterCount, 0), members: regions.reduce((a, r) => a + r.members, 0) };
+      return { id: c.id, name: c.name, code: c.code, regions, chapterCount: regions.reduce((a, r) => a + r.chapterCount, 0),
+        members: regions.reduce((a, r) => a + r.members, 0),
+        health: avg(regions.map((r) => r.health).filter((h): h is number => h != null)) };
     };
     return {
       countries: kids("country", null).map(countryNode),
