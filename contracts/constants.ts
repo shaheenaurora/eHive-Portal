@@ -404,6 +404,26 @@ export const ADMIN_SCOPES = [
 ] as const;
 export type AdminScope = (typeof ADMIN_SCOPES)[number]["key"];
 
+/* M10 — recognition badges, derived from real data (tenure + contribution).
+   Pure and testable; shown on the member's page. */
+export function memberBadges(
+  m: { createdAt: Date | string; hiveScore: number },
+  now = new Date(),
+): string[] {
+  const badges: string[] = [];
+  const created = new Date(m.createdAt);
+  const years = (now.getTime() - created.getTime()) / (365.25 * 86_400_000);
+  const days = (now.getTime() - created.getTime()) / 86_400_000;
+  if (years >= 5) badges.push("5+ Years");
+  else if (years >= 3) badges.push("3 Years");
+  else if (years >= 2) badges.push("2 Years");
+  else if (years >= 1) badges.push("1 Year");
+  else if (days <= 90) badges.push("Newcomer");
+  if (m.hiveScore >= 80) badges.push("Top Contributor");
+  else if (m.hiveScore >= 60) badges.push("Active Contributor");
+  return badges;
+}
+
 /* M3 — chapter & board meetings, with the manual's default agendas (H2). */
 export const MEETING_KINDS = [
   { key: "chapter_meeting", label: "Chapter Meeting", sop: "CH-01" },
