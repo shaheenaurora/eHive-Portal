@@ -404,6 +404,30 @@ export const ADMIN_SCOPES = [
 ] as const;
 export type AdminScope = (typeof ADMIN_SCOPES)[number]["key"];
 
+/* M3 — chapter & board meetings, with the manual's default agendas (H2). */
+export const MEETING_KINDS = [
+  { key: "chapter_meeting", label: "Chapter Meeting", sop: "CH-01" },
+  { key: "board_meeting", label: "Board Meeting", sop: "CH-04" },
+  { key: "huddle", label: "Weekly Huddle", sop: "CH-02" },
+  { key: "other", label: "Other", sop: "" },
+] as const;
+export type MeetingKind = (typeof MEETING_KINDS)[number]["key"];
+export const MEETING_KIND_LABEL: Record<string, string> =
+  Object.fromEntries(MEETING_KINDS.map((k) => [k.key, k.label]));
+export const MEETING_AGENDA_TEMPLATES: Record<string, string> = {
+  chapter_meeting: [
+    "1. Arrival & networking", "2. Welcome & purpose", "3. Member wins & spotlight",
+    "4. Core content", "5. Structured asks & offers", "6. Guest welcome",
+    "7. Chapter business", "8. Close & single call to action",
+  ].join("\n"),
+  board_meeting: [
+    "1. Prior actions", "2. Health review", "3. Membership & pipeline", "4. Finance",
+    "5. Programming & PODs", "6. Decisions & issues", "7. Actions & close",
+  ].join("\n"),
+  huddle: ["1. Wins since last week", "2. Pipeline update", "3. This week's asks", "4. Blockers"].join("\n"),
+  other: "",
+};
+
 /* AF-02 — spend approval. A chapter spend at or under the threshold can be
    approved by any chapter admin; above it needs a full administrator
    (President / Director sign-off). Amount is in AED. */

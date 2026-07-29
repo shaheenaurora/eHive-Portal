@@ -17,7 +17,7 @@ import {
   POINT_RULE_KEYS, POINT_RULE_LABEL, POINT_RULE_FACTOR, POINT_RULE_DEFAULTS,
   ZENITH_CAP, INVESTOR_COOLDOWN_DAYS,
   EVENT_CHECKIN_OPENS_BEFORE_MS, EVENT_CHECKIN_CLOSES_AFTER_MS,
-  SPEND_APPROVAL_THRESHOLD_AED,
+  SPEND_APPROVAL_THRESHOLD_AED, MEETING_AGENDA_TEMPLATES,
 } from "@contracts/constants";
 
 function isFullAdmin(user: { adminScopes?: string | null }): boolean {
@@ -573,13 +573,75 @@ export const adminEngageRouter = createRouter({
         .where(and(eq(schema.chapterRoles.chapterId, chapter.id), eq(schema.chapterRoles.status, "active")))
         .orderBy(asc(schema.chapterRoles.createdAt));
       const cadence = await listCadences(chapter.id);
+      const meetings = await db.select().from(schema.meetings)
+        .where(eq(schema.meetings.chapterId, chapter.id)).orderBy(desc(schema.meetings.createdAt)).limit(30);
       return {
         chapter,
         roster,
         board: roles.map(r => ({ ...r.role, memberName: r.name ?? r.email ?? "Member" })),
         cadence,
-        elections: els, motions: mos, budgets,
+        elections: els, motions: mos, budgets, meetings,
       };
+    }),
+
+  /* M3 — create a chapter/board meeting with the default agenda pre-loaded. */
+  createMeeting: scopedAdmin("chapters")
+    .input(z.object({
+      chapterId: z.number(),
+      kind: z.enum(["chapter_meeting", "board_meeting", "huddle", "other"]),
+      title: z.string().min(3).max(255),
+      scheduledAt: z.string().datetime().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const res = await getDb().insert(schema.meetings).values({
+        chapterId: input.chapterId, kind: input.kind, title: input.title,
+        scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null,
+        agenda: MEETING_AGENDA_TEMPLATES[input.kind] ?? "",
+      });
+      await audit(ctx.user, "meeting.create", { type: "chapter", id: input.chapterId, detail: input.kind });
+      return { ok: true, id: Number(res[0].insertId) };
+    }),
+
+  /* Edit agenda / minutes / status of a meeting. */
+  saveMeeting: scopedAdmin("chapters")
+    .input(z.object({
+      id: z.number(),
+      title: z.string().min(3).max(255).optional(),
+      agenda: z.string().max(10000).optional(),
+      minutes: z.string().max(20000).optional(),
+      status: z.enum(["scheduled", "held", "cancelled"]).optional(),
+      scheduledAt: z.string().datetime().nullable().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const { id, scheduledAt, ...rest } = input;
+      const patch: Partial<typeof schema.meetings.$inferInsert> = { ...rest };
+      if (scheduledAt !== undefined) patch.scheduledAt = scheduledAt ? new Date(scheduledAt) : null;
+      await getDb().update(schema.meetings).set(patch).where(eq(schema.meetings.id, id));
+      return { ok: true };
+    }),
+
+  meetingAttendance: scopedAdmin("chapters")
+    .input(z.object({ meetingId: z.number() }))
+    .query(async ({ input }) => {
+      return getDb().select().from(schema.meetingAttendance)
+        .where(eq(schema.meetingAttendance.meetingId, input.meetingId));
+    }),
+
+  /* Replace a meeting's attendance with the supplied entries. */
+  setMeetingAttendance: scopedAdmin("chapters")
+    .input(z.object({
+      meetingId: z.number(),
+      entries: z.array(z.object({ memberId: z.number(), status: z.enum(["present", "absent", "excused"]) })),
+    }))
+    .mutation(async ({ input }) => {
+      const db = getDb();
+      await db.delete(schema.meetingAttendance).where(eq(schema.meetingAttendance.meetingId, input.meetingId));
+      if (input.entries.length) {
+        await db.insert(schema.meetingAttendance).values(
+          input.entries.map((e) => ({ meetingId: input.meetingId, memberId: e.memberId, status: e.status })),
+        );
+      }
+      return { ok: true, count: input.entries.filter((e) => e.status === "present").length };
     }),
 
   /* Set the chapter's operating rhythm up to standard (the recurring cadences). */

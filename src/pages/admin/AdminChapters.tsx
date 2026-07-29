@@ -4,7 +4,7 @@ import { EhShell, ADMIN_NAV, PageHead, Pill, Spinner, Modal, Field, Empty, Bar, 
 import { fmtDate, initials } from "@/lib/ehf";
 import { CHAPTER_STATUS_LABEL, CHAPTER_ROLES, CHAPTER_ROLE_RESP, CHAPTER_ROLE_METRIC, chapterRoleTitle,
   HEALTH_COMPONENTS, HEALTH_BAND_LABEL, HEALTH_BAND_COLOR, HEALTH_BAR, healthBand,
-  SPEND_APPROVAL_THRESHOLD_AED } from "@contracts/constants";
+  SPEND_APPROVAL_THRESHOLD_AED, MEETING_KINDS, MEETING_KIND_LABEL } from "@contracts/constants";
 import { FREQUENCY_LABEL, periodLabel, type Frequency } from "@contracts/cadence";
 import type { ChapterStatus } from "@contracts/constants";
 
@@ -40,6 +40,8 @@ export default function AdminChapters() {
   const [electionOpen, setElectionOpen] = useState(false);
   const [motionOpen, setMotionOpen] = useState(false);
   const [budgetOpen, setBudgetOpen] = useState(false);
+  const [meetingOpen, setMeetingOpen] = useState(false);
+  const [editMeetingId, setEditMeetingId] = useState<number | null>(null);
   const [roleOpen, setRoleOpen] = useState(false);
   const [rolePrefill, setRolePrefill] = useState<{ memberId: number; name: string } | null>(null);
 
@@ -108,6 +110,10 @@ export default function AdminChapters() {
   });
   const closeMotion = trpc.adminEngage.closeMotion.useMutation({
     onSuccess: (r) => { toast(`Motion ${r.status} — yes ${r.yes}, no ${r.no}.`); refresh(); },
+    onError: (e) => toast(e.message),
+  });
+  const createMeeting = trpc.adminEngage.createMeeting.useMutation({
+    onSuccess: () => { toast("Meeting created — agenda pre-loaded."); setMeetingOpen(false); refresh(); },
     onError: (e) => toast(e.message),
   });
   const decideBudget = trpc.adminEngage.decideBudgetLine.useMutation({
@@ -417,7 +423,41 @@ export default function AdminChapters() {
               (President / Director) to approve.
             </p>
           </div>
+
+          {/* meetings (M3) */}
+          <div className="eh-between" style={{ margin: "1.25rem 0 .75rem" }}>
+            <h2 className="eh-h2" style={{ margin: 0 }}>Meetings</h2>
+            <button className="eh-btn sm gold" onClick={() => setMeetingOpen(true)}>New meeting →</button>
+          </div>
+          <div className="eh-card">
+            {(detail.data!.meetings ?? []).length === 0 && <Empty big="No meetings yet." p="Create a chapter or board meeting — the agenda is pre-loaded from the manual." />}
+            <div className="eh-list">
+              {(detail.data!.meetings ?? []).map((m) => (
+                <div className="row click" key={m.id} onClick={() => setEditMeetingId(m.id)}>
+                  <div style={{ flex: 1 }}>
+                    <div className="t">{m.title}</div>
+                    <div className="d">{MEETING_KIND_LABEL[m.kind] ?? m.kind}{m.scheduledAt ? ` · ${fmtDate(m.scheduledAt)}` : ""}</div>
+                  </div>
+                  <Pill color={m.status === "held" ? "green" : m.status === "cancelled" ? "grey" : "blue"}>{m.status}</Pill>
+                  <span className="eh-btn ghost sm">Open →</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </>
+      )}
+
+      {meetingOpen && sel !== null && (
+        <MeetingCreate pending={createMeeting.isPending}
+                       onClose={() => setMeetingOpen(false)}
+                       onSubmit={(v) => createMeeting.mutate({ chapterId: sel, ...v })} />
+      )}
+      {editMeetingId !== null && (
+        <MeetingEditor meetingId={editMeetingId}
+                       meeting={(detail.data?.meetings ?? []).find((m) => m.id === editMeetingId)}
+                       roster={detail.data?.roster ?? []}
+                       onClose={() => setEditMeetingId(null)}
+                       onSaved={() => refresh()} />
       )}
 
       {chapterOpen && (
@@ -678,5 +718,114 @@ function BudgetForm(props: {
         {props.pending ? "Saving…" : "Add line →"}
       </button>
     </>
+  );
+}
+
+type MeetingRow = {
+  id: number; chapterId: number; kind: string; title: string;
+  scheduledAt: string | Date | null; status: "scheduled" | "held" | "cancelled";
+  agenda: string | null; minutes: string | null;
+};
+type RosterEntry = { member: { id: number }; user: { name: string | null; email: string | null } };
+
+function MeetingCreate({ pending, onClose, onSubmit }: {
+  pending: boolean; onClose: () => void;
+  onSubmit: (v: { kind: "chapter_meeting" | "board_meeting" | "huddle" | "other"; title: string; scheduledAt?: string }) => void;
+}) {
+  const [kind, setKind] = useState<"chapter_meeting" | "board_meeting" | "huddle" | "other">("chapter_meeting");
+  const [title, setTitle] = useState("");
+  const [when, setWhen] = useState("");
+  return (
+    <Modal title="New meeting" onClose={onClose}>
+      <Field label="Type">
+        <select className="eh-select" value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}>
+          {MEETING_KINDS.map((k) => <option key={k.key} value={k.key}>{k.label}{k.sop ? ` (${k.sop})` : ""}</option>)}
+        </select>
+      </Field>
+      <Field label="Title">
+        <input className="eh-input" value={title} onChange={(e) => setTitle(e.target.value)}
+               placeholder="e.g. March Chapter Meeting" />
+      </Field>
+      <Field label="When (optional)">
+        <input className="eh-input" type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
+      </Field>
+      <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>The standard agenda for this type is loaded automatically — edit it after creating.</p>
+      <button className="eh-btn gold" disabled={pending || title.trim().length < 3}
+              onClick={() => onSubmit({ kind, title, scheduledAt: when ? new Date(when).toISOString() : undefined })}>
+        {pending ? "Creating…" : "Create meeting →"}
+      </button>
+    </Modal>
+  );
+}
+
+function MeetingEditor({ meetingId, meeting, roster, onClose, onSaved }: {
+  meetingId: number; meeting: MeetingRow | undefined; roster: RosterEntry[];
+  onClose: () => void; onSaved: () => void;
+}) {
+  const att = trpc.adminEngage.meetingAttendance.useQuery({ meetingId }, { retry: false });
+  const save = trpc.adminEngage.saveMeeting.useMutation({
+    onSuccess: () => { toast("Meeting saved."); onSaved(); },
+    onError: (e) => toast(e.message),
+  });
+  const saveAtt = trpc.adminEngage.setMeetingAttendance.useMutation({
+    onSuccess: (r) => { toast(`Attendance saved — ${r.count} present.`); onSaved(); att.refetch(); },
+    onError: (e) => toast(e.message),
+  });
+
+  const [title, setTitle] = useState(meeting?.title ?? "");
+  const [status, setStatus] = useState<MeetingRow["status"]>(meeting?.status ?? "scheduled");
+  const [agenda, setAgenda] = useState(meeting?.agenda ?? "");
+  const [minutes, setMinutes] = useState(meeting?.minutes ?? "");
+  const [present, setPresent] = useState<Set<number>>(new Set());
+  const [seeded, setSeeded] = useState(false);
+  if (!seeded && att.data) { setPresent(new Set(att.data.filter((a) => a.status === "present").map((a) => a.memberId))); setSeeded(true); }
+
+  return (
+    <Modal title={meeting ? MEETING_KIND_LABEL[meeting.kind] ?? "Meeting" : "Meeting"} onClose={onClose} wide>
+      <div className="eh-grid g2">
+        <Field label="Title"><input className="eh-input" value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
+        <Field label="Status">
+          <select className="eh-select" value={status} onChange={(e) => setStatus(e.target.value as MeetingRow["status"])}>
+            <option value="scheduled">Scheduled</option><option value="held">Held</option><option value="cancelled">Cancelled</option>
+          </select>
+        </Field>
+      </div>
+      <Field label="Agenda">
+        <textarea className="eh-textarea" style={{ minHeight: "9rem" }} value={agenda} onChange={(e) => setAgenda(e.target.value)} />
+      </Field>
+      <Field label="Minutes">
+        <textarea className="eh-textarea" style={{ minHeight: "9rem" }} value={minutes} onChange={(e) => setMinutes(e.target.value)}
+                  placeholder="Decisions, discussion and outcomes…" />
+      </Field>
+      <button className="eh-btn gold" disabled={save.isPending}
+              onClick={() => save.mutate({ id: meetingId, title, status, agenda, minutes })}>
+        {save.isPending ? "Saving…" : "Save meeting"}
+      </button>
+
+      <div className="eh-eyebrow eh-mt" style={{ marginBottom: ".4rem" }}>Attendance</div>
+      {roster.length === 0 && <p className="eh-sm eh-muted">No chapter members to mark yet.</p>}
+      <div className="eh-list eh-mb">
+        {roster.map(({ member, user }) => (
+          <label key={member.id} className="row" style={{ cursor: "pointer" }}>
+            <span className="t">{user.name ?? user.email ?? `Member #${member.id}`}</span>
+            <input type="checkbox" checked={present.has(member.id)} style={{ accentColor: "#b8862e" }}
+                   onChange={(e) => {
+                     const next = new Set(present);
+                     if (e.target.checked) next.add(member.id); else next.delete(member.id);
+                     setPresent(next);
+                   }} />
+          </label>
+        ))}
+      </div>
+      {roster.length > 0 && (
+        <button className="eh-btn" disabled={saveAtt.isPending}
+                onClick={() => saveAtt.mutate({
+                  meetingId,
+                  entries: roster.map(({ member }) => ({ memberId: member.id, status: present.has(member.id) ? "present" as const : "absent" as const })),
+                })}>
+          {saveAtt.isPending ? "Saving…" : `Save attendance (${present.size} present)`}
+        </button>
+      )}
+    </Modal>
   );
 }
