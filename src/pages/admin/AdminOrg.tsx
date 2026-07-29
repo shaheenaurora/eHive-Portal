@@ -1,17 +1,25 @@
 import { useState } from "react";
 import { trpc } from "@/providers/trpc";
 import { EhShell, ADMIN_NAV, PageHead, Pill, Empty, Spinner, Modal, Field, toast } from "@/components/eh";
+import { healthBand, HEALTH_BAND_LABEL, HEALTH_BAND_COLOR } from "@contracts/constants";
 
-type Chapter = { id: number; name: string; members: number; status: string; zoneId: number | null };
-type Zone = { id: number; name: string; code: string | null; chapters: Chapter[]; chapterCount: number; members: number };
-type Region = { id: number; name: string; code: string | null; zones: Zone[]; chapterCount: number; members: number };
-type Country = { id: number; name: string; code: string | null; regions: Region[]; chapterCount: number; members: number };
+type Chapter = { id: number; name: string; members: number; status: string; zoneId: number | null; health: number | null };
+type Zone = { id: number; name: string; code: string | null; chapters: Chapter[]; chapterCount: number; members: number; health: number | null };
+type Region = { id: number; name: string; code: string | null; zones: Zone[]; chapterCount: number; members: number; health: number | null };
+type Country = { id: number; name: string; code: string | null; regions: Region[]; chapterCount: number; members: number; health: number | null };
 
-function Roll({ chapters, members }: { chapters: number; members: number }) {
+function HealthPill({ health }: { health: number | null }) {
+  if (health == null) return null;
+  const band = healthBand(health);
+  return <Pill color={HEALTH_BAND_COLOR[band]}>Health {health} · {HEALTH_BAND_LABEL[band]}</Pill>;
+}
+
+function Roll({ chapters, members, health }: { chapters: number; members: number; health: number | null }) {
   return (
     <span className="eh-row" style={{ gap: ".4rem", flexWrap: "nowrap" }}>
       <Pill color="grey">{chapters} chapter{chapters === 1 ? "" : "s"}</Pill>
       <Pill color="blue">{members} member{members === 1 ? "" : "s"}</Pill>
+      <HealthPill health={health} />
     </span>
   );
 }
@@ -51,27 +59,27 @@ export default function AdminOrg() {
         <div className="eh-card eh-mb" key={c.id}>
           <div className="eh-between">
             <div><span className="eh-eyebrow">Country</span><h3 style={{ margin: ".1rem 0 0" }}>{c.name} {c.code ? <span className="eh-muted eh-sm">· {c.code}</span> : null}</h3></div>
-            <div className="eh-row" style={{ gap: ".5rem" }}><Roll chapters={c.chapterCount} members={c.members} />
+            <div className="eh-row" style={{ gap: ".5rem" }}><Roll chapters={c.chapterCount} members={c.members} health={c.health} />
               <button className="eh-btn ghost sm" onClick={() => setAdd({ level: "region", parentId: c.id, parentName: c.name })}>+ Region</button></div>
           </div>
           {c.regions.map((r) => (
             <div key={r.id} style={{ margin: ".9rem 0 0", paddingLeft: "1rem", borderLeft: "2px solid var(--eh-border)" }}>
               <div className="eh-between">
                 <div><span className="eh-eyebrow">Region</span> <b>{r.name}</b></div>
-                <div className="eh-row" style={{ gap: ".5rem" }}><Roll chapters={r.chapterCount} members={r.members} />
+                <div className="eh-row" style={{ gap: ".5rem" }}><Roll chapters={r.chapterCount} members={r.members} health={r.health} />
                   <button className="eh-btn ghost sm" onClick={() => setAdd({ level: "zone", parentId: r.id, parentName: r.name })}>+ Zone</button></div>
               </div>
               {r.zones.map((z) => (
                 <div key={z.id} style={{ margin: ".7rem 0 0", paddingLeft: "1rem", borderLeft: "2px solid var(--eh-border)" }}>
                   <div className="eh-between">
                     <div><span className="eh-eyebrow">Zone</span> <b>{z.name}</b></div>
-                    <Roll chapters={z.chapterCount} members={z.members} />
+                    <Roll chapters={z.chapterCount} members={z.members} health={z.health} />
                   </div>
                   <div className="eh-list" style={{ marginTop: ".35rem" }}>
                     {z.chapters.map((ch) => (
                       <div className="row" key={ch.id}>
                         <span className="t">{ch.name}</span>
-                        <Pill color="blue">{ch.members} members</Pill>
+                        <span className="eh-row" style={{ gap: ".4rem" }}><Pill color="blue">{ch.members} members</Pill><HealthPill health={ch.health} /></span>
                       </div>
                     ))}
                     {z.chapters.length === 0 && <p className="eh-sm eh-muted">No chapters in this zone yet.</p>}
