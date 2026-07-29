@@ -780,3 +780,23 @@ export type Insight = typeof insights.$inferSelect;
 export type Chapter = typeof chapters.$inferSelect;
 export type Election = typeof elections.$inferSelect;
 export type Motion = typeof motions.$inferSelect;
+
+/* XC-04 — Conduct & incident handling. A confidential case record with the
+   process trail. Reporter/subject are optional so a report can be anonymous or
+   about a situation rather than a named member. */
+export const conductCases = mysqlTable("conduct_cases", {
+  id: serial("id").primaryKey(),
+  reporterMemberId: bigint("reporterMemberId", { mode: "number", unsigned: true }), // null = anonymous
+  subjectMemberId: bigint("subjectMemberId", { mode: "number", unsigned: true }),   // null = not a named member
+  chapterId: bigint("chapterId", { mode: "number", unsigned: true }),
+  category: varchar("category", { length: 64 }).notNull(),
+  severity: mysqlEnum("severity", ["low", "moderate", "high", "safeguarding"]).notNull().default("moderate"),
+  status: mysqlEnum("status", ["open", "reviewing", "actioned", "escalated", "closed"]).notNull().default("open"),
+  summary: varchar("summary", { length: 255 }).notNull(),
+  detail: text("detail"),
+  handledByUserId: bigint("handledByUserId", { mode: "number", unsigned: true }),
+  resolution: text("resolution"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+});
+export type ConductCase = typeof conductCases.$inferSelect;
