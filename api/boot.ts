@@ -142,7 +142,10 @@ app.post("/api/payments/webhook", async (c) => {
       }
       const userId = result.userId ?? record?.userId;
       const tier = result.tier ?? record?.tier ?? undefined;
-      if (userId && tier) {
+      if (userId && record?.purpose === "renewal") {
+        const { renewMembership } = await import("./queries/circle");
+        await renewMembership(userId, "Renewed via online payment");
+      } else if (userId && tier) {
         await activateMembership(userId, tier, "Membership activated via online payment");
       }
     } else if (result.status === "failed" && record && record.status === "pending") {
