@@ -3,10 +3,20 @@ import { trpc } from "@/providers/trpc";
 import { EhShell, ADMIN_NAV, PageHead, Pill, Empty, Spinner, Modal, Field, toast } from "@/components/eh";
 import { healthBand, HEALTH_BAND_LABEL, HEALTH_BAND_COLOR } from "@contracts/constants";
 
+type Leader = { role: string; name: string };
 type Chapter = { id: number; name: string; members: number; status: string; zoneId: number | null; health: number | null };
-type Zone = { id: number; name: string; code: string | null; chapters: Chapter[]; chapterCount: number; members: number; health: number | null };
-type Region = { id: number; name: string; code: string | null; zones: Zone[]; chapterCount: number; members: number; health: number | null };
-type Country = { id: number; name: string; code: string | null; regions: Region[]; chapterCount: number; members: number; health: number | null };
+type Zone = { id: number; name: string; code: string | null; chapters: Chapter[]; chapterCount: number; members: number; health: number | null; leaders: Leader[] };
+type Region = { id: number; name: string; code: string | null; zones: Zone[]; chapterCount: number; members: number; health: number | null; leaders: Leader[] };
+type Country = { id: number; name: string; code: string | null; regions: Region[]; chapterCount: number; members: number; health: number | null; leaders: Leader[] };
+
+function Leaders({ leaders }: { leaders: Leader[] }) {
+  if (!leaders?.length) return null;
+  return (
+    <div className="eh-row" style={{ gap: ".4rem", flexWrap: "wrap", marginTop: ".3rem" }}>
+      {leaders.map((l, i) => <Pill key={i} color="purple">{l.role}: {l.name}</Pill>)}
+    </div>
+  );
+}
 
 function HealthPill({ health }: { health: number | null }) {
   if (health == null) return null;
@@ -62,6 +72,7 @@ export default function AdminOrg() {
             <div className="eh-row" style={{ gap: ".5rem" }}><Roll chapters={c.chapterCount} members={c.members} health={c.health} />
               <button className="eh-btn ghost sm" onClick={() => setAdd({ level: "region", parentId: c.id, parentName: c.name })}>+ Region</button></div>
           </div>
+          <Leaders leaders={c.leaders} />
           {c.regions.map((r) => (
             <div key={r.id} style={{ margin: ".9rem 0 0", paddingLeft: "1rem", borderLeft: "2px solid var(--eh-border)" }}>
               <div className="eh-between">
@@ -69,12 +80,14 @@ export default function AdminOrg() {
                 <div className="eh-row" style={{ gap: ".5rem" }}><Roll chapters={r.chapterCount} members={r.members} health={r.health} />
                   <button className="eh-btn ghost sm" onClick={() => setAdd({ level: "zone", parentId: r.id, parentName: r.name })}>+ Zone</button></div>
               </div>
+              <Leaders leaders={r.leaders} />
               {r.zones.map((z) => (
                 <div key={z.id} style={{ margin: ".7rem 0 0", paddingLeft: "1rem", borderLeft: "2px solid var(--eh-border)" }}>
                   <div className="eh-between">
                     <div><span className="eh-eyebrow">Zone</span> <b>{z.name}</b></div>
                     <Roll chapters={z.chapterCount} members={z.members} health={z.health} />
                   </div>
+                  <Leaders leaders={z.leaders} />
                   <div className="eh-list" style={{ marginTop: ".35rem" }}>
                     {z.chapters.map((ch) => (
                       <div className="row" key={ch.id}>

@@ -166,21 +166,43 @@ function MailSettings() {
 }
 
 function DemoDataCard() {
-  const [done, setDone] = useState<{ total: number } | null>(null);
+  const [removedN, setRemovedN] = useState<number | null>(null);
+  const [loaded, setLoaded] = useState<{ members: number; chapters: number; admins: number; loaded: boolean } | null>(null);
   const remove = trpc.admin.removeDemoData.useMutation({
-    onSuccess: (r) => { setDone({ total: r.total }); toast(`Removed ${r.total} demo rows.`); },
+    onSuccess: (r) => { setRemovedN(r.total); setLoaded(null); toast(`Removed ${r.total} demo rows.`); },
     onError: (e) => toast(e.message),
   });
+  const load = trpc.admin.loadFullDemo.useMutation({
+    onSuccess: (r) => { setLoaded(r); setRemovedN(null); toast(r.loaded ? `Loaded ${r.members} members across ${r.chapters} chapters.` : "Demo already loaded — remove it first to reload."); },
+    onError: (e) => toast(e.message),
+  });
+
   return (
-    <div className="eh-card eh-mb" style={{ borderColor: "var(--eh-red, #b23a2e)" }}>
-      <h3 style={{ margin: 0, color: "var(--eh-red, #b23a2e)" }}>Remove demo data</h3>
+    <div className="eh-card eh-mb" style={{ borderColor: "var(--eh-gold)" }}>
+      <h3 style={{ margin: 0 }}>Demo &amp; simulation data</h3>
       <p className="eh-sm eh-muted" style={{ marginTop: ".3rem" }}>
-        Deletes only the seeded demo data — the sample accounts (amina@ehive.ae and the ~15 demo members), the
-        demo chapters (Dubai/Abu Dhabi/Sharjah), the demo Zone→Region→Country hierarchy, and their pods/events.
-        Your own accounts and anything you created by hand are <b>not</b> touched. This can't be undone.
+        Populate the whole eHive Circle for a demo, or clear it out. Only seed-tagged rows are affected — your own
+        accounts and anything you created by hand are never touched.
       </p>
-      {done
-        ? <Pill color="green">Done — {done.total} demo rows removed</Pill>
+
+      <div className="eh-eyebrow eh-mt" style={{ marginBottom: ".3rem" }}>Load full simulation</div>
+      <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>
+        Builds United Arab Emirates → 3 regions → zones → ~11 chapters with 30–40 members each, chapter officers,
+        zone/regional/national leaders, and a management team. All accounts use the password <code>ehive1234</code>.
+      </p>
+      {loaded
+        ? <Pill color="green">{loaded.loaded ? `Loaded — ${loaded.members} members · ${loaded.chapters} chapters · ${loaded.admins} admins` : "Already loaded"}</Pill>
+        : <button className="eh-btn gold" disabled={load.isPending}
+            onClick={() => load.mutate({ confirm: "LOAD DEMO" })}>
+            {load.isPending ? "Generating…" : "Load full demo"}
+          </button>}
+
+      <div className="eh-eyebrow eh-mt" style={{ marginBottom: ".3rem", color: "var(--eh-red, #b23a2e)" }}>Remove demo data</div>
+      <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>
+        Deletes every seed-tagged account, chapter, hierarchy unit, pod and event. Can't be undone.
+      </p>
+      {removedN != null
+        ? <Pill color="green">Removed {removedN} demo rows</Pill>
         : <button className="eh-btn ghost danger" disabled={remove.isPending}
             onClick={() => {
               if (!window.confirm("Remove all seeded demo data (accounts, chapters, hierarchy, pods, events)? Your real data is kept. This cannot be undone.")) return;
