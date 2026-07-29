@@ -43,6 +43,7 @@ export default function AdminAccess() {
 
       {iAmFull && <MailSettings />}
       {iAmFull && <AutomationSettings />}
+      {iAmFull && <DemoDataCard />}
 
       {roster.isLoading && <Spinner />}
       {roster.isError && (
@@ -160,6 +161,33 @@ function MailSettings() {
       <p className="eh-sm eh-muted" style={{ marginBottom: 0 }}>
         If it fails, the exact SMTP error (auth, port, DNS) shows here so you can fix the variables.
       </p>
+    </div>
+  );
+}
+
+function DemoDataCard() {
+  const [done, setDone] = useState<{ total: number } | null>(null);
+  const remove = trpc.admin.removeDemoData.useMutation({
+    onSuccess: (r) => { setDone({ total: r.total }); toast(`Removed ${r.total} demo rows.`); },
+    onError: (e) => toast(e.message),
+  });
+  return (
+    <div className="eh-card eh-mb" style={{ borderColor: "var(--eh-red, #b23a2e)" }}>
+      <h3 style={{ margin: 0, color: "var(--eh-red, #b23a2e)" }}>Remove demo data</h3>
+      <p className="eh-sm eh-muted" style={{ marginTop: ".3rem" }}>
+        Deletes only the seeded demo data — the sample accounts (amina@ehive.ae and the ~15 demo members), the
+        demo chapters (Dubai/Abu Dhabi/Sharjah), the demo Zone→Region→Country hierarchy, and their pods/events.
+        Your own accounts and anything you created by hand are <b>not</b> touched. This can't be undone.
+      </p>
+      {done
+        ? <Pill color="green">Done — {done.total} demo rows removed</Pill>
+        : <button className="eh-btn ghost danger" disabled={remove.isPending}
+            onClick={() => {
+              if (!window.confirm("Remove all seeded demo data (accounts, chapters, hierarchy, pods, events)? Your real data is kept. This cannot be undone.")) return;
+              remove.mutate({ confirm: "REMOVE DEMO DATA" });
+            }}>
+            {remove.isPending ? "Removing…" : "Remove demo data"}
+          </button>}
     </div>
   );
 }

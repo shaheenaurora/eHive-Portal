@@ -11,6 +11,7 @@ import { audit } from "./lib/audit";
 import { findUserByEmail } from "./queries/users";
 import { mailStatus, sendTestEmail } from "./lib/mailer";
 import { runDailyJobs } from "./lib/scheduler";
+import { removeDemoData } from "./queries/demo-data";
 import { tierRank, EVENT_CHECKIN_OPENS_BEFORE_MS } from "@contracts/constants";
 
 const SCOPE_ENUM = z.enum([
@@ -165,6 +166,22 @@ export const adminRouter = createRouter({
     await audit(ctx.user, "scheduler.run", { detail: ran ? "ran" : "skipped" });
     return { ran };
   }),
+
+  /* ---------------------- remove seeded demo data ---------------------- */
+  /* Full-admin only. Deletes ONLY seed-tagged rows (seed accounts, demo
+     chapters/hierarchy, demo pods/events) — never real data. Requires an
+     explicit confirm string so it can't fire by accident. */
+  removeDemoData: adminQuery
+    .input(z.object({ confirm: z.literal("REMOVE DEMO DATA") }))
+    .mutation(async ({ ctx }) => {
+      if (!isFullAdmin(ctx.user as never)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only a full administrator can remove demo data." });
+      }
+      const removed = await removeDemoData();
+      const total = Object.values(removed).reduce((a, b) => a + b, 0);
+      await audit(ctx.user, "demo.remove", { detail: `${total} rows: ${JSON.stringify(removed)}` });
+      return { removed, total };
+    }),
 
   /* ---------------------------- applications ----------------------------- */
   applications: adminQuery
