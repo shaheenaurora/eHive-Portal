@@ -11,6 +11,7 @@ import {
   EVENT_CHECKIN_OPENS_BEFORE_MS,
   EVENT_CHECKIN_CLOSES_AFTER_MS,
   renewalStage,
+  memberBadges,
   MEMBER_LIFECYCLE,
   MEMBER_LIFECYCLE_TRANSITIONS,
   HEALTH_COMPONENTS,
@@ -191,5 +192,19 @@ describe("ML-05 renewal window (renewalStage)", () => {
   });
   it("lapses past the grace period", () => {
     expect(renewalStage(days(-15), now)).toBe("lapse"); // beyond 14d grace
+  });
+});
+
+describe("M10 recognition badges (memberBadges)", () => {
+  const now = new Date("2026-07-29T00:00:00Z");
+  const ago = (days: number) => new Date(now.getTime() - days * 86_400_000);
+  it("awards a tenure badge and a contribution badge from real data", () => {
+    expect(memberBadges({ createdAt: ago(365 * 2 + 30), hiveScore: 85 }, now)).toEqual(["2 Years", "Top Contributor"]);
+  });
+  it("flags a newcomer with a modest score as just Newcomer", () => {
+    expect(memberBadges({ createdAt: ago(20), hiveScore: 40 }, now)).toEqual(["Newcomer"]);
+  });
+  it("gives no tenure badge between 90 days and a year", () => {
+    expect(memberBadges({ createdAt: ago(200), hiveScore: 65 }, now)).toEqual(["Active Contributor"]);
   });
 });

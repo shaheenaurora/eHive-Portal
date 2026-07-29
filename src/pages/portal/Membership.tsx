@@ -5,7 +5,7 @@ import { EhShell, MEMBER_NAV, PageHead, Pill, StatusPill, TierPill, Spinner, Mod
 import { PushSettings } from "@/components/PushSettings";
 import { TwoFactorSettings } from "@/components/TwoFactorSettings";
 import { fmtDate } from "@/lib/ehf";
-import { TIERS, TIER_LABEL, TIER_PRICE, tierRank, DORMANCY_LABEL } from "@contracts/constants";
+import { TIERS, TIER_LABEL, TIER_PRICE, tierRank, DORMANCY_LABEL, memberBadges } from "@contracts/constants";
 import type { DormancyStage } from "@contracts/constants";
 
 export default function Membership() {
@@ -88,6 +88,17 @@ export default function Membership() {
     <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif>
       <PageHead eyebrow="Membership" title="Your membership"
                 sub="Tier, status, renewal and your profile — everything in one place, no emails required." />
+
+      {(() => {
+        const badges = memberBadges({ createdAt: member.createdAt, hiveScore: member.hiveScore });
+        if (!badges.length) return null;
+        return (
+          <div className="eh-card eh-mb" style={{ display: "flex", alignItems: "center", gap: ".75rem", flexWrap: "wrap" }}>
+            <span className="eh-eyebrow" style={{ color: "var(--eh-gold)" }}>Recognition</span>
+            {badges.map((b) => <Pill key={b} color="gold">{b}</Pill>)}
+          </div>
+        );
+      })()}
 
       {(member as { lifecycleState?: string }).lifecycleState === "renewal" && (
         <div className="eh-card eh-mb" style={{ borderColor: "#e8d5ac", background: "#fdfaf3" }}>
