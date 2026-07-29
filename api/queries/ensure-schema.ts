@@ -210,6 +210,16 @@ export async function ensureSchema(): Promise<void> {
     tables.add("cadence_log");
     tables.add("conduct_cases");
 
+    // --- chapter_budgets: spend-approval trail (AF-02) ---
+    if (tables.has("chapter_budgets")) {
+      if (!cols.has("chapter_budgets.approvedByUserId"))
+        stmts.push("ALTER TABLE chapter_budgets ADD COLUMN approvedByUserId bigint unsigned NULL");
+      if (!cols.has("chapter_budgets.note"))
+        stmts.push("ALTER TABLE chapter_budgets ADD COLUMN note text NULL");
+      if (!cols.has("chapter_budgets.decidedAt"))
+        stmts.push("ALTER TABLE chapter_budgets ADD COLUMN decidedAt timestamp NULL");
+    }
+
     for (const s of stmts) {
       try {
         console.log("[ensureSchema]", s.replace(/\s+/g, " ").slice(0, 70));

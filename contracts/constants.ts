@@ -404,6 +404,11 @@ export const ADMIN_SCOPES = [
 ] as const;
 export type AdminScope = (typeof ADMIN_SCOPES)[number]["key"];
 
+/* AF-02 — spend approval. A chapter spend at or under the threshold can be
+   approved by any chapter admin; above it needs a full administrator
+   (President / Director sign-off). Amount is in AED. */
+export const SPEND_APPROVAL_THRESHOLD_AED = 2000;
+
 /* XC-04 — Conduct & incident handling. */
 export const CONDUCT_CATEGORIES = [
   "Respect & behaviour", "Confidentiality breach", "Harassment", "Conflict of interest",

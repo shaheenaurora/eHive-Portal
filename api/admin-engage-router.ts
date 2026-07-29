@@ -17,7 +17,13 @@ import {
   POINT_RULE_KEYS, POINT_RULE_LABEL, POINT_RULE_FACTOR, POINT_RULE_DEFAULTS,
   ZENITH_CAP, INVESTOR_COOLDOWN_DAYS,
   EVENT_CHECKIN_OPENS_BEFORE_MS, EVENT_CHECKIN_CLOSES_AFTER_MS,
+  SPEND_APPROVAL_THRESHOLD_AED,
 } from "@contracts/constants";
+
+function isFullAdmin(user: { adminScopes?: string | null }): boolean {
+  const s = (user.adminScopes ?? "").trim();
+  return s === "" || s === "*";
+}
 
 export const adminEngageRouter = createRouter({
   /* ---- point rules (BRD 7.2 admin-configurable) ---- */
@@ -736,6 +742,36 @@ export const adminEngageRouter = createRouter({
       const { id, ...vals } = input;
       if (id) await db.update(schema.chapterBudgets).set(vals).where(eq(schema.chapterBudgets.id, id));
       else await db.insert(schema.chapterBudgets).values(vals);
+      return { ok: true };
+    }),
+
+  /* AF-02 — decide a proposed spend, gated by the approval threshold. A spend
+     over SPEND_APPROVAL_THRESHOLD_AED needs a full administrator to approve. */
+  decideBudgetLine: adminQuery
+    .input(z.object({
+      id: z.number(),
+      decision: z.enum(["approve", "reject"]),
+      note: z.string().max(1000).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = getDb();
+      const line = (await db.select().from(schema.chapterBudgets).where(eq(schema.chapterBudgets.id, input.id)).limit(1)).at(0);
+      if (!line) throw new TRPCError({ code: "NOT_FOUND", message: "Budget line not found" });
+      if (line.status !== "proposed") throw new TRPCError({ code: "CONFLICT", message: "This line has already been decided." });
+      if (input.decision === "approve" && line.kind === "spend"
+          && line.amount > SPEND_APPROVAL_THRESHOLD_AED && !isFullAdmin(ctx.user as never)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: `Spends over AED ${SPEND_APPROVAL_THRESHOLD_AED.toLocaleString()} need a full administrator (President / Director) to approve.`,
+        });
+      }
+      await db.update(schema.chapterBudgets)
+        .set({
+          status: input.decision === "approve" ? "approved" : "rejected",
+          approvedByUserId: ctx.user.id, note: input.note ?? null, decidedAt: new Date(),
+        })
+        .where(eq(schema.chapterBudgets.id, input.id));
+      await audit(ctx.user, `budget.${input.decision}`, { type: "chapter_budget", id: input.id, detail: `${line.kind} AED ${line.amount}` });
       return { ok: true };
     }),
 

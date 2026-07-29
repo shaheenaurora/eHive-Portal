@@ -768,6 +768,9 @@ export const chapterBudgets = mysqlTable("chapter_budgets", {
   kind: mysqlEnum("kind", ["allocation", "sponsorship", "spend"]).notNull().default("allocation"),
   amount: int("amount").notNull(), // AED
   status: mysqlEnum("status", ["proposed", "approved", "spent", "rejected"]).notNull().default("proposed"),
+  approvedByUserId: bigint("approvedByUserId", { mode: "number", unsigned: true }), // who approved/rejected
+  note: text("note"),                    // decision note / justification
+  decidedAt: timestamp("decidedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

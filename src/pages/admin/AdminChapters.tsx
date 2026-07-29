@@ -3,7 +3,8 @@ import { trpc } from "@/providers/trpc";
 import { EhShell, ADMIN_NAV, PageHead, Pill, Spinner, Modal, Field, Empty, Bar, toast } from "@/components/eh";
 import { fmtDate, initials } from "@/lib/ehf";
 import { CHAPTER_STATUS_LABEL, CHAPTER_ROLES, CHAPTER_ROLE_RESP, CHAPTER_ROLE_METRIC, chapterRoleTitle,
-  HEALTH_COMPONENTS, HEALTH_BAND_LABEL, HEALTH_BAND_COLOR, HEALTH_BAR, healthBand } from "@contracts/constants";
+  HEALTH_COMPONENTS, HEALTH_BAND_LABEL, HEALTH_BAND_COLOR, HEALTH_BAR, healthBand,
+  SPEND_APPROVAL_THRESHOLD_AED } from "@contracts/constants";
 import { FREQUENCY_LABEL, periodLabel, type Frequency } from "@contracts/cadence";
 import type { ChapterStatus } from "@contracts/constants";
 
@@ -107,6 +108,10 @@ export default function AdminChapters() {
   });
   const closeMotion = trpc.adminEngage.closeMotion.useMutation({
     onSuccess: (r) => { toast(`Motion ${r.status} — yes ${r.yes}, no ${r.no}.`); refresh(); },
+    onError: (e) => toast(e.message),
+  });
+  const decideBudget = trpc.adminEngage.decideBudgetLine.useMutation({
+    onSuccess: (_r, v) => { toast(v.decision === "approve" ? "Spend approved." : "Line rejected."); refresh(); },
     onError: (e) => toast(e.message),
   });
   const saveBudget = trpc.adminEngage.saveBudget.useMutation({
@@ -396,9 +401,21 @@ export default function AdminChapters() {
                   <Pill color={b.status === "approved" ? "green" : b.status === "spent" ? "purple" : b.status === "rejected" ? "grey" : "blue"}>
                     {b.status}
                   </Pill>
+                  {b.status === "proposed" && (
+                    <div className="eh-row" style={{ gap: ".35rem" }}>
+                      <button className="eh-btn sm" disabled={decideBudget.isPending}
+                              onClick={() => decideBudget.mutate({ id: b.id, decision: "approve" })}>Approve</button>
+                      <button className="eh-btn ghost sm" disabled={decideBudget.isPending}
+                              onClick={() => decideBudget.mutate({ id: b.id, decision: "reject" })}>Reject</button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
+            <p className="eh-sm eh-muted" style={{ margin: ".75rem 0 0" }}>
+              Spends over AED {SPEND_APPROVAL_THRESHOLD_AED.toLocaleString()} need a full administrator
+              (President / Director) to approve.
+            </p>
           </div>
         </>
       )}
