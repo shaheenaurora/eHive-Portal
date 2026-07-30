@@ -76,6 +76,15 @@
   .sec-head h2{font-size:clamp(28px,4.6vw,52px)}
   .sec-head p{max-width:40ch;color:var(--mut);font-size:16px}
 
+  /* signature visual — custom, owned artwork */
+  .signature{position:relative;width:100%;aspect-ratio:1200/440;max-height:520px;overflow:hidden;background:var(--navy-2)}
+  .signature img{width:100%;height:100%;object-fit:cover;display:block}
+  .signature figcaption{position:absolute;left:var(--gut);bottom:22px;color:var(--white);font-size:13px;
+    letter-spacing:.02em;opacity:.92;font-weight:500;max-width:32ch}
+  .signature .tagline{position:absolute;left:var(--gut);top:26px;font-family:var(--disp);font-weight:800;
+    font-size:clamp(14px,1.5vw,17px);letter-spacing:.14em;text-transform:uppercase;color:var(--white)}
+  .signature .tagline i{color:var(--flag);font-style:normal}
+
   /* the arc — three pillars */
   .arc{border-top:1px solid var(--line)}
   .pillars{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line)}
@@ -192,6 +201,13 @@
       </aside>
     </div>
   </section>
+
+  <!-- SIGNATURE VISUAL -->
+  <figure class="signature">
+    <img src="assets/img/ehive-hero.svg" alt="A network of founders above the Gulf skyline" width="1200" height="440">
+    <span class="tagline">Build<i>.</i> Belong<i>.</i> Become<i>.</i></span>
+    <figcaption>One ecosystem — connecting the region's founders above the Gulf skyline.</figcaption>
+  </figure>
 
   <!-- THE ARC -->
   <section class="arc">
