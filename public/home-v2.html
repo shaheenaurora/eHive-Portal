@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>eHive — Build. Belong. Become.</title>
 <script>document.documentElement.className += " js";</script>
-<meta name="description" content="eHive is the UAE's founder ecosystem — company setup, world-class consulting, and a members' circle that compounds. One ecosystem, from first licence to lasting scale.">
+<meta name="description" content="eHive is a UAE-based entrepreneurial ecosystem — one place to start, run, and scale a business. Business Setup, Consulting, and the eHive Circle community. Build. Belong. Become.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -15,13 +15,14 @@
     --flag:#DA3A22; --line:#D8D2C4; --line-2:#CFC8B7; --mut:#5F5C53; --mut-2:#8A8578; --white:#FBFAF6;
     --disp:"Archivo",system-ui,sans-serif;
     --body:"Hanken Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;
-    --gut:clamp(20px,5vw,60px);
+    --gut:clamp(18px,5vw,60px);
     --maxw:1200px;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  html{scroll-behavior:smooth}
+  html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
   body{font-family:var(--body);background:var(--paper);color:var(--ink);line-height:1.6;
     -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;overflow-x:hidden}
+  img{max-width:100%}
   .wrap{max-width:var(--maxw);margin:0 auto;padding:0 var(--gut)}
   h1,h2,h3,.disp{font-family:var(--disp);font-weight:900;letter-spacing:-.025em;line-height:.98;text-wrap:balance}
   a{color:inherit;text-decoration:none}
@@ -30,9 +31,8 @@
   .eyebrow{font-size:11px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--flag)}
   .muted{color:var(--mut)}
 
-  /* buttons */
   .btn{display:inline-flex;align-items:center;gap:.6em;font-family:var(--body);font-weight:700;font-size:14px;
-    padding:13px 22px;border-radius:3px;border:1.5px solid transparent;transition:transform .15s,background .2s,color .2s;cursor:pointer}
+    padding:13px 22px;border-radius:3px;border:1.5px solid transparent;transition:transform .15s,background .2s,color .2s,filter .2s;cursor:pointer;white-space:nowrap}
   .btn:active{transform:translateY(1px)}
   .btn-fill{background:var(--navy);color:var(--white)}
   .btn-fill:hover{background:var(--navy-2)}
@@ -42,122 +42,150 @@
   .btn-line:hover{border-color:var(--ink)}
 
   /* header */
-  header{position:sticky;top:0;z-index:50;background:rgba(243,241,234,.86);backdrop-filter:blur(10px);
-    border-bottom:1px solid var(--line)}
-  .nav{display:flex;align-items:center;justify-content:space-between;height:66px}
+  header{position:sticky;top:0;z-index:50;background:rgba(243,241,234,.86);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .nav{display:flex;align-items:center;justify-content:space-between;height:64px}
   .brand{font-family:var(--disp);font-weight:900;font-size:22px;letter-spacing:-.03em}
   .brand i{color:var(--flag);font-style:normal}
-  .nav-links{display:flex;align-items:center;gap:28px;list-style:none}
-  .nav-links a{font-size:13px;font-weight:600;letter-spacing:.02em;color:var(--ink);opacity:.82;transition:opacity .15s}
+  .nav-links{display:flex;align-items:center;gap:26px;list-style:none}
+  .nav-links a{font-size:13px;font-weight:600;color:var(--ink);opacity:.82;transition:opacity .15s;white-space:nowrap}
   .nav-links a:hover{opacity:1}
-  .nav-cta{display:flex;align-items:center;gap:14px}
-  .burger{display:none}
-  @media(max-width:860px){
+  .nav-cta{display:flex;align-items:center;gap:12px}
+  .burger{display:none;flex-direction:column;gap:4px;background:none;border:0;cursor:pointer;padding:8px}
+  .burger span{width:22px;height:2px;background:var(--ink);transition:transform .2s,opacity .2s}
+  #mnav{display:none}
+  @media(max-width:1024px){
     .nav-links,.nav-cta .ghost{display:none}
-    .burger{display:inline-flex;flex-direction:column;gap:4px;background:none;border:0;cursor:pointer;padding:8px}
-    .burger span{width:22px;height:2px;background:var(--ink)}
+    .burger{display:inline-flex}
+    #mnav[open-menu]{display:block}
+    .mmenu{border-bottom:1px solid var(--line);background:var(--paper);padding:8px var(--gut) 18px}
+    .mmenu a{display:block;padding:11px 0;font-weight:600;border-bottom:1px solid var(--line)}
+    .mmenu a:last-child{border:0}
   }
 
   /* hero */
-  .hero{padding:clamp(48px,8vw,104px) 0 clamp(40px,6vw,72px);border-bottom:1px solid var(--line)}
-  .hero-grid{display:grid;grid-template-columns:1.55fr 1fr;gap:clamp(28px,5vw,64px);align-items:end}
-  @media(max-width:900px){.hero-grid{grid-template-columns:1fr;align-items:start;gap:34px}}
-  .hero h1{font-size:clamp(44px,8.6vw,104px)}
-  .hero .lede{margin-top:24px;font-size:clamp(17px,2vw,20px);max-width:44ch;color:var(--mut)}
-  .hero .cta{display:flex;gap:12px;margin-top:30px;flex-wrap:wrap}
-  .hero-aside{border-left:2px solid var(--navy);padding-left:22px}
-  .stat{padding:16px 0;border-bottom:1px solid var(--line)}
+  .hero{padding:clamp(40px,7vw,96px) 0 clamp(34px,5vw,64px);border-bottom:1px solid var(--line)}
+  .hero-grid{display:grid;grid-template-columns:1.55fr 1fr;gap:clamp(26px,5vw,64px);align-items:end}
+  @media(max-width:920px){.hero-grid{grid-template-columns:1fr;align-items:start;gap:30px}}
+  .hero h1{font-size:clamp(38px,7.4vw,88px)}
+  .hero .lede{margin-top:22px;font-size:clamp(16px,2vw,20px);max-width:46ch;color:var(--mut)}
+  .hero .cta{display:flex;gap:12px;margin-top:28px;flex-wrap:wrap}
+  .hero-aside{border-left:2px solid var(--navy);padding-left:20px}
+  .stat{padding:15px 0;border-bottom:1px solid var(--line)}
   .stat:last-child{border-bottom:0}
-  .stat b{font-family:var(--disp);font-weight:800;font-size:clamp(30px,3vw,40px);color:var(--navy);display:block;line-height:1}
+  .stat b{font-family:var(--disp);font-weight:800;font-size:clamp(28px,3vw,38px);color:var(--navy);display:block;line-height:1}
   .stat span{font-size:13px;color:var(--mut);display:block;margin-top:5px}
 
-  section{padding:clamp(56px,9vw,110px) 0}
-  .sec-head{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;margin-bottom:44px}
-  .sec-head h2{font-size:clamp(28px,4.6vw,52px)}
-  .sec-head p{max-width:40ch;color:var(--mut);font-size:16px}
-
-  /* signature visual — custom, owned artwork */
+  /* signature visual */
   .signature{position:relative;width:100%;aspect-ratio:1200/440;max-height:520px;overflow:hidden;background:var(--navy-2)}
+  @media(max-width:640px){.signature{aspect-ratio:16/13}}
   .signature img{width:100%;height:100%;object-fit:cover;display:block}
-  .signature figcaption{position:absolute;left:var(--gut);bottom:22px;color:var(--white);font-size:13px;
-    letter-spacing:.02em;opacity:.92;font-weight:500;max-width:32ch}
-  .signature .tagline{position:absolute;left:var(--gut);top:26px;font-family:var(--disp);font-weight:800;
-    font-size:clamp(14px,1.5vw,17px);letter-spacing:.14em;text-transform:uppercase;color:var(--white)}
+  .signature figcaption{position:absolute;left:var(--gut);bottom:20px;color:var(--white);font-size:13px;letter-spacing:.02em;opacity:.92;font-weight:500;max-width:34ch}
+  .signature .tagline{position:absolute;left:var(--gut);top:24px;font-family:var(--disp);font-weight:800;font-size:clamp(13px,1.5vw,17px);letter-spacing:.14em;text-transform:uppercase;color:var(--white)}
   .signature .tagline i{color:var(--flag);font-style:normal}
 
-  /* the arc — three pillars */
+  section{padding:clamp(52px,8vw,104px) 0}
+  .sec-head{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;margin-bottom:42px}
+  .sec-head h2{font-size:clamp(26px,4.4vw,50px)}
+  .sec-head p{max-width:42ch;color:var(--mut);font-size:16px}
+
+  /* manifesto — one big statement */
+  .belief{border-top:1px solid var(--line);background:var(--paper-2)}
+  .belief .eyebrow{color:var(--flag)}
+  .belief p.big{font-family:var(--disp);font-weight:800;font-size:clamp(24px,3.8vw,44px);line-height:1.08;letter-spacing:-.02em;max-width:20ch;margin:16px 0 22px}
+  .belief p.sub{font-size:clamp(16px,1.8vw,19px);color:var(--mut);max-width:62ch}
+
+  /* what eHive is */
+  .what{border-top:1px solid var(--line)}
+  .what .grid{display:grid;grid-template-columns:1fr 1fr;gap:clamp(24px,5vw,60px);align-items:center}
+  @media(max-width:820px){.what .grid{grid-template-columns:1fr;gap:24px}}
+  .what h2{font-size:clamp(26px,4.4vw,48px)}
+  .what p{color:var(--mut);font-size:17px;margin-top:16px}
+  .what .oneline{font-family:var(--disp);font-weight:800;color:var(--ink);font-size:clamp(19px,2.4vw,26px);letter-spacing:-.02em;line-height:1.15}
+
+  /* pillars */
   .arc{border-top:1px solid var(--line)}
   .pillars{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line)}
   @media(max-width:820px){.pillars{grid-template-columns:1fr}}
-  .pillar{background:var(--paper);padding:0}
+  .pillar{background:var(--paper);display:flex;flex-direction:column}
   .pillar .ph{position:relative;aspect-ratio:16/10;overflow:hidden;background:var(--navy)}
-  .pillar .ph img{width:100%;height:100%;object-fit:cover;filter:grayscale(1) contrast(1.06) brightness(.92);
-    transition:transform .6s cubic-bezier(.2,.8,.2,1)}
+  .pillar .ph img{width:100%;height:100%;object-fit:cover;filter:grayscale(1) contrast(1.06) brightness(.92);transition:transform .6s cubic-bezier(.2,.8,.2,1)}
   .pillar:hover .ph img{transform:scale(1.05)}
   .pillar .ph::after{content:"";position:absolute;inset:0;background:var(--navy);mix-blend-mode:color;opacity:.62}
   .pillar .ph::before{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,transparent 45%,rgba(15,28,58,.55))}
-  .pillar .n{position:absolute;left:16px;top:12px;z-index:2;font-family:var(--disp);font-weight:800;font-size:13px;color:var(--white);letter-spacing:.1em;opacity:.9}
-  .pillar .step{position:absolute;right:16px;bottom:12px;z-index:2;font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--white)}
-  .pillar .body{padding:26px 26px 30px}
-  .pillar h3{font-size:26px;letter-spacing:-.02em}
-  .pillar p{margin:12px 0 18px;color:var(--mut);font-size:15px}
-  .pillar .go{font-size:13px;font-weight:700;color:var(--flag);display:inline-flex;gap:.5em;align-items:center}
+  .pillar .n{position:absolute;left:15px;top:11px;z-index:2;font-family:var(--disp);font-weight:800;font-size:13px;color:var(--white);letter-spacing:.1em;opacity:.9}
+  .pillar .step{position:absolute;right:15px;bottom:11px;z-index:2;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--white)}
+  .pillar .body{padding:24px 24px 28px;display:flex;flex-direction:column;flex:1}
+  .pillar .pos{color:var(--flag);font-weight:700;font-size:13px;margin-bottom:8px}
+  .pillar h3{font-size:25px;letter-spacing:-.02em}
+  .pillar p{margin:11px 0 18px;color:var(--mut);font-size:15px;flex:1}
+  .pillar .go{font-size:13px;font-weight:700;color:var(--flag)}
 
-  /* proof band */
+  /* how it works */
+  .how{border-top:1px solid var(--line);background:var(--paper-2)}
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line)}
+  @media(max-width:820px){.steps{grid-template-columns:1fr 1fr}}
+  @media(max-width:520px){.steps{grid-template-columns:1fr}}
+  .step-c{background:var(--paper-2);padding:26px 22px}
+  .step-c .i{font-family:var(--disp);font-weight:800;font-size:26px;color:var(--navy);line-height:1}
+  .step-c h3{font-size:18px;margin:14px 0 8px;letter-spacing:-.01em}
+  .step-c p{font-size:14px;color:var(--mut)}
+
+  /* proof */
   .proof{background:var(--navy);color:var(--white)}
   .proof .eyebrow{color:var(--flag)}
-  .proof h2{color:var(--white)}
-  .proof .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:rgba(255,255,255,.14);
-    border:1px solid rgba(255,255,255,.14);margin-top:40px}
+  .proof h2{color:var(--white);font-size:clamp(26px,4vw,46px)}
+  .proof .sub{color:rgba(251,250,246,.7);max-width:64ch;margin-top:16px;font-size:16px}
+  .proof .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.14);margin-top:38px}
   @media(max-width:760px){.proof .grid{grid-template-columns:1fr 1fr}}
-  .proof .cell{background:var(--navy);padding:30px 26px}
-  .proof .cell b{font-family:var(--disp);font-weight:800;font-size:clamp(38px,5vw,58px);line-height:.9;display:block}
+  .proof .cell{background:var(--navy);padding:26px 22px}
+  .proof .cell b{font-family:var(--disp);font-weight:800;font-size:clamp(22px,2.6vw,30px);line-height:1;display:block;color:var(--flag)}
   .proof .cell span{font-size:13px;color:rgba(251,250,246,.62);display:block;margin-top:10px}
 
-  /* consulting list */
-  .prod{border-top:1px solid var(--line)}
-  .prow{display:grid;grid-template-columns:44px 1.4fr 2fr auto;gap:24px;align-items:center;
-    padding:24px 4px;border-bottom:1px solid var(--line);transition:background .2s}
-  .prow:hover{background:var(--paper-2)}
-  .prow .idx{font-family:var(--disp);font-weight:800;font-size:15px;color:var(--mut-2)}
-  .prow .pname{font-family:var(--disp);font-weight:800;font-size:clamp(19px,2.2vw,25px);letter-spacing:-.02em}
-  .prow .pdesc{color:var(--mut);font-size:15px}
-  .prow .price{font-weight:700;font-size:14px;color:var(--navy);white-space:nowrap;font-variant-numeric:tabular-nums}
-  @media(max-width:760px){.prow{grid-template-columns:32px 1fr;gap:6px 14px}.prow .pdesc{grid-column:2}.prow .price{grid-column:2;color:var(--flag)}}
+  /* voices */
+  .voices{border-top:1px solid var(--line)}
+  .voices blockquote{font-family:var(--disp);font-weight:800;font-size:clamp(22px,3.2vw,38px);line-height:1.12;letter-spacing:-.02em;max-width:24ch}
+  .voices .who{display:flex;align-items:center;gap:14px;margin-top:28px}
+  .voices .av{width:46px;height:46px;border-radius:50%;background:var(--navy);color:var(--white);display:grid;place-items:center;font-family:var(--disp);font-weight:800;font-size:15px;flex:none}
+  .voices .who b{font-weight:700}.voices .who span{color:var(--mut);font-size:14px;display:block}
 
   /* circle */
   .circle{background:var(--ink);color:var(--white)}
   .circle .eyebrow{color:var(--flag)}
-  .circle h2{color:var(--white);font-size:clamp(30px,5vw,60px)}
-  .circle .lede{color:rgba(251,250,246,.72);max-width:52ch;margin-top:18px;font-size:17px}
-  .tiers{display:flex;gap:10px;flex-wrap:wrap;margin-top:34px}
-  .tier{border:1px solid rgba(255,255,255,.2);border-radius:3px;padding:12px 18px;font-weight:700;font-size:14px}
+  .circle h2{color:var(--white);font-size:clamp(28px,5vw,58px)}
+  .circle .lede{color:rgba(251,250,246,.72);max-width:54ch;margin-top:18px;font-size:17px}
+  .tiers{display:flex;gap:10px;flex-wrap:wrap;margin-top:30px}
+  .tier{border:1px solid rgba(255,255,255,.2);border-radius:3px;padding:11px 16px;font-weight:700;font-size:14px}
   .tier b{font-family:var(--disp);font-weight:800}
   .tier small{color:var(--mut-2);font-weight:500;margin-left:8px}
-  .circle .cta{margin-top:36px;display:flex;gap:12px;flex-wrap:wrap}
+  .countdown{margin-top:34px}
+  .countdown .lbl{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:rgba(251,250,246,.55);font-weight:700}
+  .countdown .date{font-family:var(--disp);font-weight:800;font-size:clamp(20px,2.4vw,28px);color:var(--flag);margin:6px 0 16px}
+  .cd-grid{display:grid;grid-template-columns:repeat(4,minmax(0,88px));gap:10px}
+  .cd-cell{border:1px solid rgba(255,255,255,.16);border-radius:4px;padding:12px 8px;text-align:center}
+  .cd-cell b{font-family:var(--disp);font-weight:800;font-size:clamp(22px,3vw,32px);display:block;line-height:1;font-variant-numeric:tabular-nums}
+  .cd-cell span{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:rgba(251,250,246,.55);margin-top:6px;display:block}
+  .circle .cta{margin-top:34px;display:flex;gap:12px;flex-wrap:wrap}
 
-  /* closing */
-  .close{text-align:center}
-  .close h2{font-size:clamp(34px,7vw,86px)}
-  .close p{max-width:46ch;margin:20px auto 0;color:var(--mut);font-size:17px}
-  .close .cta{display:flex;gap:12px;justify-content:center;margin-top:32px;flex-wrap:wrap}
+  /* close */
+  .close{text-align:center;border-top:1px solid var(--line)}
+  .close h2{font-size:clamp(30px,6.4vw,78px)}
+  .close p{max-width:48ch;margin:18px auto 0;color:var(--mut);font-size:17px}
+  .close .cta{display:flex;gap:12px;justify-content:center;margin-top:30px;flex-wrap:wrap}
 
-  footer{border-top:1px solid var(--line);padding:48px 0 60px;font-size:14px;color:var(--mut)}
-  .foot-top{display:flex;justify-content:space-between;gap:30px;flex-wrap:wrap;margin-bottom:34px}
-  .foot-cols{display:flex;gap:60px;flex-wrap:wrap}
+  footer{border-top:1px solid var(--line);padding:46px 0 56px;font-size:14px;color:var(--mut)}
+  .foot-top{display:flex;justify-content:space-between;gap:30px;flex-wrap:wrap;margin-bottom:32px}
+  .foot-cols{display:flex;gap:clamp(28px,6vw,60px);flex-wrap:wrap}
   .foot-cols h4{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink);margin-bottom:12px}
   .foot-cols a{display:block;color:var(--mut);font-size:14px;padding:3px 0}
   .foot-cols a:hover{color:var(--ink)}
-  .foot-bottom{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-top:22px;border-top:1px solid var(--line)}
+  .foot-bottom{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-top:20px;border-top:1px solid var(--line)}
 
-  /* reveal — only hide when JS is present, so no-JS always shows content */
   .rv{transition:opacity .7s ease,transform .7s cubic-bezier(.2,.8,.2,1)}
   .js .rv{opacity:0;transform:translateY(16px)}
   .js .rv.in{opacity:1;transform:none}
   @media(prefers-reduced-motion:reduce){.js .rv{opacity:1;transform:none;transition:none}.pillar .ph img{transition:none}}
   :focus-visible{outline:2.5px solid var(--flag);outline-offset:3px}
-  .preview-flag{position:fixed;bottom:14px;left:14px;z-index:99;background:var(--flag);color:#fff;font-size:11px;
-    font-weight:700;letter-spacing:.06em;padding:7px 12px;border-radius:3px;box-shadow:0 4px 14px rgba(0,0,0,.2)}
+  .preview-flag{position:fixed;bottom:12px;left:12px;z-index:99;background:var(--flag);color:#fff;font-size:11px;font-weight:700;letter-spacing:.05em;padding:6px 11px;border-radius:3px;box-shadow:0 4px 14px rgba(0,0,0,.2)}
 </style>
 </head>
 <body>
@@ -169,14 +197,24 @@
       <li><a href="business-setup.html">Business Setup</a></li>
       <li><a href="consulting.html">Consulting</a></li>
       <li><a href="circle.html">eHive Circle</a></li>
+      <li><a href="/clarity-scorecard.html">Scorecard</a></li>
       <li><a href="insights.html">Journal</a></li>
     </ul>
     <div class="nav-cta">
       <a class="btn btn-line ghost" href="/login">Login</a>
       <a class="btn btn-fill" href="get-started.html">Get Started</a>
-      <button class="burger" aria-label="Menu"><span></span><span></span><span></span></button>
+      <button class="burger" id="burger" aria-label="Menu" aria-expanded="false"><span></span><span></span><span></span></button>
     </div>
   </div>
+  <nav id="mnav" aria-label="Menu"><div class="mmenu">
+    <a href="business-setup.html">Business Setup</a>
+    <a href="consulting.html">Consulting</a>
+    <a href="circle.html">eHive Circle</a>
+    <a href="/clarity-scorecard.html">Scorecard</a>
+    <a href="insights.html">Journal</a>
+    <a href="/login">Login</a>
+    <a href="get-started.html">Get Started</a>
+  </div></nav>
 </header>
 
 <main>
@@ -184,13 +222,12 @@
   <section class="hero">
     <div class="wrap hero-grid">
       <div>
-        <p class="eyebrow rv">One ecosystem · start → run → scale</p>
-        <h1 class="rv" style="margin-top:18px">The infrastructure<br>behind ambitious<br>founders<span class="flag">.</span></h1>
-        <p class="lede rv">Company setup, world-class consulting, and a members' circle that compounds — one connected
-          system, from your first licence to lasting scale. Built in the UAE, for the ones who move.</p>
+        <p class="eyebrow rv">The founder ecosystem · United Arab Emirates</p>
+        <h1 class="rv" style="margin-top:16px">Every successful business has one thing in common.<br>It doesn't grow alone<span class="flag">.</span></h1>
+        <p class="lede rv">One ecosystem — everything a business needs to start, run, and scale. Company setup, world-class consulting, and a community that keeps you moving.</p>
         <div class="cta rv">
-          <a class="btn btn-flag" href="get-started.html">Find your path →</a>
-          <a class="btn btn-line" href="/clarity-scorecard.html">Take the 3-min Scorecard</a>
+          <a class="btn btn-flag" href="get-started.html">Take the 30-second pathfinder →</a>
+          <a class="btn btn-line" href="/clarity-scorecard.html">Take the Scorecard</a>
         </div>
       </div>
       <aside class="hero-aside rv">
@@ -209,38 +246,74 @@
     <figcaption>One ecosystem — connecting the region's founders above the Gulf skyline.</figcaption>
   </figure>
 
-  <!-- THE ARC -->
+  <!-- MANIFESTO -->
+  <section class="belief">
+    <div class="wrap">
+      <p class="eyebrow rv">The eHive belief</p>
+      <p class="big rv">Growth happens when the right people, ideas and opportunities meet in one place.</p>
+      <p class="sub rv">That's the vision behind eHive — an entrepreneurial ecosystem where businesses connect with experts,
+        investors, mentors, partners, technology and a community that helps them move forward. When every connection
+        creates another opportunity, growth isn't just possible — it becomes exponential. Success is built on
+        collaboration, not competition.</p>
+    </div>
+  </section>
+
+  <!-- WHAT EHIVE IS -->
+  <section class="what">
+    <div class="wrap">
+      <div class="grid">
+        <div>
+          <p class="eyebrow rv">What eHive is</p>
+          <h2 class="rv" style="margin-top:12px">More than a business community.</h2>
+        </div>
+        <div>
+          <p class="oneline rv">Where ambition meets opportunity, collaboration creates momentum, and businesses are built for the future.</p>
+          <p class="rv">One ecosystem. Everything a business needs to start, run and scale — support for every stage of the journey, under one roof.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PILLARS -->
   <section class="arc">
     <div class="wrap">
       <div class="sec-head">
-        <div>
-          <p class="eyebrow rv">The arc</p>
-          <h2 class="rv" style="margin-top:12px">Three pillars.<br>One founder's journey.</h2>
-        </div>
+        <div><p class="eyebrow rv">The architecture</p><h2 class="rv" style="margin-top:12px">Three pillars.<br>One system.</h2></div>
         <p class="rv">Most founders stitch this together from a dozen vendors. eHive is the single place it all connects — <span class="flag">Build. Belong. Become.</span></p>
       </div>
       <div class="pillars">
         <a class="pillar rv" href="business-setup.html">
-          <div class="ph"><img src="assets/img/img-business-setup.jpg" alt="Business setup in the UAE" loading="lazy">
-            <span class="n">01</span><span class="step">Start</span></div>
-          <div class="body"><h3>Business Setup</h3>
-            <p>Licence, structure, banking and visas — the fastest credible path to a company that's built to last, not just registered.</p>
-            <span class="go">Set up your company →</span></div>
+          <div class="ph"><img src="assets/img/img-business-setup.jpg" alt="Business setup in the UAE" loading="lazy"><span class="n">01</span><span class="step">Start</span></div>
+          <div class="body"><span class="pos">Start on solid ground.</span><h3>Business Setup</h3>
+            <p>Company formation, licensing, visas and the operational infrastructure to get from idea to incorporated — handled by the best experts in the industry, under one roof.</p>
+            <span class="go">Explore Business Setup →</span></div>
         </a>
         <a class="pillar rv" href="consulting.html">
-          <div class="ph"><img src="assets/img/img-consulting.jpg" alt="Strategy consulting" loading="lazy">
-            <span class="n">02</span><span class="step">Run · Scale</span></div>
-          <div class="body"><h3>Consulting</h3>
-            <p>The rigour of strategy consulting, the creativity of a design studio — six focused products, from a three-hour sprint to a 90-day engine.</p>
-            <span class="go">See the six products →</span></div>
+          <div class="ph"><img src="assets/img/img-consulting.jpg" alt="Strategy consulting" loading="lazy"><span class="n">02</span><span class="step">Run · Scale</span></div>
+          <div class="body"><span class="pos">Run and scale with rigour.</span><h3>Consulting</h3>
+            <p>Six proprietary products, from a three-hour clarity sprint to a 90-day growth engagement — the thinking of a top consultancy, the creative process of a design studio.</p>
+            <span class="go">Explore Consulting →</span></div>
         </a>
         <a class="pillar rv" href="circle.html">
-          <div class="ph"><img src="assets/img/img-circle.jpg" alt="The eHive Circle community" loading="lazy">
-            <span class="n">03</span><span class="step">Belong</span></div>
-          <div class="body"><h3>eHive Circle</h3>
-            <p>A structured founders' community — peer pods, mentoring, and investor access. The room that keeps you accountable and moving.</p>
-            <span class="go">Join the Circle →</span></div>
+          <div class="ph"><img src="assets/img/img-circle.jpg" alt="The eHive Circle community" loading="lazy"><span class="n">03</span><span class="step">Belong</span></div>
+          <div class="body"><span class="pos">Never build alone.</span><h3>eHive Circle</h3>
+            <p>A membership community of founders, mentors, experts and investors — the people who keep you accountable, connected and moving.</p>
+            <span class="go">Explore eHive Circle →</span></div>
         </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="how">
+    <div class="wrap">
+      <div class="sec-head"><div><p class="eyebrow rv">The process</p><h2 class="rv" style="margin-top:12px">How it works</h2></div>
+        <p class="rv">Most founders end up using more than one pillar over time — that's the design, not an upsell.</p></div>
+      <div class="steps">
+        <div class="step-c rv"><div class="i">1</div><h3>Tell us where you are.</h3><p>A short intake — starting up, running and needing clarity, or looking to join a community of peers.</p></div>
+        <div class="step-c rv"><div class="i">2</div><h3>We match the right door.</h3><p>Business Setup for formation and licensing. Consulting for a specific sprint. Circle for belonging and network.</p></div>
+        <div class="step-c rv"><div class="i">3</div><h3>You book directly.</h3><p>Real dates and real pricing where possible — no back-and-forth for standard engagements.</p></div>
+        <div class="step-c rv"><div class="i">4</div><h3>You keep going.</h3><p>The pillars compound. Founders return as they move from starting up to scaling.</p></div>
       </div>
     </div>
   </section>
@@ -248,64 +321,71 @@
   <!-- PROOF -->
   <section class="proof">
     <div class="wrap">
-      <p class="eyebrow rv">Built to a standard</p>
-      <h2 class="rv" style="margin-top:12px;font-size:clamp(26px,4vw,44px)">Evidence, not adjectives.</h2>
+      <p class="eyebrow rv">Proof</p>
+      <h2 class="rv" style="margin-top:12px">Results, as they happen.</h2>
+      <p class="sub rv">The first cohort is forming now — Circle membership opens 1 August 2026, beginning in Dubai. The
+        figures that belong here will be published honestly, once they exist. Nothing is inflated before launch.</p>
       <div class="grid">
-        <div class="cell rv"><b class="num" data-count="6">6</b><span>consulting products, each with a defined scope and outcome</span></div>
-        <div class="cell rv"><b class="num" data-count="4">4</b><span>membership tiers — Horizon to Zenith</span></div>
-        <div class="cell rv"><b class="num" data-count="3">3</b><span>hours to your first clear decision in a Clarity Sprint</span></div>
-        <div class="cell rv"><b class="num" data-count="90">90</b><span>day Momentum engine to install the growth system</span></div>
+        <div class="cell rv"><b>Forming now</b><span>The founding cohort</span></div>
+        <div class="cell rv"><b>1 Aug 2026</b><span>Circle membership opens</span></div>
+        <div class="cell rv"><b>Verified only</b><span>Real ecosystem data, published as it accrues</span></div>
+        <div class="cell rv"><b>2027</b><span>First honest impact report</span></div>
       </div>
     </div>
   </section>
 
-  <!-- CONSULTING PRODUCTS -->
-  <section class="prod">
+  <!-- VOICES -->
+  <section class="voices">
     <div class="wrap">
-      <div class="sec-head">
-        <div><p class="eyebrow rv">Consulting</p><h2 class="rv" style="margin-top:12px">Six products. One arc.</h2></div>
-        <p class="rv">Sequenced by where a founder starts. Each stands alone — and they compound.</p>
-      </div>
-      <div>
-        <a class="prow rv" href="consulting-clarity-sprint.html"><span class="idx">01</span><span class="pname">Clarity Sprint</span><span class="pdesc">Three hours, one hard decision made with evidence.</span><span class="price">AED 2,500–3,000</span></a>
-        <a class="prow rv" href="consulting-strategy-sprint.html"><span class="idx">02</span><span class="pname">Strategy Sprint</span><span class="pdesc">A full day that re-engineers the model into a 90-day plan.</span><span class="price">from AED 6,000</span></a>
-        <a class="prow rv" href="consulting-brand-3d.html"><span class="idx">03</span><span class="pname">Brand 3D</span><span class="pdesc">Positioning, messaging and a demand engine your team can run.</span><span class="price">AED 15,000–25,000</span></a>
-        <a class="prow rv" href="consulting-opsblueprint.html"><span class="idx">04</span><span class="pname">OpsBlueprint</span><span class="pdesc">Documented processes, clear roles, visible KPIs.</span><span class="price">on scope</span></a>
-        <a class="prow rv" href="consulting-gapnavigator.html"><span class="idx">05</span><span class="pname">GapNavigator</span><span class="pdesc">A full diagnostic that ranks the moves that matter.</span><span class="price">on scope</span></a>
-        <a class="prow rv" href="consulting-momentum90.html"><span class="idx">06</span><span class="pname">Momentum90</span><span class="pdesc">A 90-day engagement that installs the growth engine.</span><span class="price">retainer</span></a>
-      </div>
+      <p class="eyebrow rv">From the founder</p>
+      <blockquote class="rv" style="margin-top:16px">“The market never rewards more noise — it rewards the companies that know exactly what they are.”</blockquote>
+      <p class="rv muted" style="max-width:64ch;margin-top:18px;font-size:16px">I built eHive because I kept watching good
+        businesses get louder when what they needed was to get clearer. That clarity is the standard we hold on every
+        engagement — real craft, honest advice, and a community that raises the bar for everyone in it.</p>
+      <div class="who rv"><span class="av">SH</span><div><b>Shaheen</b><span>Founder &amp; CEO, eHive</span></div></div>
     </div>
   </section>
 
   <!-- CIRCLE -->
   <section class="circle">
     <div class="wrap">
-      <p class="eyebrow rv">The eHive Circle</p>
-      <h2 class="rv" style="margin-top:14px">You don't scale alone.<br>You scale in a circle.</h2>
-      <p class="lede rv">A structured community for founders in the Gulf — peer pods, mentoring, curated events and investor
-        access. Four tiers, so you join at the altitude you're flying. The founding cohort opens 1 August 2026.</p>
+      <p class="eyebrow rv">eHive Circle</p>
+      <h2 class="rv" style="margin-top:14px">Never build alone.</h2>
+      <p class="lede rv">A membership community of founders, mentors, experts and investors — a tribe with tiers, where
+        every tier is a home, not a waiting room for the next one.</p>
       <div class="tiers rv">
         <span class="tier"><b>Horizon</b><small>AED 999/yr</small></span>
         <span class="tier"><b>Ascent</b><small>AED 5,999/yr</small></span>
         <span class="tier"><b>Vanguard</b><small>AED 11,999/yr</small></span>
         <span class="tier"><b>Zenith</b><small>invitation-only</small></span>
       </div>
+      <div class="countdown rv">
+        <div class="lbl">Founding cohort opens</div>
+        <div class="date">1 August 2026</div>
+        <div class="cd-grid" id="cd">
+          <div class="cd-cell"><b id="cd-d">0</b><span>Days</span></div>
+          <div class="cd-cell"><b id="cd-h">00</b><span>Hours</span></div>
+          <div class="cd-cell"><b id="cd-m">00</b><span>Minutes</span></div>
+          <div class="cd-cell"><b id="cd-s">00</b><span>Seconds</span></div>
+        </div>
+      </div>
       <div class="cta rv">
-        <a class="btn btn-flag" href="circle.html">Explore the Circle →</a>
-        <a class="btn btn-line" style="border-color:rgba(255,255,255,.28);color:var(--white)" href="get-started.html">Apply to join</a>
+        <a class="btn btn-flag" href="get-started.html">Join the waitlist →</a>
+        <a class="btn btn-line" style="border-color:rgba(255,255,255,.28);color:var(--white)" href="circle.html">Apply for Zenith</a>
       </div>
     </div>
   </section>
 
-  <!-- CLOSING -->
+  <!-- CLOSE -->
   <section class="close">
     <div class="wrap">
-      <p class="eyebrow rv">Start here</p>
+      <p class="eyebrow rv">Ready to move forward?</p>
       <h2 class="rv" style="margin-top:14px">Build. Belong.<br>Become<span class="flag">.</span></h2>
       <p class="rv">Two minutes to find the one move that matters for you right now — no call required.</p>
       <div class="cta rv">
-        <a class="btn btn-flag" href="get-started.html">Find your path →</a>
-        <a class="btn btn-line" href="/clarity-scorecard.html">Take the Scorecard</a>
+        <a class="btn btn-flag" href="business-setup.html">Start a business</a>
+        <a class="btn btn-fill" href="consulting.html">Book a sprint</a>
+        <a class="btn btn-line" href="circle.html">Join the Circle</a>
       </div>
     </div>
   </section>
@@ -319,18 +399,12 @@
         <p class="muted" style="margin-top:10px;font-size:14px">The UAE's founder ecosystem — start, run and scale in one place.</p>
       </div>
       <div class="foot-cols">
-        <div><h4>Ecosystem</h4>
-          <a href="business-setup.html">Business Setup</a><a href="consulting.html">Consulting</a><a href="circle.html">eHive Circle</a></div>
-        <div><h4>Company</h4>
-          <a href="about.html">About</a><a href="insights.html">The Journal</a><a href="/clarity-scorecard.html">Scorecard</a></div>
-        <div><h4>Connect</h4>
-          <a href="get-started.html">Get Started</a><a href="/login">Member Login</a><span class="muted" style="font-size:14px;padding:3px 0;display:block">Dubai, UAE</span></div>
+        <div><h4>Ecosystem</h4><a href="business-setup.html">Business Setup</a><a href="consulting.html">Consulting</a><a href="circle.html">eHive Circle</a></div>
+        <div><h4>Company</h4><a href="about.html">About</a><a href="insights.html">The Journal</a><a href="/clarity-scorecard.html">Scorecard</a></div>
+        <div><h4>Connect</h4><a href="get-started.html">Get Started</a><a href="/login">Member Login</a><span class="muted" style="font-size:14px;padding:3px 0;display:block">Dubai, UAE</span></div>
       </div>
     </div>
-    <div class="foot-bottom">
-      <span>© <span id="yr">2026</span> eHive. All rights reserved.</span>
-      <span class="muted">Build. Belong. Become.</span>
-    </div>
+    <div class="foot-bottom"><span>© <span id="yr">2026</span> eHive. All rights reserved.</span><span class="muted">Build. Belong. Become.</span></div>
   </div>
 </footer>
 
@@ -338,16 +412,40 @@
 
 <script>
   document.getElementById("yr").textContent = new Date().getFullYear();
-  // scroll reveal
-  var io = new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target);}})},{threshold:.14});
-  document.querySelectorAll(".rv").forEach(function(el,i){ el.style.transitionDelay=(Math.min(i%6,5)*40)+"ms"; io.observe(el); });
-  // count-up on the stat numbers
-  var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  function countUp(el){ var t=+el.dataset.count, d=900, s=performance.now();
-    function step(n){ var p=Math.min(1,(n-s)/d); el.textContent=Math.round(t*(1-Math.pow(1-p,3))); if(p<1)requestAnimationFrame(step); }
-    if(reduce||t<=1){el.textContent=t;return;} requestAnimationFrame(step); }
-  var co=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){countUp(e.target);co.unobserve(e.target);}})},{threshold:.6});
+
+  // mobile menu
+  var burger=document.getElementById("burger"), mnav=document.getElementById("mnav");
+  burger.addEventListener("click",function(){
+    var open=mnav.hasAttribute("open-menu");
+    if(open){mnav.removeAttribute("open-menu");} else {mnav.setAttribute("open-menu","");}
+    burger.setAttribute("aria-expanded",String(!open));
+  });
+
+  // reveal
+  var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target);}})},{threshold:.14});
+  document.querySelectorAll(".rv").forEach(function(el,i){el.style.transitionDelay=(Math.min(i%5,4)*40)+"ms";io.observe(el);});
+
+  // count-up
+  var reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function up(el){var t=+el.dataset.count,d=900,s=performance.now();
+    function step(n){var p=Math.min(1,(n-s)/d);el.textContent=Math.round(t*(1-Math.pow(1-p,3)));if(p<1)requestAnimationFrame(step);}
+    if(reduce||t<=1){el.textContent=t;return;}requestAnimationFrame(step);}
+  var co=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){up(e.target);co.unobserve(e.target);}})},{threshold:.6});
   document.querySelectorAll("[data-count]").forEach(function(el){co.observe(el);});
+
+  // countdown to launch
+  var target=new Date("2026-08-01T00:00:00+04:00").getTime();
+  function pad(n){return String(n).padStart(2,"0");}
+  function tick(){
+    var diff=target-Date.now();
+    if(diff<0)diff=0;
+    var d=Math.floor(diff/86400000),h=Math.floor(diff/3600000)%24,m=Math.floor(diff/60000)%60,s=Math.floor(diff/1000)%60;
+    document.getElementById("cd-d").textContent=d;
+    document.getElementById("cd-h").textContent=pad(h);
+    document.getElementById("cd-m").textContent=pad(m);
+    document.getElementById("cd-s").textContent=pad(s);
+  }
+  tick(); setInterval(tick,1000);
 </script>
 </body>
 </html>
