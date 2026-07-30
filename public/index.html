@@ -45,8 +45,9 @@
   /* header */
   header{position:sticky;top:0;z-index:50;background:rgba(243,241,234,.86);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
   .nav{display:flex;align-items:center;justify-content:space-between;height:64px}
-  .brand{font-family:var(--disp);font-weight:900;font-size:22px;letter-spacing:-.03em}
-  .brand i{color:var(--flag);font-style:normal}
+  /* original eHive wordmark (white) sits in a navy chip so it reads on the light paper header/footer */
+  .brand{display:inline-flex;align-items:center;background:var(--navy);padding:8px 13px;border-radius:5px;line-height:0}
+  .brand img{height:20px;width:auto;display:block}
   .nav-links{display:flex;align-items:center;gap:26px;list-style:none}
   .nav-links a{font-size:13px;font-weight:600;color:var(--ink);opacity:.82;transition:opacity .15s;white-space:nowrap}
   .nav-links a:hover{opacity:1}
@@ -201,7 +202,7 @@
 
 <header>
   <div class="wrap nav">
-    <a class="brand" href="/">eHive<i>.</i></a>
+    <a class="brand" href="/" aria-label="eHive — home"><img src="/assets/ehive-wordmark.png" alt="eHive" width="146" height="26"></a>
     <ul class="nav-links">
       <li><a href="business-setup.html">Business Setup</a></li>
       <li><a href="consulting.html">Consulting</a></li>
@@ -388,7 +389,7 @@
   <div class="wrap">
     <div class="foot-top">
       <div style="max-width:34ch">
-        <div class="brand" style="font-size:24px">eHive<i class="flag">.</i></div>
+        <div class="brand"><img src="/assets/ehive-wordmark.png" alt="eHive" width="146" height="26"></div>
         <p class="muted" style="margin-top:10px;font-size:14px">The UAE's founder ecosystem — start, run and scale in one place.</p>
       </div>
       <div class="foot-cols">
