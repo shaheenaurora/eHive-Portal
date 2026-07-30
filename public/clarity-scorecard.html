@@ -4,22 +4,23 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>eHive Clarity Scorecard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --navy:#1A1A2E;
-    --navy-soft:#242440;
-    --gold:#B8862E;
-    --gold-lite:#E8D9BB;
-    --cream:#F3E9D2;
+    --navy:#0F1C3A;
+    --navy-soft:#16264C;
+    --gold:#DA3A22;
+    --gold-lite:#E4DECF;
+    --cream:#F3F1EA;
     --paper:#FBF9F5;
-    --ink:#1A1A2E;
-    --muted:#5A6473;
+    --ink:#0F1C3A;
+    --muted:#5F5C53;
     --white:#fff;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%}
   body{
-    font-family:Calibri,"Segoe UI",system-ui,-apple-system,sans-serif;
+    font-family:'Hanken Grotesk',"Segoe UI",system-ui,-apple-system,sans-serif;
     background:var(--paper);
     color:var(--ink);
     line-height:1.55;
@@ -32,19 +33,19 @@
   /* When shown inside the site's popup, trim the outer padding a touch. */
   body.embed .wrap{padding-top:18px}
   .rule{height:3px;width:56px;background:var(--gold);margin:10px 0 0}
-  h1{font-family:Georgia,serif;font-size:clamp(28px,5vw,42px);line-height:1.15;font-weight:700;margin:22px 0 14px}
-  h2{font-family:Georgia,serif;font-size:clamp(21px,3.4vw,27px);line-height:1.25;font-weight:700;margin:0 0 10px}
+  h1{font-family:'Archivo',system-ui,sans-serif;font-size:clamp(28px,5vw,42px);line-height:1.15;font-weight:700;margin:22px 0 14px}
+  h2{font-family:'Archivo',system-ui,sans-serif;font-size:clamp(21px,3.4vw,27px);line-height:1.25;font-weight:700;margin:0 0 10px}
   p.lede{font-size:17px;color:var(--muted);max-width:56ch}
   .meta{display:flex;gap:22px;flex-wrap:wrap;margin:26px 0 30px;padding:16px 0;border-top:1px solid var(--gold-lite);border-bottom:1px solid var(--gold-lite)}
   .meta div{font-size:13px;color:var(--muted)}
-  .meta b{display:block;font-family:Georgia,serif;font-size:17px;color:var(--navy)}
+  .meta b{display:block;font-family:'Archivo',system-ui,sans-serif;font-size:17px;color:var(--navy)}
   button{font-family:inherit;font-size:inherit;cursor:pointer;border:none;background:none;color:inherit}
   .btn{
     display:inline-block;background:var(--navy);color:var(--white);
     padding:14px 28px;border-radius:4px;font-size:16px;font-weight:600;
     transition:background .18s ease,transform .12s ease;
   }
-  .btn:hover{background:#2c2c50}
+  .btn:hover{background:#16264C}
   .btn:active{transform:translateY(1px)}
   .btn:disabled{opacity:.35;cursor:not-allowed}
   .btn-ghost{background:none;color:var(--muted);padding:12px 4px;font-size:14px;text-decoration:underline;text-underline-offset:3px}
@@ -61,8 +62,8 @@
   .hex.active{background:var(--navy)}
 
   .qcount{text-align:center;font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
-  .domain{text-align:center;font-family:Georgia,serif;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:22px}
-  .qtext{font-family:Georgia,serif;font-size:clamp(20px,3.6vw,27px);line-height:1.35;text-align:center;margin:0 auto 30px;max-width:24ch;font-weight:700}
+  .domain{text-align:center;font-family:'Archivo',system-ui,sans-serif;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:22px}
+  .qtext{font-family:'Archivo',system-ui,sans-serif;font-size:clamp(20px,3.6vw,27px);line-height:1.35;text-align:center;margin:0 auto 30px;max-width:24ch;font-weight:700}
 
   .scale{display:flex;flex-direction:column;gap:9px;max-width:520px;margin:0 auto}
   .opt{
@@ -73,7 +74,7 @@
   .opt:hover{border-color:var(--gold);background:#fffdf8}
   .opt .num{
     flex:0 0 30px;height:30px;border-radius:50%;background:var(--cream);color:var(--navy);
-    display:grid;place-items:center;font-weight:700;font-size:14px;font-family:Georgia,serif;
+    display:grid;place-items:center;font-weight:700;font-size:14px;font-family:'Archivo',system-ui,sans-serif;
   }
   .opt.sel{border-color:var(--navy);background:var(--navy);color:var(--white)}
   .opt.sel .num{background:var(--gold);color:var(--navy)}
@@ -98,9 +99,9 @@
 
   /* results */
   .scorecard{background:var(--navy);color:var(--white);border-radius:6px;padding:30px 26px;margin:0 0 28px}
-  .scorenum{font-family:Georgia,serif;font-size:56px;line-height:1;font-weight:700;color:var(--white)}
+  .scorenum{font-family:'Archivo',system-ui,sans-serif;font-size:56px;line-height:1;font-weight:700;color:var(--white)}
   .scorenum small{font-size:22px;color:var(--gold-lite);font-weight:400}
-  .band{font-family:Georgia,serif;font-size:22px;color:var(--gold);margin:12px 0 8px;font-weight:700}
+  .band{font-family:'Archivo',system-ui,sans-serif;font-size:22px;color:var(--gold);margin:12px 0 8px;font-weight:700}
   .scorecard p{color:var(--cream);font-size:15.5px;max-width:58ch}
 
   .bars{margin:0 0 30px}
@@ -114,7 +115,7 @@
 
   .rec{border-left:4px solid var(--gold);background:var(--cream);padding:22px 24px;border-radius:0 5px 5px 0;margin-bottom:26px}
   .rec .kicker{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:8px}
-  .rec h3{font-family:Georgia,serif;font-size:22px;margin-bottom:8px}
+  .rec h3{font-family:'Archivo',system-ui,sans-serif;font-size:22px;margin-bottom:8px}
   .rec p{font-size:15.5px;max-width:58ch}
 
   .hidden{display:none}

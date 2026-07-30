@@ -212,7 +212,7 @@ function submitLead(payload, onOk, onErr){
     if (!canvas) return;
     var ctx = canvas.getContext("2d");
     var W, H, DPR, nodes = [], mouse = {x:-9999, y:-9999};
-    var GOLD = "212,162,76", MIST = "156,169,188";
+    var GOLD = "218,58,34", MIST = "156,169,188";
     var running = false, rafId = null, startT = 0;
 
     function sizeCanvas(){

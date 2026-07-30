@@ -23,7 +23,7 @@ function appToast(msg){
 }
 
 /* ---- confetti burst at (x,y) ---- */
-var CONF_COLORS = ["#D4A24C","#E2B968","#0A1628","#9CA9BC","#FAF8F3"];
+var CONF_COLORS = ["#DA3A22","#E4573F","#0F1C3A","#9CA9BC","#F3F1EA"];
 function confetti(x, y, n){
   if (reduceMotion) return;
   n = n || 18;
@@ -94,7 +94,7 @@ var CG = {
 function concierge(){
   var fab = el("button", "cg-fab");
   fab.setAttribute("aria-label", "Open the eHive guide");
-  fab.innerHTML = '<svg viewBox="0 0 24 24" fill="none"><path d="M12 2.5 20 7v10l-8 4.5L4 17V7z" stroke="#0A1628" stroke-width="1.6"/><circle cx="12" cy="12" r="2.6" fill="#0A1628"/></svg>';
+  fab.innerHTML = '<svg viewBox="0 0 24 24" fill="none"><path d="M12 2.5 20 7v10l-8 4.5L4 17V7z" stroke="#0F1C3A" stroke-width="1.6"/><circle cx="12" cy="12" r="2.6" fill="#0F1C3A"/></svg>';
   document.body.appendChild(fab);
 
   var panel = null;
@@ -162,8 +162,8 @@ function concierge(){
     panel.setAttribute("aria-label", "eHive guide");
     panel.innerHTML =
       '<div class="cg-head"><span class="cg-bee"><svg viewBox="0 0 24 24" fill="none">' +
-      '<path d="M12 2.5 20 7v10l-8 4.5L4 17V7z" stroke="#D4A24C" stroke-width="1.6"/>' +
-      '<circle cx="12" cy="12" r="2.6" fill="#D4A24C"/></svg></span>' +
+      '<path d="M12 2.5 20 7v10l-8 4.5L4 17V7z" stroke="#DA3A22" stroke-width="1.6"/>' +
+      '<circle cx="12" cy="12" r="2.6" fill="#DA3A22"/></svg></span>' +
       '<div><b>The eHive guide</b><span>Scripted · honest · 20 sec</span></div>' +
       '<button class="cg-close" aria-label="Close guide">✕</button></div>' +
       '<div class="cg-body"></div><div class="cg-chips"></div>' +
