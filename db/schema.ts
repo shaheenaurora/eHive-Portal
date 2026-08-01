@@ -624,6 +624,30 @@ export const unitRoles = mysqlTable("unit_roles", {
   role: varchar("role", { length: 96 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
+
+/* Councils as working bodies (ZO/RE/NA governance): the leaders in unit_roles
+   convene here — a meeting carries an agenda and minutes, and decisions are the
+   motions the council carries/defeats. Scoped to an org_unit. */
+export const councilMeetings = mysqlTable("council_meetings", {
+  id: serial("id").primaryKey(),
+  unitId: bigint("unitId", { mode: "number", unsigned: true }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  scheduledAt: timestamp("scheduledAt"),
+  status: mysqlEnum("status", ["scheduled", "held", "cancelled"]).notNull().default("scheduled"),
+  agenda: text("agenda"),
+  minutes: text("minutes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export const councilDecisions = mysqlTable("council_decisions", {
+  id: serial("id").primaryKey(),
+  unitId: bigint("unitId", { mode: "number", unsigned: true }).notNull(),
+  meetingId: bigint("meetingId", { mode: "number", unsigned: true }), // null = standalone decision
+  title: varchar("title", { length: 255 }).notNull(),
+  detail: text("detail"),
+  status: mysqlEnum("status", ["proposed", "carried", "failed", "deferred"]).notNull().default("proposed"),
+  decidedAt: timestamp("decidedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
 export type UnitRole = typeof unitRoles.$inferSelect;
 
 export const chapters = mysqlTable("chapters", {

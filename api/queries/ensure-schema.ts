@@ -268,9 +268,32 @@ export async function ensureSchema(): Promise<void> {
         closedAt timestamp NULL,
         updatedAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
       )`,
+      // NA/RE/ZO — councils as working bodies: meetings + decisions.
+      `CREATE TABLE IF NOT EXISTS council_meetings (
+        id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        unitId bigint unsigned NOT NULL,
+        title varchar(255) NOT NULL,
+        scheduledAt timestamp NULL,
+        status enum('scheduled','held','cancelled') NOT NULL DEFAULT 'scheduled',
+        agenda text NULL,
+        minutes text NULL,
+        createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS council_decisions (
+        id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        unitId bigint unsigned NOT NULL,
+        meetingId bigint unsigned NULL,
+        title varchar(255) NOT NULL,
+        detail text NULL,
+        status enum('proposed','carried','failed','deferred') NOT NULL DEFAULT 'proposed',
+        decidedAt timestamp NULL,
+        createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
     );
     tables.add("health_snapshots");
     tables.add("member_save_cases");
+    tables.add("council_meetings");
+    tables.add("council_decisions");
     tables.add("onboarding_milestones");
     tables.add("cadences");
     tables.add("cadence_log");
