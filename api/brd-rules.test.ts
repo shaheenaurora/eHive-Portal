@@ -17,6 +17,7 @@ import {
   HEALTH_COMPONENTS,
   HEALTH_BAR,
   healthBand,
+  SAVE_PLAYBOOK_STEPS,
 } from "@contracts/constants";
 import { periodKey, recentPeriodKeys, shiftPeriods, CADENCE_TEMPLATES } from "@contracts/cadence";
 
@@ -206,5 +207,21 @@ describe("M10 recognition badges (memberBadges)", () => {
   });
   it("gives no tenure badge between 90 days and a year", () => {
     expect(memberBadges({ createdAt: ago(200), hiveScore: 65 }, now)).toEqual(["Active Contributor"]);
+  });
+});
+
+describe("ML-04b — Save Playbook (at-risk intervention)", () => {
+  it("defines the five ordered save steps from the operations manual", () => {
+    expect(SAVE_PLAYBOOK_STEPS.map((s) => s.key)).toEqual([
+      "reach_out", "diagnose", "remap_value", "next_step", "confirm",
+    ]);
+  });
+  it("makes re-engagement the final step — a save is only real once they come back", () => {
+    expect(SAVE_PLAYBOOK_STEPS.at(-1)?.key).toBe("confirm");
+  });
+  it("a full step bitmask marks every step complete", () => {
+    const full = (1 << SAVE_PLAYBOOK_STEPS.length) - 1;
+    const done = SAVE_PLAYBOOK_STEPS.filter((_, i) => (full & (1 << i)) !== 0).length;
+    expect(done).toBe(SAVE_PLAYBOOK_STEPS.length);
   });
 });

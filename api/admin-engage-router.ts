@@ -10,6 +10,7 @@ import { audit } from "./lib/audit";
 import {
   awardRulePoints, notify, evaluateDormancy, introEligibility,
 } from "./queries/circle";
+import { listSaveCases, updateSaveCase, closeSaveCase, openSaveCase } from "./queries/saves";
 import { computeChapterHealth } from "./queries/health";
 import { ensureCadenceTemplates, listCadences, recordCadence } from "./queries/cadence";
 import { CADENCE_STATUSES } from "@contracts/cadence";
@@ -324,6 +325,41 @@ export const adminEngageRouter = createRouter({
     const zen = await db.select({ n: sql<number>`count(*)` }).from(schema.members).where(eq(schema.members.tier, "zenith"));
     return { apps: out, zenithCount: zen.at(0)?.n ?? 0, cap: ZENITH_CAP };
   }),
+
+  /* ---- ML-04b Save Playbook (at-risk interventions, member_success scope) ---- */
+  savesList: scopedAdmin("member_success")
+    .input(z.object({ status: z.enum(["open", "closed", "all"]).default("open") }).optional())
+    .query(({ input }) => listSaveCases({ status: input?.status ?? "open" })),
+
+  saveUpdate: scopedAdmin("member_success")
+    .input(z.object({
+      id: z.number(),
+      ownerUserId: z.number().nullable().optional(),
+      stepsMask: z.number().int().min(0).max(1023).optional(),
+      notes: z.string().max(4000).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await updateSaveCase(input.id, { ownerUserId: input.ownerUserId, stepsMask: input.stepsMask, notes: input.notes });
+      await audit(ctx.user, "save.update", { type: "saveCase", id: input.id });
+      return { ok: true };
+    }),
+
+  saveClose: scopedAdmin("member_success")
+    .input(z.object({ id: z.number(), outcome: z.enum(["saved", "lost"]), resolution: z.string().max(1000).optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const memberId = await closeSaveCase(input.id, input.outcome, input.resolution);
+      if (memberId == null) throw new TRPCError({ code: "CONFLICT", message: "This case is already closed." });
+      await audit(ctx.user, `save.${input.outcome}`, { type: "saveCase", id: input.id });
+      return { ok: true };
+    }),
+
+  saveOpen: scopedAdmin("member_success")
+    .input(z.object({ memberId: z.number(), reason: z.string().min(1).max(255) }))
+    .mutation(async ({ ctx, input }) => {
+      const id = await openSaveCase(input.memberId, input.reason);
+      await audit(ctx.user, "save.open", { type: "saveCase", id });
+      return { ok: true, id };
+    }),
 
   decideZenith: scopedAdmin("member_success")
     .input(z.object({ id: z.number(), approve: z.boolean(), note: z.string().max(1000).optional() }))

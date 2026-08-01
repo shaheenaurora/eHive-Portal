@@ -385,6 +385,7 @@ export const ADMIN_NAV: NavGroup[] = [
       { to: "/admin/applications", label: "Applications", icon: "⇥" },
       { to: "/admin/admissions", label: "Zenith & Investors", icon: "✧" },
       { to: "/admin/members", label: "Members", icon: "◍" },
+      { to: "/admin/saves", label: "Save Playbook", icon: "⛑" },
       { to: "/admin/leads", label: "Website Leads", icon: "✉" },
     ],
   },

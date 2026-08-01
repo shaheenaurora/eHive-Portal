@@ -827,6 +827,25 @@ export const conductCases = mysqlTable("conduct_cases", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
 });
+
+/* ML-04b — Save Playbook cases. One tracked intervention per At-Risk episode:
+   an owner in Member Success works the ordered SAVE_PLAYBOOK_STEPS (stored as a
+   bitmask) and closes it saved or lost. Opened automatically when a member is
+   flagged at-risk; at most one open case per member at a time. */
+export const memberSaveCases = mysqlTable("member_save_cases", {
+  id: serial("id").primaryKey(),
+  memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+  chapterId: bigint("chapterId", { mode: "number", unsigned: true }),
+  status: mysqlEnum("status", ["open", "working", "saved", "lost"]).notNull().default("open"),
+  reason: varchar("reason", { length: 255 }).notNull(),
+  ownerUserId: bigint("ownerUserId", { mode: "number", unsigned: true }),
+  stepsMask: int("stepsMask").notNull().default(0),
+  notes: text("notes"),
+  resolution: text("resolution"),
+  openedAt: timestamp("openedAt").defaultNow().notNull(),
+  closedAt: timestamp("closedAt"),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+});
 export type ConductCase = typeof conductCases.$inferSelect;
 
 /* M3 / CH-01 · CH-04 — structured Chapter & Board meetings: a default agenda

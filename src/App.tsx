@@ -52,6 +52,7 @@ const AdminAccess = lazy(() => import("./pages/admin/AdminAccess"));
 const AdminAudit = lazy(() => import("./pages/admin/AdminAudit"));
 const AdminConduct = lazy(() => import("./pages/admin/AdminConduct"));
 const AdminProspects = lazy(() => import("./pages/admin/AdminProspects"));
+const AdminSaves = lazy(() => import("./pages/admin/AdminSaves"));
 const AdminOrg = lazy(() => import("./pages/admin/AdminOrg"));
 
 function RouteFallback() {
@@ -90,6 +91,7 @@ export default function App() {
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/applications" element={<AdminApplications />} />
           <Route path="/admin/members" element={<AdminMembers />} />
+          <Route path="/admin/saves" element={<AdminSaves />} />
           <Route path="/admin/members/:id" element={<AdminMemberDetail />} />
           <Route path="/admin/pods" element={<AdminPods />} />
           <Route path="/admin/pods/:id" element={<AdminPodDetail />} />

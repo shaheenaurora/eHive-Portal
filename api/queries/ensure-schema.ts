@@ -253,8 +253,24 @@ export async function ensureSchema(): Promise<void> {
         createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updatedAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
       )`,
+      // ML-04b — Save Playbook cases (at-risk interventions).
+      `CREATE TABLE IF NOT EXISTS member_save_cases (
+        id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        memberId bigint unsigned NOT NULL,
+        chapterId bigint unsigned NULL,
+        status enum('open','working','saved','lost') NOT NULL DEFAULT 'open',
+        reason varchar(255) NOT NULL,
+        ownerUserId bigint unsigned NULL,
+        stepsMask int NOT NULL DEFAULT 0,
+        notes text NULL,
+        resolution text NULL,
+        openedAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        closedAt timestamp NULL,
+        updatedAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
     );
     tables.add("health_snapshots");
+    tables.add("member_save_cases");
     tables.add("onboarding_milestones");
     tables.add("cadences");
     tables.add("cadence_log");
