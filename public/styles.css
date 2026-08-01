@@ -116,6 +116,10 @@ section{position:relative}
 
 .site-nav.scrolled{background:rgba(11,21,38,.85);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
   border-bottom-color:var(--line-d)}
+/* Light-content pages (legal, etc.) have no dark hero, so the transparent nav's
+   white logo + links would vanish. Keep the nav solid-dark from the top. */
+body.nav-solid .site-nav{background:rgba(11,21,38,.96);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line-d)}
 
 .site-nav nav{max-width:1360px;margin:0 auto;padding:0 clamp(1.25rem,4vw,3rem);height:84px;
   display:flex;align-items:center;justify-content:space-between;gap:2rem}
