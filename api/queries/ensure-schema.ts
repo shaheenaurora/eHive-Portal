@@ -289,11 +289,33 @@ export async function ensureSchema(): Promise<void> {
         decidedAt timestamp NULL,
         createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
       )`,
+      // NA-03 — recognition awards.
+      `CREATE TABLE IF NOT EXISTS award_cycles (
+        id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        name varchar(160) NOT NULL,
+        status enum('draft','open','judging','announced','closed') NOT NULL DEFAULT 'draft',
+        opensAt timestamp NULL,
+        closesAt timestamp NULL,
+        createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS award_nominations (
+        id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        cycleId bigint unsigned NOT NULL,
+        category varchar(48) NOT NULL,
+        nomineeMemberId bigint unsigned NULL,
+        nomineeChapterId bigint unsigned NULL,
+        nominatedByMemberId bigint unsigned NULL,
+        citation text NULL,
+        status enum('nominated','shortlisted','winner','declined') NOT NULL DEFAULT 'nominated',
+        createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
     );
     tables.add("health_snapshots");
     tables.add("member_save_cases");
     tables.add("council_meetings");
     tables.add("council_decisions");
+    tables.add("award_cycles");
+    tables.add("award_nominations");
     tables.add("onboarding_milestones");
     tables.add("cadences");
     tables.add("cadence_log");

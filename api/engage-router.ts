@@ -23,6 +23,39 @@ async function requireMember(userId: number) {
 }
 
 export const engageRouter = createRouter({
+  /* ---- NA-03 Recognition Awards — member nominations + winners wall ---- */
+  awardsOpen: authedQuery.query(async () => {
+    const { openCycle, announcedWinners } = await import("./queries/awards");
+    const [cycle, winners] = await Promise.all([openCycle(), announcedWinners()]);
+    return { cycle, winners };
+  }),
+
+  submitNomination: authedQuery
+    .input(z.object({
+      cycleId: z.number(), category: z.string().min(2).max(48),
+      nomineeMemberId: z.number().optional(), nomineeChapterId: z.number().optional(),
+      citation: z.string().max(2000).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const me = await requireMember(ctx.user.id);
+      const { openCycle, alreadyNominated, nominate } = await import("./queries/awards");
+      const open = await openCycle();
+      if (!open || open.id !== input.cycleId)
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Nominations aren't open right now." });
+      if (!input.nomineeMemberId && !input.nomineeChapterId)
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Choose who you're nominating." });
+      if (input.nomineeMemberId === me.id)
+        throw new TRPCError({ code: "BAD_REQUEST", message: "You can't nominate yourself." });
+      if (await alreadyNominated(input.cycleId, input.category, me.id))
+        throw new TRPCError({ code: "CONFLICT", message: "You've already nominated in this category." });
+      await nominate({
+        cycleId: input.cycleId, category: input.category,
+        nomineeMemberId: input.nomineeMemberId, nomineeChapterId: input.nomineeChapterId,
+        nominatedByMemberId: me.id, citation: input.citation,
+      });
+      return { ok: true };
+    }),
+
   /* ---- web push notifications (UX-10) ---- */
   pushKey: authedQuery.query(() => getVapidPublicKey()),
 

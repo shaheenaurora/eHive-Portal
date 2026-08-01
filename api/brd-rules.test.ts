@@ -19,6 +19,8 @@ import {
   healthBand,
   SAVE_PLAYBOOK_STEPS,
   ROLE_ONBOARDING_STEPS,
+  AWARD_CATEGORIES,
+  AWARD_CYCLE_STATUSES,
 } from "@contracts/constants";
 import { periodKey, recentPeriodKeys, shiftPeriods, CADENCE_TEMPLATES } from "@contracts/cadence";
 
@@ -236,5 +238,20 @@ describe("Role Onboarding Playbook (officer enablement)", () => {
   it("starts with the charter and ends with a 90-day plan", () => {
     expect(ROLE_ONBOARDING_STEPS.at(0)?.key).toBe("charter");
     expect(ROLE_ONBOARDING_STEPS.at(-1)?.key).toBe("plan");
+  });
+});
+
+describe("NA-03 Recognition Awards", () => {
+  it("defines the award categories with a valid recognition subject", () => {
+    expect(AWARD_CATEGORIES.length).toBeGreaterThanOrEqual(4);
+    for (const c of AWARD_CATEGORIES) expect(["member", "chapter"]).toContain(c.subject);
+  });
+  it("recognises Member of the Year and Chapter of the Year", () => {
+    const keys = AWARD_CATEGORIES.map((c) => c.key);
+    expect(keys).toContain("member_of_year");
+    expect(keys).toContain("chapter_of_year");
+  });
+  it("runs a cycle draft -> open -> judging -> announced -> closed", () => {
+    expect([...AWARD_CYCLE_STATUSES]).toEqual(["draft", "open", "judging", "announced", "closed"]);
   });
 });

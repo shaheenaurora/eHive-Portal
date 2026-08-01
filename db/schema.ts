@@ -648,6 +648,28 @@ export const councilDecisions = mysqlTable("council_decisions", {
   decidedAt: timestamp("decidedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
+
+/* NA-03 Recognition Awards. A cycle is one awards round; nominations are peers
+   (or chapters) put forward per category and shortlisted/won by the National body. */
+export const awardCycles = mysqlTable("award_cycles", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 160 }).notNull(),
+  status: mysqlEnum("status", ["draft", "open", "judging", "announced", "closed"]).notNull().default("draft"),
+  opensAt: timestamp("opensAt"),
+  closesAt: timestamp("closesAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export const awardNominations = mysqlTable("award_nominations", {
+  id: serial("id").primaryKey(),
+  cycleId: bigint("cycleId", { mode: "number", unsigned: true }).notNull(),
+  category: varchar("category", { length: 48 }).notNull(),        // AWARD_CATEGORIES key
+  nomineeMemberId: bigint("nomineeMemberId", { mode: "number", unsigned: true }),  // member subject
+  nomineeChapterId: bigint("nomineeChapterId", { mode: "number", unsigned: true }), // chapter subject
+  nominatedByMemberId: bigint("nominatedByMemberId", { mode: "number", unsigned: true }), // null = admin-entered
+  citation: text("citation"),
+  status: mysqlEnum("status", ["nominated", "shortlisted", "winner", "declined"]).notNull().default("nominated"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
 export type UnitRole = typeof unitRoles.$inferSelect;
 
 export const chapters = mysqlTable("chapters", {
