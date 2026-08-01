@@ -278,8 +278,13 @@ export async function evaluateDormancy(): Promise<{ evaluated: number; transitio
     const lc = (m as { lifecycleState?: string }).lifecycleState;
     if (lc === "active" && (next === "at_risk" || next === "dormant" || next === "non_renewal")) {
       await db.update(schema.members).set({ lifecycleState: "at_risk" }).where(eq(schema.members.id, m.id));
+      // ML-04b — open a tracked Save Playbook case so the intervention is owned, not silent.
+      const { openSaveCase } = await import("./saves");
+      await openSaveCase(m.id, reason || "Flagged at-risk by the engagement ladder.", m.homeChapterId);
     } else if (lc === "at_risk" && next === "active") {
       await db.update(schema.members).set({ lifecycleState: "active" }).where(eq(schema.members.id, m.id));
+      const { autoCloseSaveOnRecovery } = await import("./saves");
+      await autoCloseSaveOnRecovery(m.id);
     }
   }
   return { evaluated: all.length, transitions };

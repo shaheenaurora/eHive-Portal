@@ -110,6 +110,21 @@ export const MEMBER_LIFECYCLE_TRANSITIONS: Record<string, { to: string; label: s
   suspended:  [{ to: "active", label: "Reinstate" }, { to: "alumni", label: "Remove → Alumni" }],
 };
 
+/* ML-04b — the Save Playbook. When a member is flagged At-Risk, Member Success
+   works a structured, tracked intervention (owner + steps + outcome) rather
+   than a silent state flip. These are the ordered steps of that playbook; a
+   case stores which are done as a bitmask over this array. */
+export const SAVE_PLAYBOOK_STEPS = [
+  { key: "reach_out",   label: "Reach out personally",        hint: "A real 1:1 message or call within 3 business days — not an automated nudge." },
+  { key: "diagnose",    label: "Understand the disengagement", hint: "Ask what changed. Time, fit, value, life event? Listen before pitching." },
+  { key: "remap_value", label: "Re-map value to their goals",  hint: "Connect a specific eHive benefit to what they're actually trying to do now." },
+  { key: "next_step",   label: "Offer one concrete next step", hint: "A specific session, intro, or 1:1 with a date — low-friction and soon." },
+  { key: "confirm",     label: "Confirm re-engagement",        hint: "They showed up / booked / re-committed. Only then is the save real." },
+] as const;
+export type SavePlaybookStepKey = (typeof SAVE_PLAYBOOK_STEPS)[number]["key"];
+export const SAVE_CASE_STATUSES = ["open", "working", "saved", "lost"] as const;
+export type SaveCaseStatus = (typeof SAVE_CASE_STATUSES)[number];
+
 /* ML-05 Renewal — the annual decision window. The scheduler opens the window
    RENEWAL_WINDOW_DAYS before the renewal date and auto-lapses a membership that
    stays unrenewed RENEWAL_GRACE_DAYS past it. */
