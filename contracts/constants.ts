@@ -138,6 +138,25 @@ export const ROLE_ONBOARDING_STEPS = [
 ] as const;
 export type RoleOnboardingStepKey = (typeof ROLE_ONBOARDING_STEPS)[number]["key"];
 
+/* NA-03 — Recognition Awards. Members nominate peers (and chapters) across
+   these categories within an award cycle; the National body shortlists and
+   names winners. `subject` says what's being recognised. */
+export const AWARD_CATEGORIES = [
+  { key: "member_of_year",   label: "Member of the Year",    subject: "member",  blurb: "The member who best embodied Build. Belong. Become. this year." },
+  { key: "newcomer",         label: "Newcomer of the Year",  subject: "member",  blurb: "The standout first-year member." },
+  { key: "mentor",           label: "Mentor of the Year",    subject: "member",  blurb: "The member who gave the most to others' growth." },
+  { key: "connector",        label: "Connector of the Year", subject: "member",  blurb: "The member who opened the most doors — intros, referrals, deals." },
+  { key: "chapter_of_year",  label: "Chapter of the Year",   subject: "chapter", blurb: "The healthiest, most alive chapter of the year." },
+  { key: "community_impact", label: "Community Impact",      subject: "member",  blurb: "For give-back that moved the wider community, not just the Circle." },
+] as const;
+export type AwardCategoryKey = (typeof AWARD_CATEGORIES)[number]["key"];
+export const AWARD_CATEGORY_LABEL: Record<string, string> =
+  Object.fromEntries(AWARD_CATEGORIES.map((c) => [c.key, c.label]));
+export const AWARD_CYCLE_STATUSES = ["draft", "open", "judging", "announced", "closed"] as const;
+export type AwardCycleStatus = (typeof AWARD_CYCLE_STATUSES)[number];
+export const AWARD_NOMINATION_STATUSES = ["nominated", "shortlisted", "winner", "declined"] as const;
+export type AwardNominationStatus = (typeof AWARD_NOMINATION_STATUSES)[number];
+
 /* ML-05 Renewal — the annual decision window. The scheduler opens the window
    RENEWAL_WINDOW_DAYS before the renewal date and auto-lapses a membership that
    stays unrenewed RENEWAL_GRACE_DAYS past it. */

@@ -399,6 +399,7 @@ export const ADMIN_NAV: NavGroup[] = [
       { to: "/admin/chapters", label: "Chapters", icon: "⌂" },
       { to: "/admin/org", label: "Organisation", icon: "⧉" },
       { to: "/admin/score", label: "Hive Score", icon: "✦" },
+      { to: "/admin/awards", label: "Awards", icon: "✵" },
     ],
   },
   {

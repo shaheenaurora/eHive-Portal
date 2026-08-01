@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { trpc } from "@/providers/trpc";
 import { EhShell, ADMIN_NAV, PageHead, Pill, Empty, Spinner, Modal, Field, toast } from "@/components/eh";
+import { fmtDate } from "@/lib/ehf";
 import { healthBand, HEALTH_BAND_LABEL, HEALTH_BAND_COLOR } from "@contracts/constants";
 
 type Leader = { role: string; name: string };
@@ -39,6 +40,7 @@ export default function AdminOrg() {
   const utils = trpc.useUtils();
   const refresh = () => utils.adminEngage.orgTree.invalidate();
   const [add, setAdd] = useState<{ level: "zone" | "region" | "country"; parentId?: number; parentName?: string } | null>(null);
+  const [council, setCouncil] = useState<{ id: number; name: string; level: string } | null>(null);
 
   const create = trpc.adminEngage.createOrgUnit.useMutation({
     onSuccess: () => { toast("Unit created."); refresh(); setAdd(null); },
@@ -70,6 +72,7 @@ export default function AdminOrg() {
           <div className="eh-between">
             <div><span className="eh-eyebrow">Country</span><h3 style={{ margin: ".1rem 0 0" }}>{c.name} {c.code ? <span className="eh-muted eh-sm">· {c.code}</span> : null}</h3></div>
             <div className="eh-row" style={{ gap: ".5rem" }}><Roll chapters={c.chapterCount} members={c.members} health={c.health} />
+              <button className="eh-btn ghost sm" onClick={() => setCouncil({ id: c.id, name: c.name, level: "country" })}>Council</button>
               <button className="eh-btn ghost sm" onClick={() => setAdd({ level: "region", parentId: c.id, parentName: c.name })}>+ Region</button></div>
           </div>
           <Leaders leaders={c.leaders} />
@@ -78,6 +81,7 @@ export default function AdminOrg() {
               <div className="eh-between">
                 <div><span className="eh-eyebrow">Region</span> <b>{r.name}</b></div>
                 <div className="eh-row" style={{ gap: ".5rem" }}><Roll chapters={r.chapterCount} members={r.members} health={r.health} />
+                  <button className="eh-btn ghost sm" onClick={() => setCouncil({ id: r.id, name: r.name, level: "region" })}>Council</button>
                   <button className="eh-btn ghost sm" onClick={() => setAdd({ level: "zone", parentId: r.id, parentName: r.name })}>+ Zone</button></div>
               </div>
               <Leaders leaders={r.leaders} />
@@ -85,7 +89,10 @@ export default function AdminOrg() {
                 <div key={z.id} style={{ margin: ".7rem 0 0", paddingLeft: "1rem", borderLeft: "2px solid var(--eh-border)" }}>
                   <div className="eh-between">
                     <div><span className="eh-eyebrow">Zone</span> <b>{z.name}</b></div>
-                    <Roll chapters={z.chapterCount} members={z.members} health={z.health} />
+                    <div className="eh-row" style={{ gap: ".5rem" }}>
+                      <Roll chapters={z.chapterCount} members={z.members} health={z.health} />
+                      <button className="eh-btn ghost sm" onClick={() => setCouncil({ id: z.id, name: z.name, level: "zone" })}>Council</button>
+                    </div>
                   </div>
                   <Leaders leaders={z.leaders} />
                   <div className="eh-list" style={{ marginTop: ".35rem" }}>
@@ -129,7 +136,99 @@ export default function AdminOrg() {
                    onSubmit={(name, code) => create.mutate({ level: add.level, name, code, parentId: add.parentId })} />
         </Modal>
       )}
+
+      {council && <CouncilModal unit={council} onClose={() => setCouncil(null)} />}
     </EhShell>
+  );
+}
+
+const DECISION_COLOR: Record<string, "grey" | "green" | "red" | "gold"> = {
+  proposed: "grey", carried: "green", failed: "red", deferred: "gold",
+};
+
+function CouncilModal({ unit, onClose }: { unit: { id: number; name: string; level: string }; onClose: () => void }) {
+  const q = trpc.adminEngage.councilView.useQuery({ unitId: unit.id }, { retry: false });
+  const utils = trpc.useUtils();
+  const refresh = () => utils.adminEngage.councilView.invalidate({ unitId: unit.id });
+  const err = (e: { message: string }) => toast(e.message);
+
+  const createMeeting = trpc.adminEngage.councilCreateMeeting.useMutation({ onSuccess: () => { toast("Meeting scheduled."); refresh(); }, onError: err });
+  const updateMeeting = trpc.adminEngage.councilUpdateMeeting.useMutation({ onSuccess: refresh, onError: err });
+  const logDecision = trpc.adminEngage.councilLogDecision.useMutation({ onSuccess: () => { toast("Decision logged."); refresh(); }, onError: err });
+  const decide = trpc.adminEngage.councilDecide.useMutation({ onSuccess: refresh, onError: err });
+
+  const [mTitle, setMTitle] = useState("");
+  const [mDate, setMDate] = useState("");
+  const [dTitle, setDTitle] = useState("");
+
+  const meetings = q.data?.meetings ?? [];
+  const decisions = q.data?.decisions ?? [];
+
+  return (
+    <Modal title={`${unit.name} Council`} onClose={onClose}>
+      <p className="eh-sm eh-muted" style={{ marginTop: "-.4rem", marginBottom: "1rem" }}>
+        The {unit.level}-level leadership body. Convene meetings, keep minutes, and record the decisions it carries.
+      </p>
+      {q.isLoading && <Spinner />}
+
+      {/* schedule a meeting */}
+      <Field label="Schedule a council meeting">
+        <div className="eh-row" style={{ gap: ".4rem", flexWrap: "wrap" }}>
+          <input className="eh-input" style={{ flex: "1 1 160px" }} placeholder="Title, e.g. Q3 Zone Council" value={mTitle} onChange={(e) => setMTitle(e.target.value)} />
+          <input className="eh-input" style={{ maxWidth: 170 }} type="datetime-local" value={mDate} onChange={(e) => setMDate(e.target.value)} />
+          <button className="eh-btn gold sm" disabled={createMeeting.isPending || mTitle.trim().length < 2}
+            onClick={() => createMeeting.mutate({ unitId: unit.id, title: mTitle, scheduledAt: mDate ? new Date(mDate) : undefined }, { onSuccess: () => { setMTitle(""); setMDate(""); } })}>
+            Schedule
+          </button>
+        </div>
+      </Field>
+
+      <div className="eh-list" style={{ margin: ".4rem 0 1.2rem" }}>
+        {meetings.length === 0 && <p className="eh-sm eh-muted">No meetings yet.</p>}
+        {meetings.map((m) => (
+          <div className="row" key={m.id} style={{ alignItems: "flex-start" }}>
+            <div style={{ flex: 1 }}>
+              <span className="t">{m.title}</span>
+              <span className="eh-muted eh-sm"> · {m.scheduledAt ? fmtDate(m.scheduledAt) : "unscheduled"}</span>
+              <Pill color={m.status === "held" ? "green" : m.status === "cancelled" ? "red" : "blue"}>{m.status}</Pill>
+              <textarea className="eh-input" rows={2} defaultValue={m.minutes ?? ""} placeholder="Minutes…"
+                style={{ width: "100%", marginTop: ".4rem", resize: "vertical" }}
+                onBlur={(e) => { if (e.target.value !== (m.minutes ?? "")) updateMeeting.mutate({ id: m.id, minutes: e.target.value }); }} />
+            </div>
+            {m.status === "scheduled" && (
+              <button className="eh-btn ghost sm" onClick={() => updateMeeting.mutate({ id: m.id, status: "held" })}>Mark held</button>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* decisions */}
+      <Field label="Log a decision / motion">
+        <div className="eh-row" style={{ gap: ".4rem", flexWrap: "wrap" }}>
+          <input className="eh-input" style={{ flex: "1 1 200px" }} placeholder="Motion, e.g. Approve Dubai chapter charter" value={dTitle} onChange={(e) => setDTitle(e.target.value)} />
+          <button className="eh-btn ghost sm" disabled={logDecision.isPending || dTitle.trim().length < 2}
+            onClick={() => logDecision.mutate({ unitId: unit.id, title: dTitle }, { onSuccess: () => setDTitle("") })}>Log</button>
+        </div>
+      </Field>
+      <div className="eh-list" style={{ marginTop: ".4rem" }}>
+        {decisions.length === 0 && <p className="eh-sm eh-muted">No decisions recorded.</p>}
+        {decisions.map((d) => (
+          <div className="row" key={d.id} style={{ alignItems: "flex-start" }}>
+            <div style={{ flex: 1 }}>
+              <span className="t">{d.title}</span> <Pill color={DECISION_COLOR[d.status]}>{d.status}</Pill>
+              {d.decidedAt && <span className="eh-muted eh-sm"> · {fmtDate(d.decidedAt)}</span>}
+            </div>
+            {d.status === "proposed" && (
+              <span className="eh-row" style={{ gap: ".3rem" }}>
+                <button className="eh-btn green sm" onClick={() => decide.mutate({ id: d.id, status: "carried" })}>Carried</button>
+                <button className="eh-btn ghost sm" onClick={() => decide.mutate({ id: d.id, status: "failed" })}>Failed</button>
+                <button className="eh-btn ghost sm" onClick={() => decide.mutate({ id: d.id, status: "deferred" })}>Defer</button>
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+    </Modal>
   );
 }
 

@@ -11,6 +11,8 @@ import {
   awardRulePoints, notify, evaluateDormancy, introEligibility,
 } from "./queries/circle";
 import { listSaveCases, updateSaveCase, closeSaveCase, openSaveCase } from "./queries/saves";
+import { listCouncil, createCouncilMeeting, updateCouncilMeeting, logDecision, updateDecision } from "./queries/councils";
+import { listCycles, createCycle, updateCycleStatus, listNominations, nominate, setNominationStatus } from "./queries/awards";
 import { computeChapterHealth } from "./queries/health";
 import { ensureCadenceTemplates, listCadences, recordCadence } from "./queries/cadence";
 import { CADENCE_STATUSES } from "@contracts/cadence";
@@ -949,6 +951,100 @@ export const adminEngageRouter = createRouter({
       zones: units.filter((u) => u.level === "zone").map((z) => ({ id: z.id, name: z.name })),
     };
   }),
+
+  /* ---- Councils as working bodies (ZO/RE/NA governance) ---- */
+  councilView: scopedAdmin("chapters")
+    .input(z.object({ unitId: z.number() }))
+    .query(({ input }) => listCouncil(input.unitId)),
+
+  councilCreateMeeting: scopedAdmin("chapters")
+    .input(z.object({
+      unitId: z.number(), title: z.string().min(2).max(255),
+      scheduledAt: z.coerce.date().optional(), agenda: z.string().max(8000).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const id = await createCouncilMeeting(input.unitId, { title: input.title, scheduledAt: input.scheduledAt, agenda: input.agenda });
+      await audit(ctx.user, "council.meeting.create", { type: "orgUnit", id: input.unitId, detail: input.title });
+      return { ok: true, id };
+    }),
+
+  councilUpdateMeeting: scopedAdmin("chapters")
+    .input(z.object({
+      id: z.number(), status: z.enum(["scheduled", "held", "cancelled"]).optional(),
+      agenda: z.string().max(8000).optional(), minutes: z.string().max(20000).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await updateCouncilMeeting(input.id, { status: input.status, agenda: input.agenda, minutes: input.minutes });
+      await audit(ctx.user, "council.meeting.update", { type: "councilMeeting", id: input.id });
+      return { ok: true };
+    }),
+
+  councilLogDecision: scopedAdmin("chapters")
+    .input(z.object({
+      unitId: z.number(), meetingId: z.number().optional(),
+      title: z.string().min(2).max(255), detail: z.string().max(8000).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const id = await logDecision(input.unitId, { meetingId: input.meetingId, title: input.title, detail: input.detail });
+      await audit(ctx.user, "council.decision.log", { type: "orgUnit", id: input.unitId, detail: input.title });
+      return { ok: true, id };
+    }),
+
+  councilDecide: scopedAdmin("chapters")
+    .input(z.object({ id: z.number(), status: z.enum(["proposed", "carried", "failed", "deferred"]) }))
+    .mutation(async ({ ctx, input }) => {
+      await updateDecision(input.id, input.status);
+      await audit(ctx.user, "council.decision.decide", { type: "councilDecision", id: input.id, detail: input.status });
+      return { ok: true };
+    }),
+
+  /* ---- NA-03 Recognition Awards (community scope) ---- */
+  awardsCycles: scopedAdmin("community").query(() => listCycles()),
+
+  awardsCreateCycle: scopedAdmin("community")
+    .input(z.object({ name: z.string().min(2).max(160), opensAt: z.coerce.date().optional(), closesAt: z.coerce.date().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const id = await createCycle(input.name, input.opensAt, input.closesAt);
+      await audit(ctx.user, "awards.cycle.create", { type: "awardCycle", id, detail: input.name });
+      return { ok: true, id };
+    }),
+
+  awardsSetCycleStatus: scopedAdmin("community")
+    .input(z.object({ id: z.number(), status: z.enum(["draft", "open", "judging", "announced", "closed"]) }))
+    .mutation(async ({ ctx, input }) => {
+      await updateCycleStatus(input.id, input.status);
+      await audit(ctx.user, "awards.cycle.status", { type: "awardCycle", id: input.id, detail: input.status });
+      return { ok: true };
+    }),
+
+  awardsNominations: scopedAdmin("community")
+    .input(z.object({ cycleId: z.number() }))
+    .query(({ input }) => listNominations(input.cycleId)),
+
+  awardsNominate: scopedAdmin("community")
+    .input(z.object({
+      cycleId: z.number(), category: z.string().min(2).max(48),
+      nomineeMemberId: z.number().optional(), nomineeChapterId: z.number().optional(),
+      citation: z.string().max(2000).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (!input.nomineeMemberId && !input.nomineeChapterId)
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Pick a member or chapter to nominate." });
+      const id = await nominate({
+        cycleId: input.cycleId, category: input.category,
+        nomineeMemberId: input.nomineeMemberId, nomineeChapterId: input.nomineeChapterId, citation: input.citation,
+      });
+      await audit(ctx.user, "awards.nominate", { type: "awardNomination", id });
+      return { ok: true, id };
+    }),
+
+  awardsSetNominationStatus: scopedAdmin("community")
+    .input(z.object({ id: z.number(), status: z.enum(["nominated", "shortlisted", "winner", "declined"]) }))
+    .mutation(async ({ ctx, input }) => {
+      await setNominationStatus(input.id, input.status);
+      await audit(ctx.user, "awards.nomination.status", { type: "awardNomination", id: input.id, detail: input.status });
+      return { ok: true };
+    }),
 
   createOrgUnit: scopedAdmin("chapters")
     .input(z.object({

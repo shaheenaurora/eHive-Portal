@@ -624,6 +624,52 @@ export const unitRoles = mysqlTable("unit_roles", {
   role: varchar("role", { length: 96 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
+
+/* Councils as working bodies (ZO/RE/NA governance): the leaders in unit_roles
+   convene here — a meeting carries an agenda and minutes, and decisions are the
+   motions the council carries/defeats. Scoped to an org_unit. */
+export const councilMeetings = mysqlTable("council_meetings", {
+  id: serial("id").primaryKey(),
+  unitId: bigint("unitId", { mode: "number", unsigned: true }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  scheduledAt: timestamp("scheduledAt"),
+  status: mysqlEnum("status", ["scheduled", "held", "cancelled"]).notNull().default("scheduled"),
+  agenda: text("agenda"),
+  minutes: text("minutes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export const councilDecisions = mysqlTable("council_decisions", {
+  id: serial("id").primaryKey(),
+  unitId: bigint("unitId", { mode: "number", unsigned: true }).notNull(),
+  meetingId: bigint("meetingId", { mode: "number", unsigned: true }), // null = standalone decision
+  title: varchar("title", { length: 255 }).notNull(),
+  detail: text("detail"),
+  status: mysqlEnum("status", ["proposed", "carried", "failed", "deferred"]).notNull().default("proposed"),
+  decidedAt: timestamp("decidedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+/* NA-03 Recognition Awards. A cycle is one awards round; nominations are peers
+   (or chapters) put forward per category and shortlisted/won by the National body. */
+export const awardCycles = mysqlTable("award_cycles", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 160 }).notNull(),
+  status: mysqlEnum("status", ["draft", "open", "judging", "announced", "closed"]).notNull().default("draft"),
+  opensAt: timestamp("opensAt"),
+  closesAt: timestamp("closesAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export const awardNominations = mysqlTable("award_nominations", {
+  id: serial("id").primaryKey(),
+  cycleId: bigint("cycleId", { mode: "number", unsigned: true }).notNull(),
+  category: varchar("category", { length: 48 }).notNull(),        // AWARD_CATEGORIES key
+  nomineeMemberId: bigint("nomineeMemberId", { mode: "number", unsigned: true }),  // member subject
+  nomineeChapterId: bigint("nomineeChapterId", { mode: "number", unsigned: true }), // chapter subject
+  nominatedByMemberId: bigint("nominatedByMemberId", { mode: "number", unsigned: true }), // null = admin-entered
+  citation: text("citation"),
+  status: mysqlEnum("status", ["nominated", "shortlisted", "winner", "declined"]).notNull().default("nominated"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
 export type UnitRole = typeof unitRoles.$inferSelect;
 
 export const chapters = mysqlTable("chapters", {

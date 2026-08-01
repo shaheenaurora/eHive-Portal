@@ -2,7 +2,7 @@ import { useState } from "react";
 import { trpc } from "@/providers/trpc";
 import { EhShell, MEMBER_NAV, PageHead, Pill, Empty, Spinner, Modal, Field, TierPill, toast } from "@/components/eh";
 import { fmtDate } from "@/lib/ehf";
-import { TIER_LABEL } from "@contracts/constants";
+import { TIER_LABEL, AWARD_CATEGORIES, AWARD_CATEGORY_LABEL } from "@contracts/constants";
 
 type Tab = "121" | "referrals" | "deals";
 
@@ -18,6 +18,14 @@ export default function Connect() {
   const directory = trpc.engage.memberDirectory.useQuery(undefined, { retry: false });
   const referrals = trpc.engage.myReferrals.useQuery(undefined, { retry: false });
   const deals = trpc.engage.deals.useQuery(undefined, { retry: false });
+  const awards = trpc.engage.awardsOpen.useQuery(undefined, { retry: false });
+  const nominate = trpc.engage.submitNomination.useMutation({
+    onSuccess: () => { toast("Nomination submitted — thank you for recognising a peer."); setNomCat(""); setNomineeId(""); setCitation(""); utils.engage.awardsOpen.invalidate(); },
+    onError: (e) => toast(e.message),
+  });
+  const [nomCat, setNomCat] = useState("");
+  const [nomineeId, setNomineeId] = useState("");
+  const [citation, setCitation] = useState("");
 
   function refresh() {
     utils.engage.myOneToOnes.invalidate();
@@ -73,6 +81,51 @@ export default function Connect() {
                   </button>}
             </span>
           ))}
+        </div>
+      )}
+
+      {/* NA-03 Recognition — winners wall + open nominations */}
+      {((awards.data?.winners.length ?? 0) > 0 || awards.data?.cycle) && (
+        <div className="eh-card eh-mb">
+          <div className="eh-row" style={{ gap: ".5rem", alignItems: "center", marginBottom: ".6rem" }}>
+            <h3 style={{ margin: 0 }}>Recognition</h3>
+            {awards.data?.cycle && <Pill color="gold">Nominations open</Pill>}
+          </div>
+
+          {(awards.data?.winners.length ?? 0) > 0 && (
+            <div className="eh-list" style={{ marginBottom: awards.data?.cycle ? "1rem" : 0 }}>
+              {awards.data!.winners.map((w) => (
+                <div className="row" key={w.id}>
+                  <span className="t">✵ {AWARD_CATEGORY_LABEL[w.category] ?? w.category}</span>
+                  <b>{w.nomineeName ?? w.nomineeChapterName ?? "—"}</b>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {awards.data?.cycle && (
+            <div style={{ borderTop: (awards.data?.winners.length ?? 0) > 0 ? "1px solid var(--eh-border)" : undefined, paddingTop: (awards.data?.winners.length ?? 0) > 0 ? "1rem" : 0 }}>
+              <p className="eh-sm eh-muted" style={{ marginBottom: ".6rem" }}>
+                <b>{awards.data.cycle.name}</b> — nominate a peer who's made the Circle better. One nomination per category.
+              </p>
+              <div className="eh-row" style={{ gap: ".4rem", flexWrap: "wrap" }}>
+                <select className="eh-select" style={{ flex: "1 1 180px" }} value={nomCat} onChange={(e) => setNomCat(e.target.value)}>
+                  <option value="">Category…</option>
+                  {AWARD_CATEGORIES.filter((c) => c.subject === "member").map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+                </select>
+                <select className="eh-select" style={{ flex: "1 1 180px" }} value={nomineeId} onChange={(e) => setNomineeId(e.target.value)}>
+                  <option value="">Nominate…</option>
+                  {(directory.data ?? []).map((m: { id: number; name: string | null }) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                </select>
+              </div>
+              <input className="eh-input" style={{ marginTop: ".4rem", width: "100%" }} placeholder="Why them? (optional citation)" value={citation} onChange={(e) => setCitation(e.target.value)} />
+              <button className="eh-btn gold sm" style={{ marginTop: ".5rem" }}
+                disabled={nominate.isPending || !nomCat || !nomineeId}
+                onClick={() => nominate.mutate({ cycleId: awards.data!.cycle!.id, category: nomCat, nomineeMemberId: Number(nomineeId), citation: citation || undefined })}>
+                Submit nomination
+              </button>
+            </div>
+          )}
         </div>
       )}
 
