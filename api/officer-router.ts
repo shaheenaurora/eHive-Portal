@@ -9,6 +9,7 @@ import { computeChapterHealth } from "./queries/health";
 import { computeOnboarding } from "./queries/onboarding";
 import { ensureCadenceTemplates, listCadences, recordCadence } from "./queries/cadence";
 import { CADENCE_STATUSES } from "@contracts/cadence";
+import { ROLE_ONBOARDING_STEPS } from "@contracts/constants";
 
 /**
  * Resolve the caller's chapter-officer context: the member must hold an active
@@ -40,7 +41,7 @@ async function inChapter(memberId: number, chapterId: number) {
 export const officerRouter = createRouter({
   /* Console overview: roster with mentor/onboarding status + learnings. */
   overview: authedQuery.query(async ({ ctx }) => {
-    const { chapterId, roleKeys } = await requireOfficer(ctx.user.id);
+    const { chapterId, roleKeys, member } = await requireOfficer(ctx.user.id);
     const db = getDb();
     const chapter = (await db.select().from(schema.chapters).where(eq(schema.chapters.id, chapterId)).limit(1)).at(0);
     const roster = await db.select({ member: schema.members, user: schema.users })
@@ -59,6 +60,14 @@ export const officerRouter = createRouter({
       .orderBy(desc(schema.chapterPosts.createdAt)).limit(50);
     const health = await computeChapterHealth(chapterId);
     const cadence = await listCadences(chapterId);
+    // ML — this officer's own active appointments + their onboarding-playbook progress.
+    const myRoles = await db.select({
+      id: schema.chapterRoles.id, role: schema.chapterRoles.role,
+      title: schema.chapterRoles.title, onboardingMask: schema.chapterRoles.onboardingMask,
+      termStart: schema.chapterRoles.termStart,
+    }).from(schema.chapterRoles)
+      .where(and(eq(schema.chapterRoles.memberId, member.id), eq(schema.chapterRoles.status, "active")))
+      .orderBy(asc(schema.chapterRoles.createdAt));
     // Onboarding cohort — members still in their first 90 days (ML-03).
     const onboardingMembers = roster.filter((r) => r.member.lifecycleState === "onboarding");
     const onboarding = await Promise.all(onboardingMembers.map(async (r) => {
@@ -66,7 +75,7 @@ export const officerRouter = createRouter({
       return { id: r.member.id, name: r.user.name ?? r.user.email ?? "Member", percent: p.percent, doneCount: p.doneCount, total: p.total, dayCount: p.dayCount, stage: p.stage };
     }));
     return {
-      chapter, roleKeys, health, cadence, onboarding,
+      chapter, roleKeys, health, cadence, onboarding, myRoles,
       roster: roster.map((r) => ({
         id: r.member.id, name: r.user.name ?? r.user.email ?? "Member",
         company: r.member.company, tier: r.member.tier, status: r.member.status,
@@ -76,6 +85,22 @@ export const officerRouter = createRouter({
       learnings: learnings.map((l) => ({ ...l.post, authorName: l.name ?? "Officer" })),
     };
   }),
+
+  /* Role Onboarding Playbook — the holder ticks off their own first-90-days
+     steps. Only the officer who holds the appointment can update it. */
+  updateRoleOnboarding: authedQuery
+    .input(z.object({ roleId: z.number(), mask: z.number().int().min(0).max(1023) }))
+    .mutation(async ({ ctx, input }) => {
+      const { member } = await requireOfficer(ctx.user.id);
+      const db = getDb();
+      const row = (await db.select().from(schema.chapterRoles).where(eq(schema.chapterRoles.id, input.roleId)).limit(1)).at(0);
+      if (!row || row.memberId !== member.id || row.status !== "active")
+        throw new TRPCError({ code: "FORBIDDEN", message: "That isn't one of your active roles." });
+      const ALL = (1 << ROLE_ONBOARDING_STEPS.length) - 1;
+      await db.update(schema.chapterRoles).set({ onboardingMask: input.mask & ALL })
+        .where(eq(schema.chapterRoles.id, input.roleId));
+      return { ok: true };
+    }),
 
   /* Unassigned active members the officer can sign up into their chapter. */
   signupCandidates: authedQuery

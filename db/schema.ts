@@ -724,6 +724,7 @@ export const chapterRoles = mysqlTable("chapter_roles", {
   electionId: bigint("electionId", { mode: "number", unsigned: true }), // set when elected
   termStart: timestamp("termStart"),
   termEnd: timestamp("termEnd"),
+  onboardingMask: int("onboardingMask").notNull().default(0), // ROLE_ONBOARDING_STEPS progress
   status: mysqlEnum("status", ["active", "ended"]).notNull().default("active"),
   appointedBy: varchar("appointedBy", { length: 320 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
