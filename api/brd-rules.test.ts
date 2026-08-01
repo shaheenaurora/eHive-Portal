@@ -18,6 +18,7 @@ import {
   HEALTH_BAR,
   healthBand,
   SAVE_PLAYBOOK_STEPS,
+  ROLE_ONBOARDING_STEPS,
 } from "@contracts/constants";
 import { periodKey, recentPeriodKeys, shiftPeriods, CADENCE_TEMPLATES } from "@contracts/cadence";
 
@@ -223,5 +224,17 @@ describe("ML-04b — Save Playbook (at-risk intervention)", () => {
     const full = (1 << SAVE_PLAYBOOK_STEPS.length) - 1;
     const done = SAVE_PLAYBOOK_STEPS.filter((_, i) => (full & (1 << i)) !== 0).length;
     expect(done).toBe(SAVE_PLAYBOOK_STEPS.length);
+  });
+});
+
+describe("Role Onboarding Playbook (officer enablement)", () => {
+  it("defines the five ordered onboarding steps for a new officer", () => {
+    expect(ROLE_ONBOARDING_STEPS.map((s) => s.key)).toEqual([
+      "charter", "role", "handover", "access", "plan",
+    ]);
+  });
+  it("starts with the charter and ends with a 90-day plan", () => {
+    expect(ROLE_ONBOARDING_STEPS.at(0)?.key).toBe("charter");
+    expect(ROLE_ONBOARDING_STEPS.at(-1)?.key).toBe("plan");
   });
 });

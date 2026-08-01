@@ -3,7 +3,8 @@ import { trpc } from "@/providers/trpc";
 import { EhShell, MEMBER_NAV, PageHead, Pill, Empty, Spinner, Modal, Field, Bar, toast } from "@/components/eh";
 import { fmtDate } from "@/lib/ehf";
 import { CHAPTER_STATUS_LABEL, CHAPTER_ROLE_RESP, CHAPTER_ROLE_METRIC, chapterRoleTitle,
-  HEALTH_COMPONENTS, HEALTH_BAND_LABEL, HEALTH_BAND_COLOR, healthBand } from "@contracts/constants";
+  HEALTH_COMPONENTS, HEALTH_BAND_LABEL, HEALTH_BAND_COLOR, healthBand,
+  ROLE_ONBOARDING_STEPS, CHAPTER_ROLE_LABEL } from "@contracts/constants";
 import { FREQUENCY_LABEL, periodLabel, type Frequency } from "@contracts/cadence";
 
 const CADENCE_STATUS_COLOR: Record<string, "green" | "gold" | "red" | "grey"> = {
@@ -51,6 +52,10 @@ export default function Chapter() {
   });
   const setupCadences = trpc.officer.setupCadences.useMutation({
     onSuccess: (r) => { toast(r.added ? `Operating rhythm set up — ${r.added} cadences.` : "Already set up."); refresh(); },
+    onError: (e) => toast(e.message),
+  });
+  const updateRoleOnboarding = trpc.officer.updateRoleOnboarding.useMutation({
+    onSuccess: () => refresh(),
     onError: (e) => toast(e.message),
   });
   const markCadence = trpc.officer.markCadence.useMutation({
@@ -177,6 +182,46 @@ export default function Chapter() {
               <p className="eh-sm eh-muted" style={{ marginTop: "-.4rem" }}>
                 You lead this chapter. Sign up members, assign mentors, onboard newcomers and share learnings — scoped to {ch.name}.
               </p>
+
+              {/* Role Onboarding Playbook — your first-90-days checklist per active role */}
+              {(overview.data.myRoles ?? []).map((r) => {
+                const ALL = (1 << ROLE_ONBOARDING_STEPS.length) - 1;
+                const done = ROLE_ONBOARDING_STEPS.filter((_, i) => (r.onboardingMask & (1 << i)) !== 0).length;
+                const complete = (r.onboardingMask & ALL) === ALL;
+                if (complete) return null;
+                const roleName = r.role === "other" ? (r.title || "Officer") : (CHAPTER_ROLE_LABEL[r.role] || r.role);
+                return (
+                  <div className="eh-card eh-mb" key={`onb-${r.id}`}>
+                    <div className="eh-between" style={{ alignItems: "flex-start" }}>
+                      <div>
+                        <h3 style={{ margin: 0 }}>Get started as {roleName}</h3>
+                        <div className="eh-muted eh-sm">Your onboarding playbook — {done}/{ROLE_ONBOARDING_STEPS.length} done.</div>
+                      </div>
+                      <Pill color="gold">New role</Pill>
+                    </div>
+                    <div className="eh-list" style={{ marginTop: ".7rem" }}>
+                      {ROLE_ONBOARDING_STEPS.map((s, i) => {
+                        const isDone = (r.onboardingMask & (1 << i)) !== 0;
+                        return (
+                          <button key={s.key} className="row" disabled={updateRoleOnboarding.isPending}
+                            onClick={() => updateRoleOnboarding.mutate({ roleId: r.id, mask: r.onboardingMask ^ (1 << i) })}
+                            style={{ display: "flex", gap: ".7rem", alignItems: "flex-start", textAlign: "left",
+                              background: "none", border: 0, width: "100%", cursor: "pointer", padding: ".5rem 0" }}>
+                            <span aria-hidden style={{ flex: "none", width: 20, height: 20, borderRadius: 5, marginTop: 1,
+                              border: `1.5px solid ${isDone ? "var(--eh-good,#2E7D5B)" : "var(--eh-border)"}`,
+                              background: isDone ? "var(--eh-good,#2E7D5B)" : "transparent", color: "#fff",
+                              display: "grid", placeItems: "center", fontSize: 12, fontWeight: 700 }}>{isDone ? "✓" : ""}</span>
+                            <span>
+                              <b style={{ fontSize: ".95rem", textDecoration: isDone ? "line-through" : "none", opacity: isDone ? .7 : 1 }}>{s.label}</b>
+                              <span className="eh-sm eh-muted" style={{ display: "block" }}>{s.hint}</span>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
 
               {overview.data.health && (
                 <div className="eh-card eh-mb">

@@ -125,6 +125,19 @@ export type SavePlaybookStepKey = (typeof SAVE_PLAYBOOK_STEPS)[number]["key"];
 export const SAVE_CASE_STATUSES = ["open", "working", "saved", "lost"] as const;
 export type SaveCaseStatus = (typeof SAVE_CASE_STATUSES)[number];
 
+/* Role Onboarding Playbook — the first-90-days checklist a newly-appointed
+   chapter officer works to get productive in their role. Stored as a bitmask on
+   the chapter_roles appointment. Generic across roles; each officer also has
+   their role-specific responsibilities from CHAPTER_ROLES. */
+export const ROLE_ONBOARDING_STEPS = [
+  { key: "charter",   label: "Read the charter & code of conduct", hint: "The chapter charter and the Circle rules you're now a custodian of." },
+  { key: "role",      label: "Know your role & success metric",     hint: "Your responsibilities and how the role is measured — from the role handbook." },
+  { key: "handover",  label: "Meet the board & take handover",      hint: "Sit down with the President and your predecessor; inherit the open threads." },
+  { key: "access",    label: "Get your tools & records",            hint: "Access to the systems, budget, roll, or calendar your role owns." },
+  { key: "plan",      label: "Agree your first 90-day priorities",  hint: "Three things you'll move this term, signed off with the President." },
+] as const;
+export type RoleOnboardingStepKey = (typeof ROLE_ONBOARDING_STEPS)[number]["key"];
+
 /* ML-05 Renewal — the annual decision window. The scheduler opens the window
    RENEWAL_WINDOW_DAYS before the renewal date and auto-lapses a membership that
    stays unrenewed RENEWAL_GRACE_DAYS past it. */

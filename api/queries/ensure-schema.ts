@@ -283,6 +283,10 @@ export async function ensureSchema(): Promise<void> {
     if (tables.has("chapters") && !cols.has("chapters.zoneId"))
       stmts.push("ALTER TABLE chapters ADD COLUMN zoneId bigint unsigned NULL");
 
+    // --- chapter_roles: role-onboarding playbook progress ---
+    if (tables.has("chapter_roles") && !cols.has("chapter_roles.onboardingMask"))
+      stmts.push("ALTER TABLE chapter_roles ADD COLUMN onboardingMask int NOT NULL DEFAULT 0");
+
     // --- chapter_budgets: spend-approval trail (AF-02) ---
     if (tables.has("chapter_budgets")) {
       if (!cols.has("chapter_budgets.approvedByUserId"))
