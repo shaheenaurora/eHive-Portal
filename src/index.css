@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -20,20 +20,20 @@
     --muted-foreground: 213 16% 44%;
     --accent: 40 20% 94%;
     --accent-foreground: 214 47% 16%;
-    --destructive: 8 56% 41%;
+    --destructive: 4 53% 49%;
     --destructive-foreground: 0 0% 100%;
-    --border: 40 14% 88%;
-    --input: 40 14% 85%;
-    --ring: 37 60% 45%;
-    --radius: 0.65rem;
-    --sidebar-background: 214 47% 12%;
-    --sidebar-foreground: 40 25% 90%;
-    --sidebar-primary: 37 60% 45%;
+    --border: 42 22% 80%;
+    --input: 42 22% 78%;
+    --ring: 9 74% 49%;
+    --radius: 0.35rem;
+    --sidebar-background: 220 54% 19%;
+    --sidebar-foreground: 44 28% 88%;
+    --sidebar-primary: 9 74% 49%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 214 40% 18%;
-    --sidebar-accent-foreground: 40 25% 92%;
-    --sidebar-border: 214 40% 20%;
-    --sidebar-ring: 37 60% 45%;
+    --sidebar-accent: 220 45% 25%;
+    --sidebar-accent-foreground: 44 28% 92%;
+    --sidebar-border: 220 40% 28%;
+    --sidebar-ring: 9 74% 49%;
   }
 
   * {
@@ -45,36 +45,39 @@
    eHive Circle portal — brand design system (prefix: eh-)
    ========================================================================== */
 :root {
-  --eh-ink: #101d2c;
-  --eh-ink-2: #1b2c40;
-  --eh-ink-3: #33465e;
-  --eh-mut: #5d6f82;
-  --eh-line: #e4ddd0;
-  --eh-line-2: #efe9dd;
-  --eh-paper: #faf7f1;
-  --eh-card: #ffffff;
-  --eh-gold: #b8862e;
-  --eh-gold-2: #d4a24c;
-  --eh-gold-soft: #f7ecd7;
-  --eh-green: #1e6b4a;
+  --eh-ink: #141312;
+  --eh-ink-2: #16264C;
+  --eh-ink-3: #2A3E66;
+  --eh-mut: #5F5C53;
+  --eh-line: #D8D2C4;
+  --eh-line-2: #E4DECF;
+  --eh-paper: #F3F1EA;
+  --eh-card: #FBFAF6;
+  --eh-gold: #DA3A22;
+  --eh-gold-2: #E4573F;
+  --eh-gold-soft: #F6E1DB;
+  --eh-green: #2E7D5B;
   --eh-green-soft: #e2efe8;
-  --eh-red: #a33b2e;
+  --eh-red: #C0453B;
   --eh-red-soft: #f6e4e1;
-  --eh-blue: #2b547e;
-  --eh-blue-soft: #e4ecf5;
+  --eh-blue: #16264C;
+  --eh-blue-soft: #e6eaf1;
   --eh-purple: #6b4a8a;
   --eh-purple-soft: #ece4f3;
+  /* aliases used by newer admin components */
+  --eh-border: var(--eh-line);
+  --eh-good: var(--eh-green);
 }
 
 html { background: var(--eh-paper); }
-body { font-family: "Inter", system-ui, sans-serif; color: var(--eh-ink); }
-.eh-serif { font-family: "Fraunces", Georgia, serif; }
-.eh-mono { font-family: "Space Mono", ui-monospace, monospace; }
+body { font-family: 'Hanken Grotesk', system-ui, sans-serif; color: var(--eh-ink); }
+.eh-serif { font-family: 'Archivo', system-ui, sans-serif; }
+.eh-mono { font-family: 'Archivo', system-ui, sans-serif; }
 
 /* ------------------------------- layout -------------------------------- */
 .eh-shell { display: flex; min-height: 100vh; background: var(--eh-paper); }
 .eh-side {
-  width: 248px; flex: 0 0 248px; background: var(--eh-ink); color: #e9e2d4;
+  width: 248px; flex: 0 0 248px; background: var(--eh-ink-2); color: #e9e2d4;
   display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh;
   overflow-y: auto;
 }
@@ -85,9 +88,9 @@ body { font-family: "Inter", system-ui, sans-serif; color: var(--eh-ink); }
 .eh-hex {
   width: 30px; height: 30px; flex: 0 0 30px; display: grid; place-items: center;
   border: 1.6px solid var(--eh-gold-2); clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
-  background: rgba(212,162,76,.14); color: var(--eh-gold-2); font-size: 13px; font-weight: 700;
+  background: rgba(218,58,34,.14); color: var(--eh-gold-2); font-size: 13px; font-weight: 700;
 }
-.eh-side-brand b { font-family: "Fraunces", serif; font-size: 1.05rem; letter-spacing: .01em; color: #f5efe2; }
+.eh-side-brand b { font-family: 'Archivo', system-ui, sans-serif; font-size: 1.05rem; letter-spacing: .01em; color: #f5efe2; }
 .eh-side-brand span { display: block; font-size: .64rem; letter-spacing: .14em; text-transform: uppercase; color: #9aa7b6; }
 .eh-nav { padding: .9rem .7rem; display: flex; flex-direction: column; gap: 2px; flex: 1; }
 .eh-nav-label {
@@ -100,7 +103,7 @@ body { font-family: "Inter", system-ui, sans-serif; color: var(--eh-ink); }
   transition: background .15s, color .15s;
 }
 .eh-nav a:hover { background: rgba(255,255,255,.06); color: #fff; }
-.eh-nav a.on { background: rgba(212,162,76,.16); color: #f3dfae; }
+.eh-nav a.on { background: rgba(218,58,34,.16); color: #F0A99B; }
 .eh-nav a .eh-ico { width: 17px; text-align: center; opacity: .85; font-size: .9rem; }
 .eh-side-foot { padding: .9rem .9rem 1.1rem; border-top: 1px solid rgba(255,255,255,.09); }
 .eh-side-user { display: flex; align-items: center; gap: .6rem; }
@@ -114,7 +117,7 @@ body { font-family: "Inter", system-ui, sans-serif; color: var(--eh-ink); }
   margin-top: .6rem; width: 100%; background: none; border: 1px solid rgba(255,255,255,.16);
   color: #b9c4d1; border-radius: 8px; font-size: .74rem; padding: .38rem 0; cursor: pointer;
 }
-.eh-signout:hover { border-color: var(--eh-gold-2); color: #f3dfae; }
+.eh-signout:hover { border-color: var(--eh-gold-2); color: #F0A99B; }
 .eh-main { flex: 1; min-width: 0; padding: 1.8rem clamp(1rem, 3vw, 2.4rem) 3rem; }
 .eh-main:focus { outline: none; }
 .eh-toplink { display: none; }
@@ -218,7 +221,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
 /* ------------------------------ components ----------------------------- */
 .eh-page-head { margin: 0 0 1.4rem; display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 .eh-eyebrow { font-size: .66rem; letter-spacing: .16em; text-transform: uppercase; color: var(--eh-gold); font-weight: 700; margin-bottom: .3rem; }
-.eh-h1 { font-family: "Fraunces", serif; font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: 600; margin: 0; color: var(--eh-ink); }
+.eh-h1 { font-family: 'Archivo', system-ui, sans-serif; font-size: clamp(1.5rem, 2.6vw, 2rem); font-weight: 600; margin: 0; color: var(--eh-ink); }
 .eh-sub { color: var(--eh-mut); font-size: .9rem; margin: .35rem 0 0; max-width: 62ch; }
 
 .eh-card {
@@ -226,7 +229,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
   padding: 1.15rem 1.25rem;
 }
 .eh-card + .eh-card { margin-top: 1rem; }
-.eh-card h3 { font-family: "Fraunces", serif; font-size: 1.05rem; margin: 0 0 .7rem; color: var(--eh-ink); }
+.eh-card h3 { font-family: 'Archivo', system-ui, sans-serif; font-size: 1.05rem; margin: 0 0 .7rem; color: var(--eh-ink); }
 .eh-grid { display: grid; gap: 1rem; }
 .eh-grid.g2 { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
 .eh-grid.g3 { grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); }
@@ -239,7 +242,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
 
 .eh-stat { background: var(--eh-card); border: 1px solid var(--eh-line-2); border-radius: 14px; padding: 1rem 1.15rem; }
 .eh-stat .k { font-size: .68rem; letter-spacing: .12em; text-transform: uppercase; color: var(--eh-mut); font-weight: 600; }
-.eh-stat .v { font-family: "Fraunces", serif; font-size: 1.9rem; font-weight: 600; color: var(--eh-ink); line-height: 1.15; margin-top: .2rem; }
+.eh-stat .v { font-family: 'Archivo', system-ui, sans-serif; font-size: 1.9rem; font-weight: 600; color: var(--eh-ink); line-height: 1.15; margin-top: .2rem; }
 .eh-stat .v.gold { color: var(--eh-gold); }
 .eh-stat .n { font-size: .76rem; color: var(--eh-mut); margin-top: .15rem; }
 
@@ -287,14 +290,14 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
   outline: none; transition: border-color .15s, box-shadow .15s;
 }
 .eh-input:focus, .eh-select:focus, .eh-textarea:focus {
-  border-color: var(--eh-gold); box-shadow: 0 0 0 3px rgba(184,134,46,.14);
+  border-color: var(--eh-gold); box-shadow: 0 0 0 3px rgba(218,58,34,.14);
 }
 .eh-textarea { min-height: 110px; resize: vertical; }
 
 .eh-empty {
   text-align: center; padding: 2.6rem 1rem; color: var(--eh-mut);
 }
-.eh-empty .big { font-family: "Fraunces", serif; font-size: 1.15rem; color: var(--eh-ink-2); margin-bottom: .3rem; }
+.eh-empty .big { font-family: 'Archivo', system-ui, sans-serif; font-size: 1.15rem; color: var(--eh-ink-2); margin-bottom: .3rem; }
 .eh-empty p { font-size: .85rem; margin: 0 auto; max-width: 44ch; }
 
 .eh-bar { height: 7px; border-radius: 999px; background: #ece6d9; overflow: hidden; }
@@ -310,7 +313,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
   max-height: 86vh; overflow-y: auto; box-shadow: 0 24px 60px rgba(16,29,44,.28);
   animation: eh-pop .18s ease-out;
 }
-.eh-modal h3 { font-family: "Fraunces", serif; margin: 0 0 1rem; font-size: 1.2rem; }
+.eh-modal h3 { font-family: 'Archivo', system-ui, sans-serif; margin: 0 0 1rem; font-size: 1.2rem; }
 @keyframes eh-pop { from { transform: scale(.96) translateY(6px); opacity: 0; } to { transform: none; opacity: 1; } }
 
 .eh-toast-live { position: fixed; bottom: 0; left: 0; z-index: 80; }
@@ -347,7 +350,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
 .eh-ring .lbl {
   position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
 }
-.eh-ring .lbl b { font-family: "Fraunces", serif; font-size: 2rem; color: var(--eh-ink); display: block; line-height: 1; }
+.eh-ring .lbl b { font-family: 'Archivo', system-ui, sans-serif; font-size: 2rem; color: var(--eh-ink); display: block; line-height: 1; }
 .eh-ring .lbl span { font-size: .62rem; letter-spacing: .12em; text-transform: uppercase; color: var(--eh-mut); }
 
 .eh-list { display: flex; flex-direction: column; }
@@ -390,10 +393,10 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
 }
 .eh-banner::after {
   content: ""; position: absolute; right: -40px; top: -40px; width: 170px; height: 170px;
-  border: 1.5px solid rgba(212,162,76,.35);
+  border: 1.5px solid rgba(218,58,34,.35);
   clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
 }
-.eh-banner h2 { font-family: "Fraunces", serif; font-size: 1.35rem; margin: 0 0 .35rem; }
+.eh-banner h2 { font-family: 'Archivo', system-ui, sans-serif; font-size: 1.35rem; margin: 0 0 .35rem; }
 .eh-banner p { color: #b9c4d1; font-size: .86rem; margin: 0; max-width: 56ch; }
 /* Content placed on the dark banner (e.g. the onboarding checklist) needs light
    text — the default list colours are dark ink and vanish on the navy gradient. */
@@ -421,4 +424,17 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
 .eh-mt { margin-top: 1rem; }
 .eh-mb { margin-bottom: 1rem; }
 .eh-right { text-align: right; }
-.eh-num { font-family: "Space Mono", monospace; }
+.eh-num { font-family: 'Archivo', system-ui, sans-serif; }
+
+/* ==========================================================================
+   Ledger type calibration — Archivo needs real display weight where the old
+   serif (Fraunces) sat at 600. Appended last so it wins the cascade.
+   ========================================================================== */
+.eh-h1, .eh-h2, .eh-card h3, .eh-empty .big, .eh-modal h3, .eh-banner h2 {
+  font-weight: 800; letter-spacing: -.02em; line-height: 1.08;
+}
+.eh-stat .v, .eh-ring .lbl b, .eh-num, .eh-mono {
+  font-weight: 800; letter-spacing: -.01em; font-variant-numeric: tabular-nums;
+}
+.eh-side-brand b { font-weight: 800; letter-spacing: -.01em; }
+.eh-eyebrow, .eh-nav-label { font-family: 'Hanken Grotesk', system-ui, sans-serif; }
