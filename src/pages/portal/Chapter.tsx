@@ -209,7 +209,7 @@ export default function Chapter() {
                         return (
                           <button key={s.key} className="row" disabled={updateRoleOnboarding.isPending}
                             onClick={() => updateRoleOnboarding.mutate({ roleId: r.id, mask: r.onboardingMask ^ (1 << i) })}
-                            style={{ display: "flex", gap: ".7rem", alignItems: "flex-start", textAlign: "left",
+                            style={{ display: "flex", justifyContent: "flex-start", gap: ".7rem", alignItems: "flex-start", textAlign: "left",
                               background: "none", border: 0, width: "100%", cursor: "pointer", padding: ".5rem 0" }}>
                             <span aria-hidden style={{ flex: "none", width: 20, height: 20, borderRadius: 5, marginTop: 1,
                               border: `1.5px solid ${isDone ? "var(--eh-good,#2E7D5B)" : "var(--eh-border)"}`,
