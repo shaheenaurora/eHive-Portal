@@ -169,17 +169,19 @@ export default function AdminChapters() {
           {list.isLoading && <Spinner />}
           <div className="eh-grid g3">
             {(list.data ?? []).map((c) => (
-              <button key={c.id} className="eh-card" style={{ textAlign: "left", cursor: "pointer" }}
+              <button key={c.id} className="eh-card" style={{ textAlign: "left", cursor: "pointer", display: "flex", flexDirection: "column", gap: ".7rem", minHeight: 146 }}
                       onClick={() => setSel(c.id)}>
-                <div className="eh-between">
+                <div className="eh-row" style={{ justifyContent: "space-between", alignItems: "center", gap: ".5rem", flexWrap: "wrap" }}>
                   <Pill color={STATUS_COLOR[c.status] ?? "grey"}>{CHAPTER_STATUS_LABEL[c.status as ChapterStatus]}</Pill>
-                  <span className="eh-row" style={{ gap: ".4rem" }}>
+                  <span className="eh-row" style={{ gap: ".4rem", alignItems: "center" }}>
                     {c.lastHealth != null && <Pill color={HEALTH_BAND_COLOR[healthBand(c.lastHealth)]}>health {c.lastHealth}</Pill>}
                     <span className="eh-muted eh-sm eh-num">{c.memberCount} members</span>
                   </span>
                 </div>
-                <h3 className="eh-mt">{c.name}{c.code ? <span className="eh-muted eh-sm eh-num" style={{ marginLeft: ".4rem" }}>{c.code}</span> : null}</h3>
-                <p className="eh-sm eh-muted">{geoLine(c)}</p>
+                <div style={{ marginTop: "auto" }}>
+                  <h3 style={{ margin: 0, lineHeight: 1.25 }}>{c.name}{c.code ? <span className="eh-muted eh-sm eh-num" style={{ marginLeft: ".4rem", fontWeight: 400 }}>{c.code}</span> : null}</h3>
+                  <p className="eh-sm eh-muted" style={{ margin: ".25rem 0 0" }}>{geoLine(c)}</p>
+                </div>
               </button>
             ))}
           </div>
