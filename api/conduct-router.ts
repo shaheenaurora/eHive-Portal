@@ -136,9 +136,82 @@ export const conductRouter = createRouter({
       return { ok: true, lifecycleState: next };
     }),
 
+  /* ---- MOD-04 member: actions taken against me, with appeal rights ---- */
+  myActions: authedQuery.query(async ({ ctx }) => {
+    const me = await getMemberByUserId(ctx.user.id);
+    if (!me) return [];
+    const rows = await getDb().select({
+      id: schema.conductCases.id, summary: schema.conductCases.summary,
+      severity: schema.conductCases.severity, status: schema.conductCases.status,
+      resolution: schema.conductCases.resolution,
+      appealStatus: schema.conductCases.appealStatus, appealReason: schema.conductCases.appealReason,
+      appealOutcome: schema.conductCases.appealOutcome, createdAt: schema.conductCases.createdAt,
+    }).from(schema.conductCases)
+      .where(eq(schema.conductCases.subjectMemberId, me.id))
+      .orderBy(desc(schema.conductCases.createdAt));
+    // Only surface cases that reached an action — that's what carries appeal rights.
+    return rows.filter((r) => r.status === "actioned" || r.appealStatus !== "none");
+  }),
+
+  /* ---- MOD-04 member: appeal an action taken against me ---- */
+  appeal: authedQuery
+    .input(z.object({ caseId: z.number().int().positive(), reason: z.string().min(10).max(3000) }))
+    .mutation(async ({ ctx, input }) => {
+      const db = getDb();
+      const me = await getMemberByUserId(ctx.user.id);
+      if (!me) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No membership found." });
+      const c = (await db.select().from(schema.conductCases).where(eq(schema.conductCases.id, input.caseId)).limit(1)).at(0);
+      if (!c || c.subjectMemberId !== me.id) throw new TRPCError({ code: "FORBIDDEN", message: "You can only appeal an action taken against you." });
+      if (c.status !== "actioned") throw new TRPCError({ code: "BAD_REQUEST", message: "There's no action here to appeal." });
+      if (c.appealStatus !== "none") throw new TRPCError({ code: "CONFLICT", message: "You've already appealed this." });
+      await db.update(schema.conductCases)
+        .set({ appealStatus: "open", appealReason: input.reason, appealedAt: new Date() })
+        .where(eq(schema.conductCases.id, input.caseId));
+      return { ok: true };
+    }),
+
+  /* ---- admin (conduct scope): appeals queue ---- */
+  appeals: conductAdmin.query(async () => {
+    const rows = await getDb().select().from(schema.conductCases)
+      .where(eq(schema.conductCases.appealStatus, "open")).orderBy(desc(schema.conductCases.appealedAt));
+    return withNames(rows);
+  }),
+
+  /* ---- admin: decide an appeal — must NOT be the original decider (MOD-04) ---- */
+  decideAppeal: conductAdmin
+    .input(z.object({
+      caseId: z.number().int().positive(),
+      outcome: z.enum(["upheld", "reduced", "reversed"]),
+      note: z.string().max(3000).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = getDb();
+      const c = (await db.select().from(schema.conductCases).where(eq(schema.conductCases.id, input.caseId)).limit(1)).at(0);
+      if (!c) throw new TRPCError({ code: "NOT_FOUND" });
+      if (c.appealStatus !== "open") throw new TRPCError({ code: "CONFLICT", message: "This appeal is already decided." });
+      if (c.handledByUserId && c.handledByUserId === ctx.user.id)
+        throw new TRPCError({ code: "FORBIDDEN", message: "An appeal must be reviewed by someone other than the original decision-maker." });
+      await db.update(schema.conductCases).set({
+        appealStatus: input.outcome, appealReviewerUserId: ctx.user.id,
+        appealOutcome: input.note ?? null, appealDecidedAt: new Date(),
+        // A reversal reopens the case for the original team to unwind the action.
+        ...(input.outcome === "reversed" ? { status: "reviewing" as const } : {}),
+      }).where(eq(schema.conductCases.id, input.caseId));
+      if (c.subjectMemberId) {
+        const msg = input.outcome === "upheld"
+          ? "Your appeal was reviewed independently and the original decision stands."
+          : input.outcome === "reduced"
+          ? "Your appeal was reviewed independently and the action has been reduced. The team will confirm the details."
+          : "Your appeal was upheld — the action is being reversed. The team will be in touch.";
+        await notify(c.subjectMemberId, msg, "conduct");
+      }
+      await audit(ctx.user, `conduct.appeal.${input.outcome}`, { type: "conduct_case", id: input.caseId });
+      return { ok: true };
+    }),
+
   /* ---- admin: open-case count for the nav badge ---- */
   openCount: conductAdmin.query(async () => {
-    const rows = await getDb().select({ status: schema.conductCases.status }).from(schema.conductCases);
-    return rows.filter((r) => r.status === "open" || r.status === "escalated").length;
+    const rows = await getDb().select({ status: schema.conductCases.status, appealStatus: schema.conductCases.appealStatus }).from(schema.conductCases);
+    return rows.filter((r) => r.status === "open" || r.status === "escalated" || r.appealStatus === "open").length;
   }),
 });

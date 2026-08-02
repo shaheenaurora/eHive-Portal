@@ -871,8 +871,29 @@ export const adminEngageRouter = createRouter({
         company: input.company ?? null, chapterId: input.chapterId ?? null,
         source: input.source ?? null, notes: input.notes ?? null, ownerUserId: ctx.user.id,
       });
-      await audit(ctx.user, "prospect.add", { type: "prospect", id: Number(res[0].insertId), detail: input.name });
-      return { ok: true, id: Number(res[0].insertId) };
+      const prospectId = Number(res[0].insertId);
+      // CH-01/CH-03 — auto-create a 48-hour guest follow-up so no warm guest is dropped.
+      const { openGuestFollowUp } = await import("./queries/followups");
+      await openGuestFollowUp(prospectId, input.name, input.chapterId ?? null, ctx.user.id);
+      await audit(ctx.user, "prospect.add", { type: "prospect", id: prospectId, detail: input.name });
+      return { ok: true, id: prospectId };
+    }),
+
+  /* ---- CH-01/CH-03 guest follow-up tasks ---- */
+  followUps: scopedAdmin("membership")
+    .input(z.object({ status: z.enum(["open", "all"]).default("open") }).optional())
+    .query(async ({ input }) => {
+      const { listFollowUps } = await import("./queries/followups");
+      return listFollowUps({ status: input?.status ?? "open" });
+    }),
+
+  followUpDone: scopedAdmin("membership")
+    .input(z.object({ id: z.number(), dismiss: z.boolean().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const { setFollowUpStatus } = await import("./queries/followups");
+      await setFollowUpStatus(input.id, input.dismiss ? "dismissed" : "done");
+      await audit(ctx.user, input.dismiss ? "followup.dismiss" : "followup.done", { type: "followUp", id: input.id });
+      return { ok: true };
     }),
 
   updateProspect: scopedAdmin("membership")

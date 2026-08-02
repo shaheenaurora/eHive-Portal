@@ -871,6 +871,14 @@ export const conductCases = mysqlTable("conduct_cases", {
   detail: text("detail"),
   handledByUserId: bigint("handledByUserId", { mode: "number", unsigned: true }),
   resolution: text("resolution"),
+  /* MOD-04 — appeal: the subject may challenge an action; reviewed one level up
+     (never the original decider). none until the member appeals. */
+  appealStatus: mysqlEnum("appealStatus", ["none", "open", "upheld", "reduced", "reversed"]).notNull().default("none"),
+  appealReason: text("appealReason"),
+  appealReviewerUserId: bigint("appealReviewerUserId", { mode: "number", unsigned: true }),
+  appealOutcome: text("appealOutcome"),
+  appealedAt: timestamp("appealedAt"),
+  appealDecidedAt: timestamp("appealDecidedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
 });
@@ -936,3 +944,19 @@ export const prospects = mysqlTable("prospects", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
 });
 export type Prospect = typeof prospects.$inferSelect;
+
+/* CH-01 / CH-03 — guest follow-up tasks. When a guest/prospect is captured, the
+   system auto-creates a task with an owner and a deadline so no warm guest is
+   dropped. Also usable for ad-hoc chapter follow-ups. */
+export const followUps = mysqlTable("follow_ups", {
+  id: serial("id").primaryKey(),
+  chapterId: bigint("chapterId", { mode: "number", unsigned: true }),
+  prospectId: bigint("prospectId", { mode: "number", unsigned: true }),
+  ownerUserId: bigint("ownerUserId", { mode: "number", unsigned: true }),
+  title: varchar("title", { length: 255 }).notNull(),
+  dueAt: timestamp("dueAt"),
+  status: mysqlEnum("status", ["open", "done", "dismissed"]).notNull().default("open"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  doneAt: timestamp("doneAt"),
+});
+export type FollowUp = typeof followUps.$inferSelect;

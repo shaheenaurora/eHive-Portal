@@ -21,11 +21,39 @@ export default function AdminProspects() {
   const refresh = () => utils.adminEngage.prospects.invalidate();
   const [addOpen, setAddOpen] = useState(false);
   const [sel, setSel] = useState<Row | null>(null);
-
+  const followUps = trpc.adminEngage.followUps.useQuery(undefined, { retry: false });
+  const doneFollowUp = trpc.adminEngage.followUpDone.useMutation({
+    onSuccess: () => followUps.refetch(),
+    onError: (e) => toast(e.message),
+  });
   return (
     <EhShell groups={ADMIN_NAV} brandSub="Admin">
       <PageHead eyebrow="Top of funnel" title="Prospects & Guests"
         sub="Capture prospects and event guests, nurture them, and move them toward applying (ML-01). This sits before the Application." />
+
+      {(followUps.data?.length ?? 0) > 0 && (
+        <div className="eh-card eh-mb" style={{ borderColor: "#e8d5ac", background: "#fdfaf3" }}>
+          <div className="eh-eyebrow" style={{ marginBottom: ".5rem" }}>Guest follow-ups due (CH-01/CH-03)</div>
+          <div className="eh-list">
+            {(followUps.data ?? []).map((f) => {
+              const overdue = f.overdue;
+              return (
+                <div className="row" key={f.id}>
+                  <div style={{ flex: 1 }}>
+                    <span className="t">{f.title}</span>
+                    {f.chapterName && <span className="eh-muted eh-sm"> · {f.chapterName}</span>}
+                    {f.dueAt && <Pill color={overdue ? "red" : "gold"}>{overdue ? "Overdue" : "Due"} {fmtDate(f.dueAt)}</Pill>}
+                  </div>
+                  <span className="eh-row" style={{ gap: ".3rem" }}>
+                    <button className="eh-btn green sm" disabled={doneFollowUp.isPending} onClick={() => doneFollowUp.mutate({ id: f.id })}>Done</button>
+                    <button className="eh-btn ghost sm" disabled={doneFollowUp.isPending} onClick={() => doneFollowUp.mutate({ id: f.id, dismiss: true })}>Dismiss</button>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="eh-between eh-mb">
         <div className="eh-tabs" style={{ margin: 0 }}>
