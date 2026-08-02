@@ -266,6 +266,25 @@ function ScopeEditor({ initial, onSave, onRevoke, disabled, fullNote }: {
   initial: Set<string>; onSave: (scopes: string[]) => void; onRevoke?: () => void; disabled?: boolean; fullNote?: string;
 }) {
   const [sel, setSel] = useState<Set<string>>(new Set(initial));
+  const [open, setOpen] = useState(false);
+  const summary = ADMIN_SCOPES.filter((s) => sel.has(s.key)).map((s) => s.label.split("—")[0].trim());
+
+  if (!open) {
+    return (
+      <div>
+        {fullNote && <p className="eh-sm" style={{ color: "var(--eh-gold)", marginTop: 0, marginBottom: ".5rem" }}>{fullNote}</p>}
+        <div className="eh-between" style={{ gap: ".6rem", flexWrap: "wrap", alignItems: "center" }}>
+          <span className="eh-sm eh-muted" style={{ flex: 1, minWidth: 0 }}>
+            {summary.length ? summary.join(" · ") : "No capabilities assigned yet."}
+          </span>
+          {!disabled && (
+            <button className="eh-btn ghost sm" style={{ flex: "none" }} onClick={() => setOpen(true)}>Edit capabilities</button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       {fullNote && <p className="eh-sm" style={{ color: "var(--eh-gold)", marginTop: 0 }}>{fullNote}</p>}
@@ -274,7 +293,8 @@ function ScopeEditor({ initial, onSave, onRevoke, disabled, fullNote }: {
       }} />
       {!disabled && (
         <div className="eh-row eh-mt">
-          <button className="eh-btn sm" onClick={() => onSave([...sel])}>Save capabilities</button>
+          <button className="eh-btn sm" onClick={() => { onSave([...sel]); setOpen(false); }}>Save capabilities</button>
+          <button className="eh-btn ghost sm" onClick={() => { setSel(new Set(initial)); setOpen(false); }}>Cancel</button>
           {onRevoke && <button className="eh-btn ghost sm danger" onClick={onRevoke}>Revoke admin</button>}
         </div>
       )}

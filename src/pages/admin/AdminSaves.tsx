@@ -96,7 +96,7 @@ export default function AdminSaves() {
                   <button key={s.key} className="row" disabled={!isOpen || update.isPending}
                     onClick={() => update.mutate({ id: c.id, stepsMask: c.stepsMask ^ (1 << i) })}
                     style={{
-                      display: "flex", gap: ".7rem", alignItems: "flex-start", textAlign: "left",
+                      display: "flex", justifyContent: "flex-start", gap: ".7rem", alignItems: "flex-start", textAlign: "left",
                       background: "none", border: 0, width: "100%", cursor: isOpen ? "pointer" : "default",
                       opacity: isOpen ? 1 : .8, padding: ".5rem 0",
                     }}>
