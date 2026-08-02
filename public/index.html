@@ -200,6 +200,7 @@
   .news-form button:hover{background:var(--navy-2)}
   .news-ok{margin:0;color:var(--navy);font-size:14px;font-weight:600}
 </style>
+<link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#16264C"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="eHive">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -426,6 +427,11 @@
       .then(function(r){done(r.ok?"You’re on the list — watch your inbox.":"Thanks — we’ll be in touch as we open the list.");})
       .catch(function(){done("Thanks — we’ll be in touch as we open the list.");});
   });}
+
+  // PWA: register the service worker so the app is installable from the homepage.
+  if("serviceWorker" in navigator && location.protocol==="https:"){
+    window.addEventListener("load",function(){navigator.serviceWorker.register("/sw.js").catch(function(){});});
+  }
 
   // mobile menu
   var burger=document.getElementById("burger"), mnav=document.getElementById("mnav");
