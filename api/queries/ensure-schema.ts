@@ -309,6 +309,18 @@ export async function ensureSchema(): Promise<void> {
         status enum('nominated','shortlisted','winner','declined') NOT NULL DEFAULT 'nominated',
         createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
       )`,
+      // CH-01/CH-03 — guest follow-up tasks.
+      `CREATE TABLE IF NOT EXISTS follow_ups (
+        id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        chapterId bigint unsigned NULL,
+        prospectId bigint unsigned NULL,
+        ownerUserId bigint unsigned NULL,
+        title varchar(255) NOT NULL,
+        dueAt timestamp NULL,
+        status enum('open','done','dismissed') NOT NULL DEFAULT 'open',
+        createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        doneAt timestamp NULL
+      )`,
     );
     tables.add("health_snapshots");
     tables.add("member_save_cases");
@@ -316,6 +328,7 @@ export async function ensureSchema(): Promise<void> {
     tables.add("council_decisions");
     tables.add("award_cycles");
     tables.add("award_nominations");
+    tables.add("follow_ups");
     tables.add("onboarding_milestones");
     tables.add("cadences");
     tables.add("cadence_log");
@@ -331,6 +344,17 @@ export async function ensureSchema(): Promise<void> {
     // --- chapter_roles: role-onboarding playbook progress ---
     if (tables.has("chapter_roles") && !cols.has("chapter_roles.onboardingMask"))
       stmts.push("ALTER TABLE chapter_roles ADD COLUMN onboardingMask int NOT NULL DEFAULT 0");
+
+    // --- conduct_cases: MOD-04 appeal fields ---
+    if (tables.has("conduct_cases")) {
+      if (!cols.has("conduct_cases.appealStatus"))
+        stmts.push("ALTER TABLE conduct_cases ADD COLUMN appealStatus enum('none','open','upheld','reduced','reversed') NOT NULL DEFAULT 'none'");
+      if (!cols.has("conduct_cases.appealReason")) stmts.push("ALTER TABLE conduct_cases ADD COLUMN appealReason text NULL");
+      if (!cols.has("conduct_cases.appealReviewerUserId")) stmts.push("ALTER TABLE conduct_cases ADD COLUMN appealReviewerUserId bigint unsigned NULL");
+      if (!cols.has("conduct_cases.appealOutcome")) stmts.push("ALTER TABLE conduct_cases ADD COLUMN appealOutcome text NULL");
+      if (!cols.has("conduct_cases.appealedAt")) stmts.push("ALTER TABLE conduct_cases ADD COLUMN appealedAt timestamp NULL");
+      if (!cols.has("conduct_cases.appealDecidedAt")) stmts.push("ALTER TABLE conduct_cases ADD COLUMN appealDecidedAt timestamp NULL");
+    }
 
     // --- chapter_budgets: spend-approval trail (AF-02) ---
     if (tables.has("chapter_budgets")) {

@@ -29,6 +29,13 @@ export default function Membership() {
     onSuccess: () => { toast("Directory preference saved."); utils.circle.me.invalidate(); },
     onError: (e) => toast(e.message),
   });
+  const myActions = trpc.conduct.myActions.useQuery(undefined, { retry: false, enabled: !!me.data?.member });
+  const appeal = trpc.conduct.appeal.useMutation({
+    onSuccess: () => { toast("Appeal submitted — it's reviewed independently, one level up."); utils.conduct.myActions.invalidate(); setAppealFor(null); setAppealText(""); },
+    onError: (e) => toast(e.message),
+  });
+  const [appealFor, setAppealFor] = useState<number | null>(null);
+  const [appealText, setAppealText] = useState("");
   const requestData = trpc.engage.requestData.useMutation({
     onSuccess: () => { toast("Request received — the team processes it within 30 days."); utils.engage.myDataRequests.invalidate(); },
     onError: (e) => toast(e.message),
@@ -242,6 +249,43 @@ export default function Membership() {
           <PushSettings />
 
           <TwoFactorSettings />
+
+          {(myActions.data ?? []).length > 0 && (
+            <div className="eh-card eh-mb">
+              <h3>Conduct actions & appeals</h3>
+              <p className="eh-muted eh-sm">If an action has been taken about your conduct, you can appeal it. Appeals are reviewed independently, one level above the original decision.</p>
+              <div className="eh-list eh-mt">
+                {myActions.data!.map((a) => (
+                  <div className="row" key={a.id} style={{ alignItems: "flex-start", flexDirection: "column", gap: ".5rem" }}>
+                    <div style={{ width: "100%" }}>
+                      <div className="t">{a.summary}</div>
+                      {a.resolution && <div className="d">{a.resolution}</div>}
+                      {a.appealStatus !== "none" && (
+                        <Pill color={a.appealStatus === "open" ? "gold" : a.appealStatus === "reversed" ? "green" : a.appealStatus === "reduced" ? "blue" : "grey"}>
+                          Appeal {a.appealStatus}
+                        </Pill>
+                      )}
+                    </div>
+                    {a.appealStatus === "none" && appealFor !== a.id && (
+                      <button className="eh-btn ghost sm" onClick={() => setAppealFor(a.id)}>Appeal this</button>
+                    )}
+                    {a.appealStatus === "none" && appealFor === a.id && (
+                      <div style={{ width: "100%" }}>
+                        <textarea className="eh-input" rows={3} style={{ width: "100%", resize: "vertical" }}
+                          placeholder="Why should this be reconsidered? (min 10 characters)"
+                          value={appealText} onChange={(e) => setAppealText(e.target.value)} />
+                        <div className="eh-row" style={{ gap: ".4rem", marginTop: ".4rem" }}>
+                          <button className="eh-btn gold sm" disabled={appeal.isPending || appealText.trim().length < 10}
+                            onClick={() => appeal.mutate({ caseId: a.id, reason: appealText })}>Submit appeal</button>
+                          <button className="eh-btn ghost sm" onClick={() => { setAppealFor(null); setAppealText(""); }}>Cancel</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="eh-card">
             <h3>Privacy & data (PDPL)</h3>

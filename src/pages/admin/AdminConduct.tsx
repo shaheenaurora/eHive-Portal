@@ -25,11 +25,37 @@ export default function AdminConduct() {
   const [status, setStatus] = useState<ConductStatus | "">("");
   const q = trpc.conduct.cases.useQuery({ status: (status || undefined) as never }, { retry: false });
   const [sel, setSel] = useState<CaseRow | null>(null);
+  const appeals = trpc.conduct.appeals.useQuery(undefined, { retry: false });
+  const decideAppeal = trpc.conduct.decideAppeal.useMutation({
+    onSuccess: () => { toast("Appeal decided."); appeals.refetch(); q.refetch(); },
+    onError: (e) => toast(e.message),
+  });
 
   return (
     <EhShell groups={ADMIN_NAV} brandSub="Admin">
       <PageHead eyebrow="Standards & safeguarding" title="Conduct & Safeguarding"
         sub="Confidential incident reports and the case process (XC-04). Reports come from members; only Conduct & Safeguarding admins can see and act on them." />
+
+      {(appeals.data?.length ?? 0) > 0 && (
+        <div className="eh-card eh-mb" style={{ borderColor: "#e8d5ac", background: "#fdfaf3" }}>
+          <div className="eh-eyebrow" style={{ marginBottom: ".5rem" }}>Appeals awaiting review (MOD-04) · must not be the original decider</div>
+          <div className="eh-list">
+            {(appeals.data ?? []).map((a) => (
+              <div className="row" key={a.id} style={{ alignItems: "flex-start" }}>
+                <div style={{ flex: 1 }}>
+                  <b>{a.summary}</b> <span className="eh-muted eh-sm">· {a.subjectName ?? "member"}</span>
+                  <div className="d">Appeal: {a.appealReason}</div>
+                </div>
+                <span className="eh-row" style={{ gap: ".3rem" }}>
+                  <button className="eh-btn ghost sm" disabled={decideAppeal.isPending} onClick={() => decideAppeal.mutate({ caseId: a.id, outcome: "upheld" })}>Uphold</button>
+                  <button className="eh-btn ghost sm" disabled={decideAppeal.isPending} onClick={() => decideAppeal.mutate({ caseId: a.id, outcome: "reduced" })}>Reduce</button>
+                  <button className="eh-btn gold sm" disabled={decideAppeal.isPending} onClick={() => decideAppeal.mutate({ caseId: a.id, outcome: "reversed" })}>Reverse</button>
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="eh-tabs">
         <button className={status === "" ? "on" : ""} onClick={() => setStatus("")}>All</button>
