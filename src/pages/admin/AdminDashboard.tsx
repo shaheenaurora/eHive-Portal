@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { trpc } from "@/providers/trpc";
-import { EhShell, ADMIN_NAV, PageHead, Stat, StatusPill, Pill, Empty, Spinner, Bar } from "@/components/eh";
+import { EhShell, ADMIN_NAV, PageHead, Stat, StatusPill, Pill, Empty, Spinner, Bar, adminHasScope } from "@/components/eh";
+import { useAuth } from "@/hooks/useAuth";
 import { fmtDate } from "@/lib/ehf";
 import { TIER_LABEL } from "@contracts/constants";
 
@@ -8,6 +9,9 @@ const BANDS = ["80+", "60-79", "40-59", "20-39", "0-19"];
 
 export default function AdminDashboard() {
   const q = trpc.admin.stats.useQuery(undefined, { retry: false });
+  const { user } = useAuth();
+  const canApplications = adminHasScope(user?.adminScopes, "membership");
+  const canLeads = adminHasScope(user?.adminScopes, "finance");
 
   if (q.isLoading) return <EhShell groups={ADMIN_NAV} brandSub="Admin"><Spinner /></EhShell>;
   if (!q.data) return <EhShell groups={ADMIN_NAV} brandSub="Admin"><Empty big="Stats unavailable." /></EhShell>;
@@ -60,44 +64,48 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <div className="eh-card">
-          <div className="eh-between">
-            <h3 style={{ margin: 0 }}>Latest applications</h3>
-            <Link className="eh-btn ghost sm" to="/admin/applications">All →</Link>
-          </div>
-          {s.recentApps.length === 0 && <Empty big="No applications yet." />}
-          <div className="eh-list">
-            {s.recentApps.map((a) => (
-              <div className="row" key={a.id}>
-                <div>
-                  <div className="t">{a.name}</div>
-                  <div className="d">{a.company ?? "—"} · {fmtDate(a.createdAt)}</div>
+        {canApplications && (
+          <div className="eh-card">
+            <div className="eh-between">
+              <h3 style={{ margin: 0 }}>Latest applications</h3>
+              <Link className="eh-btn ghost sm" to="/admin/applications">All →</Link>
+            </div>
+            {s.recentApps.length === 0 && <Empty big="No applications yet." />}
+            <div className="eh-list">
+              {s.recentApps.map((a) => (
+                <div className="row" key={a.id}>
+                  <div>
+                    <div className="t">{a.name}</div>
+                    <div className="d">{a.company ?? "—"} · {fmtDate(a.createdAt)}</div>
+                  </div>
+                  <StatusPill status={a.status} />
                 </div>
-                <StatusPill status={a.status} />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {canLeads && (
+        <div className="eh-card eh-mt">
+          <div className="eh-between">
+            <h3 style={{ margin: 0 }}>Latest website leads</h3>
+            <Link className="eh-btn ghost sm" to="/admin/leads">All leads →</Link>
+          </div>
+          {s.recentLeads.length === 0 && <Empty big="No leads yet." p="The marketing site forms post here via /api/lead." />}
+          <div className="eh-list">
+            {s.recentLeads.map((l) => (
+              <div className="row" key={l.id}>
+                <div>
+                  <div className="t">{l.email ?? "(no email)"}</div>
+                  <div className="d">{l.sourcePage ?? "—"} · {fmtDate(l.createdAt)}</div>
+                </div>
+                <Pill>{l.form}</Pill>
               </div>
             ))}
           </div>
         </div>
-      </div>
-
-      <div className="eh-card eh-mt">
-        <div className="eh-between">
-          <h3 style={{ margin: 0 }}>Latest website leads</h3>
-          <Link className="eh-btn ghost sm" to="/admin/leads">All leads →</Link>
-        </div>
-        {s.recentLeads.length === 0 && <Empty big="No leads yet." p="The marketing site forms post here via /api/lead." />}
-        <div className="eh-list">
-          {s.recentLeads.map((l) => (
-            <div className="row" key={l.id}>
-              <div>
-                <div className="t">{l.email ?? "(no email)"}</div>
-                <div className="d">{l.sourcePage ?? "—"} · {fmtDate(l.createdAt)}</div>
-              </div>
-              <Pill>{l.form}</Pill>
-            </div>
-          ))}
-        </div>
-      </div>
+      )}
     </EhShell>
   );
 }

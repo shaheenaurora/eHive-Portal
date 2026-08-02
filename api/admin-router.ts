@@ -4,7 +4,7 @@ import { and, desc, eq, like, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/mysql-core";
 import * as schema from "@db/schema";
 import { getDb } from "./queries/connection";
-import { createRouter, adminQuery, scopedAdmin } from "./middleware";
+import { createRouter, adminQuery, scopedAdmin, fullAdmin, hasScope } from "./middleware";
 import { awardPoints, awardRulePoints, promoteWaitlist, recomputeScore, autoPairBuddy, notify } from "./queries/circle";
 import { computePodHealth, suggestPods } from "./queries/pods";
 import { audit } from "./lib/audit";
@@ -61,8 +61,10 @@ async function mustMember(memberId: number) {
 
 export const adminRouter = createRouter({
   /* ------------------------------ dashboard ------------------------------ */
-  stats: adminQuery.query(async () => {
+  stats: adminQuery.query(async ({ ctx }) => {
     const db = getDb();
+    const canApps = hasScope(ctx.user as never, "membership");
+    const canLeads = hasScope(ctx.user as never, "finance");
     const byTier = await db
       .select({ tier: schema.members.tier, n: sql<number>`count(*)` })
       .from(schema.members)
@@ -87,7 +89,9 @@ export const adminRouter = createRouter({
       .from(schema.events)
       .where(sql`${schema.events.startsAt} >= now()`);
     const [leadCount] = await db.select({ n: sql<number>`count(*)` }).from(schema.leads);
-    const recentApps = await db
+    // Cross-domain previews are only returned to admins who hold the relevant
+    // capability — a scoped head never receives another team's data.
+    const recentApps = canApps ? await db
       .select({
         id: schema.applications.id,
         name: schema.applications.name,
@@ -98,12 +102,12 @@ export const adminRouter = createRouter({
       })
       .from(schema.applications)
       .orderBy(desc(schema.applications.createdAt))
-      .limit(6);
-    const recentLeads = await db
+      .limit(6) : [];
+    const recentLeads = canLeads ? await db
       .select()
       .from(schema.leads)
       .orderBy(desc(schema.leads.createdAt))
-      .limit(6);
+      .limit(6) : [];
     const scoreDist = await db
       .select({
         band: sql<string>`case when hiveScore >= 80 then '80+' when hiveScore >= 60 then '60-79' when hiveScore >= 40 then '40-59' when hiveScore >= 20 then '20-39' else '0-19' end`,
@@ -128,14 +132,14 @@ export const adminRouter = createRouter({
   /* ------------------------- email (SMTP) config ------------------------- */
   /* Non-secret status of outbound mail + a full-admin-only test send, so SMTP
      can be verified from the portal after setting the Railway variables. */
-  mailStatus: adminQuery.query(({ ctx }) => {
+  mailStatus: fullAdmin.query(({ ctx }) => {
     if (!isFullAdmin(ctx.user as never)) {
       throw new TRPCError({ code: "FORBIDDEN", message: "Only a full administrator can view email settings." });
     }
     return mailStatus();
   }),
 
-  sendTestEmail: adminQuery
+  sendTestEmail: fullAdmin
     .input(z.object({ to: z.string().email() }))
     .mutation(async ({ ctx, input }) => {
       if (!isFullAdmin(ctx.user as never)) {
@@ -150,13 +154,13 @@ export const adminRouter = createRouter({
   /* ---------------------- automation scheduler ---------------------- */
   /* Last daily-pass marker + a full-admin manual "run now" so timed jobs can be
      observed and forced without waiting for the next tick. */
-  schedulerStatus: adminQuery.query(async () => {
+  schedulerStatus: fullAdmin.query(async () => {
     const row = (await getDb().select().from(schema.appConfig)
       .where(eq(schema.appConfig.key, "scheduler:lastDaily")).limit(1)).at(0);
     return { lastDaily: row?.value ?? null };
   }),
 
-  runScheduler: adminQuery.mutation(async ({ ctx }) => {
+  runScheduler: fullAdmin.mutation(async ({ ctx }) => {
     if (!isFullAdmin(ctx.user as never)) {
       throw new TRPCError({ code: "FORBIDDEN", message: "Only a full administrator can run the scheduler." });
     }
@@ -171,7 +175,7 @@ export const adminRouter = createRouter({
   /* Full-admin only. Deletes ONLY seed-tagged rows (seed accounts, demo
      chapters/hierarchy, demo pods/events) — never real data. Requires an
      explicit confirm string so it can't fire by accident. */
-  removeDemoData: adminQuery
+  removeDemoData: fullAdmin
     .input(z.object({ confirm: z.literal("REMOVE DEMO DATA") }))
     .mutation(async ({ ctx }) => {
       if (!isFullAdmin(ctx.user as never)) {
@@ -185,7 +189,7 @@ export const adminRouter = createRouter({
 
   /* Full-admin only. Generates the complete simulation dataset (hierarchy,
      hundreds of members, officers, leaders, management team). Idempotent. */
-  loadFullDemo: adminQuery
+  loadFullDemo: fullAdmin
     .input(z.object({ confirm: z.literal("LOAD DEMO") }))
     .mutation(async ({ ctx }) => {
       if (!isFullAdmin(ctx.user as never)) {
@@ -197,7 +201,7 @@ export const adminRouter = createRouter({
     }),
 
   /* ---------------------------- applications ----------------------------- */
-  applications: adminQuery
+  applications: scopedAdmin("membership")
     .input(z.object({ status: z.string().optional() }).optional())
     .query(async ({ input }) => {
       const db = getDb();
@@ -286,7 +290,7 @@ export const adminRouter = createRouter({
     }),
 
   /* ------------------------------- members -------------------------------- */
-  members: adminQuery
+  members: scopedAdmin("membership")
     .input(
       z
         .object({
@@ -328,7 +332,7 @@ export const adminRouter = createRouter({
     }),
 
   /* Member Lifecycle CRM board — count of members in each state (M1 / Figure 2). */
-  lifecycleCounts: adminQuery.query(async () => {
+  lifecycleCounts: scopedAdmin("membership").query(async () => {
     const rows = await getDb()
       .select({ state: schema.members.lifecycleState, n: sql<number>`count(*)` })
       .from(schema.members)
@@ -375,7 +379,7 @@ export const adminRouter = createRouter({
       return { ok: true };
     }),
 
-  memberDetail: adminQuery.input(idInput).query(async ({ input }) => {
+  memberDetail: scopedAdmin("membership").input(idInput).query(async ({ input }) => {
     const db = getDb();
     const rows = await db
       .select({
@@ -526,7 +530,7 @@ export const adminRouter = createRouter({
       return { ok: true };
     }),
 
-  adjustScore: adminQuery
+  adjustScore: scopedAdmin("membership")
     .input(
       z.object({
         memberId: z.number().int().positive(),
@@ -542,7 +546,7 @@ export const adminRouter = createRouter({
     }),
 
   /* --------------------------------- pods --------------------------------- */
-  pods: adminQuery.query(async () => {
+  pods: scopedAdmin("community").query(async () => {
     const db = getDb();
     const rows = await db.select().from(schema.pods).orderBy(desc(schema.pods.createdAt));
     const out = [];
@@ -562,7 +566,7 @@ export const adminRouter = createRouter({
     return out;
   }),
 
-  createPod: adminQuery
+  createPod: scopedAdmin("community")
     .input(
       z.object({
         name: z.string().min(2).max(255),
@@ -579,7 +583,7 @@ export const adminRouter = createRouter({
       return { ok: true, id: Number(res[0].insertId) };
     }),
 
-  updatePod: adminQuery
+  updatePod: scopedAdmin("community")
     .input(
       z.object({
         id: z.number().int().positive(),
@@ -597,7 +601,7 @@ export const adminRouter = createRouter({
       return { ok: true };
     }),
 
-  podAdmin: adminQuery.input(idInput).query(async ({ input }) => {
+  podAdmin: scopedAdmin("community").input(idInput).query(async ({ input }) => {
     const db = getDb();
     const podRows = await db.select().from(schema.pods).where(eq(schema.pods.id, input.id)).limit(1);
     const pod = podRows.at(0);
@@ -657,11 +661,11 @@ export const adminRouter = createRouter({
   }),
 
   /* PD-01 matching engine — ranked pod suggestions for placing a member. */
-  suggestPodPlacement: adminQuery.input(idInput).query(async ({ input }) => {
+  suggestPodPlacement: scopedAdmin("community").input(idInput).query(async ({ input }) => {
     return suggestPods(input.id);
   }),
 
-  addToPod: adminQuery
+  addToPod: scopedAdmin("community")
     .input(z.object({ podId: z.number().int().positive(), memberId: z.number().int().positive(), role: z.string().max(32).default("member") }))
     .mutation(async ({ input }) => {
       const db = getDb();
@@ -675,7 +679,7 @@ export const adminRouter = createRouter({
       return { ok: true };
     }),
 
-  removeFromPod: adminQuery
+  removeFromPod: scopedAdmin("community")
     .input(z.object({ podId: z.number().int().positive(), memberId: z.number().int().positive() }))
     .mutation(async ({ input }) => {
       await getDb()
@@ -685,7 +689,7 @@ export const adminRouter = createRouter({
     }),
 
   /* ------------------------------- sessions ------------------------------- */
-  createSession: adminQuery
+  createSession: scopedAdmin("community")
     .input(
       z.object({
         podId: z.number().int().positive(),
@@ -701,14 +705,14 @@ export const adminRouter = createRouter({
       return { ok: true, id: Number(res[0].insertId) };
     }),
 
-  setSessionStatus: adminQuery
+  setSessionStatus: scopedAdmin("community")
     .input(z.object({ id: z.number().int().positive(), status: z.enum(["scheduled", "done", "cancelled"]) }))
     .mutation(async ({ input }) => {
       await getDb().update(schema.sessions).set({ status: input.status }).where(eq(schema.sessions.id, input.id));
       return { ok: true };
     }),
 
-  saveSessionNotes: adminQuery
+  saveSessionNotes: scopedAdmin("community")
     .input(z.object({ sessionId: z.number().int().positive(), summary: z.string().max(8000) }))
     .mutation(async ({ input }) => {
       const db = getDb();
@@ -725,7 +729,7 @@ export const adminRouter = createRouter({
       return { ok: true };
     }),
 
-  markAttendance: adminQuery
+  markAttendance: scopedAdmin("community")
     .input(
       z.object({
         sessionId: z.number().int().positive(),
@@ -766,7 +770,7 @@ export const adminRouter = createRouter({
       return { ok: true };
     }),
 
-  assignActionItem: adminQuery
+  assignActionItem: scopedAdmin("community")
     .input(
       z.object({
         podId: z.number().int().positive(),
@@ -781,7 +785,7 @@ export const adminRouter = createRouter({
       return { ok: true, id: Number(res[0].insertId) };
     }),
 
-  reopenActionItem: adminQuery.input(idInput).mutation(async ({ input }) => {
+  reopenActionItem: scopedAdmin("community").input(idInput).mutation(async ({ input }) => {
     await getDb()
       .update(schema.actionItems)
       .set({ status: "open", doneAt: null })
@@ -790,7 +794,7 @@ export const adminRouter = createRouter({
   }),
 
   /* -------------------------------- events -------------------------------- */
-  eventsAdmin: adminQuery.query(async () => {
+  eventsAdmin: scopedAdmin("events").query(async () => {
     const db = getDb();
     const rows = await db.select().from(schema.events).orderBy(desc(schema.events.startsAt)).limit(100);
     // Batch the per-event registration counts into one grouped query (was N+1).
@@ -852,7 +856,7 @@ export const adminRouter = createRouter({
       return { ok: true };
     }),
 
-  eventRegs: adminQuery.input(idInput).query(async ({ input }) => {
+  eventRegs: scopedAdmin("events").input(idInput).query(async ({ input }) => {
     return getDb()
       .select({
         reg: schema.eventRegs,
@@ -867,7 +871,7 @@ export const adminRouter = createRouter({
       .orderBy(desc(schema.eventRegs.createdAt));
   }),
 
-  markEventAttendance: adminQuery
+  markEventAttendance: scopedAdmin("events")
     .input(
       z.object({
         eventId: z.number().int().positive(),
@@ -903,7 +907,7 @@ export const adminRouter = createRouter({
     }),
 
   /* ----------------------------- hive score ------------------------------- */
-  scoreConfig: adminQuery.query(async () => {
+  scoreConfig: scopedAdmin("membership").query(async () => {
     const db = getDb();
     const config = await db.select().from(schema.hiveScoreConfig).orderBy(schema.hiveScoreConfig.factor);
     const top = await db
@@ -919,7 +923,7 @@ export const adminRouter = createRouter({
     return { config, top };
   }),
 
-  setScoreWeights: adminQuery
+  setScoreWeights: scopedAdmin("membership")
     .input(z.array(z.object({ factor: z.string().max(64), weight: z.number().int().min(0).max(100) })).min(1))
     .mutation(async ({ input }) => {
       const db = getDb();
@@ -938,7 +942,7 @@ export const adminRouter = createRouter({
       return { ok: true };
     }),
 
-  recomputeAll: adminQuery.mutation(async () => {
+  recomputeAll: scopedAdmin("membership").mutation(async () => {
     const db = getDb();
     const rows = await db.select({ id: schema.members.id }).from(schema.members);
     let n = 0;
@@ -950,7 +954,7 @@ export const adminRouter = createRouter({
   }),
 
   /* --------------------------------- FRP ---------------------------------- */
-  frpCohortsAdmin: adminQuery.query(async () => {
+  frpCohortsAdmin: scopedAdmin("events").query(async () => {
     const db = getDb();
     const cohorts = await db.select().from(schema.frpCohorts).orderBy(desc(schema.frpCohorts.createdAt));
     const out = [];
@@ -971,7 +975,7 @@ export const adminRouter = createRouter({
     return out;
   }),
 
-  createCohort: adminQuery
+  createCohort: scopedAdmin("events")
     .input(
       z.object({
         name: z.string().min(2).max(255),
@@ -985,7 +989,7 @@ export const adminRouter = createRouter({
       return { ok: true, id: Number(res[0].insertId) };
     }),
 
-  updateCohort: adminQuery
+  updateCohort: scopedAdmin("events")
     .input(
       z.object({
         id: z.number().int().positive(),
@@ -1001,7 +1005,7 @@ export const adminRouter = createRouter({
       return { ok: true };
     }),
 
-  setEnrolmentStatus: adminQuery
+  setEnrolmentStatus: scopedAdmin("events")
     .input(
       z.object({
         id: z.number().int().positive(),
@@ -1019,7 +1023,7 @@ export const adminRouter = createRouter({
       return { ok: true };
     }),
 
-  reviewMilestone: adminQuery
+  reviewMilestone: scopedAdmin("events")
     .input(
       z.object({
         id: z.number().int().positive(),
@@ -1043,7 +1047,7 @@ export const adminRouter = createRouter({
       return { ok: true };
     }),
 
-  enrolmentDetail: adminQuery.input(idInput).query(async ({ input }) => {
+  enrolmentDetail: scopedAdmin("events").input(idInput).query(async ({ input }) => {
     const db = getDb();
     const rows = await db
       .select({
@@ -1069,7 +1073,7 @@ export const adminRouter = createRouter({
   }),
 
   /* ------------------------------ governance ------------------------------ */
-  govAdmin: adminQuery.query(async () => {
+  govAdmin: scopedAdmin("chapters").query(async () => {
     const db = getDb();
     const bodies = await db.select().from(schema.govBodies).orderBy(schema.govBodies.name);
     const out = [];
@@ -1105,14 +1109,14 @@ export const adminRouter = createRouter({
     return { bodies: out, policies: polOut };
   }),
 
-  createBody: adminQuery
+  createBody: scopedAdmin("chapters")
     .input(z.object({ name: z.string().min(2).max(255), description: z.string().max(4000).optional() }))
     .mutation(async ({ input }) => {
       const res = await getDb().insert(schema.govBodies).values(input);
       return { ok: true, id: Number(res[0].insertId) };
     }),
 
-  assignSeat: adminQuery
+  assignSeat: scopedAdmin("chapters")
     .input(
       z.object({
         bodyId: z.number().int().positive(),
@@ -1127,12 +1131,12 @@ export const adminRouter = createRouter({
       return { ok: true, id: Number(res[0].insertId) };
     }),
 
-  removeSeat: adminQuery.input(idInput).mutation(async ({ input }) => {
+  removeSeat: scopedAdmin("chapters").input(idInput).mutation(async ({ input }) => {
     await getDb().delete(schema.govRoles).where(eq(schema.govRoles.id, input.id));
     return { ok: true };
   }),
 
-  publishMinutes: adminQuery
+  publishMinutes: scopedAdmin("chapters")
     .input(
       z.object({
         bodyId: z.number().int().positive(),
@@ -1146,7 +1150,7 @@ export const adminRouter = createRouter({
       return { ok: true, id: Number(res[0].insertId) };
     }),
 
-  savePolicy: adminQuery
+  savePolicy: scopedAdmin("chapters")
     .input(
       z.object({
         id: z.number().int().positive().optional(),
@@ -1173,11 +1177,11 @@ export const adminRouter = createRouter({
     }),
 
   /* ------------------------------- library -------------------------------- */
-  libraryAdmin: adminQuery.query(async () => {
+  libraryAdmin: scopedAdmin("content").query(async () => {
     return getDb().select().from(schema.libraryItems).orderBy(desc(schema.libraryItems.createdAt)).limit(200);
   }),
 
-  saveLibraryItem: adminQuery
+  saveLibraryItem: scopedAdmin("content")
     .input(
       z.object({
         id: z.number().int().positive().optional(),
@@ -1199,17 +1203,17 @@ export const adminRouter = createRouter({
       return { ok: true, id: Number(res[0].insertId) };
     }),
 
-  deleteLibraryItem: adminQuery.input(idInput).mutation(async ({ input }) => {
+  deleteLibraryItem: scopedAdmin("content").input(idInput).mutation(async ({ input }) => {
     await getDb().delete(schema.libraryItems).where(eq(schema.libraryItems.id, input.id));
     return { ok: true };
   }),
 
   /* -------------------------------- offers -------------------------------- */
-  offersAdmin: adminQuery.query(async () => {
+  offersAdmin: scopedAdmin("partnerships").query(async () => {
     return getDb().select().from(schema.offers).orderBy(desc(schema.offers.createdAt)).limit(100);
   }),
 
-  saveOffer: adminQuery
+  saveOffer: scopedAdmin("partnerships")
     .input(
       z.object({
         id: z.number().int().positive().optional(),
@@ -1231,13 +1235,13 @@ export const adminRouter = createRouter({
       return { ok: true, id: Number(res[0].insertId) };
     }),
 
-  deleteOffer: adminQuery.input(idInput).mutation(async ({ input }) => {
+  deleteOffer: scopedAdmin("partnerships").input(idInput).mutation(async ({ input }) => {
     await getDb().delete(schema.offers).where(eq(schema.offers.id, input.id));
     return { ok: true };
   }),
 
   /* --------------------------------- leads -------------------------------- */
-  leads: adminQuery
+  leads: scopedAdmin("finance")
     .input(z.object({
       q: z.string().max(120).optional(),
       status: z.enum(["new", "contacted", "qualified", "won", "lost"]).optional(),
@@ -1262,7 +1266,7 @@ export const adminRouter = createRouter({
     }),
 
   /* Lead pipeline counts for the status tabs. */
-  leadCounts: adminQuery.query(async () => {
+  leadCounts: scopedAdmin("finance").query(async () => {
     const rows = await getDb()
       .select({ status: schema.leads.status, n: sql<number>`count(*)` })
       .from(schema.leads).groupBy(schema.leads.status);
@@ -1270,7 +1274,7 @@ export const adminRouter = createRouter({
   }),
 
   /* Update a lead's CRM fields (status / owner / notes). */
-  updateLead: adminQuery
+  updateLead: scopedAdmin("finance")
     .input(z.object({
       id: z.number().int().positive(),
       status: z.enum(["new", "contacted", "qualified", "won", "lost"]).optional(),
@@ -1290,7 +1294,7 @@ export const adminRouter = createRouter({
     }),
 
   /* -------------------- admin audit trail + access control ----------------- */
-  auditTrail: adminQuery
+  auditTrail: fullAdmin
     .input(z.object({ limit: z.number().min(1).max(500).default(200) }).optional())
     .query(async ({ input }) => {
       return getDb().select().from(schema.adminAuditLog)

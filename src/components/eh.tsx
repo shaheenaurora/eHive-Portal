@@ -247,8 +247,34 @@ export function Ring(props: { value: number; max?: number; label?: string; size?
 }
 
 /* -------------------------------- shell -------------------------------- */
-export type NavItem = { to: string; label: string; icon: string; end?: boolean };
+export type NavItem = { to: string; label: string; icon: string; end?: boolean;
+  /** Admin capability scope(s) required to see this item. Omit = every admin.
+   *  "full" = only a full/owner admin. An array = any one of the scopes. */
+  scope?: string | string[] };
 export type NavGroup = { label?: string; items: NavItem[] };
+
+/** Frontend mirror of the backend scope check: full admins ("" / "*") hold
+ *  every capability; otherwise the scope must be in the CSV list. */
+export function adminHasScope(adminScopes: string | null | undefined, scope: string): boolean {
+  const s = (adminScopes ?? "").trim();
+  if (s === "" || s === "*") return true;
+  if (scope === "full") return false;
+  return s.split(",").map((x) => x.trim()).includes(scope);
+}
+
+/** Whether an admin should see a nav item given its `scope` requirement. */
+export function navItemVisible(item: NavItem, adminScopes: string | null | undefined): boolean {
+  if (!item.scope) return true;
+  const needed = Array.isArray(item.scope) ? item.scope : [item.scope];
+  return needed.some((sc) => adminHasScope(adminScopes, sc));
+}
+
+/** Drop nav items the admin lacks the scope for, then drop now-empty groups. */
+export function filterNavByScope(groups: NavGroup[], adminScopes: string | null | undefined): NavGroup[] {
+  return groups
+    .map((g) => ({ ...g, items: g.items.filter((it) => navItemVisible(it, adminScopes)) }))
+    .filter((g) => g.items.length > 0);
+}
 
 export function EhShell(props: {
   groups: NavGroup[];
@@ -289,7 +315,7 @@ export function EhShell(props: {
                          textTransform: "uppercase", opacity: 0.72 }}>{props.brandSub}</span>
         </div>
         <nav className="eh-nav">
-          {props.groups.map((g, i) => (
+          {filterNavByScope(props.groups, user.adminScopes).map((g, i) => (
             <div key={i}>
               {g.label && <div className="eh-nav-label">{g.label}</div>}
               {g.items.map((it) => (
@@ -415,49 +441,49 @@ export const ADMIN_NAV: NavGroup[] = [
   {
     items: [
       { to: "/admin", label: "Dashboard", icon: "⬡", end: true },
-      { to: "/admin/prospects", label: "Prospects & Guests", icon: "◎" },
-      { to: "/admin/applications", label: "Applications", icon: "⇥" },
-      { to: "/admin/admissions", label: "Zenith & Investors", icon: "✧" },
-      { to: "/admin/members", label: "Members", icon: "◍" },
-      { to: "/admin/saves", label: "Save Playbook", icon: "⛑" },
-      { to: "/admin/leads", label: "Website Leads", icon: "✉" },
+      { to: "/admin/prospects", label: "Prospects & Guests", icon: "◎", scope: "membership" },
+      { to: "/admin/applications", label: "Applications", icon: "⇥", scope: "membership" },
+      { to: "/admin/admissions", label: "Zenith & Investors", icon: "✧", scope: ["member_success", "partnerships"] },
+      { to: "/admin/members", label: "Members", icon: "◍", scope: "membership" },
+      { to: "/admin/saves", label: "Save Playbook", icon: "⛑", scope: "member_success" },
+      { to: "/admin/leads", label: "Website Leads", icon: "✉", scope: "finance" },
     ],
   },
   {
     label: "Community",
     items: [
-      { to: "/admin/pods", label: "Pods & Sessions", icon: "◷" },
-      { to: "/admin/events", label: "Events", icon: "◇" },
-      { to: "/admin/engagement", label: "Engagement", icon: "♥" },
-      { to: "/admin/connect", label: "Connect", icon: "⇄" },
-      { to: "/admin/chapters", label: "Chapters", icon: "⌂" },
-      { to: "/admin/org", label: "Organisation", icon: "⧉" },
-      { to: "/admin/score", label: "Hive Score", icon: "✦" },
-      { to: "/admin/awards", label: "Awards", icon: "✵" },
+      { to: "/admin/pods", label: "Pods & Sessions", icon: "◷", scope: "community" },
+      { to: "/admin/events", label: "Events", icon: "◇", scope: "events" },
+      { to: "/admin/engagement", label: "Engagement", icon: "♥", scope: "community" },
+      { to: "/admin/connect", label: "Connect", icon: "⇄", scope: "community" },
+      { to: "/admin/chapters", label: "Chapters", icon: "⌂", scope: "chapters" },
+      { to: "/admin/org", label: "Organisation", icon: "⧉", scope: "chapters" },
+      { to: "/admin/score", label: "Hive Score", icon: "✦", scope: "membership" },
+      { to: "/admin/awards", label: "Awards", icon: "✵", scope: "community" },
     ],
   },
   {
     label: "Programmes",
     items: [
-      { to: "/admin/frp", label: "FRP", icon: "↗" },
-      { to: "/admin/governance", label: "Governance", icon: "§" },
-      { to: "/admin/library", label: "Library", icon: "▤" },
-      { to: "/admin/offers", label: "Offers", icon: "◈" },
+      { to: "/admin/frp", label: "FRP", icon: "↗", scope: "events" },
+      { to: "/admin/governance", label: "Governance", icon: "§", scope: "chapters" },
+      { to: "/admin/library", label: "Library", icon: "▤", scope: "content" },
+      { to: "/admin/offers", label: "Offers", icon: "◈", scope: "partnerships" },
     ],
   },
   {
     label: "Content",
     items: [
-      { to: "/admin/insights", label: "Insights", icon: "✎" },
-      { to: "/admin/newsletters", label: "Newsletters", icon: "▤" },
+      { to: "/admin/insights", label: "Insights", icon: "✎", scope: "content" },
+      { to: "/admin/newsletters", label: "Newsletters", icon: "▤", scope: "content" },
     ],
   },
   {
     label: "Administration",
     items: [
-      { to: "/admin/conduct", label: "Conduct & Safeguarding", icon: "⚖" },
-      { to: "/admin/access", label: "Team & Access", icon: "⚿" },
-      { to: "/admin/audit", label: "Audit Trail", icon: "❑" },
+      { to: "/admin/conduct", label: "Conduct & Safeguarding", icon: "⚖", scope: "conduct" },
+      { to: "/admin/access", label: "Team & Access", icon: "⚿", scope: "full" },
+      { to: "/admin/audit", label: "Audit Trail", icon: "❑", scope: "full" },
     ],
   },
 ];
