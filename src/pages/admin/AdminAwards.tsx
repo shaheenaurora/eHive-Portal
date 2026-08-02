@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/providers/trpc";
-import { EhShell, ADMIN_NAV, PageHead, Pill, Empty, Spinner, Field, toast } from "@/components/eh";
+import { EhShell, ADMIN_NAV, PageHead, Pill, Empty, Spinner, Field, toast, confirmDialog } from "@/components/eh";
 import { fmtDate } from "@/lib/ehf";
 import { AWARD_CATEGORIES, type AwardCycleStatus } from "@contracts/constants";
 
@@ -63,7 +63,7 @@ export default function AdminAwards() {
             <div className="eh-row" style={{ gap: ".4rem", flexWrap: "wrap" }}>
               {NEXT[c.status].map((n) => (
                 <button key={n.to} className="eh-btn gold sm" disabled={setStatus.isPending}
-                  onClick={() => setStatus.mutate({ id: c.id, status: n.to })}>{n.label}</button>
+                  onClick={async () => { if (await confirmDialog({ title: `${n.label}?`, body: `This moves the cycle to "${n.to}".`, confirmLabel: n.label })) setStatus.mutate({ id: c.id, status: n.to }); }}>{n.label}</button>
               ))}
               <button className="eh-btn ghost sm" onClick={() => setOpenId(openId === c.id ? null : c.id)}>
                 {openId === c.id ? "Hide nominations" : "Manage nominations"}
@@ -107,7 +107,8 @@ function Nominations({ cycleId }: { cycleId: number }) {
                   </div>
                   <span className="eh-row" style={{ gap: ".3rem" }}>
                     <button className="eh-btn ghost sm" disabled={n.status === "shortlisted"} onClick={() => setStatus.mutate({ id: n.id, status: "shortlisted" })}>Shortlist</button>
-                    <button className="eh-btn green sm" disabled={n.status === "winner"} onClick={() => setStatus.mutate({ id: n.id, status: "winner" })}>Winner</button>
+                    <button className="eh-btn green sm" disabled={n.status === "winner"}
+                      onClick={async () => { if (await confirmDialog({ title: `Name ${n.nomineeName ?? n.nomineeChapterName ?? "this nominee"} the winner?`, body: "This records the win — announced to the Circle when the cycle is announced.", confirmLabel: "Confirm winner" })) setStatus.mutate({ id: n.id, status: "winner" }); }}>Winner</button>
                     <button className="eh-btn ghost sm" disabled={n.status === "declined"} onClick={() => setStatus.mutate({ id: n.id, status: "declined" })}>Decline</button>
                   </span>
                 </div>

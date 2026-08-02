@@ -36,6 +36,39 @@ function VerifyBanner() {
   );
 }
 
+/* ------------------------------- confirm ------------------------------- */
+type ConfirmOpts = { title: string; body?: string; confirmLabel?: string; cancelLabel?: string; danger?: boolean };
+let openConfirmFn: ((opts: ConfirmOpts, resolve: (v: boolean) => void) => void) | null = null;
+/** Promise-based confirmation dialog. `if (await confirmDialog({...})) …`.
+ *  Falls back to window.confirm if the host isn't mounted. */
+export function confirmDialog(opts: ConfirmOpts): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (openConfirmFn) openConfirmFn(opts, resolve);
+    else resolve(typeof window !== "undefined" ? window.confirm(opts.title) : false);
+  });
+}
+function ConfirmHost() {
+  const [state, setState] = useState<{ opts: ConfirmOpts; resolve: (v: boolean) => void } | null>(null);
+  useEffect(() => {
+    openConfirmFn = (opts, resolve) => setState({ opts, resolve });
+    return () => { openConfirmFn = null; };
+  }, []);
+  if (!state) return null;
+  const { opts, resolve } = state;
+  const done = (v: boolean) => { setState(null); resolve(v); };
+  return (
+    <Modal title={opts.title} onClose={() => done(false)}>
+      {opts.body && <p className="eh-sm eh-muted" style={{ marginBottom: "1.1rem" }}>{opts.body}</p>}
+      <div className="eh-row" style={{ gap: ".5rem" }}>
+        <button className={"eh-btn " + (opts.danger ? "" : "gold")}
+          style={opts.danger ? { background: "var(--eh-red)", color: "#fff", borderColor: "var(--eh-red)" } : undefined}
+          onClick={() => done(true)}>{opts.confirmLabel ?? "Confirm"}</button>
+        <button className="eh-btn ghost" onClick={() => done(false)}>{opts.cancelLabel ?? "Cancel"}</button>
+      </div>
+    </Modal>
+  );
+}
+
 function ToastHost() {
   const [msg, setMsg] = useState<string | null>(null);
   useEffect(() => {
@@ -295,6 +328,7 @@ export function EhShell(props: {
       </main>
       {props.notif && <NotifBell />}
       <ToastHost />
+      <ConfirmHost />
       <InstallPrompt />
     </div>
   );

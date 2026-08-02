@@ -10,7 +10,7 @@ import { audit } from "./lib/audit";
 import {
   awardRulePoints, notify, evaluateDormancy, introEligibility,
 } from "./queries/circle";
-import { listSaveCases, updateSaveCase, closeSaveCase, openSaveCase } from "./queries/saves";
+import { listSaveCases, updateSaveCase, closeSaveCase, openSaveCase, reopenSaveCase } from "./queries/saves";
 import { listCouncil, createCouncilMeeting, updateCouncilMeeting, logDecision, updateDecision } from "./queries/councils";
 import { listCycles, createCycle, updateCycleStatus, listNominations, nominate, setNominationStatus } from "./queries/awards";
 import { computeChapterHealth } from "./queries/health";
@@ -361,6 +361,15 @@ export const adminEngageRouter = createRouter({
       const id = await openSaveCase(input.memberId, input.reason);
       await audit(ctx.user, "save.open", { type: "saveCase", id });
       return { ok: true, id };
+    }),
+
+  saveReopen: scopedAdmin("member_success")
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const ok = await reopenSaveCase(input.id);
+      if (!ok) throw new TRPCError({ code: "CONFLICT", message: "This case is already open." });
+      await audit(ctx.user, "save.reopen", { type: "saveCase", id: input.id });
+      return { ok: true };
     }),
 
   decideZenith: scopedAdmin("member_success")

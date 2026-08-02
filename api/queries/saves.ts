@@ -133,6 +133,17 @@ export async function closeSaveCase(id: number, outcome: "saved" | "lost", resol
   return c.memberId;
 }
 
+/** Reverse a close: put a saved/lost case back to open (undo the outcome). */
+export async function reopenSaveCase(id: number): Promise<boolean> {
+  const rows = await getDb().select().from(schema.memberSaveCases).where(eq(schema.memberSaveCases.id, id)).limit(1);
+  const c = rows.at(0);
+  if (!c || OPEN_STATES.includes(c.status)) return false;
+  await getDb().update(schema.memberSaveCases)
+    .set({ status: c.stepsMask > 0 ? "working" : "open", resolution: null, closedAt: null })
+    .where(eq(schema.memberSaveCases.id, id));
+  return true;
+}
+
 function statusOnProgress(): SaveCaseStatus { return "working"; }
 function popcount(n: number): number { let c = 0; while (n) { c += n & 1; n >>>= 1; } return c; }
 

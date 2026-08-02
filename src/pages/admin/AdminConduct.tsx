@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/providers/trpc";
-import { EhShell, ADMIN_NAV, PageHead, Pill, Empty, Spinner, Modal, Field, toast } from "@/components/eh";
+import { EhShell, ADMIN_NAV, PageHead, Pill, Empty, Spinner, Modal, Field, toast, confirmDialog } from "@/components/eh";
 import { fmtDateTime } from "@/lib/ehf";
 import {
   CONDUCT_STATUSES, CONDUCT_STATUS_LABEL, CONDUCT_SEVERITIES, CONDUCT_SEVERITY_LABEL,
@@ -47,9 +47,12 @@ export default function AdminConduct() {
                   <div className="d">Appeal: {a.appealReason}</div>
                 </div>
                 <span className="eh-row" style={{ gap: ".3rem" }}>
-                  <button className="eh-btn ghost sm" disabled={decideAppeal.isPending} onClick={() => decideAppeal.mutate({ caseId: a.id, outcome: "upheld" })}>Uphold</button>
-                  <button className="eh-btn ghost sm" disabled={decideAppeal.isPending} onClick={() => decideAppeal.mutate({ caseId: a.id, outcome: "reduced" })}>Reduce</button>
-                  <button className="eh-btn gold sm" disabled={decideAppeal.isPending} onClick={() => decideAppeal.mutate({ caseId: a.id, outcome: "reversed" })}>Reverse</button>
+                  <button className="eh-btn ghost sm" disabled={decideAppeal.isPending}
+                    onClick={async () => { if (await confirmDialog({ title: "Uphold the original decision?", body: "The member is told the decision stands.", confirmLabel: "Uphold" })) decideAppeal.mutate({ caseId: a.id, outcome: "upheld" }); }}>Uphold</button>
+                  <button className="eh-btn ghost sm" disabled={decideAppeal.isPending}
+                    onClick={async () => { if (await confirmDialog({ title: "Reduce the action?", confirmLabel: "Reduce" })) decideAppeal.mutate({ caseId: a.id, outcome: "reduced" }); }}>Reduce</button>
+                  <button className="eh-btn gold sm" disabled={decideAppeal.isPending}
+                    onClick={async () => { if (await confirmDialog({ title: "Reverse the action?", body: "This reopens the case for the original team to unwind the action.", confirmLabel: "Reverse", danger: true })) decideAppeal.mutate({ caseId: a.id, outcome: "reversed" }); }}>Reverse</button>
                 </span>
               </div>
             ))}
@@ -150,11 +153,11 @@ function CaseDetail({ c, onClose, onSaved }: { c: CaseRow; onClose: () => void; 
           </p>
           <div className="eh-row" style={{ gap: ".5rem", flexWrap: "wrap" }}>
             <button className="eh-btn sm" disabled={act.isPending}
-                    onClick={() => act.mutate({ caseId: c.id, memberId: c.subjectMemberId!, action: "suspend" })}>Suspend</button>
+                    onClick={async () => { if (await confirmDialog({ title: "Suspend this member?", body: "Access is paused pending review and they're notified. You can reinstate afterwards.", confirmLabel: "Suspend", danger: true })) act.mutate({ caseId: c.id, memberId: c.subjectMemberId!, action: "suspend" }); }}>Suspend</button>
             <button className="eh-btn ghost sm" disabled={act.isPending}
-                    onClick={() => act.mutate({ caseId: c.id, memberId: c.subjectMemberId!, action: "reinstate" })}>Reinstate</button>
+                    onClick={async () => { if (await confirmDialog({ title: "Reinstate this member?", body: "Membership returns to Active and they're notified.", confirmLabel: "Reinstate" })) act.mutate({ caseId: c.id, memberId: c.subjectMemberId!, action: "reinstate" }); }}>Reinstate</button>
             <button className="eh-btn ghost sm danger" disabled={act.isPending}
-                    onClick={() => { if (confirm("Remove this member from the Circle? They move to Alumni and membership is cancelled.")) act.mutate({ caseId: c.id, memberId: c.subjectMemberId!, action: "remove" }); }}>Remove from Circle</button>
+                    onClick={async () => { if (await confirmDialog({ title: "Remove this member from the Circle?", body: "They move to Alumni and membership is cancelled. This is a serious, logged action.", confirmLabel: "Remove from Circle", danger: true })) act.mutate({ caseId: c.id, memberId: c.subjectMemberId!, action: "remove" }); }}>Remove from Circle</button>
           </div>
         </>
       )}

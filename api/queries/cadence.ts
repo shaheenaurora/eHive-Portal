@@ -73,3 +73,14 @@ export async function recordCadence(cadenceId: number, status: CadenceStatus, no
   await db.insert(schema.cadenceLog).values({ cadenceId, periodKey: current, status, note, actorMemberId });
   return { chapterId: cad.chapterId };
 }
+
+/** Reverse a cadence mark: clear this period's log so it returns to "open". */
+export async function reopenCadence(cadenceId: number, now = new Date()): Promise<{ chapterId: number }> {
+  const db = getDb();
+  const cad = (await db.select().from(schema.cadences).where(eq(schema.cadences.id, cadenceId)).limit(1)).at(0);
+  if (!cad) throw new Error("cadence not found");
+  const { current } = recentPeriodKeys(cad.frequency as Frequency, now, 0);
+  await db.delete(schema.cadenceLog)
+    .where(and(eq(schema.cadenceLog.cadenceId, cadenceId), eq(schema.cadenceLog.periodKey, current)));
+  return { chapterId: cad.chapterId };
+}
