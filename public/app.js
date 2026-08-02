@@ -1101,3 +1101,11 @@ function submitLead(payload, onOk, onErr){
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", wire);
   else wire();
 })();
+
+/* PWA: register the service worker so the site is installable from any page
+   (Add to Home Screen / Install app). Harmless if sw.js is unavailable. */
+if ("serviceWorker" in navigator && location.protocol === "https:") {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("/sw.js").catch(function () { /* non-fatal */ });
+  });
+}
