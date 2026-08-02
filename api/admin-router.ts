@@ -354,6 +354,14 @@ export const adminRouter = createRouter({
       if (input.state === "suspended") patch.status = "paused";
       if (input.state === "alumni" || input.state === "lapsed") patch.status = "cancelled";
       await db.update(schema.members).set(patch).where(eq(schema.members.id, m.id));
+      // ML-04b — a manual at-risk flag opens a tracked Save case; recovery closes it.
+      if (input.state === "at_risk" && m.lifecycleState !== "at_risk") {
+        const { openSaveCase } = await import("./queries/saves");
+        await openSaveCase(m.id, input.note || "Flagged at-risk by an admin.", m.homeChapterId);
+      } else if (input.state === "active" && m.lifecycleState === "at_risk") {
+        const { autoCloseSaveOnRecovery } = await import("./queries/saves");
+        await autoCloseSaveOnRecovery(m.id, "Returned to Active by an admin.");
+      }
       // Member-facing notification for the transitions that should reach them.
       const NOTE: Record<string, string> = {
         active: "Welcome to Active membership — you're all set.",

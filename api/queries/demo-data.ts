@@ -89,6 +89,11 @@ async function insertUsersBatch(rows: (typeof schema.users.$inferInsert)[]): Pro
  */
 export async function loadFullDemo(): Promise<{ loaded: boolean; members: number; chapters: number; admins: number }> {
   const db = getDb();
+  // Always (re)open Save cases for any at-risk members — including a demo that
+  // was loaded before the Save Playbook existed. Idempotent; runs even when the
+  // heavy generation below is skipped by the marker.
+  const { backfillAtRiskSaves } = await import("./saves");
+  await backfillAtRiskSaves();
   const marker = (await db.select().from(schema.appConfig).where(eq(schema.appConfig.key, DEMO_FULL_MARKER)).limit(1)).at(0);
   if (marker?.value) return { loaded: false, members: 0, chapters: 0, admins: 0 };
 
