@@ -135,3 +135,21 @@ export async function closeSaveCase(id: number, outcome: "saved" | "lost", resol
 
 function statusOnProgress(): SaveCaseStatus { return "working"; }
 function popcount(n: number): number { let c = 0; while (n) { c += n & 1; n >>>= 1; } return c; }
+
+/** Open a Save case for every active member currently flagged At-Risk that
+ *  doesn't already have one. For members flagged before the playbook existed
+ *  (e.g. seeded/demo data set directly to at_risk rather than transitioned).
+ *  Idempotent. Returns how many cases were opened. */
+export async function backfillAtRiskSaves(): Promise<number> {
+  const rows = await getDb().select({ id: schema.members.id, homeChapterId: schema.members.homeChapterId })
+    .from(schema.members)
+    .where(and(eq(schema.members.status, "active"), eq(schema.members.lifecycleState, "at_risk")));
+  let opened = 0;
+  for (const m of rows) {
+    const existing = await openCaseFor(m.id);
+    if (existing) continue;
+    await openSaveCase(m.id, "Flagged at-risk — engagement below standard.", m.homeChapterId);
+    opened++;
+  }
+  return opened;
+}
