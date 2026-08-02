@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/providers/trpc";
-import { EhShell, ADMIN_NAV, PageHead, Pill, Empty, Spinner, Modal, Field, toast } from "@/components/eh";
+import { EhShell, ADMIN_NAV, PageHead, Pill, Empty, Spinner, Modal, Field, toast, confirmDialog } from "@/components/eh";
 import { fmtDate } from "@/lib/ehf";
 import { PROSPECT_STAGES, PROSPECT_STAGE_LABEL } from "@contracts/constants";
 import type { ProspectStage } from "@contracts/constants";
@@ -45,8 +45,10 @@ export default function AdminProspects() {
                     {f.dueAt && <Pill color={overdue ? "red" : "gold"}>{overdue ? "Overdue" : "Due"} {fmtDate(f.dueAt)}</Pill>}
                   </div>
                   <span className="eh-row" style={{ gap: ".3rem" }}>
-                    <button className="eh-btn green sm" disabled={doneFollowUp.isPending} onClick={() => doneFollowUp.mutate({ id: f.id })}>Done</button>
-                    <button className="eh-btn ghost sm" disabled={doneFollowUp.isPending} onClick={() => doneFollowUp.mutate({ id: f.id, dismiss: true })}>Dismiss</button>
+                    <button className="eh-btn green sm" disabled={doneFollowUp.isPending}
+                      onClick={async () => { if (await confirmDialog({ title: "Mark this follow-up as done?", body: f.title, confirmLabel: "Mark done" })) doneFollowUp.mutate({ id: f.id }); }}>Done</button>
+                    <button className="eh-btn ghost sm" disabled={doneFollowUp.isPending}
+                      onClick={async () => { if (await confirmDialog({ title: "Dismiss this follow-up?", body: "It won't count as completed.", confirmLabel: "Dismiss", danger: true })) doneFollowUp.mutate({ id: f.id, dismiss: true }); }}>Dismiss</button>
                   </span>
                 </div>
               );

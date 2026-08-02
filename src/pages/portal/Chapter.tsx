@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/providers/trpc";
-import { EhShell, MEMBER_NAV, PageHead, Pill, Empty, Spinner, Modal, Field, Bar, toast } from "@/components/eh";
+import { EhShell, MEMBER_NAV, PageHead, Pill, Empty, Spinner, Modal, Field, Bar, toast, confirmDialog } from "@/components/eh";
 import { fmtDate } from "@/lib/ehf";
 import { CHAPTER_STATUS_LABEL, CHAPTER_ROLE_RESP, CHAPTER_ROLE_METRIC, chapterRoleTitle,
   HEALTH_COMPONENTS, HEALTH_BAND_LABEL, HEALTH_BAND_COLOR, healthBand,
@@ -60,6 +60,10 @@ export default function Chapter() {
   });
   const markCadence = trpc.officer.markCadence.useMutation({
     onSuccess: () => { toast("Cadence updated."); refresh(); },
+    onError: (e) => toast(e.message),
+  });
+  const reopenCadence = trpc.officer.reopenCadence.useMutation({
+    onSuccess: () => { toast("Cadence reopened."); refresh(); },
     onError: (e) => toast(e.message),
   });
   const postLearning = trpc.officer.postLearning.useMutation({
@@ -270,11 +274,17 @@ export default function Chapter() {
                         </div>
                         <div className="eh-row" style={{ gap: ".4rem" }}>
                           <Pill color={CADENCE_STATUS_COLOR[c.currentStatus]}>{c.currentStatus === "open" ? `due ${periodLabel(c.frequency as Frequency)}` : c.currentStatus}</Pill>
-                          {c.currentStatus !== "kept" && (
+                          {c.currentStatus === "open" && (
                             <>
-                              <button className="eh-btn sm gold" disabled={markCadence.isPending} onClick={() => markCadence.mutate({ cadenceId: c.id, status: "kept" })}>Kept</button>
-                              <button className="eh-btn sm ghost" disabled={markCadence.isPending} onClick={() => markCadence.mutate({ cadenceId: c.id, status: "rescheduled" })}>Resched.</button>
+                              <button className="eh-btn sm gold" disabled={markCadence.isPending}
+                                onClick={async () => { if (await confirmDialog({ title: `Mark this ${periodLabel(c.frequency as Frequency)} cadence as kept?`, body: "This records it as done for this period and rolls up to your Zone. You can undo it afterwards.", confirmLabel: "Yes, mark kept" })) markCadence.mutate({ cadenceId: c.id, status: "kept" }); }}>Kept</button>
+                              <button className="eh-btn sm ghost" disabled={markCadence.isPending}
+                                onClick={async () => { if (await confirmDialog({ title: "Mark this cadence as rescheduled?", confirmLabel: "Yes, rescheduled" })) markCadence.mutate({ cadenceId: c.id, status: "rescheduled" }); }}>Resched.</button>
                             </>
+                          )}
+                          {c.currentStatus !== "open" && (
+                            <button className="eh-btn sm ghost" disabled={reopenCadence.isPending}
+                              onClick={async () => { if (await confirmDialog({ title: `Undo "${c.currentStatus}" for this period?`, body: "This reopens the cadence so it can be marked again.", confirmLabel: "Undo", danger: true })) reopenCadence.mutate({ cadenceId: c.id }); }}>Undo</button>
                           )}
                         </div>
                       </div>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/providers/trpc";
-import { EhShell, ADMIN_NAV, PageHead, Pill, Empty, Spinner, Modal, Field, toast } from "@/components/eh";
+import { EhShell, ADMIN_NAV, PageHead, Pill, Empty, Spinner, Modal, Field, toast, confirmDialog } from "@/components/eh";
 import { fmtDate } from "@/lib/ehf";
 import { healthBand, HEALTH_BAND_LABEL, HEALTH_BAND_COLOR } from "@contracts/constants";
 
@@ -220,9 +220,9 @@ function CouncilModal({ unit, onClose }: { unit: { id: number; name: string; lev
             </div>
             {d.status === "proposed" && (
               <span className="eh-row" style={{ gap: ".3rem" }}>
-                <button className="eh-btn green sm" onClick={() => decide.mutate({ id: d.id, status: "carried" })}>Carried</button>
-                <button className="eh-btn ghost sm" onClick={() => decide.mutate({ id: d.id, status: "failed" })}>Failed</button>
-                <button className="eh-btn ghost sm" onClick={() => decide.mutate({ id: d.id, status: "deferred" })}>Defer</button>
+                <button className="eh-btn green sm" onClick={async () => { if (await confirmDialog({ title: "Record this motion as carried?", body: d.title, confirmLabel: "Carried" })) decide.mutate({ id: d.id, status: "carried" }); }}>Carried</button>
+                <button className="eh-btn ghost sm" onClick={async () => { if (await confirmDialog({ title: "Record this motion as failed?", body: d.title, confirmLabel: "Failed", danger: true })) decide.mutate({ id: d.id, status: "failed" }); }}>Failed</button>
+                <button className="eh-btn ghost sm" onClick={async () => { if (await confirmDialog({ title: "Defer this motion?", confirmLabel: "Defer" })) decide.mutate({ id: d.id, status: "deferred" }); }}>Defer</button>
               </span>
             )}
           </div>

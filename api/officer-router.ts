@@ -7,7 +7,8 @@ import { createRouter, authedQuery } from "./middleware";
 import { getMemberByUserId, notify } from "./queries/circle";
 import { computeChapterHealth } from "./queries/health";
 import { computeOnboarding } from "./queries/onboarding";
-import { ensureCadenceTemplates, listCadences, recordCadence } from "./queries/cadence";
+import { ensureCadenceTemplates, listCadences, recordCadence, reopenCadence } from "./queries/cadence";
+import { audit } from "./lib/audit";
 import { CADENCE_STATUSES } from "@contracts/cadence";
 import { ROLE_ONBOARDING_STEPS } from "@contracts/constants";
 
@@ -99,6 +100,7 @@ export const officerRouter = createRouter({
       const ALL = (1 << ROLE_ONBOARDING_STEPS.length) - 1;
       await db.update(schema.chapterRoles).set({ onboardingMask: input.mask & ALL })
         .where(eq(schema.chapterRoles.id, input.roleId));
+      await audit(ctx.user, "role.onboarding.update", { type: "chapterRole", id: input.roleId, detail: `${row.role} onboarding` });
       return { ok: true };
     }),
 
@@ -193,6 +195,19 @@ export const officerRouter = createRouter({
       const cad = (await getDb().select().from(schema.cadences).where(eq(schema.cadences.id, input.cadenceId)).limit(1)).at(0);
       if (!cad || cad.chapterId !== chapterId) throw new TRPCError({ code: "FORBIDDEN", message: "Not your chapter's cadence." });
       await recordCadence(input.cadenceId, input.status, input.note, member.id);
+      await audit(ctx.user, "cadence.mark", { type: "cadence", id: input.cadenceId, detail: `${cad.type ?? "cadence"} → ${input.status}` });
+      return { ok: true };
+    }),
+
+  /* Reverse a cadence mark — clears this period so it can be marked again. */
+  reopenCadence: authedQuery
+    .input(z.object({ cadenceId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const { chapterId } = await requireOfficer(ctx.user.id);
+      const cad = (await getDb().select().from(schema.cadences).where(eq(schema.cadences.id, input.cadenceId)).limit(1)).at(0);
+      if (!cad || cad.chapterId !== chapterId) throw new TRPCError({ code: "FORBIDDEN", message: "Not your chapter's cadence." });
+      await reopenCadence(input.cadenceId);
+      await audit(ctx.user, "cadence.reopen", { type: "cadence", id: input.cadenceId, detail: `${cad.type ?? "cadence"} reopened` });
       return { ok: true };
     }),
 });

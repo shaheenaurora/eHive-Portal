@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/providers/trpc";
-import { EhShell, ADMIN_NAV, PageHead, Pill, TierPill, Empty, Spinner, Modal, Field, toast } from "@/components/eh";
+import { EhShell, ADMIN_NAV, PageHead, Pill, TierPill, Empty, Spinner, Modal, Field, toast, confirmDialog } from "@/components/eh";
 import { fmtDate } from "@/lib/ehf";
 import { SAVE_PLAYBOOK_STEPS, type SaveCaseStatus } from "@contracts/constants";
 
@@ -20,6 +20,10 @@ export default function AdminSaves() {
   const refresh = () => utils.adminEngage.savesList.invalidate();
 
   const update = trpc.adminEngage.saveUpdate.useMutation({ onSuccess: refresh, onError: (e) => toast(e.message) });
+  const reopen = trpc.adminEngage.saveReopen.useMutation({
+    onSuccess: () => { toast("Case reopened."); refresh(); },
+    onError: (e) => toast(e.message),
+  });
   const close = trpc.adminEngage.saveClose.useMutation({
     onSuccess: () => { toast("Case closed."); refresh(); setClosing(null); },
     onError: (e) => toast(e.message),
@@ -120,6 +124,12 @@ export default function AdminSaves() {
               <div className="eh-row" style={{ gap: ".5rem", marginTop: ".9rem" }}>
                 <button className="eh-btn green sm" onClick={() => setClosing({ id: c.id, outcome: "saved" })}>Mark saved</button>
                 <button className="eh-btn ghost sm" onClick={() => setClosing({ id: c.id, outcome: "lost" })}>Mark lost</button>
+              </div>
+            )}
+            {!isOpen && (
+              <div className="eh-row" style={{ gap: ".5rem", marginTop: ".9rem" }}>
+                <button className="eh-btn ghost sm" disabled={reopen.isPending}
+                  onClick={async () => { if (await confirmDialog({ title: "Reopen this save case?", body: "This undoes the outcome and puts the case back on the board.", confirmLabel: "Reopen" })) reopen.mutate({ id: c.id }); }}>Reopen</button>
               </div>
             )}
           </div>
