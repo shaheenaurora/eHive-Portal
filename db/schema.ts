@@ -73,6 +73,7 @@ export const members = mysqlTable("members", {
   exceptionPause: int("exceptionPause").notNull().default(0), // boolean: member-initiated pause
   /* BRD 6.2 — member-controlled directory visibility */
   directoryVisible: int("directoryVisible").notNull().default(1),
+  emailNotify: int("emailNotify").notNull().default(1), // email a copy of in-app notifications
   /* BRD 6.6 — founding induction number (Zenith admissions) */
   inductionNo: int("inductionNo"),
   /* BRD 6.7 — home chapter */

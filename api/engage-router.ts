@@ -160,6 +160,16 @@ export const engageRouter = createRouter({
       return { ok: true };
     }),
 
+  /* ---- email-notification preference ---- */
+  setEmailNotify: authedQuery
+    .input(z.object({ enabled: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const member = await requireMember(ctx.user.id);
+      await getDb().update(schema.members).set({ emailNotify: input.enabled ? 1 : 0 })
+        .where(eq(schema.members.id, member.id));
+      return { ok: true };
+    }),
+
   requestData: authedQuery
     .input(z.object({ kind: z.enum(["export", "deletion"]) }))
     .mutation(async ({ ctx, input }) => {
@@ -237,12 +247,17 @@ export const engageRouter = createRouter({
       const row = (await db.select().from(schema.oneToOnes).where(eq(schema.oneToOnes.id, input.id)).limit(1)).at(0);
       if (!row || row.bMemberId !== member.id) throw new TRPCError({ code: "FORBIDDEN" });
       if (row.status !== "pending") throw new TRPCError({ code: "CONFLICT", message: "Already responded" });
+      const meName = (await db.select({ name: schema.users.name }).from(schema.users)
+        .where(eq(schema.users.id, ctx.user.id)).limit(1)).at(0)?.name ?? "A member";
       if (!input.accept) {
         await db.update(schema.oneToOnes).set({ status: "declined" }).where(eq(schema.oneToOnes.id, row.id));
+        // Tell the requester the outcome (in-app + email).
+        await notify(row.aMemberId, `${meName} couldn't take up your 1-2-1 this time. No worries — pick another member from the directory.`, "connect");
         return { ok: true };
       }
       await db.update(schema.oneToOnes).set({ status: "confirmed", confirmedAt: new Date() })
         .where(eq(schema.oneToOnes.id, row.id));
+      await notify(row.aMemberId, `${meName} confirmed your 1-2-1. Check the portal for the details.`, "connect");
       let score = member.hiveScore;
       if (row.kind === "mentoring") {
         // Give-Back: the mentor (counterpart confirming) earns the mentoring points
