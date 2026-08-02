@@ -29,6 +29,10 @@ export default function Membership() {
     onSuccess: () => { toast("Directory preference saved."); utils.circle.me.invalidate(); },
     onError: (e) => toast(e.message),
   });
+  const setEmailNotify = trpc.engage.setEmailNotify.useMutation({
+    onSuccess: () => { toast("Email preference saved."); utils.circle.me.invalidate(); },
+    onError: (e) => toast(e.message),
+  });
   const myActions = trpc.conduct.myActions.useQuery(undefined, { retry: false, enabled: !!me.data?.member });
   const appeal = trpc.conduct.appeal.useMutation({
     onSuccess: () => { toast("Appeal submitted — it's reviewed independently, one level up."); utils.conduct.myActions.invalidate(); setAppealFor(null); setAppealText(""); },
@@ -299,6 +303,17 @@ export default function Membership() {
                         disabled={setVisible.isPending}
                         onClick={() => setVisible.mutate({ visible: !member.directoryVisible })}>
                   {member.directoryVisible ? "Visible — hide me" : "Hidden — show me"}
+                </button>
+              </div>
+              <div className="row">
+                <div style={{ flex: 1 }}>
+                  <div className="t">Email notifications</div>
+                  <div className="d">Get a copy of your portal notifications by email — 1-2-1s, membership, events and more</div>
+                </div>
+                <button className={"eh-btn sm" + (member.emailNotify ? "" : " gold")}
+                        disabled={setEmailNotify.isPending}
+                        onClick={() => setEmailNotify.mutate({ enabled: !member.emailNotify })}>
+                  {member.emailNotify ? "On — turn off" : "Off — turn on"}
                 </button>
               </div>
             </div>

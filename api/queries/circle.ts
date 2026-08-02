@@ -105,6 +105,8 @@ export async function notify(memberId: number, text: string, kind = "info") {
   await getDb().insert(schema.notifications).values({ memberId, text, kind });
   // Fire a matching web push (fire-and-forget; never blocks the in-app notify).
   void pushToMember(memberId, { title: "eHive Circle", body: text, url: "/portal" }, kind);
+  // Email a copy too (best-effort, respects the member's opt-out + mail config).
+  void import("../lib/notify-mail").then((m) => m.emailNotification(memberId, text, kind)).catch(() => {});
 }
 
 /**

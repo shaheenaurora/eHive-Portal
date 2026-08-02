@@ -28,6 +28,8 @@ export const env = {
   mailFrom: process.env.MAIL_FROM ?? "",
   // Where new-lead notifications are sent. Falls back to OWNER_EMAIL.
   leadNotifyEmail: process.env.LEAD_NOTIFY_EMAIL ?? process.env.OWNER_EMAIL ?? "",
+  // Public base URL for absolute links in emails (e.g. the portal button).
+  publicUrl: (process.env.PUBLIC_URL ?? process.env.APP_URL ?? "https://ehiveglobal.com").replace(/\/$/, ""),
   // Zoho ZeptoMail HTTP API — sends over HTTPS, so it works where hosts block
   // outbound SMTP ports (e.g. Railway). When the token is set it takes priority
   // over SMTP. Get the token from ZeptoMail → Mail Agent → SMTP/API → Send Mail.

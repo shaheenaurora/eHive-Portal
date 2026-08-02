@@ -345,6 +345,10 @@ export async function ensureSchema(): Promise<void> {
     if (tables.has("chapter_roles") && !cols.has("chapter_roles.onboardingMask"))
       stmts.push("ALTER TABLE chapter_roles ADD COLUMN onboardingMask int NOT NULL DEFAULT 0");
 
+    // --- members: email-notification preference ---
+    if (tables.has("members") && !cols.has("members.emailNotify"))
+      stmts.push("ALTER TABLE members ADD COLUMN emailNotify int NOT NULL DEFAULT 1");
+
     // --- conduct_cases: MOD-04 appeal fields ---
     if (tables.has("conduct_cases")) {
       if (!cols.has("conduct_cases.appealStatus"))
