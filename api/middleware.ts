@@ -66,3 +66,23 @@ export function scopedAdmin(scope: string) {
     return next({ ctx });
   });
 }
+
+/** Whether an admin holds full/owner access ("*" owner or "" legacy). */
+export function isFullAdmin(user: { role: string; adminScopes?: string | null }): boolean {
+  if (user.role !== "admin") return false;
+  const s = (user.adminScopes ?? "").trim();
+  return s === "" || s === "*";
+}
+
+/** Admin procedure restricted to a full administrator (owner / director).
+ *  Platform configuration and cross-cutting tools live here. */
+export const fullAdmin = adminQuery.use(async (opts) => {
+  const { ctx, next } = opts;
+  if (!isFullAdmin(ctx.user as never)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Only a full administrator can do this.",
+    });
+  }
+  return next({ ctx });
+});

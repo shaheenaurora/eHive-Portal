@@ -5,7 +5,7 @@ import { eq, and, desc, asc, gte, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/mysql-core";
 import * as schema from "@db/schema";
 import { getDb } from "./queries/connection";
-import { createRouter, adminQuery, scopedAdmin } from "./middleware";
+import { createRouter, scopedAdmin } from "./middleware";
 import { audit } from "./lib/audit";
 import {
   awardRulePoints, notify, evaluateDormancy, introEligibility,
@@ -30,7 +30,7 @@ function isFullAdmin(user: { adminScopes?: string | null }): boolean {
 
 export const adminEngageRouter = createRouter({
   /* ---- point rules (BRD 7.2 admin-configurable) ---- */
-  pointRules: adminQuery.query(async () => {
+  pointRules: scopedAdmin("community").query(async () => {
     const rows = await getDb().select().from(schema.pointRules);
     return POINT_RULE_KEYS.map(k => ({
       key: k, label: POINT_RULE_LABEL[k], factor: POINT_RULE_FACTOR[k],
@@ -39,7 +39,7 @@ export const adminEngageRouter = createRouter({
     }));
   }),
 
-  setPointRule: adminQuery
+  setPointRule: scopedAdmin("community")
     .input(z.object({ key: z.enum(POINT_RULE_KEYS), points: z.number().min(-100).max(100) }))
     .mutation(async ({ input }) => {
       const db = getDb();
@@ -56,11 +56,11 @@ export const adminEngageRouter = createRouter({
     }),
 
   /* ---- engagement standard per tier (BRD 6.3) ---- */
-  engagementConfig: adminQuery.query(async () => {
+  engagementConfig: scopedAdmin("community").query(async () => {
     return getDb().select().from(schema.engagementConfig);
   }),
 
-  setEngagementConfig: adminQuery
+  setEngagementConfig: scopedAdmin("community")
     .input(z.object({
       tier: z.enum(["horizon", "ascent", "vanguard", "zenith"]),
       sessionsRequired: z.number().min(0).max(52).nullable().optional(),
@@ -81,7 +81,7 @@ export const adminEngageRouter = createRouter({
     }),
 
   /* ---- dormancy ladder (BRD 6.3) ---- */
-  dormancyBoard: adminQuery.query(async () => {
+  dormancyBoard: scopedAdmin("member_success").query(async () => {
     const db = getDb();
     const rows = await db.select({ member: schema.members, user: schema.users })
       .from(schema.members).innerJoin(schema.users, eq(schema.members.userId, schema.users.id))
@@ -91,11 +91,11 @@ export const adminEngageRouter = createRouter({
     return { rows, log };
   }),
 
-  runDormancyEvaluation: adminQuery.mutation(async () => {
+  runDormancyEvaluation: scopedAdmin("member_success").mutation(async () => {
     return evaluateDormancy();
   }),
 
-  setDormancyOverride: adminQuery
+  setDormancyOverride: scopedAdmin("member_success")
     .input(z.object({
       memberId: z.number(),
       stage: z.enum(["active", "at_risk", "dormant", "non_renewal"]),
@@ -116,7 +116,7 @@ export const adminEngageRouter = createRouter({
       return { ok: true };
     }),
 
-  setExceptionPause: adminQuery
+  setExceptionPause: scopedAdmin("member_success")
     .input(z.object({ memberId: z.number(), quarters: z.number().min(0).max(4), note: z.string().max(500).optional() }))
     .mutation(async ({ input }) => {
       const db = getDb();
@@ -127,7 +127,7 @@ export const adminEngageRouter = createRouter({
       return { ok: true };
     }),
 
-  sendNotification: adminQuery
+  sendNotification: scopedAdmin("community")
     .input(z.object({ memberId: z.number(), text: z.string().min(3).max(500) }))
     .mutation(async ({ input }) => {
       await notify(input.memberId, input.text);
@@ -135,7 +135,7 @@ export const adminEngageRouter = createRouter({
     }),
 
   /* ---- buddy pairing admin (BRD 6.3: paired within 5 days) ---- */
-  buddyBoard: adminQuery.query(async () => {
+  buddyBoard: scopedAdmin("community").query(async () => {
     const db = getDb();
     const pairs = await db.select().from(schema.buddies).orderBy(desc(schema.buddies.pairedAt)).limit(60);
     const ids = [...new Set(pairs.flatMap(p => [p.newMemberId, p.buddyMemberId]))];
@@ -168,7 +168,7 @@ export const adminEngageRouter = createRouter({
     };
   }),
 
-  pairBuddy: adminQuery
+  pairBuddy: scopedAdmin("community")
     .input(z.object({ newMemberId: z.number(), buddyMemberId: z.number(), note: z.string().max(500).optional() }))
     .mutation(async ({ input }) => {
       if (input.newMemberId === input.buddyMemberId) throw new TRPCError({ code: "BAD_REQUEST" });
@@ -180,7 +180,7 @@ export const adminEngageRouter = createRouter({
     }),
 
   /* ---- referrals admin ---- */
-  referralsAdmin: adminQuery.query(async () => {
+  referralsAdmin: scopedAdmin("community").query(async () => {
     const db = getDb();
     const rows = await db.select({ referral: schema.referrals, user: schema.users })
       .from(schema.referrals)
@@ -190,7 +190,7 @@ export const adminEngageRouter = createRouter({
     return rows.map(r => ({ ...r.referral, memberName: r.user.name ?? r.user.email ?? "Member" }));
   }),
 
-  setReferralStatus: adminQuery
+  setReferralStatus: scopedAdmin("community")
     .input(z.object({ id: z.number(), status: z.enum(["submitted", "converted", "rejected"]) }))
     .mutation(async ({ input }) => {
       const db = getDb();
@@ -205,11 +205,11 @@ export const adminEngageRouter = createRouter({
     }),
 
   /* ---- deals admin (staff posts + moderation) ---- */
-  dealsAdmin: adminQuery.query(async () => {
+  dealsAdmin: scopedAdmin("partnerships").query(async () => {
     return getDb().select().from(schema.deals).orderBy(desc(schema.deals.createdAt)).limit(100);
   }),
 
-  saveDeal: adminQuery
+  saveDeal: scopedAdmin("partnerships")
     .input(z.object({
       id: z.number().optional(),
       title: z.string().min(4).max(255),
@@ -224,7 +224,7 @@ export const adminEngageRouter = createRouter({
       return { ok: true };
     }),
 
-  deleteDeal: adminQuery
+  deleteDeal: scopedAdmin("partnerships")
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       await getDb().delete(schema.deals).where(eq(schema.deals.id, input.id));
@@ -232,7 +232,7 @@ export const adminEngageRouter = createRouter({
     }),
 
   /* ---- 1-2-1 oversight ---- */
-  oneToOnesAdmin: adminQuery.query(async () => {
+  oneToOnesAdmin: scopedAdmin("community").query(async () => {
     const db = getDb();
     const rows = await db.select().from(schema.oneToOnes).orderBy(desc(schema.oneToOnes.createdAt)).limit(100);
     const ids = [...new Set(rows.flatMap(r => [r.aMemberId, r.bMemberId]))];
@@ -246,7 +246,7 @@ export const adminEngageRouter = createRouter({
   }),
 
   /* ---- event door: check-in by code, no-show penalties, feedback ---- */
-  eventCheckinByCode: adminQuery
+  eventCheckinByCode: scopedAdmin("events")
     .input(z.object({ code: z.string().min(4).max(12) }))
     .mutation(async ({ input }) => {
       const db = getDb();
@@ -270,7 +270,7 @@ export const adminEngageRouter = createRouter({
       return { ok: true, memberId: reg.memberId };
     }),
 
-  markNoShow: adminQuery
+  markNoShow: scopedAdmin("events")
     .input(z.object({ regId: z.number(), excused: z.boolean().default(false) }))
     .mutation(async ({ input }) => {
       const db = getDb();
@@ -288,7 +288,7 @@ export const adminEngageRouter = createRouter({
       return { ok: true };
     }),
 
-  eventFeedbackAdmin: adminQuery
+  eventFeedbackAdmin: scopedAdmin("events")
     .input(z.object({ eventId: z.number() }))
     .query(async ({ input }) => {
       const db = getDb();
@@ -303,7 +303,7 @@ export const adminEngageRouter = createRouter({
     }),
 
   /* ---- Zenith admissions admin (BRD 6.6) ---- */
-  zenithAdmin: adminQuery.query(async () => {
+  zenithAdmin: scopedAdmin("member_success").query(async () => {
     const db = getDb();
     const apps = await db.select().from(schema.zenithApps).orderBy(desc(schema.zenithApps.createdAt)).limit(60);
     const out: Array<
@@ -414,7 +414,7 @@ export const adminEngageRouter = createRouter({
     }),
 
   /* ---- investor relationship tracker (BRD 6.6) ---- */
-  investorIntros: adminQuery.query(async () => {
+  investorIntros: scopedAdmin("partnerships").query(async () => {
     const db = getDb();
     const rows = await db.select({ intro: schema.investorIntros, user: schema.users })
       .from(schema.investorIntros)
@@ -424,7 +424,7 @@ export const adminEngageRouter = createRouter({
     return rows.map(r => ({ ...r.intro, memberName: r.user.name ?? r.user.email ?? "Member" }));
   }),
 
-  addInvestorIntro: adminQuery
+  addInvestorIntro: scopedAdmin("partnerships")
     .input(z.object({
       investorName: z.string().min(2).max(255), firm: z.string().max(255).optional(),
       memberId: z.number(), note: z.string().max(500).optional(),
@@ -448,12 +448,12 @@ export const adminEngageRouter = createRouter({
       return { ok: true };
     }),
 
-  checkIntroEligibility: adminQuery
+  checkIntroEligibility: scopedAdmin("partnerships")
     .input(z.object({ memberId: z.number() }))
     .query(async ({ input }) => introEligibility(input.memberId)),
 
   /* ---- chapters admin (BRD 6.7) ---- */
-  chaptersAdmin: adminQuery.query(async () => {
+  chaptersAdmin: scopedAdmin("chapters").query(async () => {
     const db = getDb();
     const rows = await db.select().from(schema.chapters).orderBy(asc(schema.chapters.name));
     // Batch member counts (was N+1) and the latest saved health snapshot per chapter.
@@ -476,7 +476,7 @@ export const adminEngageRouter = createRouter({
   }),
 
   /* Chapter Health Index — live compute + last snapshot for trend (CH-06). */
-  chapterHealth: adminQuery.input(z.object({ id: z.number() })).query(async ({ input }) => {
+  chapterHealth: scopedAdmin("chapters").input(z.object({ id: z.number() })).query(async ({ input }) => {
     const health = await computeChapterHealth(input.id);
     const last = (await getDb().select().from(schema.healthSnapshots)
       .where(eq(schema.healthSnapshots.chapterId, input.id))
@@ -598,7 +598,7 @@ export const adminEngageRouter = createRouter({
       return { ok: true };
     }),
 
-  chapterDetail: adminQuery
+  chapterDetail: scopedAdmin("chapters")
     .input(z.object({ id: z.number() }))
     .query(async ({ input }) => {
       const db = getDb();
@@ -751,7 +751,7 @@ export const adminEngageRouter = createRouter({
       return { ok: true };
     }),
 
-  saveElection: adminQuery
+  saveElection: scopedAdmin("chapters")
     .input(z.object({
       id: z.number().optional(), chapterId: z.number(),
       title: z.string().min(3).max(255), seat: z.string().min(2).max(128),
@@ -765,7 +765,7 @@ export const adminEngageRouter = createRouter({
       return { ok: true };
     }),
 
-  setElectionStatus: adminQuery
+  setElectionStatus: scopedAdmin("chapters")
     .input(z.object({ id: z.number(), status: z.enum(["open", "voting", "closed"]) }))
     .mutation(async ({ input }) => {
       const db = getDb();
@@ -810,7 +810,7 @@ export const adminEngageRouter = createRouter({
       return { ok: true };
     }),
 
-  saveMotion: adminQuery
+  saveMotion: scopedAdmin("chapters")
     .input(z.object({
       id: z.number().optional(), chapterId: z.number(),
       title: z.string().min(3).max(255), body: z.string().max(4000).optional(),
@@ -823,7 +823,7 @@ export const adminEngageRouter = createRouter({
       return { ok: true };
     }),
 
-  closeMotion: adminQuery
+  closeMotion: scopedAdmin("chapters")
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const db = getDb();
@@ -838,7 +838,7 @@ export const adminEngageRouter = createRouter({
       return { ok: true, status, yes, no };
     }),
 
-  saveBudget: adminQuery
+  saveBudget: scopedAdmin("chapters")
     .input(z.object({
       id: z.number().optional(), chapterId: z.number(),
       label: z.string().min(3).max(255),
@@ -1101,7 +1101,7 @@ export const adminEngageRouter = createRouter({
 
   /* AF-02 — decide a proposed spend, gated by the approval threshold. A spend
      over SPEND_APPROVAL_THRESHOLD_AED needs a full administrator to approve. */
-  decideBudgetLine: adminQuery
+  decideBudgetLine: scopedAdmin("chapters")
     .input(z.object({
       id: z.number(),
       decision: z.enum(["approve", "reject"]),
@@ -1130,11 +1130,11 @@ export const adminEngageRouter = createRouter({
     }),
 
   /* ---- insights CMS + newsletter archive (BRD 6.1/6.5) ---- */
-  insightsAdmin: adminQuery.query(async () => {
+  insightsAdmin: scopedAdmin("content").query(async () => {
     return getDb().select().from(schema.insights).orderBy(desc(schema.insights.createdAt)).limit(100);
   }),
 
-  saveInsight: adminQuery
+  saveInsight: scopedAdmin("content")
     .input(z.object({
       id: z.number().optional(),
       title: z.string().min(3).max(255),
@@ -1160,7 +1160,7 @@ export const adminEngageRouter = createRouter({
       return { ok: true };
     }),
 
-  setInsightPublished: adminQuery
+  setInsightPublished: scopedAdmin("content")
     .input(z.object({ id: z.number(), publish: z.boolean() }))
     .mutation(async ({ input }) => {
       await getDb().update(schema.insights)
@@ -1169,18 +1169,18 @@ export const adminEngageRouter = createRouter({
       return { ok: true };
     }),
 
-  deleteInsight: adminQuery
+  deleteInsight: scopedAdmin("content")
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       await getDb().delete(schema.insights).where(eq(schema.insights.id, input.id));
       return { ok: true };
     }),
 
-  newslettersAdmin: adminQuery.query(async () => {
+  newslettersAdmin: scopedAdmin("content").query(async () => {
     return getDb().select().from(schema.newsletters).orderBy(desc(schema.newsletters.publishedAt)).limit(100);
   }),
 
-  saveNewsletter: adminQuery
+  saveNewsletter: scopedAdmin("content")
     .input(z.object({
       id: z.number().optional(), title: z.string().min(3).max(255),
       issue: z.string().max(64).optional(), url: z.string().max(512).optional(),
@@ -1193,7 +1193,7 @@ export const adminEngageRouter = createRouter({
       return { ok: true };
     }),
 
-  deleteNewsletter: adminQuery
+  deleteNewsletter: scopedAdmin("content")
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       await getDb().delete(schema.newsletters).where(eq(schema.newsletters.id, input.id));
@@ -1201,7 +1201,7 @@ export const adminEngageRouter = createRouter({
     }),
 
   /* ---- PDPL data-subject requests (BRD 8.4) ---- */
-  dataRequestsAdmin: adminQuery.query(async () => {
+  dataRequestsAdmin: scopedAdmin("finance").query(async () => {
     const db = getDb();
     const rows = await db.select({ req: schema.dataRequests, user: schema.users })
       .from(schema.dataRequests)
