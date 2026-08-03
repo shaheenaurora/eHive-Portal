@@ -10,7 +10,7 @@ import { audit } from "./lib/audit";
 import {
   awardRulePoints, notify, evaluateDormancy, introEligibility,
 } from "./queries/circle";
-import { listSaveCases, updateSaveCase, closeSaveCase, openSaveCase, reopenSaveCase } from "./queries/saves";
+import { listSaveCases, updateSaveCase, closeSaveCase, openSaveCase, reopenSaveCase, saveCaseSummary } from "./queries/saves";
 import { listCouncil, createCouncilMeeting, updateCouncilMeeting, logDecision, updateDecision } from "./queries/councils";
 import { listCycles, createCycle, updateCycleStatus, listNominations, nominate, setNominationStatus } from "./queries/awards";
 import { computeChapterHealth } from "./queries/health";
@@ -332,6 +332,8 @@ export const adminEngageRouter = createRouter({
   savesList: scopedAdmin("member_success")
     .input(z.object({ status: z.enum(["open", "closed", "all"]).default("open") }).optional())
     .query(({ input }) => listSaveCases({ status: input?.status ?? "open" })),
+
+  savesSummary: scopedAdmin("member_success").query(() => saveCaseSummary()),
 
   saveUpdate: scopedAdmin("member_success")
     .input(z.object({
