@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/mysql-core";
 import * as schema from "@db/schema";
 import { getDb } from "./connection";
@@ -50,8 +50,40 @@ export type SaveCaseRow = {
   status: SaveCaseStatus; reason: string; ownerUserId: number | null; ownerName: string | null;
   stepsMask: number; stepsDone: number; stepsTotal: number;
   notes: string | null; resolution: string | null;
-  openedAt: Date; closedAt: Date | null;
+  openedAt: Date; closedAt: Date | null; daysOpen: number;
 };
+
+/** Days a case has been open (from openedAt to close, or to now if still open). */
+function daysBetween(from: Date | string, to: Date | string | null): number {
+  const end = to ? new Date(to).getTime() : Date.now();
+  return Math.max(0, Math.floor((end - new Date(from).getTime()) / 86_400_000));
+}
+
+/** At-a-glance retention numbers for the Save Playbook board header. */
+export async function saveCaseSummary(): Promise<{
+  open: number; working: number; saved: number; lost: number; overdue: number; saveRate: number | null;
+}> {
+  const db = getDb();
+  const byStatus = await db
+    .select({ status: schema.memberSaveCases.status, n: sql<number>`count(*)` })
+    .from(schema.memberSaveCases)
+    .groupBy(schema.memberSaveCases.status);
+  const [overdue] = await db
+    .select({ n: sql<number>`count(*)` })
+    .from(schema.memberSaveCases)
+    .where(and(
+      inArray(schema.memberSaveCases.status, OPEN_STATES),
+      sql`${schema.memberSaveCases.openedAt} < (now() - interval 7 day)`,
+    ));
+  const counts: Record<SaveCaseStatus, number> = { open: 0, working: 0, saved: 0, lost: 0 };
+  for (const r of byStatus) counts[r.status] = Number(r.n);
+  const closed = counts.saved + counts.lost;
+  return {
+    ...counts,
+    overdue: Number(overdue?.n ?? 0),
+    saveRate: closed > 0 ? Math.round((counts.saved / closed) * 100) : null,
+  };
+}
 
 /** Board of Save cases with member/chapter/owner names joined. Open-first. */
 export async function listSaveCases(opts: { status?: "open" | "closed" | "all" } = {}): Promise<SaveCaseRow[]> {
@@ -89,6 +121,7 @@ export async function listSaveCases(opts: { status?: "open" | "closed" | "all" }
       ...r,
       stepsDone: popcount(r.stepsMask & ALL_STEPS_MASK),
       stepsTotal: SAVE_PLAYBOOK_STEPS.length,
+      daysOpen: daysBetween(r.openedAt, r.closedAt),
     }));
 }
 
