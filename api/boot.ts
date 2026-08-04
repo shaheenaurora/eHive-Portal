@@ -232,6 +232,10 @@ if (env.isProduction) {
     app.get(p, (c) => c.html(readPortal()));
   }
 
+  /* Clean marketing slug → its static .html file (e.g. /thank-you). */
+  const thankYouPath = path.resolve(import.meta.dirname, "../public/thank-you.html");
+  app.get("/thank-you", (c) => c.html(fs.readFileSync(thankYouPath, "utf-8")));
+
   /* Marketing site: served straight from source (public/). No build-time copy —
      bulk copies race on this filesystem. Bundle assets (portal-*.js/css) fall
      through to serveStaticFiles (./dist/public) below. */
