@@ -9,6 +9,7 @@ import { computeChapterHealth } from "./queries/health";
 import { computeOnboarding } from "./queries/onboarding";
 import { ensureCadenceTemplates, listCadences, recordCadence, reopenCadence } from "./queries/cadence";
 import { audit } from "./lib/audit";
+import { applyProfileEdit, proposeChange, decideChange, listChangeRequests } from "./queries/member-admin";
 import { CADENCE_STATUSES } from "@contracts/cadence";
 import { ROLE_ONBOARDING_STEPS } from "@contracts/constants";
 
@@ -209,5 +210,55 @@ export const officerRouter = createRouter({
       await reopenCadence(input.cadenceId);
       await audit(ctx.user, "cadence.reopen", { type: "cadence", id: input.cadenceId, detail: `${cad.type ?? "cadence"} reopened` });
       return { ok: true };
+    }),
+
+  /* -------- ERP: chapter-lead member management for their own chapter -------- */
+
+  /** Immediate profile-field edit for a member of the officer's chapter. */
+  editChapterMemberProfile: authedQuery
+    .input(z.object({
+      memberId: z.number().int().positive(),
+      name: z.string().max(255).optional(),
+      email: z.string().email().max(320).optional(),
+      phone: z.string().max(64).optional(),
+      title: z.string().max(255).optional(),
+      company: z.string().max(255).optional(),
+      sector: z.string().max(128).optional(),
+      stage: z.string().max(64).optional(),
+      goals: z.string().max(500).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { chapterId } = await requireOfficer(ctx.user.id);
+      const { memberId, ...patch } = input;
+      await inChapter(memberId, chapterId);
+      return applyProfileEdit(ctx.user, memberId, patch, "officer");
+    }),
+
+  /** Propose a high-impact change for a chapter member — enters the queue. */
+  proposeChapterMemberChange: authedQuery
+    .input(z.object({
+      memberId: z.number().int().positive(),
+      category: z.enum(["tier", "status", "lifecycle"]),
+      changes: z.array(z.object({ field: z.string().max(64), label: z.string().max(64), from: z.string().nullable(), to: z.string().nullable() })).min(1),
+      reason: z.string().max(500).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { chapterId } = await requireOfficer(ctx.user.id);
+      await inChapter(input.memberId, chapterId);
+      return proposeChange(ctx.user, input.memberId, { category: input.category, changes: input.changes, reason: input.reason, source: "officer" });
+    }),
+
+  /** Pending change requests for members of the officer's chapter. */
+  chapterChangeRequests: authedQuery.query(async ({ ctx }) => {
+    const { chapterId } = await requireOfficer(ctx.user.id);
+    return listChangeRequests({ chapterId });
+  }),
+
+  /** Approve/reject a request for a chapter member (four-eyes enforced). */
+  decideChapterMemberChange: authedQuery
+    .input(z.object({ id: z.number().int().positive(), decision: z.enum(["approve", "reject"]), note: z.string().max(500).optional() }))
+    .mutation(async ({ ctx, input }) => {
+      await requireOfficer(ctx.user.id);
+      return decideChange(ctx.user, input.id, input.decision, input.note);
     }),
 });

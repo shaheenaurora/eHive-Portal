@@ -309,6 +309,23 @@ export async function ensureSchema(): Promise<void> {
         status enum('nominated','shortlisted','winner','declined') NOT NULL DEFAULT 'nominated',
         createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
       )`,
+      // ERP maker-checker — member change requests (propose/approve/apply history).
+      `CREATE TABLE IF NOT EXISTS member_change_requests (
+        id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        memberId bigint unsigned NOT NULL,
+        category enum('profile','tier','status','lifecycle','chapter') NOT NULL,
+        changes text NOT NULL,
+        reason varchar(500) NULL,
+        status enum('pending','approved','rejected','applied','cancelled') NOT NULL DEFAULT 'pending',
+        source enum('member','officer','admin') NOT NULL,
+        requestedByUserId bigint unsigned NOT NULL,
+        requestedByEmail varchar(320) NULL,
+        decidedByUserId bigint unsigned NULL,
+        decidedByEmail varchar(320) NULL,
+        decisionNote varchar(500) NULL,
+        decidedAt timestamp NULL,
+        createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
       // CH-01/CH-03 — guest follow-up tasks.
       `CREATE TABLE IF NOT EXISTS follow_ups (
         id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,

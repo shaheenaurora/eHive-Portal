@@ -9,6 +9,7 @@ import { awardPoints, awardRulePoints, promoteWaitlist, recomputeScore, autoPair
 import { computePodHealth, suggestPods } from "./queries/pods";
 import { audit } from "./lib/audit";
 import { findUserByEmail } from "./queries/users";
+import { applyProfileEdit, proposeChange, applyChangeNow, decideChange, listChangeRequests, memberActivity } from "./queries/member-admin";
 import { mailStatus, sendTestEmail } from "./lib/mailer";
 import { runDailyJobs } from "./lib/scheduler";
 import { removeDemoData, loadFullDemo } from "./queries/demo-data";
@@ -25,6 +26,13 @@ function isFullAdmin(user: { adminScopes?: string | null }): boolean {
 
 const TIER = z.enum(["horizon", "ascent", "vanguard", "zenith"]);
 const idInput = z.object({ id: z.number().int().positive() });
+
+/* ERP change-request payloads (member-admin service). */
+const CHANGE_CATEGORY = z.enum(["profile", "tier", "status", "lifecycle", "chapter"]);
+const FIELD_CHANGE = z.object({
+  field: z.string().max(64), label: z.string().max(64),
+  from: z.string().nullable(), to: z.string().nullable(),
+});
 
 /* Activity master — full catalogue of activity kinds and audience scopes.
    Keep the kind list in sync with EVENT_KINDS (contracts/constants). */
@@ -433,6 +441,61 @@ export const adminRouter = createRouter({
     ]);
     return { ...row, history: hist, pods: podRows, applications: apps, actionItems: actions, scoreHistory: scoreHist, eventRegs: regs };
   }),
+
+  /* -------- ERP member management: profile edits, change requests, ledger -------- */
+
+  /** Immediate profile-field edit (name/email/phone/title/company/sector/stage/goals). */
+  editMemberProfile: scopedAdmin("membership")
+    .input(z.object({
+      memberId: z.number().int().positive(),
+      name: z.string().max(255).optional(),
+      email: z.string().email().max(320).optional(),
+      phone: z.string().max(64).optional(),
+      title: z.string().max(255).optional(),
+      company: z.string().max(255).optional(),
+      sector: z.string().max(128).optional(),
+      stage: z.string().max(64).optional(),
+      goals: z.string().max(500).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { memberId, ...patch } = input;
+      return applyProfileEdit(ctx.user, memberId, patch, "admin");
+    }),
+
+  /** Propose a high-impact change (tier/status/lifecycle) — enters the queue. */
+  proposeMemberChange: scopedAdmin("membership")
+    .input(z.object({
+      memberId: z.number().int().positive(),
+      category: CHANGE_CATEGORY,
+      changes: z.array(FIELD_CHANGE).min(1),
+      reason: z.string().max(500).optional(),
+    }))
+    .mutation(async ({ ctx, input }) =>
+      proposeChange(ctx.user, input.memberId, { category: input.category, changes: input.changes, reason: input.reason, source: "admin" })),
+
+  /** Management discretion: a full admin applies a high-impact change immediately. */
+  applyMemberChangeNow: fullAdmin
+    .input(z.object({
+      memberId: z.number().int().positive(),
+      category: CHANGE_CATEGORY,
+      changes: z.array(FIELD_CHANGE).min(1),
+      reason: z.string().max(500).optional(),
+    }))
+    .mutation(async ({ ctx, input }) =>
+      applyChangeNow(ctx.user, input.memberId, { category: input.category, changes: input.changes, reason: input.reason })),
+
+  /** Corporate approval queue (all pending member change requests). */
+  memberChangeRequests: scopedAdmin("membership")
+    .input(z.object({ includeDecided: z.boolean().optional(), memberId: z.number().int().positive().optional() }).optional())
+    .query(({ input }) => listChangeRequests({ includeDecided: input?.includeDecided, memberId: input?.memberId })),
+
+  /** Approve/reject a pending request (four-eyes enforced in the service). */
+  decideMemberChange: scopedAdmin("membership")
+    .input(z.object({ id: z.number().int().positive(), decision: z.enum(["approve", "reject"]), note: z.string().max(500).optional() }))
+    .mutation(({ ctx, input }) => decideChange(ctx.user, input.id, input.decision, input.note)),
+
+  /** Unified activity ledger for one member. */
+  memberActivity: scopedAdmin("membership").input(idInput).query(({ input }) => memberActivity(input.id)),
 
   setMemberTier: scopedAdmin("membership")
     .input(z.object({ memberId: z.number().int().positive(), tier: TIER, note: z.string().max(500).optional() }))

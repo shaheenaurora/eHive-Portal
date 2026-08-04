@@ -25,6 +25,12 @@ export default function Membership() {
     onSuccess: () => { toast("Profile saved."); utils.circle.me.invalidate(); },
     onError: (e) => toast(e.message),
   });
+  const myReqs = trpc.circle.myChangeRequests.useQuery(undefined, { retry: false, enabled: !!me.data?.member });
+  const requestCorrection = trpc.circle.requestProfileCorrection.useMutation({
+    onSuccess: () => { toast("Correction requested — the Circle team will review it."); myReqs.refetch(); setCorr(null); },
+    onError: (e) => toast(e.message),
+  });
+  const [corr, setCorr] = useState<{ name: string; email: string; note: string } | null>(null);
   const setVisible = trpc.engage.setDirectoryVisible.useMutation({
     onSuccess: () => { toast("Directory preference saved."); utils.circle.me.invalidate(); },
     onError: (e) => toast(e.message),
@@ -248,6 +254,23 @@ export default function Membership() {
               </Field>
               <button className="eh-btn" type="submit" disabled={updateProfile.isPending}>Save profile</button>
             </form>
+            <hr className="eh-divider" />
+            <div className="eh-eyebrow" style={{ marginBottom: ".3rem" }}>Name or email correction</div>
+            <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>
+              Your name and email are identity details — request a correction and the Circle team (or your chapter lead) will review it.
+            </p>
+            {(myReqs.data ?? []).filter((r) => r.category === "profile" && r.status === "pending").map((r) => (
+              <div className="row" key={r.id} style={{ alignItems: "flex-start" }}>
+                <div style={{ flex: 1 }}>
+                  <div className="d">{r.changes.map((c) => `${c.label} → ${c.to}`).join("; ")}</div>
+                </div>
+                <Pill color="gold">pending</Pill>
+              </div>
+            ))}
+            <button className="eh-btn ghost sm" style={{ marginTop: ".4rem" }}
+              onClick={() => setCorr({ name: me.data?.user?.name ?? "", email: me.data?.user?.email ?? "", note: "" })}>
+              Request a correction →
+            </button>
           </div>
 
           <PushSettings />
@@ -424,6 +447,26 @@ export default function Membership() {
             </button>
             <button className="eh-btn ghost" onClick={() => setConfirm(null)}>Keep as is</button>
           </div>
+        </Modal>
+      )}
+
+      {corr && (
+        <Modal title="Request a name / email correction" onClose={() => setCorr(null)}>
+          <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>Tell us what it should be. Nothing changes until the team approves.</p>
+          <Field label="Full name">
+            <input className="eh-input" value={corr.name} onChange={(e) => setCorr({ ...corr, name: e.target.value })} />
+          </Field>
+          <Field label="Email">
+            <input className="eh-input" type="email" value={corr.email} onChange={(e) => setCorr({ ...corr, email: e.target.value })} />
+          </Field>
+          <Field label="Why (optional)">
+            <input className="eh-input" value={corr.note} onChange={(e) => setCorr({ ...corr, note: e.target.value })}
+                   placeholder="e.g. Legal name change / typo at sign-up" />
+          </Field>
+          <button className="eh-btn gold" disabled={requestCorrection.isPending}
+            onClick={() => requestCorrection.mutate({ name: corr.name || undefined, email: corr.email || undefined, note: corr.note || undefined })}>
+            {requestCorrection.isPending ? "Submitting…" : "Submit request"}
+          </button>
         </Modal>
       )}
     </EhShell>
