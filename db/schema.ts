@@ -128,6 +128,29 @@ export const membershipEvents = mysqlTable("membership_events", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+/* ERP maker-checker — proposed/applied changes to a member record. High-impact
+   changes (tier, status, lifecycle) enter as `pending` and a corporate approver
+   (membership scope, full admin, or the member's chapter lead) approves/rejects;
+   immediate edits (profile fields) are recorded as `applied` so the member's
+   activity ledger captures every change to the record. */
+export const memberChangeRequests = mysqlTable("member_change_requests", {
+  id: serial("id").primaryKey(),
+  memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+  category: mysqlEnum("category", ["profile", "tier", "status", "lifecycle", "chapter"]).notNull(),
+  changes: text("changes").notNull(),          // JSON: [{ field, label, from, to }]
+  reason: varchar("reason", { length: 500 }),
+  status: mysqlEnum("status", ["pending", "approved", "rejected", "applied", "cancelled"]).notNull().default("pending"),
+  source: mysqlEnum("source", ["member", "officer", "admin"]).notNull(),
+  requestedByUserId: bigint("requestedByUserId", { mode: "number", unsigned: true }).notNull(),
+  requestedByEmail: varchar("requestedByEmail", { length: 320 }),
+  decidedByUserId: bigint("decidedByUserId", { mode: "number", unsigned: true }),
+  decidedByEmail: varchar("decidedByEmail", { length: 320 }),
+  decisionNote: varchar("decisionNote", { length: 500 }),
+  decidedAt: timestamp("decidedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type MemberChangeRequest = typeof memberChangeRequests.$inferSelect;
+
 export const pods = mysqlTable("pods", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),

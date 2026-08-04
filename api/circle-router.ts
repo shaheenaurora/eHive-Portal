@@ -5,6 +5,7 @@ import * as schema from "@db/schema";
 import { getDb } from "./queries/connection";
 import { createRouter, authedQuery } from "./middleware";
 import { getMemberByUserId, awardPoints, nextSessionForMember, newCheckinCode, promoteWaitlist, notify, engagementCounts } from "./queries/circle";
+import { proposeChange, listChangeRequests, type FieldChange } from "./queries/member-admin";
 import { computeOnboarding } from "./queries/onboarding";
 import { ONBOARDING_MANUAL_KEYS } from "@contracts/constants";
 import { paymentsEnabled, getPaymentProvider } from "./lib/payments";
@@ -191,6 +192,35 @@ export const circleRouter = createRouter({
       await getDb().update(schema.members).set(input).where(eq(schema.members.id, member.id));
       return { ok: true };
     }),
+
+  /* ---- ERP: member requests a correction to their identity details (name/email).
+     These are approval-gated (identity data) — the request enters the change queue
+     and a corporate approver or the member's chapter lead decides. ---- */
+  requestProfileCorrection: authedQuery
+    .input(z.object({
+      name: z.string().max(255).optional(),
+      email: z.string().email().max(320).optional(),
+      note: z.string().max(500).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const member = await requireMember(ctx.user.id);
+      const user = (await getDb().select({ name: schema.users.name, email: schema.users.email })
+        .from(schema.users).where(eq(schema.users.id, member.userId)).limit(1)).at(0);
+      const changes: FieldChange[] = [];
+      if (input.name !== undefined && input.name.trim() && input.name.trim() !== (user?.name ?? ""))
+        changes.push({ field: "name", label: "Name", from: user?.name ?? "", to: input.name.trim() });
+      if (input.email !== undefined && input.email.trim() && input.email.trim() !== (user?.email ?? ""))
+        changes.push({ field: "email", label: "Email", from: user?.email ?? "", to: input.email.trim() });
+      if (!changes.length) throw new TRPCError({ code: "BAD_REQUEST", message: "No changes to request." });
+      return proposeChange(ctx.user, member.id, { category: "profile", changes, reason: input.note, source: "member" });
+    }),
+
+  /* A member sees the status of change requests they filed. */
+  myChangeRequests: authedQuery.query(async ({ ctx }) => {
+    const member = await requireMember(ctx.user.id);
+    const rows = await listChangeRequests({ includeDecided: true });
+    return rows.filter((r) => r.memberId === member.id);
+  }),
 
   /* ---- membership changes (BRD 9.1: upgrade/downgrade/pause/cancel/renew as events) ---- */
   requestMembershipChange: authedQuery

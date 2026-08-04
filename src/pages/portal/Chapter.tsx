@@ -25,6 +25,7 @@ export default function Chapter() {
 
   const isOfficer = (q.data?.myRoles ?? []).length > 0;
   const overview = trpc.officer.overview.useQuery(undefined, { retry: false, enabled: isOfficer });
+  const chapterReqs = trpc.officer.chapterChangeRequests.useQuery(undefined, { retry: false, enabled: isOfficer });
   const [signupSearch, setSignupSearch] = useState("");
   const candidates = trpc.officer.signupCandidates.useQuery(
     { q: signupSearch || undefined }, { retry: false, enabled: isOfficer },
@@ -40,7 +41,13 @@ export default function Chapter() {
     utils.circle.myChapterTransfer.invalidate();
     utils.officer.overview.invalidate();
     utils.officer.signupCandidates.invalidate();
+    utils.officer.chapterChangeRequests.invalidate();
   }
+
+  const decideChapterChange = trpc.officer.decideChapterMemberChange.useMutation({
+    onSuccess: () => { toast("Decision recorded."); refresh(); },
+    onError: (e) => toast(e.message),
+  });
 
   const signup = trpc.officer.signupMember.useMutation({
     onSuccess: () => { toast("Member added to your chapter."); refresh(); },
@@ -226,6 +233,32 @@ export default function Chapter() {
                   </div>
                 );
               })}
+
+              {(chapterReqs.data ?? []).filter((r) => r.status === "pending").length > 0 && (
+                <div className="eh-card eh-mb" style={{ borderColor: "#e8d5ac", background: "#fdfaf3" }}>
+                  <div className="eh-between" style={{ alignItems: "flex-start" }}>
+                    <div><h3 style={{ margin: 0 }}>Member change requests</h3><div className="eh-muted eh-sm">Proposed changes for your chapter members — approve or decline.</div></div>
+                    <Pill color="gold">{(chapterReqs.data ?? []).filter((r) => r.status === "pending").length}</Pill>
+                  </div>
+                  <div className="eh-list" style={{ marginTop: ".7rem" }}>
+                    {(chapterReqs.data ?? []).filter((r) => r.status === "pending").map((r) => (
+                      <div className="row" key={r.id} style={{ alignItems: "flex-start" }}>
+                        <div style={{ flex: 1 }}>
+                          <b>{r.memberName ?? `Member #${r.memberId}`}</b> <span className="eh-muted eh-sm">· {r.category}</span>
+                          <div className="d">{r.changes.map((c) => `${c.label}: ${c.from || "—"} → ${c.to || "—"}`).join("; ")}{r.reason ? ` — ${r.reason}` : ""}</div>
+                          <div className="d eh-muted">by {r.requesterName ?? "—"}</div>
+                        </div>
+                        <span className="eh-row" style={{ gap: ".3rem" }}>
+                          <button className="eh-btn green sm" disabled={decideChapterChange.isPending}
+                            onClick={async () => { if (await confirmDialog({ title: "Approve this change?", body: "The change is applied and the member is notified.", confirmLabel: "Approve" })) decideChapterChange.mutate({ id: r.id, decision: "approve" }); }}>Approve</button>
+                          <button className="eh-btn ghost sm danger" disabled={decideChapterChange.isPending}
+                            onClick={async () => { if (await confirmDialog({ title: "Decline this change?", confirmLabel: "Decline", danger: true })) decideChapterChange.mutate({ id: r.id, decision: "reject" }); }}>Decline</button>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {overview.data.health && (
                 <div className="eh-card eh-mb">

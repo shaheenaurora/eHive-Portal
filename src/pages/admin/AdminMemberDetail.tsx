@@ -1,29 +1,47 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { trpc } from "@/providers/trpc";
+import { useAuth } from "@/hooks/useAuth";
 import { EhShell, ADMIN_NAV, StatusPill, TierPill, Empty, Spinner, Modal, Field, Pill, toast } from "@/components/eh";
 import { fmtDate, fmtDateTime, initials, relDay } from "@/lib/ehf";
 import { SCORE_FACTORS, SCORE_FACTOR_LABEL, TIERS, TIER_LABEL,
   MEMBER_LIFECYCLE_LABEL, MEMBER_LIFECYCLE_COLOR, MEMBER_LIFECYCLE_DESC, MEMBER_LIFECYCLE_TRANSITIONS } from "@contracts/constants";
 
+type ChangeCategory = "tier" | "status" | "lifecycle";
+type Opt = { value: string; label: string };
+
+const STATUS_OPTS: Opt[] = [
+  { value: "active", label: "Active" },
+  { value: "paused", label: "Paused" },
+  { value: "cancelled", label: "Terminated (cancel membership)" },
+];
+const CHANGE_REQ_COLOR: Record<string, "grey" | "blue" | "gold" | "green" | "red"> = {
+  pending: "gold", approved: "green", rejected: "red", applied: "blue", cancelled: "grey",
+};
+
 export default function AdminMemberDetail() {
   const { id } = useParams<{ id: string }>();
   const mid = Number(id);
   const utils = trpc.useUtils();
+  const { user } = useAuth();
+  const isFullAdmin = !user?.adminScopes || user.adminScopes === "*";
+
   const q = trpc.admin.memberDetail.useQuery({ id: mid }, { retry: false });
+  const activity = trpc.admin.memberActivity.useQuery({ id: mid }, { retry: false });
+  const pending = trpc.admin.memberChangeRequests.useQuery({ memberId: mid, includeDecided: true }, { retry: false });
+
   const [adjust, setAdjust] = useState(false);
   const [adjForm, setAdjForm] = useState({ factor: "contribution", points: 5, note: "" });
+  const [editProfile, setEditProfile] = useState(false);
+  const [change, setChange] = useState<{ category: ChangeCategory; title: string; current: string; options: Opt[] } | null>(null);
 
-  const invalidate = () => { utils.admin.memberDetail.invalidate({ id: mid }); utils.admin.members.invalidate(); };
+  const invalidate = () => {
+    utils.admin.memberDetail.invalidate({ id: mid });
+    utils.admin.members.invalidate();
+    utils.admin.memberActivity.invalidate({ id: mid });
+    utils.admin.memberChangeRequests.invalidate({ memberId: mid, includeDecided: true });
+  };
 
-  const setTier = trpc.admin.setMemberTier.useMutation({
-    onSuccess: (r) => { toast(`Tier ${r.type}d.`); invalidate(); },
-    onError: (e) => toast(e.message),
-  });
-  const setStatus = trpc.admin.setMemberStatus.useMutation({
-    onSuccess: () => { toast("Status updated."); invalidate(); },
-    onError: (e) => toast(e.message),
-  });
   const adjustScore = trpc.admin.adjustScore.useMutation({
     onSuccess: () => { toast("Score adjusted."); invalidate(); setAdjust(false); },
     onError: (e) => toast(e.message),
@@ -31,10 +49,6 @@ export default function AdminMemberDetail() {
   const chapters = trpc.adminEngage.chaptersAdmin.useQuery(undefined, { retry: false });
   const setChapter = trpc.adminEngage.setHomeChapter.useMutation({
     onSuccess: () => { toast("Home chapter updated."); invalidate(); },
-    onError: (e) => toast(e.message),
-  });
-  const setLifecycle = trpc.admin.setLifecycleState.useMutation({
-    onSuccess: () => { toast("Lifecycle updated."); invalidate(); },
     onError: (e) => toast(e.message),
   });
   const suggest = trpc.admin.suggestPodPlacement.useQuery({ id: mid }, { retry: false });
@@ -46,7 +60,8 @@ export default function AdminMemberDetail() {
   if (q.isLoading) return <EhShell groups={ADMIN_NAV} brandSub="Admin"><Spinner /></EhShell>;
   if (!q.data) return <EhShell groups={ADMIN_NAV} brandSub="Admin"><Empty big="Member not found." /></EhShell>;
 
-  const { member, userName, userEmail, history, pods, applications, actionItems, scoreHistory, eventRegs } = q.data;
+  const { member, userName, userEmail, pods, applications, actionItems, scoreHistory, eventRegs } = q.data;
+  const openRequests = (pending.data ?? []).filter((r) => r.status === "pending");
 
   return (
     <EhShell groups={ADMIN_NAV} brandSub="Admin">
@@ -59,13 +74,31 @@ export default function AdminMemberDetail() {
           </h1>
           <p className="eh-sub">{userEmail} · {member.title ?? ""}{member.title && member.company ? " at " : ""}{member.company ?? ""}</p>
         </div>
-        <div className="eh-row">
+        <div className="eh-row" style={{ gap: ".5rem", flexWrap: "wrap", alignItems: "center" }}>
           <TierPill tier={member.tier} />
           <Pill color={MEMBER_LIFECYCLE_COLOR[member.lifecycleState] ?? "grey"}>{MEMBER_LIFECYCLE_LABEL[member.lifecycleState] ?? member.lifecycleState}</Pill>
           <StatusPill status={member.status} />
           <Pill color="gold">Score {member.hiveScore}</Pill>
+          <button className="eh-btn ghost sm" onClick={() => setEditProfile(true)}>Edit profile</button>
         </div>
       </div>
+
+      {openRequests.length > 0 && (
+        <div className="eh-card eh-mb" style={{ borderColor: "#e8d5ac", background: "#fdfaf3" }}>
+          <div className="eh-eyebrow" style={{ marginBottom: ".5rem" }}>Pending change requests · awaiting approval</div>
+          <div className="eh-list">
+            {openRequests.map((r) => (
+              <div className="row" key={r.id} style={{ alignItems: "flex-start" }}>
+                <div style={{ flex: 1 }}>
+                  <b>{r.category}</b> <span className="eh-muted eh-sm">· requested by {r.requesterName ?? "—"}</span>
+                  <div className="d">{r.changes.map((c) => `${c.label}: ${c.from || "—"} → ${c.to || "—"}`).join("; ")}{r.reason ? ` — ${r.reason}` : ""}</div>
+                </div>
+                <Link className="eh-btn ghost sm" to="/admin/requests">Review →</Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="eh-grid g3" style={{ alignItems: "start" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
@@ -74,8 +107,9 @@ export default function AdminMemberDetail() {
             <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>{MEMBER_LIFECYCLE_DESC[member.lifecycleState] ?? ""}</p>
             <div className="eh-row" style={{ gap: ".4rem", flexWrap: "wrap" }}>
               {(MEMBER_LIFECYCLE_TRANSITIONS[member.lifecycleState] ?? []).map((t) => (
-                <button key={t.to} className="eh-btn sm ghost" disabled={setLifecycle.isPending}
-                        onClick={() => setLifecycle.mutate({ memberId: mid, state: t.to as never })}>
+                <button key={t.to} className="eh-btn sm ghost"
+                        onClick={() => setChange({ category: "lifecycle", title: `Move to ${MEMBER_LIFECYCLE_LABEL[t.to] ?? t.to}`,
+                          current: member.lifecycleState, options: [{ value: t.to, label: MEMBER_LIFECYCLE_LABEL[t.to] ?? t.to }] })}>
                   {t.label} →
                 </button>
               ))}
@@ -83,24 +117,25 @@ export default function AdminMemberDetail() {
                 <span className="eh-sm eh-muted">No onward transitions.</span>
               )}
             </div>
+            <p className="eh-sm eh-muted" style={{ marginBottom: 0, marginTop: ".7rem" }}>
+              Lifecycle moves are logged and routed for approval (a full admin can apply immediately).
+            </p>
           </div>
 
           <div className="eh-card">
             <h3>Controls</h3>
-            <Field label="Tier">
-              <select className="eh-select" value={member.tier}
-                      onChange={(e) => setTier.mutate({ memberId: mid, tier: e.target.value as never })}>
-                {TIERS.map((t) => <option key={t} value={t}>{TIER_LABEL[t]}</option>)}
-              </select>
-            </Field>
-            <Field label="Status">
-              <select className="eh-select" value={member.status}
-                      onChange={(e) => setStatus.mutate({ memberId: mid, status: e.target.value as never })}>
-                <option value="active">active</option>
-                <option value="paused">paused</option>
-                <option value="cancelled">cancelled</option>
-              </select>
-            </Field>
+            <div className="eh-list eh-mb">
+              <div className="row"><span className="d">Tier</span>
+                <span className="t eh-row" style={{ gap: ".5rem" }}><TierPill tier={member.tier} />
+                  <button className="eh-btn ghost sm" onClick={() => setChange({ category: "tier", title: "Change tier",
+                    current: member.tier, options: TIERS.map((t) => ({ value: t, label: TIER_LABEL[t] })) })}>Change</button></span>
+              </div>
+              <div className="row"><span className="d">Status</span>
+                <span className="t eh-row" style={{ gap: ".5rem" }}><StatusPill status={member.status} />
+                  <button className="eh-btn ghost sm" onClick={() => setChange({ category: "status", title: "Change status",
+                    current: member.status, options: STATUS_OPTS })}>Change</button></span>
+              </div>
+            </div>
             <Field label="Home chapter">
               <select className="eh-select" value={member.homeChapterId ?? ""}
                       onChange={(e) => setChapter.mutate({ memberId: mid, chapterId: e.target.value ? Number(e.target.value) : null })}>
@@ -120,19 +155,6 @@ export default function AdminMemberDetail() {
           </div>
 
           <div className="eh-card">
-            <h3>Membership events</h3>
-            <div className="eh-timeline">
-              {history.map((h) => (
-                <div className="ev" key={h.id}>
-                  <div className="w">{fmtDate(h.createdAt)}</div>
-                  <div className="x">{h.type}{h.toTier && h.toTier !== h.fromTier ? ` → ${h.toTier}` : ""}</div>
-                  {h.note && <div className="n">{h.note}</div>}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="eh-card">
             <h3>Applications ({applications.length})</h3>
             <div className="eh-list">
               {applications.map((a) => (
@@ -144,11 +166,29 @@ export default function AdminMemberDetail() {
                   <StatusPill status={a.status} />
                 </div>
               ))}
+              {applications.length === 0 && <Empty big="No applications." />}
             </div>
           </div>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <div className="eh-card">
+            <h3>Activity</h3>
+            <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>Everything this member has done and everything done to their record — one ledger.</p>
+            {activity.isLoading && <Spinner />}
+            {activity.data && activity.data.length === 0 && <Empty big="No activity yet." />}
+            <div className="eh-timeline">
+              {(activity.data ?? []).map((a, i) => (
+                <div className="ev" key={i}>
+                  <div className="w">{fmtDateTime(a.at)}</div>
+                  <div className="x"><span aria-hidden style={{ marginRight: ".4rem" }}>{a.icon}</span>{a.title}</div>
+                  {a.detail && <div className="n">{a.detail}</div>}
+                  {a.actor && <div className="n eh-muted" style={{ fontSize: ".75rem" }}>by {a.actor}</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="eh-card">
             <h3>Pods ({pods.length})</h3>
             {pods.length === 0 && <Empty big="Not in any pod." />}
@@ -221,24 +261,42 @@ export default function AdminMemberDetail() {
           </div>
         </div>
 
-        <div className="eh-card">
-          <h3>Score history</h3>
-          {scoreHistory.length === 0 && <Empty big="No snapshots yet." />}
-          <div className="eh-timeline">
-            {scoreHistory.map((h) => (
-              <div className="ev" key={h.id}>
-                <div className="w">{fmtDateTime(h.computedAt)}</div>
-                <div className="x">Score {h.score}</div>
-                {h.breakdown && (
-                  <div className="n">
-                    {Object.entries(JSON.parse(h.breakdown) as Record<string, number>)
-                      .filter(([, v]) => v > 0)
-                      .map(([k, v]) => `${SCORE_FACTOR_LABEL[k as keyof typeof SCORE_FACTOR_LABEL] ?? k} ${v}`)
-                      .join(" · ")}
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <div className="eh-card">
+            <h3>Change history</h3>
+            {(pending.data ?? []).length === 0 && <Empty big="No changes recorded." />}
+            <div className="eh-list">
+              {(pending.data ?? []).map((r) => (
+                <div className="row" key={r.id} style={{ alignItems: "flex-start" }}>
+                  <div style={{ flex: 1 }}>
+                    <div className="t">{r.category} <Pill color={CHANGE_REQ_COLOR[r.status]}>{r.status}</Pill></div>
+                    <div className="d">{r.changes.map((c) => `${c.label}: ${c.to || "—"}`).join("; ")}</div>
+                    <div className="d eh-muted">{fmtDate(r.decidedAt ?? r.createdAt)} · {r.requesterName ?? "—"}</div>
                   </div>
-                )}
-              </div>
-            ))}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="eh-card">
+            <h3>Score history</h3>
+            {scoreHistory.length === 0 && <Empty big="No snapshots yet." />}
+            <div className="eh-timeline">
+              {scoreHistory.map((h) => (
+                <div className="ev" key={h.id}>
+                  <div className="w">{fmtDateTime(h.computedAt)}</div>
+                  <div className="x">Score {h.score}</div>
+                  {h.breakdown && (
+                    <div className="n">
+                      {Object.entries(JSON.parse(h.breakdown) as Record<string, number>)
+                        .filter(([, v]) => v > 0)
+                        .map(([k, v]) => `${SCORE_FACTOR_LABEL[k as keyof typeof SCORE_FACTOR_LABEL] ?? k} ${v}`)
+                        .join(" · ")}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -266,6 +324,106 @@ export default function AdminMemberDetail() {
           </button>
         </Modal>
       )}
+
+      {editProfile && (
+        <EditProfileModal
+          memberId={mid}
+          initial={{ name: userName ?? "", email: userEmail ?? "", phone: member.phone ?? "", title: member.title ?? "",
+            company: member.company ?? "", sector: member.sector ?? "", stage: member.stage ?? "", goals: member.goals ?? "" }}
+          onClose={() => setEditProfile(false)}
+          onSaved={() => { invalidate(); setEditProfile(false); }} />
+      )}
+
+      {change && (
+        <ChangeModal memberId={mid} isFullAdmin={isFullAdmin} spec={change}
+          onClose={() => setChange(null)}
+          onDone={() => { invalidate(); setChange(null); }} />
+      )}
     </EhShell>
+  );
+}
+
+function EditProfileModal({ memberId, initial, onClose, onSaved }: {
+  memberId: number; initial: Record<string, string>; onClose: () => void; onSaved: () => void;
+}) {
+  const [f, setF] = useState(initial);
+  const set = (k: string, v: string) => setF((p) => ({ ...p, [k]: v }));
+  const save = trpc.admin.editMemberProfile.useMutation({
+    onSuccess: (r) => { toast(r.changed ? "Profile updated." : "No changes."); onSaved(); },
+    onError: (e) => toast(e.message),
+  });
+  return (
+    <Modal title="Edit member profile" onClose={onClose} wide>
+      <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>Profile edits apply immediately and are written to the member's activity ledger.</p>
+      <div className="eh-grid g2">
+        <Field label="Name"><input className="eh-input" value={f.name} onChange={(e) => set("name", e.target.value)} /></Field>
+        <Field label="Email"><input className="eh-input" type="email" value={f.email} onChange={(e) => set("email", e.target.value)} /></Field>
+        <Field label="Phone"><input className="eh-input" value={f.phone} onChange={(e) => set("phone", e.target.value)} /></Field>
+        <Field label="Title"><input className="eh-input" value={f.title} onChange={(e) => set("title", e.target.value)} /></Field>
+        <Field label="Company"><input className="eh-input" value={f.company} onChange={(e) => set("company", e.target.value)} /></Field>
+        <Field label="Sector"><input className="eh-input" value={f.sector} onChange={(e) => set("sector", e.target.value)} /></Field>
+        <Field label="Stage"><input className="eh-input" value={f.stage} onChange={(e) => set("stage", e.target.value)} /></Field>
+        <Field label="Goals"><input className="eh-input" value={f.goals} onChange={(e) => set("goals", e.target.value)} /></Field>
+      </div>
+      <button className="eh-btn gold" disabled={save.isPending}
+        onClick={() => save.mutate({ memberId, name: f.name, email: f.email, phone: f.phone, title: f.title, company: f.company, sector: f.sector, stage: f.stage, goals: f.goals })}>
+        {save.isPending ? "Saving…" : "Save changes"}
+      </button>
+    </Modal>
+  );
+}
+
+function ChangeModal({ memberId, isFullAdmin, spec, onClose, onDone }: {
+  memberId: number; isFullAdmin: boolean;
+  spec: { category: ChangeCategory; title: string; current: string; options: Opt[] };
+  onClose: () => void; onDone: () => void;
+}) {
+  const first = spec.options.find((o) => o.value !== spec.current) ?? spec.options[0];
+  const [to, setTo] = useState(first?.value ?? "");
+  const [reason, setReason] = useState("");
+  const [now, setNow] = useState(false);
+  const toLabel = spec.options.find((o) => o.value === to)?.label ?? to;
+  const changes = [{ field: spec.category, label: spec.category[0].toUpperCase() + spec.category.slice(1), from: spec.current, to }];
+
+  const propose = trpc.admin.proposeMemberChange.useMutation({
+    onSuccess: () => { toast("Change requested — awaiting approval."); onDone(); },
+    onError: (e) => toast(e.message),
+  });
+  const applyNow = trpc.admin.applyMemberChangeNow.useMutation({
+    onSuccess: () => { toast("Change applied."); onDone(); },
+    onError: (e) => toast(e.message),
+  });
+  const pending = propose.isPending || applyNow.isPending;
+  const submit = () => {
+    if (!reason.trim()) { toast("A reason is required."); return; }
+    if (now && isFullAdmin) applyNow.mutate({ memberId, category: spec.category, changes, reason });
+    else propose.mutate({ memberId, category: spec.category, changes, reason });
+  };
+
+  return (
+    <Modal title={spec.title} onClose={onClose}>
+      <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>
+        This is a high-impact change. It's routed for approval and the member is notified{isFullAdmin ? ", or you can apply it immediately as a full admin" : ""}.
+      </p>
+      <Field label="Change to">
+        <select className="eh-select" value={to} onChange={(e) => setTo(e.target.value)}>
+          {spec.options.map((o) => <option key={o.value} value={o.value} disabled={o.value === spec.current}>{o.label}{o.value === spec.current ? " (current)" : ""}</option>)}
+        </select>
+      </Field>
+      <Field label="Reason (required — recorded and shown to the member)">
+        <input className="eh-input" value={reason} onChange={(e) => setReason(e.target.value)}
+          placeholder="Why this change is being made…" />
+      </Field>
+      {isFullAdmin && (
+        <label className="eh-row" style={{ gap: ".5rem", alignItems: "center", cursor: "pointer", margin: ".2rem 0 .8rem" }}>
+          <input type="checkbox" checked={now} onChange={(e) => setNow(e.target.checked)} style={{ accentColor: "#b8862e" }} />
+          <span className="eh-sm">Apply immediately (management discretion) — skip approval</span>
+        </label>
+      )}
+      <button className={`eh-btn ${now && isFullAdmin ? "gold" : ""}`} disabled={pending || to === spec.current}
+        onClick={submit}>
+        {pending ? "Working…" : now && isFullAdmin ? `Apply now → ${toLabel}` : `Request change → ${toLabel}`}
+      </button>
+    </Modal>
   );
 }
