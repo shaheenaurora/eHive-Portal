@@ -683,8 +683,7 @@ function submitLead(payload, onOk, onErr){
           source_page: "get-started.html", referrer: document.referrer || "",
           timestamp: new Date().toISOString(), user_agent: navigator.userAgent
         }, function(){
-          if (errNote) errNote.classList.remove("show");
-          go("done");
+          location.href = "/thank-you?src=lead";
         }, function(){
           if (errNote) errNote.classList.add("show");
           go("done");
@@ -821,14 +820,14 @@ function submitLead(payload, onOk, onErr){
         source_page: "book.html", referrer: document.referrer || "",
         timestamp: new Date().toISOString(), user_agent: navigator.userAgent
       }, function(){
-        if (errNote) errNote.classList.remove("show");
+        location.href = "/thank-you?src=booking";
       }, function(){
         if (errNote) errNote.classList.add("show");
+        document.getElementById("bkForm").style.display = "none";
+        document.getElementById("bkDone").style.display = "block";
+        var card = document.querySelector(".bk-card");
+        if (card) card.scrollIntoView({behavior:"smooth", block:"start"});
       });
-      document.getElementById("bkForm").style.display = "none";
-      document.getElementById("bkDone").style.display = "block";
-      var card = document.querySelector(".bk-card");
-      if (card) card.scrollIntoView({behavior:"smooth", block:"start"});
     });
     var again = document.getElementById("bkAgain");
     if (again){
