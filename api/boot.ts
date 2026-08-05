@@ -97,6 +97,85 @@ app.get("/api/insights/:slug", async (c) => {
   return c.json({ post: row });
 });
 
+/* Server-rendered article page — crawlable HTML with per-article <title>, meta
+   description, canonical, Open Graph and JSON-LD (SEO/AEO). */
+app.get("/insights/:slug", async (c) => {
+  const slug = c.req.param("slug");
+  const row = (await getDb().select().from(schema.insights).where(eq(schema.insights.slug, slug)).limit(1)).at(0);
+  if (!row || !row.publishedAt) return c.notFound();
+  const origin = new URL(c.req.url).origin;
+  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const title = esc(row.title);
+  const desc = esc(row.excerpt ?? "");
+  const url = `${origin}/insights/${row.slug}`;
+  const published = row.publishedAt.toISOString();
+  const dateLabel = row.publishedAt.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+  const jsonLd = JSON.stringify({
+    "@context": "https://schema.org", "@type": "Article", headline: row.title,
+    description: row.excerpt ?? "", datePublished: published, dateModified: (row.updatedAt ?? row.publishedAt).toISOString(),
+    author: { "@type": "Organization", name: "eHive" }, publisher: { "@type": "Organization", name: "eHive" },
+    mainEntityOfPage: url, articleSection: row.tag ?? "Insights",
+  });
+  const html = `<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${title} — eHive</title>
+<meta name="description" content="${desc}">
+<link rel="canonical" href="${url}">
+<meta property="og:type" content="article"><meta property="og:title" content="${title}">
+<meta property="og:description" content="${desc}"><meta property="og:url" content="${url}"><meta property="og:site_name" content="eHive">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${title}"><meta name="twitter:description" content="${desc}">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3 27 9.5v13L16 29 5 22.5v-13z' fill='none' stroke='%23D4A24C' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23D4A24C'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.min.css"><link rel="stylesheet" href="/apps.min.css">
+<script type="application/ld+json">${jsonLd}</script>
+<style>
+  .art-page{background:#F3F1EA;color:#141312;min-height:100vh}
+  .art-wrap{max-width:720px;margin:0 auto;padding:calc(72px + clamp(2rem,5vw,3.5rem)) 1.25rem 4.5rem}
+  .art-body p{font-size:1.12rem;line-height:1.78;color:#2b2822;margin:0 0 1.3rem}
+  .art-body p strong{color:#141312}
+  .art-h1{font-size:clamp(1.9rem,5vw,3rem);line-height:1.12;margin:.4rem 0 .7rem;color:#141312}
+  .art-meta{color:#6b675d;font-size:.95rem;margin-bottom:2rem}
+  .art-page .crumbs{color:#8a857a;margin-bottom:2rem}
+  .art-page .crumbs a{color:#16264C}
+  .art-page .crumbs i{color:#c5c0b4}
+  .art-page .p-name{color:#16264C}
+  .art-page .p-name:before,.art-page .p-name:after{background:#16264C}
+  .art-cta{margin-top:2.6rem;padding:1.6rem 1.7rem;background:#16264C;color:#F3F1EA;border-radius:14px}
+  .art-cta b{color:#fff}
+  .art-cta a{color:#fff;text-decoration:underline}
+  .art-back{display:inline-block;margin-top:2.2rem;color:#16264C;font-weight:600}
+</style>
+</head><body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-nav" id="siteNav"><nav aria-label="Primary">
+  <a class="brand" href="/index.html" aria-label="eHive — home"><img src="/assets/ehive-wordmark.png" alt="eHive" width="146" height="26"></a>
+  <button class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="navMenu" aria-label="Menu"><span></span><span></span><span></span></button>
+  <ul class="nav-links" id="navMenu">
+    <li><a href="/business-setup.html">Business Setup</a></li><li><a href="/consulting.html">Consulting</a></li>
+    <li><a href="/circle.html">eHive Circle</a></li><li><a href="/insights.html">Insights</a></li>
+    <li><a class="btn btn-primary btn-sm" href="/get-started.html">Get Started</a></li>
+  </ul>
+</nav></header>
+<main id="main"><section class="light art-page"><div class="art-wrap">
+  <p class="crumbs"><a href="/index.html">Home</a><i>·</i><a href="/insights.html">Insights</a><i>·</i><span>${esc(row.tag ?? "Article")}</span></p>
+  <article>
+    <p class="p-name">${esc(row.tag ?? "Insight")}</p>
+    <h1 class="art-h1">${title}</h1>
+    <p class="art-meta">eHive · ${dateLabel}</p>
+    <div class="art-body">${row.body ?? ""}</div>
+    <div class="art-cta">
+      <b>Think this applies to your business?</b>
+      <p style="margin:.4rem 0 0">The clearest next step is a short, honest look at what's actually holding your business up. <a href="/get-started.html">Start a conversation →</a></p>
+    </div>
+  </article>
+  <a class="art-back" href="/insights.html">← All insights</a>
+</div></section></main>
+<script src="/app.min.js" defer></script><script src="/apps.min.js" defer></script>
+</body></html>`;
+  return c.html(html);
+});
+
 app.get("/api/newsletters", async (c) => {
   const rows = await getDb()
     .select()
@@ -184,11 +263,19 @@ app.get("/robots.txt", (c) => {
     ].join("\n"),
   );
 });
-app.get("/sitemap.xml", (c) => {
+app.get("/sitemap.xml", async (c) => {
   const origin = new URL(c.req.url).origin;
-  const urls = SITEMAP_PAGES.map(
+  const staticUrls = SITEMAP_PAGES.map(
     (p) => `  <url><loc>${origin}/${p}</loc><changefreq>weekly</changefreq></url>`,
-  ).join("\n");
+  );
+  let articleUrls: string[] = [];
+  try {
+    const posts = await getDb()
+      .select({ slug: schema.insights.slug, updatedAt: schema.insights.updatedAt })
+      .from(schema.insights).where(sql`${schema.insights.publishedAt} is not null`).limit(500);
+    articleUrls = posts.map((p) => `  <url><loc>${origin}/insights/${p.slug}</loc><lastmod>${new Date(p.updatedAt).toISOString().slice(0, 10)}</lastmod><changefreq>monthly</changefreq></url>`);
+  } catch { /* DB unavailable — static sitemap still valid */ }
+  const urls = [...staticUrls, ...articleUrls].join("\n");
   return c.body(
     `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`,
     200,
@@ -206,6 +293,15 @@ if (env.isProduction) {
     await ensureSchema();
   } catch (e) {
     console.error("[ensureSchema] skipped:", e);
+  }
+
+  // Seed the editorial article batch (idempotent by slug) so the blog publishes on deploy.
+  try {
+    const { seedInsights } = await import("./queries/seed-insights");
+    const n = await seedInsights();
+    if (n) console.log(`[seed] published ${n} insight article(s)`);
+  } catch (e) {
+    console.error("[seedInsights] skipped:", e);
   }
 
   const { serve } = await import("@hono/node-server");
