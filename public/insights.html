@@ -85,12 +85,12 @@
   <div class="wrap pad">
     <p class="eyebrow reveal">The launch issue</p>
     <h2 class="h2 reveal" style="--d:.08s" id="issue-h">Being written now.</h2>
-    <p class="lede reveal" style="--d:.14s">The first issue is in the works — essays, field notes and
+    <p class="lede reveal" id="insLede" style="--d:.14s">The first issue is in the works — essays, field notes and
       founder stories from inside the ecosystem. The slots below are real; the words are on their way.
       No filler published to look busy.</p>
 
     <!-- featured essay slot -->
-    <article class="feat reveal" style="--d:.18s" aria-label="Featured essay — being written">
+    <article class="feat reveal" id="insFeat" style="--d:.18s" aria-label="Featured essay — being written">
       <div>
         <div class="feat-tagrow">
           <span class="art-tag solid">Editor&rsquo;s pick</span>
@@ -120,8 +120,8 @@
       <button class="f-btn" data-filter="founder-stories" aria-pressed="false">Founder Stories</button>
     </div>
 
-    <!-- placeholder article cards -->
-    <div class="art-grid">
+    <!-- placeholder article cards (replaced by real posts when published) -->
+    <div class="art-grid" id="artGrid">
       <article class="art reveal" style="--d:.05s" data-tag="strategy">
         <div class="meta"><span class="art-tag">Strategy</span><span class="art-fmt">Essay · long-form</span></div>
         <h3>Strategy</h3>
@@ -263,31 +263,32 @@
   function esc(s) { var d = document.createElement("div"); d.textContent = s == null ? "" : s; return d.innerHTML; }
   function fmt(d) { try { return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }); } catch (e) { return ""; } }
 
-  function openPost(slug) {
-    fetch("/api/insights/" + encodeURIComponent(slug)).then(function (r) { return r.json(); }).then(function (d) {
-      if (!d.post || !feat) return;
-      var body = (d.post.body || "").split(/\n+/).filter(Boolean).map(function (p) { return "<p class='ex'>" + esc(p) + "</p>"; }).join("");
-      feat.innerHTML =
-        "<div><div class='feat-tagrow'><span class='art-tag solid'>" + esc(d.post.tag || "Note") + "</span>" +
-        "<span class='art-fmt'>" + fmt(d.post.publishedAt) + "</span></div>" +
-        "<h3>" + esc(d.post.title) + "</h3>" + body +
-        "<p class='foot' style='margin-top:1rem'><a href='insights.html' style='color:inherit'>← All pieces</a></p></div>";
-      feat.scrollIntoView({ behavior: "smooth", block: "center" });
-    }).catch(function () {});
-  }
+  var lede = document.getElementById("insLede");
 
   fetch("/api/insights").then(function (r) { return r.json(); }).then(function (d) {
     var posts = (d && d.posts) || [];
     if (!posts.length || !grid) return;
-    if (issueH) issueH.textContent = "Fresh from the Hive.";
-    grid.innerHTML = posts.map(function (p) {
-      return "<article class='art' data-tag='" + esc((p.tag || "note").toLowerCase()) + "' style='cursor:pointer' data-slug='" + esc(p.slug) + "'>" +
+    if (issueH) issueH.textContent = "Sharp thinking, shared freely.";
+    if (lede) lede.textContent = "Essays and field notes from the eHive ecosystem — strategy, business setup, finance and the UAE market. Written plainly, built to be useful.";
+
+    // Featured = newest post, as a real link (crawlable).
+    var f = posts[0];
+    if (feat) {
+      feat.innerHTML =
+        "<div><div class='feat-tagrow'><span class='art-tag solid'>Latest</span>" +
+        "<span class='art-tag'>" + esc(f.tag || "Note") + "</span>" +
+        "<span class='art-fmt'>" + fmt(f.publishedAt) + "</span></div>" +
+        "<h3><a href='/insights/" + esc(f.slug) + "' style='color:inherit'>" + esc(f.title) + "</a></h3>" +
+        "<p class='ex'>" + esc(f.excerpt || "") + "</p>" +
+        "<p class='foot' style='margin-top:1rem'><a href='/insights/" + esc(f.slug) + "'>Read the piece →</a></p></div>";
+    }
+
+    // The rest as anchor cards (crawlers follow real hrefs → SEO).
+    grid.innerHTML = posts.slice(1).map(function (p) {
+      return "<a class='art' href='/insights/" + esc(p.slug) + "' data-tag='" + esc((p.tag || "note").toLowerCase()) + "' style='display:block;text-decoration:none;color:inherit'>" +
         "<div class='meta'><span class='art-tag'>" + esc(p.tag || "Note") + "</span><span class='art-fmt'>" + fmt(p.publishedAt) + "</span></div>" +
-        "<h3>" + esc(p.title) + "</h3><p>" + esc(p.excerpt || "") + "</p><p class='foot'>Read the piece →</p></article>";
+        "<h3>" + esc(p.title) + "</h3><p>" + esc(p.excerpt || "") + "</p><p class='foot'>Read the piece →</p></a>";
     }).join("");
-    grid.querySelectorAll("[data-slug]").forEach(function (el) {
-      el.addEventListener("click", function () { openPost(el.getAttribute("data-slug")); });
-    });
   }).catch(function () {});
 
   fetch("/api/newsletters").then(function (r) { return r.json(); }).then(function (d) {
