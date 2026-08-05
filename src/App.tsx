@@ -34,6 +34,7 @@ const AdminApplications = lazy(() => import("./pages/admin/AdminApplications"));
 const AdminMembers = lazy(() => import("./pages/admin/AdminMembers"));
 const AdminMemberDetail = lazy(() => import("./pages/admin/AdminMemberDetail"));
 const AdminRequests = lazy(() => import("./pages/admin/AdminRequests"));
+const AdminFinance = lazy(() => import("./pages/admin/AdminFinance"));
 const AdminPods = lazy(() => import("./pages/admin/AdminPods"));
 const AdminPodDetail = lazy(() => import("./pages/admin/AdminPodDetail"));
 const AdminEvents = lazy(() => import("./pages/admin/AdminEvents"));
@@ -106,6 +107,7 @@ export default function App() {
           <Route path="/admin/library" element={<AdminLibrary />} />
           <Route path="/admin/offers" element={<AdminOffers />} />
           <Route path="/admin/leads" element={<AdminLeads />} />
+          <Route path="/admin/finance" element={<AdminFinance />} />
           <Route path="/admin/engagement" element={<AdminEngagement />} />
           <Route path="/admin/connect" element={<AdminConnect />} />
           <Route path="/admin/admissions" element={<AdminAdmissions />} />

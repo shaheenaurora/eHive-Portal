@@ -383,6 +383,10 @@ export const paymentRecords = mysqlTable("payment_records", {
   amount: int("amount").notNull(),        // minor units (fils)
   currency: varchar("currency", { length: 8 }).notNull().default("aed"),
   status: mysqlEnum("status", ["pending", "paid", "failed", "refunded"]).notNull().default("pending"),
+  note: varchar("note", { length: 500 }),                 // manual/offline payment note or reference
+  refundedByUserId: bigint("refundedByUserId", { mode: "number", unsigned: true }),
+  refundReason: varchar("refundReason", { length: 500 }),
+  refundedAt: timestamp("refundedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
 });
