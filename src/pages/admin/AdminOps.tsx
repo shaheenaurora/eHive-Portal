@@ -1,5 +1,6 @@
 import { trpc } from "@/providers/trpc";
 import { EhShell, ADMIN_NAV, PageHead, Pill, Empty, Spinner, toast, confirmDialog } from "@/components/eh";
+import { KpiAlertsBanner } from "@/components/KpiAlerts";
 import { fmtDate, fmtDateTime } from "@/lib/ehf";
 
 export default function AdminOps() {
@@ -24,6 +25,8 @@ export default function AdminOps() {
     <EhShell groups={ADMIN_NAV} brandSub="Admin">
       <PageHead eyebrow="Operations · is the machine running?" title="Operations"
         sub="The command centre for the timed and exception work — automation, follow-ups, at-risk saves, dormancy and data requests, in one place." />
+
+      <KpiAlertsBanner />
 
       {ov.isLoading && <Spinner />}
       {s && (

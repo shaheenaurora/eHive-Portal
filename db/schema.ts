@@ -494,6 +494,24 @@ export const kpiSnapshots = mysqlTable("kpi_snapshots", {
 });
 export type KpiSnapshot = typeof kpiSnapshots.$inferSelect;
 
+/* Threshold alerts — raised when a KPI crosses its bar (KPI Framework Part 10:
+   "any KPI crossing a threshold fires an alert to the owner"). Deduped: one open
+   alert per metric+scope; auto-resolved when the metric recovers. */
+export const kpiAlerts = mysqlTable("kpi_alerts", {
+  id: serial("id").primaryKey(),
+  scope: mysqlEnum("scope", ["network", "chapter", "zone", "region", "country"]).notNull().default("network"),
+  scopeId: bigint("scopeId", { mode: "number", unsigned: true }),
+  metric: varchar("metric", { length: 48 }).notNull(),
+  severity: mysqlEnum("severity", ["red", "amber"]).notNull().default("red"),
+  message: varchar("message", { length: 500 }).notNull(),
+  status: mysqlEnum("status", ["open", "acknowledged", "resolved"]).notNull().default("open"),
+  acknowledgedByEmail: varchar("acknowledgedByEmail", { length: 320 }),
+  acknowledgedAt: timestamp("acknowledgedAt"),
+  resolvedAt: timestamp("resolvedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type KpiAlert = typeof kpiAlerts.$inferSelect;
+
 export const adminAuditLog = mysqlTable("admin_audit_log", {
   id: serial("id").primaryKey(),
   actorUserId: bigint("actorUserId", { mode: "number", unsigned: true }).notNull(),
