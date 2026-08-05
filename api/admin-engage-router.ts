@@ -933,6 +933,12 @@ export const adminEngageRouter = createRouter({
     const counts = await db.select({ chapterId: schema.members.homeChapterId, n: sql<number>`count(*)` })
       .from(schema.members).where(eq(schema.members.status, "active")).groupBy(schema.members.homeChapterId);
     const memberBy = new Map(counts.map((c) => [c.chapterId, Number(c.n)]));
+    // At-risk members per chapter (rolls up so regional leaders see hotspots).
+    const atRiskCounts = await db.select({ chapterId: schema.members.homeChapterId, n: sql<number>`count(*)` })
+      .from(schema.members)
+      .where(and(eq(schema.members.status, "active"), eq(schema.members.lifecycleState, "at_risk")))
+      .groupBy(schema.members.homeChapterId);
+    const atRiskBy = new Map(atRiskCounts.map((c) => [c.chapterId, Number(c.n)]));
     // Chapter health: prefer the latest snapshot (CH-06 record); fall back to a
     // live compute only for chapters that have never been snapshotted.
     const snaps = await db.select({ chapterId: schema.healthSnapshots.chapterId, total: schema.healthSnapshots.total })
@@ -944,16 +950,16 @@ export const adminEngageRouter = createRouter({
       try { healthBy.set(c.id, (await computeChapterHealth(c.id)).total); } catch { /* skip */ }
     }
     // Leaders at every unit level (councils above the chapter).
-    const leaderRows = await db.select({ unitId: schema.unitRoles.unitId, role: schema.unitRoles.role, name: schema.users.name, email: schema.users.email })
+    const leaderRows = await db.select({ id: schema.unitRoles.id, unitId: schema.unitRoles.unitId, role: schema.unitRoles.role, name: schema.users.name, email: schema.users.email })
       .from(schema.unitRoles)
       .innerJoin(schema.members, eq(schema.members.id, schema.unitRoles.memberId))
       .innerJoin(schema.users, eq(schema.users.id, schema.members.userId));
-    const leadersBy = new Map<number, { role: string; name: string }[]>();
+    const leadersBy = new Map<number, { id: number; role: string; name: string }[]>();
     for (const l of leaderRows) {
-      const a = leadersBy.get(l.unitId) ?? []; a.push({ role: l.role, name: l.name ?? l.email ?? "Member" }); leadersBy.set(l.unitId, a);
+      const a = leadersBy.get(l.unitId) ?? []; a.push({ id: l.id, role: l.role, name: l.name ?? l.email ?? "Member" }); leadersBy.set(l.unitId, a);
     }
     const avg = (xs: number[]): number | null => xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : null;
-    const chs = chapters.map((c) => ({ ...c, members: memberBy.get(c.id) ?? 0, health: healthBy.get(c.id) ?? null }));
+    const chs = chapters.map((c) => ({ ...c, members: memberBy.get(c.id) ?? 0, atRisk: atRiskBy.get(c.id) ?? 0, health: healthBy.get(c.id) ?? null }));
     const kids = (level: "zone" | "region" | "country", pid: number | null) =>
       units.filter((u) => u.level === level && (u.parentId ?? null) === pid);
     const zoneNode = (z: schema.OrgUnit) => {
@@ -961,6 +967,7 @@ export const adminEngageRouter = createRouter({
       return { id: z.id, name: z.name, code: z.code, chapters: zc, chapterCount: zc.length,
         leaders: leadersBy.get(z.id) ?? [],
         members: zc.reduce((a, c) => a + c.members, 0),
+        atRisk: zc.reduce((a, c) => a + c.atRisk, 0),
         health: avg(zc.map((c) => c.health).filter((h): h is number => h != null)) };
     };
     const regionNode = (r: schema.OrgUnit) => {
@@ -968,6 +975,7 @@ export const adminEngageRouter = createRouter({
       return { id: r.id, name: r.name, code: r.code, zones, chapterCount: zones.reduce((a, z) => a + z.chapterCount, 0),
         leaders: leadersBy.get(r.id) ?? [],
         members: zones.reduce((a, z) => a + z.members, 0),
+        atRisk: zones.reduce((a, z) => a + z.atRisk, 0),
         health: avg(zones.map((z) => z.health).filter((h): h is number => h != null)) };
     };
     const countryNode = (c: schema.OrgUnit) => {
@@ -975,14 +983,49 @@ export const adminEngageRouter = createRouter({
       return { id: c.id, name: c.name, code: c.code, regions, chapterCount: regions.reduce((a, r) => a + r.chapterCount, 0),
         leaders: leadersBy.get(c.id) ?? [],
         members: regions.reduce((a, r) => a + r.members, 0),
+        atRisk: regions.reduce((a, r) => a + r.atRisk, 0),
         health: avg(regions.map((r) => r.health).filter((h): h is number => h != null)) };
     };
+    const countries = kids("country", null).map(countryNode);
+    const allHealth = chs.map((c) => c.health).filter((h): h is number => h != null);
     return {
-      countries: kids("country", null).map(countryNode),
+      countries,
       unassigned: chs.filter((c) => !c.zoneId),
       zones: units.filter((u) => u.level === "zone").map((z) => ({ id: z.id, name: z.name })),
+      summary: {
+        countries: units.filter((u) => u.level === "country").length,
+        regions: units.filter((u) => u.level === "region").length,
+        zones: units.filter((u) => u.level === "zone").length,
+        chapters: chs.length,
+        members: chs.reduce((a, c) => a + c.members, 0),
+        atRisk: chs.reduce((a, c) => a + c.atRisk, 0),
+        avgHealth: avg(allHealth),
+        leaders: leaderRows.length,
+      },
     };
   }),
+
+  /* Assign a leader to an org unit (Zone/Region/Country council). */
+  assignUnitLeader: scopedAdmin("chapters")
+    .input(z.object({ unitId: z.number(), level: z.enum(["zone", "region", "country"]), memberId: z.number(), role: z.string().min(2).max(96) }))
+    .mutation(async ({ ctx, input }) => {
+      const db = getDb();
+      const dupe = await db.select({ id: schema.unitRoles.id }).from(schema.unitRoles)
+        .where(and(eq(schema.unitRoles.unitId, input.unitId), eq(schema.unitRoles.memberId, input.memberId), eq(schema.unitRoles.role, input.role))).limit(1);
+      if (dupe.length) throw new TRPCError({ code: "CONFLICT", message: "That member already holds this role here." });
+      await db.insert(schema.unitRoles).values({ unitId: input.unitId, level: input.level, memberId: input.memberId, role: input.role });
+      await audit(ctx.user, "org.leader.assign", { type: "org_unit", id: input.unitId, detail: `${input.role} (member #${input.memberId})` });
+      return { ok: true };
+    }),
+
+  /* Remove a leader from an org unit. */
+  removeUnitLeader: scopedAdmin("chapters")
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      await getDb().delete(schema.unitRoles).where(eq(schema.unitRoles.id, input.id));
+      await audit(ctx.user, "org.leader.remove", { type: "unit_role", id: input.id });
+      return { ok: true };
+    }),
 
   /* ---- Councils as working bodies (ZO/RE/NA governance) ---- */
   councilView: scopedAdmin("chapters")
