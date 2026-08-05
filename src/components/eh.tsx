@@ -459,7 +459,7 @@ export const ADMIN_NAV: NavGroup[] = [
       { to: "/admin/engagement", label: "Engagement", icon: "♥", scope: "community" },
       { to: "/admin/connect", label: "Connect", icon: "⇄", scope: "community" },
       { to: "/admin/chapters", label: "Chapters", icon: "⌂", scope: "chapters" },
-      { to: "/admin/org", label: "Organisation", icon: "⧉", scope: "chapters" },
+      { to: "/admin/org", label: "Regional & Org", icon: "⧉", scope: "chapters" },
       { to: "/admin/score", label: "Hive Score", icon: "✦", scope: "membership" },
       { to: "/admin/awards", label: "Awards", icon: "✵", scope: "community" },
     ],

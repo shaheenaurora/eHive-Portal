@@ -4,19 +4,31 @@ import { EhShell, ADMIN_NAV, PageHead, Pill, Empty, Spinner, Modal, Field, toast
 import { fmtDate } from "@/lib/ehf";
 import { healthBand, HEALTH_BAND_LABEL, HEALTH_BAND_COLOR } from "@contracts/constants";
 
-type Leader = { role: string; name: string };
-type Chapter = { id: number; name: string; members: number; status: string; zoneId: number | null; health: number | null };
-type Zone = { id: number; name: string; code: string | null; chapters: Chapter[]; chapterCount: number; members: number; health: number | null; leaders: Leader[] };
-type Region = { id: number; name: string; code: string | null; zones: Zone[]; chapterCount: number; members: number; health: number | null; leaders: Leader[] };
-type Country = { id: number; name: string; code: string | null; regions: Region[]; chapterCount: number; members: number; health: number | null; leaders: Leader[] };
+type Leader = { id: number; role: string; name: string };
+type Unit = { id: number; name: string; level: "zone" | "region" | "country" };
+type Chapter = { id: number; name: string; members: number; atRisk: number; status: string; zoneId: number | null; health: number | null };
+type Zone = { id: number; name: string; code: string | null; chapters: Chapter[]; chapterCount: number; members: number; atRisk: number; health: number | null; leaders: Leader[] };
+type Region = { id: number; name: string; code: string | null; zones: Zone[]; chapterCount: number; members: number; atRisk: number; health: number | null; leaders: Leader[] };
+type Country = { id: number; name: string; code: string | null; regions: Region[]; chapterCount: number; members: number; atRisk: number; health: number | null; leaders: Leader[] };
 
-function Leaders({ leaders }: { leaders: Leader[] }) {
+function Leaders({ leaders, onRemove }: { leaders: Leader[]; onRemove: (id: number) => void }) {
   if (!leaders?.length) return null;
   return (
     <div className="eh-row" style={{ gap: ".4rem", flexWrap: "wrap", marginTop: ".3rem" }}>
-      {leaders.map((l, i) => <Pill key={i} color="purple">{l.role}: {l.name}</Pill>)}
+      {leaders.map((l) => (
+        <span key={l.id} className="eh-pill purple" style={{ display: "inline-flex", alignItems: "center", gap: ".35rem" }}>
+          {l.role}: {l.name}
+          <button aria-label="Remove leader" onClick={() => onRemove(l.id)}
+            style={{ background: "none", border: 0, color: "inherit", cursor: "pointer", fontWeight: 700, lineHeight: 1, padding: 0 }}>×</button>
+        </span>
+      ))}
     </div>
   );
+}
+
+function AtRisk({ n }: { n: number }) {
+  if (!n) return null;
+  return <Pill color="red">{n} at-risk</Pill>;
 }
 
 function HealthPill({ health }: { health: number | null }) {
@@ -25,11 +37,12 @@ function HealthPill({ health }: { health: number | null }) {
   return <Pill color={HEALTH_BAND_COLOR[band]}>Health {health} · {HEALTH_BAND_LABEL[band]}</Pill>;
 }
 
-function Roll({ chapters, members, health }: { chapters: number; members: number; health: number | null }) {
+function Roll({ chapters, members, atRisk, health }: { chapters: number; members: number; atRisk: number; health: number | null }) {
   return (
-    <span className="eh-row" style={{ gap: ".4rem", flexWrap: "nowrap" }}>
+    <span className="eh-row" style={{ gap: ".4rem", flexWrap: "wrap" }}>
       <Pill color="grey">{chapters} chapter{chapters === 1 ? "" : "s"}</Pill>
       <Pill color="blue">{members} member{members === 1 ? "" : "s"}</Pill>
+      <AtRisk n={atRisk} />
       <HealthPill health={health} />
     </span>
   );
@@ -41,6 +54,7 @@ export default function AdminOrg() {
   const refresh = () => utils.adminEngage.orgTree.invalidate();
   const [add, setAdd] = useState<{ level: "zone" | "region" | "country"; parentId?: number; parentName?: string } | null>(null);
   const [council, setCouncil] = useState<{ id: number; name: string; level: string } | null>(null);
+  const [leaderFor, setLeaderFor] = useState<Unit | null>(null);
 
   const create = trpc.adminEngage.createOrgUnit.useMutation({
     onSuccess: () => { toast("Unit created."); refresh(); setAdd(null); },
@@ -50,13 +64,30 @@ export default function AdminOrg() {
     onSuccess: () => { toast("Chapter assigned."); refresh(); },
     onError: (e) => toast(e.message),
   });
+  const removeLeader = trpc.adminEngage.removeUnitLeader.useMutation({
+    onSuccess: () => { toast("Leader removed."); refresh(); },
+    onError: (e) => toast(e.message),
+  });
+  const onRemoveLeader = async (id: number) => {
+    if (await confirmDialog({ title: "Remove this leader?", body: "They lose this unit leadership role. You can reassign anytime.", confirmLabel: "Remove", danger: true })) removeLeader.mutate({ id });
+  };
 
   const zones = q.data?.zones ?? [];
+  const s = q.data?.summary;
 
   return (
     <EhShell groups={ADMIN_NAV} brandSub="Admin">
-      <PageHead eyebrow="Governance hierarchy" title="Organisation"
-        sub="Chapter → Zone → Region → Country. Build the hierarchy and see membership roll up at every level (ZO/RE/NA · M11)." />
+      <PageHead eyebrow="Regional command · ZO/RE/NA" title="Regional & Organisation"
+        sub="Chapter → Zone → Region → Country. Build the hierarchy, appoint leaders, and watch membership, health and at-risk roll up at every level." />
+
+      {s && (
+        <div className="eh-grid g4 eh-mb">
+          <Metric k="Structure" v={`${s.countries}·${s.regions}·${s.zones}`} n="Countries · Regions · Zones" />
+          <Metric k="Chapters" v={s.chapters} n={`${s.leaders} unit leader${s.leaders === 1 ? "" : "s"}`} />
+          <Metric k="Active members" v={s.members} n="Across the network" />
+          <Metric k="At-risk" v={s.atRisk} n={s.avgHealth != null ? `Avg health ${s.avgHealth}` : "—"} accent={s.atRisk > 0 ? "var(--eh-red, #b23a2e)" : undefined} />
+        </div>
+      )}
 
       <div className="eh-between eh-mb">
         <span className="eh-muted eh-sm">Roll-ups aggregate active members up the tree.</span>
@@ -71,35 +102,38 @@ export default function AdminOrg() {
         <div className="eh-card eh-mb" key={c.id}>
           <div className="eh-between">
             <div><span className="eh-eyebrow">Country</span><h3 style={{ margin: ".1rem 0 0" }}>{c.name} {c.code ? <span className="eh-muted eh-sm">· {c.code}</span> : null}</h3></div>
-            <div className="eh-row" style={{ gap: ".5rem" }}><Roll chapters={c.chapterCount} members={c.members} health={c.health} />
+            <div className="eh-row" style={{ gap: ".5rem", flexWrap: "wrap" }}><Roll chapters={c.chapterCount} members={c.members} atRisk={c.atRisk} health={c.health} />
+              <button className="eh-btn ghost sm" onClick={() => setLeaderFor({ id: c.id, name: c.name, level: "country" })}>+ Leader</button>
               <button className="eh-btn ghost sm" onClick={() => setCouncil({ id: c.id, name: c.name, level: "country" })}>Council</button>
               <button className="eh-btn ghost sm" onClick={() => setAdd({ level: "region", parentId: c.id, parentName: c.name })}>+ Region</button></div>
           </div>
-          <Leaders leaders={c.leaders} />
+          <Leaders leaders={c.leaders} onRemove={onRemoveLeader} />
           {c.regions.map((r) => (
             <div key={r.id} style={{ margin: ".9rem 0 0", paddingLeft: "1rem", borderLeft: "2px solid var(--eh-border)" }}>
               <div className="eh-between">
                 <div><span className="eh-eyebrow">Region</span> <b>{r.name}</b></div>
-                <div className="eh-row" style={{ gap: ".5rem" }}><Roll chapters={r.chapterCount} members={r.members} health={r.health} />
+                <div className="eh-row" style={{ gap: ".5rem", flexWrap: "wrap" }}><Roll chapters={r.chapterCount} members={r.members} atRisk={r.atRisk} health={r.health} />
+                  <button className="eh-btn ghost sm" onClick={() => setLeaderFor({ id: r.id, name: r.name, level: "region" })}>+ Leader</button>
                   <button className="eh-btn ghost sm" onClick={() => setCouncil({ id: r.id, name: r.name, level: "region" })}>Council</button>
                   <button className="eh-btn ghost sm" onClick={() => setAdd({ level: "zone", parentId: r.id, parentName: r.name })}>+ Zone</button></div>
               </div>
-              <Leaders leaders={r.leaders} />
+              <Leaders leaders={r.leaders} onRemove={onRemoveLeader} />
               {r.zones.map((z) => (
                 <div key={z.id} style={{ margin: ".7rem 0 0", paddingLeft: "1rem", borderLeft: "2px solid var(--eh-border)" }}>
                   <div className="eh-between">
                     <div><span className="eh-eyebrow">Zone</span> <b>{z.name}</b></div>
-                    <div className="eh-row" style={{ gap: ".5rem" }}>
-                      <Roll chapters={z.chapterCount} members={z.members} health={z.health} />
+                    <div className="eh-row" style={{ gap: ".5rem", flexWrap: "wrap" }}>
+                      <Roll chapters={z.chapterCount} members={z.members} atRisk={z.atRisk} health={z.health} />
+                      <button className="eh-btn ghost sm" onClick={() => setLeaderFor({ id: z.id, name: z.name, level: "zone" })}>+ Leader</button>
                       <button className="eh-btn ghost sm" onClick={() => setCouncil({ id: z.id, name: z.name, level: "zone" })}>Council</button>
                     </div>
                   </div>
-                  <Leaders leaders={z.leaders} />
+                  <Leaders leaders={z.leaders} onRemove={onRemoveLeader} />
                   <div className="eh-list" style={{ marginTop: ".35rem" }}>
                     {z.chapters.map((ch) => (
                       <div className="row" key={ch.id}>
                         <span className="t">{ch.name}</span>
-                        <span className="eh-row" style={{ gap: ".4rem" }}><Pill color="blue">{ch.members} members</Pill><HealthPill health={ch.health} /></span>
+                        <span className="eh-row" style={{ gap: ".4rem", flexWrap: "wrap" }}><Pill color="blue">{ch.members} members</Pill><AtRisk n={ch.atRisk} /><HealthPill health={ch.health} /></span>
                       </div>
                     ))}
                     {z.chapters.length === 0 && <p className="eh-sm eh-muted">No chapters in this zone yet.</p>}
@@ -138,7 +172,70 @@ export default function AdminOrg() {
       )}
 
       {council && <CouncilModal unit={council} onClose={() => setCouncil(null)} />}
+      {leaderFor && <LeaderModal unit={leaderFor} onClose={() => setLeaderFor(null)} onDone={() => { refresh(); setLeaderFor(null); }} />}
     </EhShell>
+  );
+}
+
+function Metric({ k, v, n, accent }: { k: string; v: React.ReactNode; n?: string; accent?: string }) {
+  return (
+    <div className="eh-card" style={{ padding: "1rem 1.1rem", borderLeft: accent ? `3px solid ${accent}` : undefined }}>
+      <div className="eh-eyebrow" style={{ marginBottom: ".2rem" }}>{k}</div>
+      <div className="eh-num" style={{ fontSize: "1.6rem", fontWeight: 800, lineHeight: 1.1, color: accent ?? "var(--eh-ink)" }}>{v}</div>
+      {n && <div className="eh-muted eh-sm" style={{ marginTop: ".25rem" }}>{n}</div>}
+    </div>
+  );
+}
+
+const ROLE_SUGGESTIONS: Record<string, string[]> = {
+  zone: ["Zone Director", "Zone Deputy"],
+  region: ["Regional Director", "Regional Deputy"],
+  country: ["National Director", "National Deputy"],
+};
+
+function LeaderModal({ unit, onClose, onDone }: { unit: Unit; onClose: () => void; onDone: () => void }) {
+  const [q, setQ] = useState("");
+  const [memberId, setMemberId] = useState<number | null>(null);
+  const [role, setRole] = useState(ROLE_SUGGESTIONS[unit.level]?.[0] ?? "Director");
+  const members = trpc.adminEngage.assignableMembers.useQuery({ q: q || undefined }, { retry: false });
+  const chosen = (members.data ?? []).find((m) => m.id === memberId);
+  const assign = trpc.adminEngage.assignUnitLeader.useMutation({
+    onSuccess: () => { toast("Leader appointed."); onDone(); },
+    onError: (e) => toast(e.message),
+  });
+
+  return (
+    <Modal title={`Appoint a leader · ${unit.name}`} onClose={onClose} wide>
+      <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>Give a member a leadership role at this {unit.level}. They appear on the {unit.level} council and roll-ups.</p>
+      <Field label="Member">
+        {chosen ? (
+          <div className="eh-row" style={{ gap: ".5rem", alignItems: "center" }}>
+            <span className="t">{chosen.name ?? chosen.email}</span>
+            <button className="eh-btn ghost sm" onClick={() => setMemberId(null)}>Change</button>
+          </div>
+        ) : (
+          <>
+            <input className="eh-input" placeholder="Search member by name / email…" value={q} onChange={(e) => setQ(e.target.value)} />
+            <div className="eh-list" style={{ maxHeight: 200, overflowY: "auto", marginTop: ".4rem" }}>
+              {(members.data ?? []).map((m) => (
+                <button key={m.id} className="row" style={{ background: "none", border: 0, width: "100%", textAlign: "left", cursor: "pointer" }} onClick={() => setMemberId(m.id)}>
+                  <span className="t">{m.name ?? m.email}</span><span className="d">{m.chapterName ?? m.email}</span>
+                </button>
+              ))}
+              {members.data && members.data.length === 0 && <p className="eh-sm eh-muted">No members match.</p>}
+            </div>
+          </>
+        )}
+      </Field>
+      <Field label="Role title">
+        <input className="eh-input" value={role} onChange={(e) => setRole(e.target.value)} list="role-suggest" />
+        <datalist id="role-suggest">{(ROLE_SUGGESTIONS[unit.level] ?? []).map((r) => <option key={r} value={r} />)}</datalist>
+      </Field>
+      <button className="eh-btn gold" disabled={assign.isPending || !memberId || role.trim().length < 2}
+        onClick={() => assign.mutate({ unitId: unit.id, level: unit.level, memberId: memberId!, role })}>
+        {assign.isPending ? "Appointing…" : "Appoint leader"}
+      </button>
+    </Modal>
   );
 }
 
