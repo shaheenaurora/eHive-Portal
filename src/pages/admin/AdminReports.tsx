@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/providers/trpc";
-import { EhShell, ADMIN_NAV, PageHead, Pill, Empty, Spinner } from "@/components/eh";
+import { EhShell, ADMIN_NAV, PageHead, Pill, Empty, Spinner, toast } from "@/components/eh";
 import { downloadCsv } from "@/lib/csv";
 import { TIER_LABEL } from "@contracts/constants";
 
@@ -43,11 +43,32 @@ function Toolbar({ onCsv }: { onCsv: () => void }) {
   );
 }
 
+function Sparkline({ points }: { points: number[] }) {
+  if (points.length < 2) return null;
+  const w = 78, h = 22, min = Math.min(...points), max = Math.max(...points), span = max - min || 1;
+  const step = w / (points.length - 1);
+  const d = points.map((v, i) => `${(i * step).toFixed(1)},${(h - ((v - min) / span) * h).toFixed(1)}`).join(" ");
+  const up = points[points.length - 1] >= points[0];
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden style={{ display: "block" }}>
+      <polyline points={d} fill="none" stroke={up ? "var(--eh-good, #2e7d5b)" : "var(--eh-red, #b23a2e)"} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function ExecTab() {
+  const utils = trpc.useUtils();
   const q = trpc.admin.reportsNetworkKpis.useQuery(undefined, { retry: false });
+  const trends = trpc.admin.kpiTrends.useQuery(undefined, { retry: false });
+  const capture = trpc.admin.captureKpiSnapshots.useMutation({
+    onSuccess: (r) => { toast(`Snapshot captured — ${r.captured} metrics.`); utils.admin.kpiTrends.invalidate(); },
+    onError: (e) => toast(e.message),
+  });
+
   if (q.isLoading) return <Spinner />;
   if (!q.data) return <div className="eh-card"><Empty big="Couldn't load KPIs." /></div>;
   const kpis = q.data.kpis;
+  const tr = trends.data ?? {};
   const fams: [string, "community" | "commercial"][] = [["Community health — is the product working?", "community"], ["Commercial — is the business working?", "commercial"]];
 
   const csv = () => downloadCsv("executive-kpis",
@@ -56,29 +77,40 @@ function ExecTab() {
 
   return (
     <div>
-      <Toolbar onCsv={csv} />
+      <div className="eh-row" style={{ gap: ".4rem", justifyContent: "flex-end", marginBottom: ".7rem" }}>
+        <button className="eh-btn ghost sm" disabled={capture.isPending} onClick={() => capture.mutate()}>{capture.isPending ? "Capturing…" : "Capture snapshot"}</button>
+        <button className="eh-btn ghost sm" onClick={() => window.print()}>Print / PDF</button>
+        <button className="eh-btn gold sm" onClick={csv}>Download CSV</button>
+      </div>
       <div className="eh-grid g2" style={{ alignItems: "start" }}>
         {fams.map(([title, fam]) => (
           <div className="eh-card" key={fam}>
             <div className="eh-eyebrow" style={{ marginBottom: ".6rem" }}>{title}</div>
             <div className="eh-list">
-              {kpis.filter((k) => k.family === fam).map((k) => (
-                <div className="row" key={k.key} style={{ alignItems: "center" }}>
-                  <div style={{ flex: 1 }}>
-                    <div className="t">{k.label}</div>
-                    <div className="d">Target {k.target}</div>
+              {kpis.filter((k) => k.family === fam).map((k) => {
+                const pts = (tr[k.key] ?? []).map((p) => p.value);
+                const delta = pts.length >= 2 ? pts[pts.length - 1] - pts[0] : null;
+                return (
+                  <div className="row" key={k.key} style={{ alignItems: "center" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="t">{k.label}</div>
+                      <div className="d">Target {k.target}{delta != null && delta !== 0 ? ` · ${delta > 0 ? "▲" : "▼"} ${Math.abs(delta).toLocaleString()} over ${pts.length}d` : ""}</div>
+                    </div>
+                    <span className="eh-row" style={{ gap: ".6rem", alignItems: "center", flex: "none" }}>
+                      {pts.length >= 2 && <Sparkline points={pts} />}
+                      <b className="eh-num" style={{ fontSize: "1.05rem" }}>{k.display}</b>
+                      <Dot status={k.status} />
+                    </span>
                   </div>
-                  <span className="eh-row" style={{ gap: ".5rem", alignItems: "center" }}>
-                    <b className="eh-num" style={{ fontSize: "1.05rem" }}>{k.display}</b>
-                    <Dot status={k.status} />
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         ))}
       </div>
-      <p className="eh-muted eh-sm" style={{ marginTop: ".8rem" }}>Generated {new Date(q.data.generatedAt).toLocaleString("en-GB")} · retention is an approximation until cohort tracking lands.</p>
+      <p className="eh-muted eh-sm" style={{ marginTop: ".8rem" }}>
+        Generated {new Date(q.data.generatedAt).toLocaleString("en-GB")}. Trends build as daily snapshots accrue (the daily automation captures one; "Capture snapshot" forces one now). Retention is an approximation until cohort tracking lands.
+      </p>
     </div>
   );
 }

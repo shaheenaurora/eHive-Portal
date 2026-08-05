@@ -13,6 +13,7 @@ import { applyProfileEdit, proposeChange, applyChangeNow, decideChange, listChan
 import { financeSummary, listPayments, paymentReceipt, recordManualPayment, refundPayment, renewalsDue, budgetRollup, payableMembers } from "./queries/finance";
 import { networkKpis, chapterScorecards, atRiskReport, pipelineReport, renewalsReport } from "./queries/reports";
 import { opsOverview } from "./queries/ops";
+import { captureKpiSnapshots, kpiTrends } from "./queries/kpi-snapshots";
 import { mailStatus, sendTestEmail } from "./lib/mailer";
 import { runDailyJobs } from "./lib/scheduler";
 import { removeDemoData, loadFullDemo } from "./queries/demo-data";
@@ -1395,6 +1396,14 @@ export const adminRouter = createRouter({
 
   /* ---------------- Operations command centre ---------------- */
   opsOverview: fullAdmin.query(() => opsOverview()),
+
+  /* ---------------- KPI snapshots / trends ---------------- */
+  kpiTrends: fullAdmin.query(() => kpiTrends()),
+  captureKpiSnapshots: fullAdmin.mutation(async ({ ctx }) => {
+    const r = await captureKpiSnapshots();
+    await audit(ctx.user, "kpi.snapshot", { detail: `${r.captured} metrics` });
+    return r;
+  }),
 
   /* ---------------- Reports & KPIs (executive / board layer) ---------------- */
   reportsNetworkKpis: fullAdmin.query(() => networkKpis()),
