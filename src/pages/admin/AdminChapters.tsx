@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { trpc } from "@/providers/trpc";
 import { EhShell, ADMIN_NAV, PageHead, Pill, Spinner, Modal, Field, Empty, Bar, toast } from "@/components/eh";
-import { fmtDate, initials } from "@/lib/ehf";
+import { fmtDate, fmtDateTime, initials } from "@/lib/ehf";
 import { CHAPTER_STATUS_LABEL, CHAPTER_ROLES, CHAPTER_ROLE_RESP, CHAPTER_ROLE_METRIC, chapterRoleTitle,
   HEALTH_COMPONENTS, HEALTH_BAND_LABEL, HEALTH_BAND_COLOR, HEALTH_BAR, healthBand,
   SPEND_APPROVAL_THRESHOLD_AED, MEETING_KINDS, MEETING_KIND_LABEL } from "@contracts/constants";
@@ -29,10 +29,12 @@ function geoLine(c: { zone?: string | null; city?: string | null; state?: string
 export default function AdminChapters() {
   const utils = trpc.useUtils();
   const list = trpc.adminEngage.chaptersAdmin.useQuery(undefined, { retry: false });
+  const overview = trpc.adminEngage.chaptersOverview.useQuery(undefined, { retry: false });
   const transfers = trpc.adminEngage.pendingChapterTransfers.useQuery(undefined, { retry: false });
   const [sel, setSel] = useState<number | null>(null);
   const detail = trpc.adminEngage.chapterDetail.useQuery({ id: sel! }, { retry: false, enabled: sel !== null });
   const health = trpc.adminEngage.chapterHealth.useQuery({ id: sel! }, { retry: false, enabled: sel !== null });
+  const activity = trpc.adminEngage.chapterActivity.useQuery({ id: sel! }, { retry: false, enabled: sel !== null });
 
   const [chapterOpen, setChapterOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -157,6 +159,15 @@ export default function AdminChapters() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {!ch && overview.data && (
+        <div className="eh-grid g4 eh-mb">
+          <ChMetric k="Chapters" v={overview.data.chapters} n={`${overview.data.members} members`} />
+          <ChMetric k="Avg CHI" v={overview.data.avgChi ?? "—"} n={overview.data.avgChi != null ? (overview.data.avgChi >= 65 ? "At/above bar" : "Below bar") : "No snapshots yet"} accent={overview.data.avgChi != null && overview.data.avgChi < 65 ? "#b8862e" : "var(--eh-good, #2e7d5b)"} />
+          <ChMetric k="Chapters at bar" v={`${overview.data.atBar}%`} n="CHI ≥ 65" accent={overview.data.atBar >= 80 ? "var(--eh-good, #2e7d5b)" : "#b8862e"} />
+          <ChMetric k="At-risk chapters" v={overview.data.atRisk} n="Stage at-risk or CHI < 50" accent={overview.data.atRisk > 0 ? "var(--eh-red, #b23a2e)" : undefined} />
         </div>
       )}
 
@@ -447,6 +458,25 @@ export default function AdminChapters() {
               ))}
             </div>
           </div>
+
+          {/* activity ledger — ERP parity */}
+          <div className="eh-between" style={{ margin: "1.25rem 0 .75rem" }}>
+            <h2 className="eh-h2" style={{ margin: 0 }}>Activity</h2>
+          </div>
+          <div className="eh-card">
+            {activity.isLoading && <Spinner />}
+            {activity.data && activity.data.length === 0 && <Empty big="No activity yet." p="Health snapshots, elections, motions, budgets, meetings and role changes appear here as they happen." />}
+            <div className="eh-timeline">
+              {(activity.data ?? []).map((a, i) => (
+                <div className="ev" key={i}>
+                  <div className="w">{fmtDateTime(a.at)}</div>
+                  <div className="x"><span aria-hidden style={{ marginRight: ".4rem" }}>{a.icon}</span>{a.title}</div>
+                  {a.detail && <div className="n">{a.detail}</div>}
+                  {a.actor && <div className="n eh-muted" style={{ fontSize: ".75rem" }}>{a.actor}</div>}
+                </div>
+              ))}
+            </div>
+          </div>
         </>
       )}
 
@@ -508,6 +538,16 @@ export default function AdminChapters() {
         </Modal>
       )}
     </EhShell>
+  );
+}
+
+function ChMetric({ k, v, n, accent }: { k: string; v: React.ReactNode; n?: string; accent?: string }) {
+  return (
+    <div className="eh-card" style={{ padding: "1rem 1.1rem", borderLeft: accent ? `3px solid ${accent}` : undefined }}>
+      <div className="eh-eyebrow" style={{ marginBottom: ".2rem" }}>{k}</div>
+      <div className="eh-num" style={{ fontSize: "1.6rem", fontWeight: 800, lineHeight: 1.1, color: accent ?? "var(--eh-ink)" }}>{v}</div>
+      {n && <div className="eh-muted eh-sm" style={{ marginTop: ".25rem" }}>{n}</div>}
+    </div>
   );
 }
 

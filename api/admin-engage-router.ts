@@ -12,6 +12,7 @@ import {
 } from "./queries/circle";
 import { listSaveCases, updateSaveCase, closeSaveCase, openSaveCase, reopenSaveCase, saveCaseSummary } from "./queries/saves";
 import { listCouncil, createCouncilMeeting, updateCouncilMeeting, logDecision, updateDecision } from "./queries/councils";
+import { chaptersOverview, chapterActivity } from "./queries/chapter-admin";
 import { listCycles, createCycle, updateCycleStatus, listNominations, nominate, setNominationStatus } from "./queries/awards";
 import { computeChapterHealth } from "./queries/health";
 import { ensureCadenceTemplates, listCadences, recordCadence } from "./queries/cadence";
@@ -453,6 +454,12 @@ export const adminEngageRouter = createRouter({
   checkIntroEligibility: scopedAdmin("partnerships")
     .input(z.object({ memberId: z.number() }))
     .query(async ({ input }) => introEligibility(input.memberId)),
+
+  /* Command-strip overview for the chapter list (stage mix, health, at-risk). */
+  chaptersOverview: scopedAdmin("chapters").query(() => chaptersOverview()),
+
+  /* Unified per-chapter activity ledger (ERP parity). */
+  chapterActivity: scopedAdmin("chapters").input(z.object({ id: z.number() })).query(({ input }) => chapterActivity(input.id)),
 
   /* ---- chapters admin (BRD 6.7) ---- */
   chaptersAdmin: scopedAdmin("chapters").query(async () => {
