@@ -173,8 +173,8 @@ async function main() {
     const reg = (await db.select().from(schema.eventRegs).where(eq(schema.eventRegs.eventId, evFuture)))[0];
     return caller(uPres).engage.checkinEvent({ eventId: evFuture, code: reg.checkinCode! });
   }, /can't check in|hasn't started/i);
-  await expectErr("admin cannot Mark attended before the event starts", () =>
-    MA.admin.markEventAttendance({ eventId: evFuture, memberId: mPres, status: "attended" }), /hasn't started/i);
+  await expectErr("events-admin cannot Mark attended before the event starts", () =>
+    caller(eventsAdmin).admin.markEventAttendance({ eventId: evFuture, memberId: mPres, status: "attended" }), /hasn't started/i);
   await check("check-in inside the window records attendance", async () => {
     await db.update(schema.events).set({ startsAt: new Date() }).where(eq(schema.events.id, evFuture));
     const reg = (await db.select().from(schema.eventRegs).where(eq(schema.eventRegs.eventId, evFuture)))[0];
@@ -293,12 +293,12 @@ async function main() {
   await check("matching engine ranks pods and blocks conflicts", async () => {
     await db.update(schema.members).set({ company: "Acme", sector: "FinTech" }).where(eq(schema.members.id, mMem3));
     await db.update(schema.members).set({ company: "Acme" }).where(eq(schema.members.id, mMem2)); // same company as mMem3, already in pod
-    const sug = await MA.admin.suggestPodPlacement({ id: mMem3 });
+    const sug = await caller(owner).admin.suggestPodPlacement({ id: mMem3 });
     const row = sug.find((s) => s.podId === podId);
     assert(!!row && row.blocked === "competition", "non-competition not enforced");
   });
   await check("POD health computes from attendance + commitments", async () => {
-    const pd = await MA.admin.podAdmin({ id: podId });
+    const pd = await caller(owner).admin.podAdmin({ id: podId });
     assert(pd.health && pd.health.total >= 0 && pd.health.total <= 100, "no pod health");
   });
 
