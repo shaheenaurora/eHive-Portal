@@ -15,6 +15,16 @@ import { sendVerifyEmail, sendResetEmail } from "./lib/auth-mail";
 import { rateLimit, rateLimitReset } from "./lib/rate-limit";
 import { generateTotpSecret, totpKeyUri, verifyTotp } from "./lib/totp";
 import { mailEnabled } from "./lib/mailer";
+import type { User } from "@db/schema";
+
+/** Server-only fields that must never be serialized to the client. */
+export type SafeUser = Omit<User, "passwordHash" | "totpSecret">;
+export function safeUser(u: User): SafeUser {
+  const rest = { ...u } as Partial<User>;
+  delete rest.passwordHash;
+  delete rest.totpSecret;
+  return rest as SafeUser;
+}
 
 const credentials = z.object({
   email: z.string().email().max(320),
@@ -37,7 +47,7 @@ async function issueVerification(userId: number, email: string, name: string, or
 }
 
 export const authRouter = createRouter({
-  me: authedQuery.query((opts) => opts.ctx.user),
+  me: authedQuery.query((opts) => safeUser(opts.ctx.user)),
 
   /* Public runtime flags for the client (e.g. whether to show the email-verify
      nudge — pointless until SMTP is configured). */
@@ -64,7 +74,7 @@ export const authRouter = createRouter({
       }
       await issueVerification(user.id, user.email!, user.name ?? "", originOf(ctx.req));
       ctx.resHeaders.append("set-cookie", await sessionSetCookie(user.unionId, ctx.req.headers));
-      return user;
+      return safeUser(user);
     }),
 
   login: publicQuery
@@ -88,7 +98,7 @@ export const authRouter = createRouter({
       }
       await touchLastSignIn(user.id);
       ctx.resHeaders.append("set-cookie", await sessionSetCookie(user.unionId, ctx.req.headers));
-      return { needs2fa: false as const, user };
+      return { needs2fa: false as const, user: safeUser(user) };
     }),
 
   /* Second factor: exchange a login challenge + TOTP code for a session. */
@@ -106,7 +116,7 @@ export const authRouter = createRouter({
       }
       await touchLastSignIn(user.id);
       ctx.resHeaders.append("set-cookie", await sessionSetCookie(user.unionId, ctx.req.headers));
-      return { user };
+      return { user: safeUser(user) };
     }),
 
   logout: authedQuery.mutation(async ({ ctx }) => {
