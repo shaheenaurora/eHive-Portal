@@ -483,6 +483,7 @@ export const ADMIN_NAV: NavGroup[] = [
   {
     label: "Administration",
     items: [
+      { to: "/admin/ops", label: "Operations", icon: "⚙", scope: "full" },
       { to: "/admin/reports", label: "Reports & KPIs", icon: "▧", scope: "full" },
       { to: "/admin/conduct", label: "Conduct & Safeguarding", icon: "⚖", scope: "conduct" },
       { to: "/admin/access", label: "Team & Access", icon: "⚿", scope: "full" },
