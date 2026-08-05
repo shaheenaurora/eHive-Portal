@@ -1405,12 +1405,14 @@ export const adminRouter = createRouter({
     return r;
   }),
 
-  /* ---------------- Reports & KPIs (executive / board layer) ---------------- */
+  /* ---------------- Reports & KPIs — role-scoped drill-down ----------------
+     The network/board scorecard stays full-admin; each domain report is gated to
+     the capability that owns it, so a department head sees their own scorecard. */
   reportsNetworkKpis: fullAdmin.query(() => networkKpis()),
-  reportsChapterScorecards: fullAdmin.query(() => chapterScorecards()),
-  reportsAtRisk: fullAdmin.query(() => atRiskReport()),
-  reportsPipeline: fullAdmin.query(() => pipelineReport()),
-  reportsRenewals: fullAdmin.query(() => renewalsReport()),
+  reportsChapterScorecards: scopedAdmin("chapters").query(() => chapterScorecards()),
+  reportsAtRisk: scopedAdmin("member_success").query(() => atRiskReport()),
+  reportsPipeline: scopedAdmin("membership").query(() => pipelineReport()),
+  reportsRenewals: scopedAdmin("finance").query(() => renewalsReport()),
 
   /* -------------------- admin audit trail + access control ----------------- */
   auditTrail: fullAdmin

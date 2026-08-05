@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { trpc } from "@/providers/trpc";
-import { EhShell, ADMIN_NAV, PageHead, Pill, Empty, Spinner, toast } from "@/components/eh";
+import { EhShell, ADMIN_NAV, PageHead, Pill, Empty, Spinner, toast, adminHasScope } from "@/components/eh";
+import { useAuth } from "@/hooks/useAuth";
 import { downloadCsv } from "@/lib/csv";
 import { TIER_LABEL } from "@contracts/constants";
 
@@ -15,21 +16,38 @@ function Dot({ status }: { status: string }) {
 }
 
 export default function AdminReports() {
-  const [tab, setTab] = useState<Tab>("exec");
+  const { user } = useAuth();
+  const scopes = user?.adminScopes;
+  // Role-scoped drill-down: each head sees the scorecard their capability owns;
+  // full admins see the whole board (the Executive tab is full-admin only).
+  const TABS: { key: Tab; label: string; can: boolean }[] = [
+    { key: "exec", label: "Executive KPIs", can: adminHasScope(scopes, "full") },
+    { key: "chapters", label: "Chapter scorecards", can: adminHasScope(scopes, "chapters") },
+    { key: "atrisk", label: "At-risk list", can: adminHasScope(scopes, "member_success") },
+    { key: "pipeline", label: "Pipeline", can: adminHasScope(scopes, "membership") },
+  ];
+  const visible = TABS.filter((t) => t.can);
+  const [tab, setTab] = useState<Tab>(visible[0]?.key ?? "exec");
+  const active = visible.some((t) => t.key === tab) ? tab : (visible[0]?.key ?? "exec");
+
   return (
     <EhShell groups={ADMIN_NAV} brandSub="Admin">
       <PageHead eyebrow="Reporting · KPI framework v1.0" title="Reports & KPIs"
         sub="Every scorecard opens with its numbers against target and a red / amber / green. Reports are generated from live data and downloadable — no leader builds a deck the system should assemble." />
-      <div className="eh-tabs eh-mb">
-        <button className={tab === "exec" ? "on" : ""} onClick={() => setTab("exec")}>Executive KPIs</button>
-        <button className={tab === "chapters" ? "on" : ""} onClick={() => setTab("chapters")}>Chapter scorecards</button>
-        <button className={tab === "atrisk" ? "on" : ""} onClick={() => setTab("atrisk")}>At-risk list</button>
-        <button className={tab === "pipeline" ? "on" : ""} onClick={() => setTab("pipeline")}>Pipeline</button>
-      </div>
-      {tab === "exec" && <ExecTab />}
-      {tab === "chapters" && <ChaptersTab />}
-      {tab === "atrisk" && <AtRiskTab />}
-      {tab === "pipeline" && <PipelineTab />}
+      {visible.length === 0 && <div className="eh-card"><Empty big="No reports for your role." p="Your capabilities don't include a scorecard here yet." /></div>}
+      {visible.length > 0 && (
+        <>
+          <div className="eh-tabs eh-mb">
+            {visible.map((t) => (
+              <button key={t.key} className={active === t.key ? "on" : ""} onClick={() => setTab(t.key)}>{t.label}</button>
+            ))}
+          </div>
+          {active === "exec" && <ExecTab />}
+          {active === "chapters" && <ChaptersTab />}
+          {active === "atrisk" && <AtRiskTab />}
+          {active === "pipeline" && <PipelineTab />}
+        </>
+      )}
     </EhShell>
   );
 }
