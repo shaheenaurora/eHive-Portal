@@ -58,8 +58,15 @@
   --eh-gold-soft: #F6E1DB;
   --eh-green: #2E7D5B;
   --eh-green-soft: #e2efe8;
-  --eh-red: #C0453B;
-  --eh-red-soft: #f6e4e1;
+  /* "Off-track / needs attention" — a calm warm terracotta, NOT an alarm red.
+     Reserve a true error red (--eh-error) for genuine failures only. */
+  --eh-red: #B05C3E;
+  --eh-red-soft: #f1e6de;
+  --eh-error: #C0453B;
+  --eh-error-soft: #f6e4e1;
+  /* "Watch" amber — warm ochre, used for the middle RAG band. */
+  --eh-amber: #A9802F;
+  --eh-amber-soft: #f1e8d4;
   --eh-blue: #16264C;
   --eh-blue-soft: #e6eaf1;
   --eh-purple: #6b4a8a;
@@ -253,7 +260,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
   white-space: nowrap;
 }
 .eh-pill.green { background: var(--eh-green-soft); color: var(--eh-green); border-color: #bcd8c8; }
-.eh-pill.red { background: var(--eh-red-soft); color: var(--eh-red); border-color: #e5c0b9; }
+.eh-pill.red { background: var(--eh-red-soft); color: var(--eh-red); border-color: #e6cdbf; }
+.eh-pill.amber { background: var(--eh-amber-soft); color: var(--eh-amber); border-color: #e4d3ab; }
 .eh-pill.blue { background: var(--eh-blue-soft); color: var(--eh-blue); border-color: #c2d2e4; }
 .eh-pill.purple { background: var(--eh-purple-soft); color: var(--eh-purple); border-color: #d5c5e5; }
 .eh-pill.grey { background: #eef0f2; color: #5d6f82; border-color: #dde2e7; }

@@ -19,9 +19,9 @@ export function KpiAlertsBanner() {
   if (rows.length === 0) return null;
 
   return (
-    <div className="eh-card eh-mb" style={{ borderColor: "#e5c0b9", background: "#fdf3f1" }}>
+    <div className="eh-card eh-mb" style={{ borderColor: "#e6cdbf", background: "var(--eh-red-soft, #f1e6de)" }}>
       <div className="eh-between" style={{ marginBottom: ".5rem", flexWrap: "wrap", gap: ".5rem" }}>
-        <div className="eh-eyebrow" style={{ color: "var(--eh-red, #b23a2e)" }}>KPI alerts · {rows.length} active</div>
+        <div className="eh-eyebrow" style={{ color: "var(--eh-red, #B05C3E)" }}>KPI alerts · {rows.length} active</div>
         <button className="eh-btn ghost sm" disabled={evalNow.isPending} onClick={() => evalNow.mutate()}>{evalNow.isPending ? "Checking…" : "Re-check now"}</button>
       </div>
       <div className="eh-list">

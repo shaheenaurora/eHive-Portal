@@ -49,7 +49,7 @@ export default function AdminOps() {
                 </p>
               </div>
               <div className="eh-row" style={{ gap: ".6rem", alignItems: "center" }}>
-                {s.scheduler.ranToday ? <Pill color="green">Ran today</Pill> : <Pill color="gold">Pending</Pill>}
+                {s.scheduler.ranToday ? <Pill color="green">Ran today</Pill> : <Pill color="amber">Pending</Pill>}
                 <button className="eh-btn gold sm" disabled={run.isPending} onClick={() => run.mutate()}>{run.isPending ? "Running…" : "Run now"}</button>
               </div>
             </div>
@@ -91,7 +91,7 @@ export default function AdminOps() {
           {/* data requests (PDPL) */}
           <div className="eh-between" style={{ margin: "1.25rem 0 .75rem" }}>
             <h2 className="eh-h2" style={{ margin: 0 }}>Data requests · PDPL</h2>
-            {openData.length > 0 && <Pill color="gold">{openData.length} awaiting</Pill>}
+            {openData.length > 0 && <Pill color="amber">{openData.length} awaiting</Pill>}
           </div>
           <div className="eh-card">
             {data.isLoading && <Spinner />}

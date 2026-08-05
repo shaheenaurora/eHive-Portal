@@ -182,7 +182,7 @@ function BudgetsTab() {
           <div className="eh-card" key={r.chapterId}>
             <div className="eh-between" style={{ flexWrap: "wrap", gap: ".6rem" }}>
               <b>{r.chapterName ?? `Chapter #${r.chapterId}`}</b>
-              {r.pendingApprovals > 0 && <Pill color="gold">{r.pendingApprovals} pending approval{r.pendingApprovals === 1 ? "" : "s"}</Pill>}
+              {r.pendingApprovals > 0 && <Pill color="amber">{r.pendingApprovals} pending approval{r.pendingApprovals === 1 ? "" : "s"}</Pill>}
             </div>
             <div className="eh-row" style={{ gap: "1.6rem", flexWrap: "wrap", marginTop: ".5rem" }}>
               <div><div className="eh-num eh-strong">{aedWhole(r.allocated)}</div><div className="eh-muted eh-sm">Allocated</div></div>
