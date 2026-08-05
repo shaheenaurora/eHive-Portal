@@ -115,7 +115,7 @@ export function Stat(props: { k: string; v: ReactNode; n?: string; gold?: boolea
   );
 }
 
-type PillColor = "gold" | "green" | "red" | "blue" | "purple" | "grey";
+type PillColor = "gold" | "green" | "red" | "amber" | "blue" | "purple" | "grey";
 export function Pill(props: { color?: PillColor; children: ReactNode }) {
   return <span className={"eh-pill" + (props.color && props.color !== "gold" ? " " + props.color : "")}>{props.children}</span>;
 }
@@ -130,7 +130,7 @@ export function StatusPill(props: { status: string }) {
     active: "green", approved: "green", attended: "green", done: "green", completed: "green", reviewed: "green",
     received: "grey", screening: "blue", interview: "purple", scheduled: "blue", registered: "blue",
     in_progress: "blue", submitted: "purple", enrolled: "blue", running: "blue", open: "blue",
-    paused: "gold", withdrawn: "gold", excused: "gold", not_started: "grey",
+    paused: "amber", withdrawn: "amber", excused: "amber", not_started: "grey",
     cancelled: "red", rejected: "red", absent: "red", closed: "grey",
   };
   return <Pill color={map[props.status] ?? "grey"}>{props.status.replace(/_/g, " ")}</Pill>;

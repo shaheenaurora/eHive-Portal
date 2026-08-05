@@ -139,7 +139,7 @@ export default function AdminChapters() {
         <div className="eh-card eh-mb">
           <div className="eh-between" style={{ marginBottom: ".6rem" }}>
             <h3 style={{ margin: 0 }}>Chapter transfer requests</h3>
-            <Pill color="gold">{transfers.data!.length} awaiting approval</Pill>
+            <Pill color="amber">{transfers.data!.length} awaiting approval</Pill>
           </div>
           <div className="eh-list">
             {transfers.data!.map(({ req, memberName, memberEmail, fromName, toName }) => (

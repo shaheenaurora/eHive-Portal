@@ -7,7 +7,7 @@ import { downloadCsv } from "@/lib/csv";
 import { TIER_LABEL } from "@contracts/constants";
 
 const RAG_COLOR: Record<string, string> = {
-  green: "var(--eh-good, #2e7d5b)", amber: "#b8862e", red: "var(--eh-red, #b23a2e)", none: "var(--eh-line, #d8d2c4)",
+  green: "var(--eh-good, #2e7d5b)", amber: "var(--eh-amber, #A9802F)", red: "var(--eh-red, #B05C3E)", none: "var(--eh-line, #d8d2c4)",
 };
 const aedWhole = (n: number) => "AED " + Math.round(n).toLocaleString("en-AE");
 type Tab = "exec" | "chapters" | "atrisk" | "pipeline";
@@ -70,7 +70,7 @@ function Sparkline({ points }: { points: number[] }) {
   const up = points[points.length - 1] >= points[0];
   return (
     <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden style={{ display: "block" }}>
-      <polyline points={d} fill="none" stroke={up ? "var(--eh-good, #2e7d5b)" : "var(--eh-red, #b23a2e)"} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+      <polyline points={d} fill="none" stroke={up ? "var(--eh-good, #2e7d5b)" : "var(--eh-red, #B05C3E)"} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
     </svg>
   );
 }
