@@ -98,6 +98,17 @@ export async function ensureSchema(): Promise<void> {
         stmts.push("ALTER TABLE membership_events ADD COLUMN decidedAt timestamp NULL");
     }
 
+    // --- payment_records: manual-payment note + refund tracking (Finance module) ---
+    if (tables.has("payment_records")) {
+      for (const [col, def] of [
+        ["note", "varchar(500) NULL"],
+        ["refundedByUserId", "bigint unsigned NULL"],
+        ["refundReason", "varchar(500) NULL"],
+        ["refundedAt", "timestamp NULL"],
+      ] as Array<[string, string]>)
+        if (!cols.has(`payment_records.${col}`)) stmts.push(`ALTER TABLE payment_records ADD COLUMN ${col} ${def}`);
+    }
+
     // New tables added after the initial schema — created here so a deploy that
     // introduces them doesn't need a manual db:push. CREATE TABLE IF NOT EXISTS
     // is inherently idempotent.

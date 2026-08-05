@@ -10,6 +10,7 @@ import { computePodHealth, suggestPods } from "./queries/pods";
 import { audit } from "./lib/audit";
 import { findUserByEmail } from "./queries/users";
 import { applyProfileEdit, proposeChange, applyChangeNow, decideChange, listChangeRequests, memberActivity } from "./queries/member-admin";
+import { financeSummary, listPayments, paymentReceipt, recordManualPayment, refundPayment, renewalsDue, budgetRollup, payableMembers } from "./queries/finance";
 import { mailStatus, sendTestEmail } from "./lib/mailer";
 import { runDailyJobs } from "./lib/scheduler";
 import { removeDemoData, loadFullDemo } from "./queries/demo-data";
@@ -1355,6 +1356,40 @@ export const adminRouter = createRouter({
         detail: input.status ? `status → ${input.status}` : "updated" });
       return { ok: true };
     }),
+
+  /* ------------------------------- Finance ------------------------------- */
+  financeSummary: scopedAdmin("finance").query(() => financeSummary()),
+
+  payments: scopedAdmin("finance")
+    .input(z.object({ status: z.enum(["pending", "paid", "failed", "refunded"]).optional(), q: z.string().max(120).optional() }).optional())
+    .query(({ input }) => listPayments({ status: input?.status, q: input?.q })),
+
+  paymentReceipt: scopedAdmin("finance").input(idInput).query(({ input }) => paymentReceipt(input.id)),
+
+  renewalsDue: scopedAdmin("finance")
+    .input(z.object({ withinDays: z.number().int().min(1).max(120).optional() }).optional())
+    .query(({ input }) => renewalsDue(input?.withinDays ?? 30)),
+
+  budgetRollup: scopedAdmin("finance").query(() => budgetRollup()),
+
+  payableMembers: scopedAdmin("finance")
+    .input(z.object({ q: z.string().max(120).optional() }).optional())
+    .query(({ input }) => payableMembers(input?.q)),
+
+  recordManualPayment: scopedAdmin("finance")
+    .input(z.object({
+      userId: z.number().int().positive(),
+      purpose: z.enum(["membership", "renewal", "event", "donation", "other"]),
+      tier: z.enum(["horizon", "ascent", "vanguard", "zenith"]).nullable().optional(),
+      amountAed: z.number().positive().max(1_000_000),
+      note: z.string().max(500).optional(),
+      extendRenewal: z.boolean().optional(),
+    }))
+    .mutation(({ ctx, input }) => recordManualPayment(ctx.user, input)),
+
+  refundPayment: scopedAdmin("finance")
+    .input(z.object({ id: z.number().int().positive(), reason: z.string().min(2).max(500) }))
+    .mutation(({ ctx, input }) => refundPayment(ctx.user, input.id, input.reason)),
 
   /* -------------------- admin audit trail + access control ----------------- */
   auditTrail: fullAdmin

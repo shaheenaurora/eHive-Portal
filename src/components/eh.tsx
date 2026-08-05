@@ -448,6 +448,7 @@ export const ADMIN_NAV: NavGroup[] = [
       { to: "/admin/requests", label: "Change Requests", icon: "⇌", scope: "membership" },
       { to: "/admin/saves", label: "Save Playbook", icon: "⛑", scope: "member_success" },
       { to: "/admin/leads", label: "Website Leads", icon: "✉", scope: "finance" },
+      { to: "/admin/finance", label: "Finance", icon: "▦", scope: "finance" },
     ],
   },
   {
