@@ -14,6 +14,7 @@ import { financeSummary, listPayments, paymentReceipt, recordManualPayment, refu
 import { networkKpis, chapterScorecards, atRiskReport, pipelineReport, renewalsReport } from "./queries/reports";
 import { opsOverview } from "./queries/ops";
 import { captureKpiSnapshots, kpiTrends } from "./queries/kpi-snapshots";
+import { evaluateKpiAlerts, listKpiAlerts, acknowledgeKpiAlert } from "./queries/kpi-alerts";
 import { mailStatus, sendTestEmail } from "./lib/mailer";
 import { runDailyJobs } from "./lib/scheduler";
 import { removeDemoData, loadFullDemo } from "./queries/demo-data";
@@ -1404,6 +1405,17 @@ export const adminRouter = createRouter({
     await audit(ctx.user, "kpi.snapshot", { detail: `${r.captured} metrics` });
     return r;
   }),
+
+  /* ---------------- KPI threshold alerts ---------------- */
+  kpiAlerts: fullAdmin.query(() => listKpiAlerts()),
+  evaluateKpiAlerts: fullAdmin.mutation(async ({ ctx }) => {
+    const r = await evaluateKpiAlerts();
+    await audit(ctx.user, "kpi.alerts.evaluate", { detail: `${r.opened} opened, ${r.resolved} resolved` });
+    return r;
+  }),
+  acknowledgeKpiAlert: fullAdmin
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(({ ctx, input }) => acknowledgeKpiAlert(ctx.user, input.id)),
 
   /* ---------------- Reports & KPIs — role-scoped drill-down ----------------
      The network/board scorecard stays full-admin; each domain report is gated to

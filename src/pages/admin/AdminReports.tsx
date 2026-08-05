@@ -2,6 +2,7 @@ import { useState } from "react";
 import { trpc } from "@/providers/trpc";
 import { EhShell, ADMIN_NAV, PageHead, Pill, Empty, Spinner, toast, adminHasScope } from "@/components/eh";
 import { useAuth } from "@/hooks/useAuth";
+import { KpiAlertsBanner } from "@/components/KpiAlerts";
 import { downloadCsv } from "@/lib/csv";
 import { TIER_LABEL } from "@contracts/constants";
 
@@ -95,6 +96,7 @@ function ExecTab() {
 
   return (
     <div>
+      <KpiAlertsBanner />
       <div className="eh-row" style={{ gap: ".4rem", justifyContent: "flex-end", marginBottom: ".7rem" }}>
         <button className="eh-btn ghost sm" disabled={capture.isPending} onClick={() => capture.mutate()}>{capture.isPending ? "Capturing…" : "Capture snapshot"}</button>
         <button className="eh-btn ghost sm" onClick={() => window.print()}>Print / PDF</button>

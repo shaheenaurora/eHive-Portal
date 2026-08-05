@@ -330,6 +330,20 @@ export async function ensureSchema(): Promise<void> {
         capturedOn varchar(10) NOT NULL,
         createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
       )`,
+      // KPI Framework Part 10 — threshold alerts (raised when a KPI crosses its bar).
+      `CREATE TABLE IF NOT EXISTS kpi_alerts (
+        id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        scope enum('network','chapter','zone','region','country') NOT NULL DEFAULT 'network',
+        scopeId bigint unsigned NULL,
+        metric varchar(48) NOT NULL,
+        severity enum('red','amber') NOT NULL DEFAULT 'red',
+        message varchar(500) NOT NULL,
+        status enum('open','acknowledged','resolved') NOT NULL DEFAULT 'open',
+        acknowledgedByEmail varchar(320) NULL,
+        acknowledgedAt timestamp NULL,
+        resolvedAt timestamp NULL,
+        createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
       // ERP maker-checker — member change requests (propose/approve/apply history).
       `CREATE TABLE IF NOT EXISTS member_change_requests (
         id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
