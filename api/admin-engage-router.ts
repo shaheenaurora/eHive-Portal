@@ -1263,6 +1263,15 @@ export const adminEngageRouter = createRouter({
     return rows.map(r => ({ ...r.req, memberName: r.user.name ?? r.user.email ?? "Member" }));
   }),
 
+  /* Mark a PDPL data-subject request (export/deletion) as fulfilled. */
+  resolveDataRequest: scopedAdmin("finance")
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      await getDb().update(schema.dataRequests).set({ status: "done" }).where(eq(schema.dataRequests.id, input.id));
+      await audit(ctx.user, "data_request.resolve", { type: "data_request", id: input.id });
+      return { ok: true };
+    }),
+
   completeDataRequest: scopedAdmin("finance")
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {

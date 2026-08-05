@@ -12,6 +12,7 @@ import { findUserByEmail } from "./queries/users";
 import { applyProfileEdit, proposeChange, applyChangeNow, decideChange, listChangeRequests, memberActivity } from "./queries/member-admin";
 import { financeSummary, listPayments, paymentReceipt, recordManualPayment, refundPayment, renewalsDue, budgetRollup, payableMembers } from "./queries/finance";
 import { networkKpis, chapterScorecards, atRiskReport, pipelineReport, renewalsReport } from "./queries/reports";
+import { opsOverview } from "./queries/ops";
 import { mailStatus, sendTestEmail } from "./lib/mailer";
 import { runDailyJobs } from "./lib/scheduler";
 import { removeDemoData, loadFullDemo } from "./queries/demo-data";
@@ -1391,6 +1392,9 @@ export const adminRouter = createRouter({
   refundPayment: scopedAdmin("finance")
     .input(z.object({ id: z.number().int().positive(), reason: z.string().min(2).max(500) }))
     .mutation(({ ctx, input }) => refundPayment(ctx.user, input.id, input.reason)),
+
+  /* ---------------- Operations command centre ---------------- */
+  opsOverview: fullAdmin.query(() => opsOverview()),
 
   /* ---------------- Reports & KPIs (executive / board layer) ---------------- */
   reportsNetworkKpis: fullAdmin.query(() => networkKpis()),
