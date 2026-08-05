@@ -187,6 +187,7 @@ export async function runDailyJobs(now = new Date()): Promise<boolean> {
   await safe("cadence-reminders", () => jobCadenceReminders(now));
   await safe("role-terms", () => jobRoleTerms(now));
   await safe("health-threshold", () => jobHealthThreshold());
+  await safe("kpi-snapshots", async () => { const { captureKpiSnapshots } = await import("../queries/kpi-snapshots"); await captureKpiSnapshots(now); });
   await setMarker(DAILY_MARKER, today);
   console.log(`[scheduler] daily pass complete for ${today}`);
   return true;

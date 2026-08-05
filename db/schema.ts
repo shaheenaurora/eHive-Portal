@@ -480,6 +480,20 @@ export const authTokens = mysqlTable("auth_tokens", {
 /* Append-only audit trail of privileged admin actions (who did what, to what,
    when). Never updated or deleted from the app — accountability for PDPL and
    internal governance. */
+/* Time-stamped KPI snapshots (KPI Framework Part 10 — the metrics engine).
+   One row per metric per scope per day, so trends, cohorts and threshold
+   alerting are possible. `scopeId` is null for network-wide metrics. */
+export const kpiSnapshots = mysqlTable("kpi_snapshots", {
+  id: serial("id").primaryKey(),
+  scope: mysqlEnum("scope", ["network", "chapter", "zone", "region", "country"]).notNull().default("network"),
+  scopeId: bigint("scopeId", { mode: "number", unsigned: true }),
+  metric: varchar("metric", { length: 48 }).notNull(),
+  value: int("value").notNull(),
+  capturedOn: varchar("capturedOn", { length: 10 }).notNull(), // YYYY-MM-DD (one per day)
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type KpiSnapshot = typeof kpiSnapshots.$inferSelect;
+
 export const adminAuditLog = mysqlTable("admin_audit_log", {
   id: serial("id").primaryKey(),
   actorUserId: bigint("actorUserId", { mode: "number", unsigned: true }).notNull(),

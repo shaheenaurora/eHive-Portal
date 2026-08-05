@@ -360,6 +360,7 @@ export async function removeDemoData(): Promise<Record<string, number>> {
   if (chapterIds.length) {
     await del("chapterRoles", (await db.delete(schema.chapterRoles).where(inArray(schema.chapterRoles.chapterId, chapterIds)))[0].affectedRows);
     await del("healthSnapshots", (await db.delete(schema.healthSnapshots).where(inArray(schema.healthSnapshots.chapterId, chapterIds)))[0].affectedRows);
+    await del("kpiSnapshots", (await db.delete(schema.kpiSnapshots).where(and(eq(schema.kpiSnapshots.scope, "chapter"), inArray(schema.kpiSnapshots.scopeId, chapterIds))))[0].affectedRows);
     await del("chapterPosts", (await db.delete(schema.chapterPosts).where(inArray(schema.chapterPosts.chapterId, chapterIds)))[0].affectedRows);
     await del("chapterBudgets", (await db.delete(schema.chapterBudgets).where(inArray(schema.chapterBudgets.chapterId, chapterIds)))[0].affectedRows);
     await del("prospects", (await db.delete(schema.prospects).where(inArray(schema.prospects.chapterId, chapterIds)))[0].affectedRows);

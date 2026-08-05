@@ -320,6 +320,16 @@ export async function ensureSchema(): Promise<void> {
         status enum('nominated','shortlisted','winner','declined') NOT NULL DEFAULT 'nominated',
         createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
       )`,
+      // KPI Framework Part 10 — time-stamped metric snapshots for trends/alerts.
+      `CREATE TABLE IF NOT EXISTS kpi_snapshots (
+        id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        scope enum('network','chapter','zone','region','country') NOT NULL DEFAULT 'network',
+        scopeId bigint unsigned NULL,
+        metric varchar(48) NOT NULL,
+        value int NOT NULL,
+        capturedOn varchar(10) NOT NULL,
+        createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
       // ERP maker-checker — member change requests (propose/approve/apply history).
       `CREATE TABLE IF NOT EXISTS member_change_requests (
         id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
