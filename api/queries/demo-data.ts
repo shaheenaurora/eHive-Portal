@@ -2,6 +2,7 @@ import { and, eq, inArray, like, or } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "./connection";
 import { hashPassword } from "../lib/password";
+import { TIER_PRICE_AED } from "@contracts/constants";
 
 /* ======================= full simulation dataset ======================= */
 
@@ -113,6 +114,7 @@ export async function loadFullDemo(): Promise<{ loaded: boolean; members: number
   const country = Number((await db.insert(schema.orgUnits).values({ level: "country", name: HIERARCHY.country.name, code: HIERARCHY.country.code }))[0].insertId);
   let memberTotal = 0, chapterTotal = 0;
   const countryLeaderCandidates: number[] = [];
+  const dataRequestMemberIds: number[] = [];
 
   for (const region of HIERARCHY.regions) {
     const regionId = Number((await db.insert(schema.orgUnits).values({ level: "region", name: region.name, code: region.code, parentId: country }))[0].insertId);
@@ -172,9 +174,38 @@ export async function loadFullDemo(): Promise<{ loaded: boolean; members: number
           growth: Math.round(t * 0.15), programme: Math.round(t * 0.15), leadership: Math.round(t * 0.1), governance: Math.round(t * 0.1),
         });
 
+        // Membership payments so Finance / revenue reports populate. One paid
+        // membership per member, spread over the last ~6 months (some this month),
+        // with a few pending / refunded for a realistic ledger.
+        const payRows = memberIds.map((_mid, i) => {
+          const tier = meta[i].tier;
+          const daysAgo = Math.floor(rand() * 180);
+          const status = weighted(rand, [["paid", 88], ["pending", 8], ["refunded", 4]]) as "paid" | "pending" | "refunded";
+          return {
+            userId: userIds[i], provider: rand() < 0.15 ? "manual" : "stripe",
+            providerRef: `seed-pay-${chapterId}-${i}`, purpose: "membership",
+            tier, amount: (TIER_PRICE_AED[tier] ?? 0) * 100, currency: "aed", status,
+            createdAt: new Date(Date.now() - daysAgo * 86_400_000),
+          };
+        });
+        if (payRows.length) await db.insert(schema.paymentRecords).values(payRows);
+
+        // Prospect funnel + guest follow-ups so Pipeline / Operations populate.
+        const prospectRows = Array.from({ length: 4 }).map(() => {
+          const name = `${pick(rand, FIRST)} ${pick(rand, LAST)}`;
+          return { name, email: email(name), company: pick(rand, COMPANIES), chapterId, source: "demo",
+            stage: weighted(rand, [["prospect", 4], ["guest", 3], ["invited", 2], ["converted", 1], ["declined", 1]]) as never };
+        });
+        await db.insert(schema.prospects).values(prospectRows);
+        await db.insert(schema.followUps).values([
+          { chapterId, ownerUserId: userIds[0], title: `Follow up with ${pick(rand, FIRST)} ${pick(rand, LAST)}`, dueAt: new Date(Date.now() + 24 * 3_600_000), status: "open" as const },
+          { chapterId, ownerUserId: userIds[1] ?? userIds[0], title: `Follow up with ${pick(rand, FIRST)} ${pick(rand, LAST)}`, dueAt: new Date(Date.now() - 18 * 3_600_000), status: "open" as const }, // overdue
+        ]);
+
         zoneLeaderCandidates.push(memberIds[0]);
         regionLeaderCandidates.push(memberIds[1] ?? memberIds[0]);
         countryLeaderCandidates.push(memberIds[2] ?? memberIds[0]);
+        dataRequestMemberIds.push(memberIds[3] ?? memberIds[0]);
       }
 
       // zone chair
@@ -196,6 +227,14 @@ export async function loadFullDemo(): Promise<{ loaded: boolean; members: number
       { unitId: country, level: "country", memberId: countryLeaderCandidates[0], role: "National President" },
       { unitId: country, level: "country", memberId: countryLeaderCandidates[1], role: "National VP" },
       { unitId: country, level: "country", memberId: countryLeaderCandidates[2], role: "National Treasurer" },
+    ]);
+  }
+
+  // A couple of open PDPL data-subject requests so the Operations cockpit populates.
+  if (dataRequestMemberIds.length >= 2) {
+    await db.insert(schema.dataRequests).values([
+      { memberId: dataRequestMemberIds[0], kind: "export", status: "open" },
+      { memberId: dataRequestMemberIds[1], kind: "deletion", status: "open" },
     ]);
   }
 
@@ -285,6 +324,8 @@ export async function removeDemoData(): Promise<Record<string, number>> {
     await del("buddies", (await db.delete(schema.buddies).where(or(inArray(schema.buddies.newMemberId, memberIds), inArray(schema.buddies.buddyMemberId, memberIds))))[0].affectedRows);
     await del("oneToOnes", (await db.delete(schema.oneToOnes).where(or(inArray(schema.oneToOnes.aMemberId, memberIds), inArray(schema.oneToOnes.bMemberId, memberIds))))[0].affectedRows);
     await del("conductCases", (await db.delete(schema.conductCases).where(or(inArray(schema.conductCases.reporterMemberId, memberIds), inArray(schema.conductCases.subjectMemberId, memberIds))))[0].affectedRows);
+    await del("memberSaveCases", (await db.delete(schema.memberSaveCases).where(inMembers(schema.memberSaveCases.memberId as never)))[0].affectedRows);
+    await del("dataRequests", (await db.delete(schema.dataRequests).where(inMembers(schema.dataRequests.memberId as never)))[0].affectedRows);
     await del("members", (await db.delete(schema.members).where(inArray(schema.members.id, memberIds)))[0].affectedRows);
   }
 
@@ -321,6 +362,8 @@ export async function removeDemoData(): Promise<Record<string, number>> {
     await del("healthSnapshots", (await db.delete(schema.healthSnapshots).where(inArray(schema.healthSnapshots.chapterId, chapterIds)))[0].affectedRows);
     await del("chapterPosts", (await db.delete(schema.chapterPosts).where(inArray(schema.chapterPosts.chapterId, chapterIds)))[0].affectedRows);
     await del("chapterBudgets", (await db.delete(schema.chapterBudgets).where(inArray(schema.chapterBudgets.chapterId, chapterIds)))[0].affectedRows);
+    await del("prospects", (await db.delete(schema.prospects).where(inArray(schema.prospects.chapterId, chapterIds)))[0].affectedRows);
+    await del("followUps", (await db.delete(schema.followUps).where(inArray(schema.followUps.chapterId, chapterIds)))[0].affectedRows);
     await del("chapterTransfers", (await db.delete(schema.chapterTransfers).where(inArray(schema.chapterTransfers.toChapterId, chapterIds)))[0].affectedRows);
     await del("meetings", (await db.delete(schema.meetings).where(inArray(schema.meetings.chapterId, chapterIds)))[0].affectedRows);
     await del("elections", (await db.delete(schema.elections).where(inArray(schema.elections.chapterId, chapterIds)))[0].affectedRows);
