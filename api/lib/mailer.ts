@@ -38,7 +38,13 @@ function getTransport(): Transporter {
   return transport;
 }
 
-const fromAddress = () => env.mailFrom || env.smtpUser;
+/** Sender address. For ZeptoMail this must be a verified domain, so we don't
+ *  fall back to the SMTP user (which may be unverified in ZeptoMail). */
+const fromAddress = () => {
+  if (env.mailFrom) return env.mailFrom;
+  if (mailProvider() === "smtp") return env.smtpUser || "";
+  return "";
+};
 
 export type MailInput = {
   to: string;
@@ -47,6 +53,13 @@ export type MailInput = {
   text?: string;
   replyTo?: string;
 };
+
+/** Normalize a ZeptoMail token: the API header needs just the token value, but
+ *  users often paste the whole `Zoho-enczapikey …` string. Strip the prefix and
+ *  whitespace so either form works. */
+function zeptoToken(): string {
+  return env.zeptoToken.replace(/^Zoho-enczapikey\s*/i, "").replace(/\s+/g, "");
+}
 
 /** Send via Zoho ZeptoMail's REST API over HTTPS. Surfaces the API's error text
  *  so misconfiguration (unverified sender, bad token) is diagnosable. */
@@ -59,12 +72,18 @@ async function sendViaZepto(
       ok: false,
       error: "Set MAIL_FROM to a sender address verified in ZeptoMail.",
     };
+  const token = zeptoToken();
+  if (!token)
+    return {
+      ok: false,
+      error: "ZEPTOMAIL_TOKEN is empty.",
+    };
   let res: Response;
   try {
     res = await fetch(env.zeptoApiUrl, {
       method: "POST",
       headers: {
-        Authorization: `Zoho-enczapikey ${env.zeptoToken}`,
+        Authorization: `Zoho-enczapikey ${token}`,
         "Content-Type": "application/json",
         Accept: "application/json",
       },
@@ -85,14 +104,25 @@ async function sendViaZepto(
   }
   const bodyText = await res.text().catch(() => "");
   if (res.ok) return { ok: true };
+  // Log the raw response (with recipient masked) so production logs capture
+  // the full ZeptoMail rejection reason even if parsing fails.
+  console.warn(
+    "[mail] ZeptoMail rejected send to",
+    maskEmail(input.to),
+    "— status:",
+    res.status,
+    "body:",
+    bodyText.slice(0, 1000)
+  );
   let detail = `${res.status} ${res.statusText}`;
   try {
     const j = JSON.parse(bodyText) as {
       message?: string;
       error?: { message?: string };
       details?: { message?: string; target?: string }[];
+      data?: { message?: string };
     };
-    detail = j.message || j.error?.message || detail;
+    detail = j.message || j.error?.message || j.data?.message || detail;
     if (j.details?.length)
       detail +=
         " — " +
