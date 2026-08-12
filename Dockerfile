@@ -24,6 +24,10 @@ EXPOSE 3000
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json /app/package-lock.json ./
 COPY --from=builder /app/public ./public
+# Drizzle config + schema/migrations are required for the Railway pre-deploy
+# migration command (`npm run db:migrate`). They stay out of the runtime bundle.
+COPY --from=builder /app/drizzle.config.ts ./
+COPY --from=builder /app/db ./db
 
 # Install only production dependencies. Skip optional native modules where
 # possible to keep the image small and reduce attack surface.
