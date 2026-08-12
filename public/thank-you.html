@@ -1,159 +1,297 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Thank you — eHive</title>
-<meta name="description" content="Thank you — your details are with the right team at eHive. We'll be in touch shortly.">
-<meta name="robots" content="noindex">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3 27 9.5v13L16 29 5 22.5v-13z' fill='none' stroke='%23D4A24C' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23D4A24C'/%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.min.css">
-<link rel="stylesheet" href="apps.min.css">
-<link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#16264C"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="eHive">
-<style>
-  .ty-hero{ padding:clamp(3.5rem,9vw,7rem) 0 clamp(2.5rem,6vw,4.5rem); }
-  .ty-badge{ width:74px; height:74px; border-radius:50%; display:grid; place-items:center; margin:0 0 1.4rem;
-    background:#DA3A22; color:#fff; box-shadow:0 10px 30px rgba(218,58,34,.28); }
-  .ty-badge svg{ width:34px; height:34px; }
-  .ty-hero h1{ margin:.2rem 0 .8rem; }
-  .ty-lede{ max-width:60ch; font-size:clamp(1.02rem,2.4vw,1.18rem); color:#5F5C53; line-height:1.6; }
-  .ty-steps{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:1rem; margin:2.4rem 0 2rem; }
-  .ty-step{ background:#FBFAF6; border:1px solid #E4DECF; border-radius:14px; padding:1.15rem 1.25rem; }
-  .ty-step .n{ display:inline-grid; place-items:center; width:26px; height:26px; border-radius:50%;
-    background:#16264C; color:#F3F1EA; font-weight:800; font-size:.82rem; margin-bottom:.6rem; }
-  .ty-step h3{ margin:0 0 .3rem; font-size:1.02rem; color:#141312; }
-  .ty-step p{ margin:0; color:#5F5C53; font-size:.92rem; line-height:1.5; }
-  .ty-actions{ display:flex; gap:.7rem; flex-wrap:wrap; margin-top:.4rem; }
-</style>
-</head>
-<body>
-<a class="skip" href="#main">Skip to content</a>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Thank you — eHive</title>
+    <meta
+      name="description"
+      content="Thank you — your details are with the right team at eHive. We'll be in touch shortly."
+    />
+    <meta name="robots" content="noindex" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3 27 9.5v13L16 29 5 22.5v-13z' fill='none' stroke='%23D4A24C' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23D4A24C'/%3E%3C/svg%3E"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.min.css" />
+    <link rel="stylesheet" href="apps.min.css" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#16264C" />
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="eHive" />
+    <style>
+      .ty-hero {
+        padding: clamp(3.5rem, 9vw, 7rem) 0 clamp(2.5rem, 6vw, 4.5rem);
+      }
+      .ty-badge {
+        width: 74px;
+        height: 74px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        margin: 0 0 1.4rem;
+        background: #da3a22;
+        color: #fff;
+        box-shadow: 0 10px 30px rgba(218, 58, 34, 0.28);
+      }
+      .ty-badge svg {
+        width: 34px;
+        height: 34px;
+      }
+      .ty-hero h1 {
+        margin: 0.2rem 0 0.8rem;
+      }
+      .ty-lede {
+        max-width: 60ch;
+        font-size: clamp(1.02rem, 2.4vw, 1.18rem);
+        color: #5f5c53;
+        line-height: 1.6;
+      }
+      .ty-steps {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1rem;
+        margin: 2.4rem 0 2rem;
+      }
+      .ty-step {
+        background: #fbfaf6;
+        border: 1px solid #e4decf;
+        border-radius: 14px;
+        padding: 1.15rem 1.25rem;
+      }
+      .ty-step .n {
+        display: inline-grid;
+        place-items: center;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: #16264c;
+        color: #f3f1ea;
+        font-weight: 800;
+        font-size: 0.82rem;
+        margin-bottom: 0.6rem;
+      }
+      .ty-step h3 {
+        margin: 0 0 0.3rem;
+        font-size: 1.02rem;
+        color: #141312;
+      }
+      .ty-step p {
+        margin: 0;
+        color: #5f5c53;
+        font-size: 0.92rem;
+        line-height: 1.5;
+      }
+      .ty-actions {
+        display: flex;
+        gap: 0.7rem;
+        flex-wrap: wrap;
+        margin-top: 0.4rem;
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
 
-<header class="site-nav" id="siteNav">
-  <nav aria-label="Primary">
-    <a class="brand" href="index.html" aria-label="eHive — home">
-      <img src="assets/ehive-wordmark.png" alt="eHive" width="146" height="26">
-    </a>
-    <button class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="navMenu" aria-label="Menu">
-      <span></span><span></span><span></span>
-    </button>
-    <ul class="nav-links" id="navMenu">
-      <li><a href="business-setup.html">Business Setup</a></li>
-      <li><a href="consulting.html">Consulting</a></li>
-      <li><a href="circle.html">eHive Circle</a></li>
-      <li><a href="/clarity-scorecard.html">Scorecard</a></li><li><a href="/login">Login</a></li>
-      <li><a class="btn btn-primary btn-sm" href="get-started.html">Get Started</a></li>
-    </ul>
-  </nav>
-</header>
-
-<main id="main">
-<section class="p-hero ty-hero" aria-labelledby="page-h">
-  <div class="wrap">
-    <p class="crumbs"><a href="index.html">Home</a><i>·</i><span>Thank you</span></p>
-    <div class="ty-badge" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    </div>
-    <p class="p-name">Thank you</p>
-    <h1 id="page-h">We&rsquo;ve got it. <em>Consider it in motion.</em></h1>
-    <p class="ty-lede" id="tyLede">Your details are with the right team. We&rsquo;ll be in touch within one business day — and a copy is on its way to your inbox.</p>
-
-    <div class="ty-steps">
-      <div class="ty-step">
-        <span class="n">1</span>
-        <h3>Check your inbox</h3>
-        <p>A confirmation is on its way. If it&rsquo;s not there in a few minutes, look in spam and mark us as safe.</p>
-      </div>
-      <div class="ty-step">
-        <span class="n">2</span>
-        <h3>We review &amp; route</h3>
-        <p>A real person reads what you sent and routes it to the right team — no autoresponder ping-pong.</p>
-      </div>
-      <div class="ty-step">
-        <span class="n">3</span>
-        <h3>We reach out</h3>
-        <p>Expect a reply within one business day with clear next steps.</p>
-      </div>
-    </div>
-
-    <div class="ty-actions">
-      <a class="btn btn-primary" href="index.html">Back to home</a>
-      <a class="btn btn-ghost" href="circle.html">Explore the eHive Circle</a>
-      <a class="btn btn-ghost" href="insights.html">Read the Hive Journal</a>
-    </div>
-  </div>
-</section>
-</main>
-
-<footer>
-  <div class="wrap">
-    <div class="foot-grid">
-      <div class="foot-brand">
-        <img src="assets/ehive-full.png" alt="eHive — Build. Belong. Become." width="150">
-        <p>To advance the human race by enabling individuals and organisations to do better —
-          sustainably, relevantly, and beneficially.</p>
-      </div>
-      <div class="foot-col">
-        <h4>The Ecosystem</h4>
-        <ul>
+    <header class="site-nav" id="siteNav">
+      <nav aria-label="Primary">
+        <a class="brand" href="index.html" aria-label="eHive — home">
+          <img
+            src="assets/ehive-wordmark.png"
+            alt="eHive"
+            width="146"
+            height="26"
+          />
+        </a>
+        <button
+          class="nav-toggle"
+          id="navToggle"
+          aria-expanded="false"
+          aria-controls="navMenu"
+          aria-label="Menu"
+        >
+          <span></span><span></span><span></span>
+        </button>
+        <ul class="nav-links" id="navMenu">
           <li><a href="business-setup.html">Business Setup</a></li>
           <li><a href="consulting.html">Consulting</a></li>
           <li><a href="circle.html">eHive Circle</a></li>
-          <li><a href="business-setup.html#calculator">Cost Calculator</a></li>
+          <li><a href="/clarity-scorecard.html">Scorecard</a></li>
+          <li><a href="/login">Login</a></li>
+          <li>
+            <a class="btn btn-primary btn-sm" href="get-started.html"
+              >Get Started</a
+            >
+          </li>
         </ul>
-      </div>
-      <div class="foot-col">
-        <h4>Company</h4>
-        <ul>
-          <li><a href="about.html">About</a></li>
-          <li><a href="insights.html">Insights — The Hive Journal</a></li>
-          <li><a href="about.html#join">Join the Network</a></li>
-          <li><a href="/clarity-scorecard.html">Scorecard</a></li><li><a href="/login">Login</a></li>
-        </ul>
-      </div>
-      <div class="foot-col">
-        <h4>Connect</h4>
-        <p class="foot-loc">Dubai, UAE<span>Expanding across the region</span></p>
-        <form class="news-form" method="post" aria-label="Newsletter signup">
-          <label class="visually-hidden" for="news-email">Email address</label>
-          <input id="news-email" type="email" placeholder="Your email" required>
-          <button type="submit">Subscribe</button>
-        </form>
-      </div>
-    </div>
-    <div class="foot-bottom">
-      <span>© <span id="year">2026</span> eHive. All rights reserved.</span>
-      <div class="foot-legal">
-        <a href="privacy.html">Privacy</a>
-        <a href="terms.html">Terms</a>
-      </div>
-      <div class="socials">
-        <span class="soc-soon">LinkedIn</span>
-        <span class="soc-soon">Instagram</span>
-        <span class="soc-soon">X</span>
-      </div>
-    </div>
-  </div>
-</footer>
+      </nav>
+    </header>
 
-<script>
-  /* Tailor the message to the flow that sent the visitor here (?src=…). */
-  (function(){
-    var src = new URLSearchParams(location.search).get("src") || "";
-    var lede = document.getElementById("tyLede");
-    var COPY = {
-      scorecard: "Your Clarity Scorecard is on its way to your inbox, along with the one next step that pays back fastest. A member of the team will follow up within one business day.",
-      booking:   "Your call is requested — you'll get a confirmation by email shortly, and we'll be in touch within one business day to lock in the time.",
-      lead:      "Your details are with the right team. We'll be in touch within one business day — and a copy is on its way to your inbox."
-    };
-    if (lede && COPY[src]) lede.textContent = COPY[src];
-    var y = document.getElementById("year"); if (y) y.textContent = String(new Date().getFullYear());
-  })();
-</script>
-<script src="app.min.js" defer></script>
-<script src="apps.min.js" defer></script>
-</body>
+    <main id="main">
+      <section class="p-hero ty-hero" aria-labelledby="page-h">
+        <div class="wrap">
+          <p class="crumbs">
+            <a href="index.html">Home</a><i>·</i><span>Thank you</span>
+          </p>
+          <div class="ty-badge" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path
+                d="M20 6 9 17l-5-5"
+                stroke="currentColor"
+                stroke-width="2.4"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </div>
+          <p class="p-name">Thank you</p>
+          <h1 id="page-h">
+            We&rsquo;ve got it. <em>Consider it in motion.</em>
+          </h1>
+          <p class="ty-lede" id="tyLede">
+            Your details are with the right team. We&rsquo;ll be in touch within
+            one business day — and a copy is on its way to your inbox.
+          </p>
+
+          <div class="ty-steps">
+            <div class="ty-step">
+              <span class="n">1</span>
+              <h3>Check your inbox</h3>
+              <p>
+                A confirmation is on its way. If it&rsquo;s not there in a few
+                minutes, look in spam and mark us as safe.
+              </p>
+            </div>
+            <div class="ty-step">
+              <span class="n">2</span>
+              <h3>We review &amp; route</h3>
+              <p>
+                A real person reads what you sent and routes it to the right
+                team — no autoresponder ping-pong.
+              </p>
+            </div>
+            <div class="ty-step">
+              <span class="n">3</span>
+              <h3>We reach out</h3>
+              <p>
+                Expect a reply within one business day with clear next steps.
+              </p>
+            </div>
+          </div>
+
+          <div class="ty-actions">
+            <a class="btn btn-primary" href="index.html">Back to home</a>
+            <a class="btn btn-ghost" href="circle.html"
+              >Explore the eHive Circle</a
+            >
+            <a class="btn btn-ghost" href="insights.html"
+              >Read the Hive Journal</a
+            >
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <div class="foot-grid">
+          <div class="foot-brand">
+            <img
+              src="assets/ehive-full.png"
+              alt="eHive — Build. Belong. Become."
+              width="150"
+            />
+            <p>
+              To advance the human race by enabling individuals and
+              organisations to do better — sustainably, relevantly, and
+              beneficially.
+            </p>
+          </div>
+          <div class="foot-col">
+            <h4>The Ecosystem</h4>
+            <ul>
+              <li><a href="business-setup.html">Business Setup</a></li>
+              <li><a href="consulting.html">Consulting</a></li>
+              <li><a href="circle.html">eHive Circle</a></li>
+              <li>
+                <a href="business-setup.html#calculator">Cost Calculator</a>
+              </li>
+            </ul>
+          </div>
+          <div class="foot-col">
+            <h4>Company</h4>
+            <ul>
+              <li><a href="about.html">About</a></li>
+              <li><a href="insights.html">Insights — The Hive Journal</a></li>
+              <li><a href="about.html#join">Join the Network</a></li>
+              <li><a href="/clarity-scorecard.html">Scorecard</a></li>
+              <li><a href="/login">Login</a></li>
+            </ul>
+          </div>
+          <div class="foot-col">
+            <h4>Connect</h4>
+            <p class="foot-loc">
+              Dubai, UAE<span>Expanding across the region</span>
+            </p>
+            <form
+              class="news-form"
+              method="post"
+              aria-label="Newsletter signup"
+            >
+              <label class="visually-hidden" for="news-email"
+                >Email address</label
+              >
+              <input
+                id="news-email"
+                type="email"
+                placeholder="Your email"
+                required
+              />
+              <button type="submit">Subscribe</button>
+            </form>
+          </div>
+        </div>
+        <div class="foot-bottom">
+          <span>© <span id="year">2026</span> eHive. All rights reserved.</span>
+          <div class="foot-legal">
+            <a href="privacy.html">Privacy</a>
+            <a href="terms.html">Terms</a>
+          </div>
+          <div class="socials">
+            <span class="soc-soon">LinkedIn</span>
+            <span class="soc-soon">Instagram</span>
+            <span class="soc-soon">X</span>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      /* Tailor the message to the flow that sent the visitor here (?src=…). */
+      (function () {
+        var src = new URLSearchParams(location.search).get("src") || "";
+        var lede = document.getElementById("tyLede");
+        var COPY = {
+          scorecard:
+            "Your Clarity Scorecard is on its way to your inbox, along with the one next step that pays back fastest. A member of the team will follow up within one business day.",
+          booking:
+            "Your call is requested — you'll get a confirmation by email shortly, and we'll be in touch within one business day to lock in the time.",
+          lead: "Your details are with the right team. We'll be in touch within one business day — and a copy is on its way to your inbox.",
+        };
+        if (lede && COPY[src]) lede.textContent = COPY[src];
+        var y = document.getElementById("year");
+        if (y) y.textContent = String(new Date().getFullYear());
+      })();
+    </script>
+    <script src="app.min.js" defer></script>
+    <script src="apps.min.js" defer></script>
+  </body>
 </html>

@@ -1,10 +1,10 @@
-import devServer from "@hono/vite-dev-server"
-import path from "path"
-import fs from "fs"
-const __dirname = import.meta.dirname
-import react from "@vitejs/plugin-react"
-import { defineConfig } from "vite"
-import { inspectAttr } from 'kimi-plugin-inspect-react'
+import devServer from "@hono/vite-dev-server";
+import path from "path";
+import fs from "fs";
+const __dirname = import.meta.dirname;
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
+import { inspectAttr } from "kimi-plugin-inspect-react";
 
 /* The marketing site lives in public/ and is served from source by the Hono
    server (see api/boot.ts) — no build-time copy. Vite's publicDir copy races on
@@ -25,7 +25,11 @@ const writeNotFoundPage = () => ({
 export default defineConfig({
   plugins: [
     devServer({ entry: "api/boot.ts", exclude: [/^\/(?!api\/).*$/] }),
-    inspectAttr(), react(), writeNotFoundPage()],
+    // Dev-only inspect helper: never ship its transform/code in production builds.
+    process.env.NODE_ENV !== "production" && inspectAttr(),
+    react(),
+    writeNotFoundPage(),
+  ].filter(Boolean),
   server: {
     port: 3000,
   },
@@ -34,7 +38,7 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
       "@contracts": path.resolve(__dirname, "./contracts"),
       "@db": path.resolve(__dirname, "./db"),
-      "db": path.resolve(__dirname, "./db"),
+      db: path.resolve(__dirname, "./db"),
     },
   },
   envDir: path.resolve(__dirname),

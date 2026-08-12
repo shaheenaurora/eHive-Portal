@@ -33,7 +33,10 @@ export function tierRank(t: string): number {
 }
 /** Annual price per tier in whole AED (used to build a checkout amount). */
 export const TIER_PRICE_AED: Record<Tier, number> = {
-  horizon: 999, ascent: 5999, vanguard: 11999, zenith: 29999,
+  horizon: 999,
+  ascent: 5999,
+  vanguard: 11999,
+  zenith: 29999,
 };
 /** Tiers that can be joined by self-serve online payment. Zenith is application-only. */
 export const SELF_SERVE_TIERS = ["horizon", "ascent", "vanguard"] as const;
@@ -52,19 +55,61 @@ export const ONBOARDING_STAGES = [
   { stage: 3, label: "Contribution", window: "Days 61–90" },
 ] as const;
 export const ONBOARDING_MILESTONES = [
-  { key: "profile_complete",   stage: 1, auto: true,  label: "Complete your profile" },
-  { key: "first_meeting",      stage: 1, auto: true,  label: "Attend your first meeting" },
-  { key: "buddy_assigned",     stage: 1, auto: true,  label: "Get paired with a buddy" },
-  { key: "ask_offer",          stage: 1, auto: false, label: "Post your first ask & offer" },
-  { key: "pod_placed",         stage: 2, auto: true,  label: "Join a POD" },
-  { key: "pod_meeting",        stage: 2, auto: true,  label: "Attend your first POD meeting" },
-  { key: "three_connections",  stage: 2, auto: false, label: "Make three connections" },
-  { key: "first_contribution", stage: 3, auto: false, label: "Make your first contribution — a win, an ask or a spotlight" },
-  { key: "benefit_used",       stage: 3, auto: false, label: "Use a member benefit" },
-  { key: "check_in_90",        stage: 3, auto: false, label: "Complete your 90-day check-in" },
+  {
+    key: "profile_complete",
+    stage: 1,
+    auto: true,
+    label: "Complete your profile",
+  },
+  {
+    key: "first_meeting",
+    stage: 1,
+    auto: true,
+    label: "Attend your first meeting",
+  },
+  {
+    key: "buddy_assigned",
+    stage: 1,
+    auto: true,
+    label: "Get paired with a buddy",
+  },
+  {
+    key: "ask_offer",
+    stage: 1,
+    auto: false,
+    label: "Post your first ask & offer",
+  },
+  { key: "pod_placed", stage: 2, auto: true, label: "Join a POD" },
+  {
+    key: "pod_meeting",
+    stage: 2,
+    auto: true,
+    label: "Attend your first POD meeting",
+  },
+  {
+    key: "three_connections",
+    stage: 2,
+    auto: false,
+    label: "Make three connections",
+  },
+  {
+    key: "first_contribution",
+    stage: 3,
+    auto: false,
+    label: "Make your first contribution — a win, an ask or a spotlight",
+  },
+  { key: "benefit_used", stage: 3, auto: false, label: "Use a member benefit" },
+  {
+    key: "check_in_90",
+    stage: 3,
+    auto: false,
+    label: "Complete your 90-day check-in",
+  },
 ] as const;
 export type OnboardingKey = (typeof ONBOARDING_MILESTONES)[number]["key"];
-export const ONBOARDING_MANUAL_KEYS = ONBOARDING_MILESTONES.filter((m) => !m.auto).map((m) => m.key) as string[];
+export const ONBOARDING_MANUAL_KEYS = ONBOARDING_MILESTONES.filter(
+  m => !m.auto
+).map(m => m.key) as string[];
 /** POD placement is due by day 60 (ML-03). */
 export const ONBOARDING_POD_BY_DAY = 60;
 export const ONBOARDING_DAYS = 90;
@@ -73,41 +118,127 @@ export const ONBOARDING_DAYS = 90;
    `status` above is access/billing; this is the member's journey state. Each
    transition is an SOP with an owner, a trigger and a notification. */
 export const MEMBER_LIFECYCLE = [
-  { key: "prospect",   label: "Prospect",   kind: "top",    desc: "Captured and nurtured — top of the funnel." },
-  { key: "guest",      label: "Guest",      kind: "top",    desc: "Attending as a visitor." },
-  { key: "applicant",  label: "Applicant",  kind: "top",    desc: "Applied to join; in screening." },
-  { key: "onboarding", label: "Onboarding", kind: "new",    desc: "First 30/60/90 days — orientation, POD placement, first contribution." },
-  { key: "active",     label: "Active",     kind: "good",   desc: "Engaged, in a POD, contributing." },
-  { key: "at_risk",    label: "At-Risk",    kind: "risk",   desc: "Early-warning flag — disengaging; needs a personal save." },
-  { key: "renewal",    label: "Renewal",    kind: "renew",  desc: "Annual decision point — value conversation, year in review." },
-  { key: "lapsed",     label: "Lapsed",     kind: "risk",   desc: "Did not renew." },
-  { key: "alumni",     label: "Alumni",     kind: "top",    desc: "Stays in the network; win-back preserved." },
-  { key: "suspended",  label: "Suspended",  kind: "risk",   desc: "Under a conduct process." },
+  {
+    key: "prospect",
+    label: "Prospect",
+    kind: "top",
+    desc: "Captured and nurtured — top of the funnel.",
+  },
+  {
+    key: "guest",
+    label: "Guest",
+    kind: "top",
+    desc: "Attending as a visitor.",
+  },
+  {
+    key: "applicant",
+    label: "Applicant",
+    kind: "top",
+    desc: "Applied to join; in screening.",
+  },
+  {
+    key: "onboarding",
+    label: "Onboarding",
+    kind: "new",
+    desc: "First 30/60/90 days — orientation, POD placement, first contribution.",
+  },
+  {
+    key: "active",
+    label: "Active",
+    kind: "good",
+    desc: "Engaged, in a POD, contributing.",
+  },
+  {
+    key: "at_risk",
+    label: "At-Risk",
+    kind: "risk",
+    desc: "Early-warning flag — disengaging; needs a personal save.",
+  },
+  {
+    key: "renewal",
+    label: "Renewal",
+    kind: "renew",
+    desc: "Annual decision point — value conversation, year in review.",
+  },
+  { key: "lapsed", label: "Lapsed", kind: "risk", desc: "Did not renew." },
+  {
+    key: "alumni",
+    label: "Alumni",
+    kind: "top",
+    desc: "Stays in the network; win-back preserved.",
+  },
+  {
+    key: "suspended",
+    label: "Suspended",
+    kind: "risk",
+    desc: "Under a conduct process.",
+  },
 ] as const;
 export type MemberLifecycle = (typeof MEMBER_LIFECYCLE)[number]["key"];
 export const MEMBER_LIFECYCLE_LABEL: Record<string, string> =
-  Object.fromEntries(MEMBER_LIFECYCLE.map((s) => [s.key, s.label]));
-export const MEMBER_LIFECYCLE_DESC: Record<string, string> =
-  Object.fromEntries(MEMBER_LIFECYCLE.map((s) => [s.key, s.desc]));
+  Object.fromEntries(MEMBER_LIFECYCLE.map(s => [s.key, s.label]));
+export const MEMBER_LIFECYCLE_DESC: Record<string, string> = Object.fromEntries(
+  MEMBER_LIFECYCLE.map(s => [s.key, s.desc])
+);
 /** Pill colour per lifecycle state for the CRM board. */
-export const MEMBER_LIFECYCLE_COLOR: Record<string, "grey" | "blue" | "gold" | "green" | "red" | "purple"> = {
-  prospect: "grey", guest: "blue", applicant: "purple", onboarding: "gold", active: "green",
-  at_risk: "red", renewal: "gold", lapsed: "red", alumni: "grey", suspended: "red",
+export const MEMBER_LIFECYCLE_COLOR: Record<
+  string,
+  "grey" | "blue" | "gold" | "green" | "red" | "purple"
+> = {
+  prospect: "grey",
+  guest: "blue",
+  applicant: "purple",
+  onboarding: "gold",
+  active: "green",
+  at_risk: "red",
+  renewal: "gold",
+  lapsed: "red",
+  alumni: "grey",
+  suspended: "red",
 };
 /** The transitions an admin may drive from each state (the arrows in Figure 2),
  *  each with the label shown on the button. Auto-transitions (admission,
  *  at-risk detection, renewal window) also exist server-side. */
-export const MEMBER_LIFECYCLE_TRANSITIONS: Record<string, { to: string; label: string }[]> = {
-  prospect:   [{ to: "guest", label: "Invited" }, { to: "applicant", label: "Applied" }],
-  guest:      [{ to: "applicant", label: "Applied" }, { to: "alumni", label: "Stay in network" }],
-  applicant:  [{ to: "onboarding", label: "Admit" }],
-  onboarding: [{ to: "active", label: "Activate" }, { to: "at_risk", label: "Flag at-risk" }],
-  active:     [{ to: "at_risk", label: "Flag at-risk" }, { to: "renewal", label: "Open renewal" }, { to: "suspended", label: "Suspend (conduct)" }],
-  at_risk:    [{ to: "active", label: "Saved" }, { to: "renewal", label: "Open renewal" }, { to: "suspended", label: "Suspend (conduct)" }],
-  renewal:    [{ to: "active", label: "Renewed" }, { to: "lapsed", label: "Not renewed" }],
-  lapsed:     [{ to: "alumni", label: "Re-home to Alumni" }, { to: "onboarding", label: "Win-back → re-admit" }],
-  alumni:     [{ to: "applicant", label: "Win-back → apply" }],
-  suspended:  [{ to: "active", label: "Reinstate" }, { to: "alumni", label: "Remove → Alumni" }],
+export const MEMBER_LIFECYCLE_TRANSITIONS: Record<
+  string,
+  { to: string; label: string }[]
+> = {
+  prospect: [
+    { to: "guest", label: "Invited" },
+    { to: "applicant", label: "Applied" },
+  ],
+  guest: [
+    { to: "applicant", label: "Applied" },
+    { to: "alumni", label: "Stay in network" },
+  ],
+  applicant: [{ to: "onboarding", label: "Admit" }],
+  onboarding: [
+    { to: "active", label: "Activate" },
+    { to: "at_risk", label: "Flag at-risk" },
+  ],
+  active: [
+    { to: "at_risk", label: "Flag at-risk" },
+    { to: "renewal", label: "Open renewal" },
+    { to: "suspended", label: "Suspend (conduct)" },
+  ],
+  at_risk: [
+    { to: "active", label: "Saved" },
+    { to: "renewal", label: "Open renewal" },
+    { to: "suspended", label: "Suspend (conduct)" },
+  ],
+  renewal: [
+    { to: "active", label: "Renewed" },
+    { to: "lapsed", label: "Not renewed" },
+  ],
+  lapsed: [
+    { to: "alumni", label: "Re-home to Alumni" },
+    { to: "onboarding", label: "Win-back → re-admit" },
+  ],
+  alumni: [{ to: "applicant", label: "Win-back → apply" }],
+  suspended: [
+    { to: "active", label: "Reinstate" },
+    { to: "alumni", label: "Remove → Alumni" },
+  ],
 };
 
 /* ML-04b — the Save Playbook. When a member is flagged At-Risk, Member Success
@@ -115,11 +246,31 @@ export const MEMBER_LIFECYCLE_TRANSITIONS: Record<string, { to: string; label: s
    than a silent state flip. These are the ordered steps of that playbook; a
    case stores which are done as a bitmask over this array. */
 export const SAVE_PLAYBOOK_STEPS = [
-  { key: "reach_out",   label: "Reach out personally",        hint: "A real 1:1 message or call within 3 business days — not an automated nudge." },
-  { key: "diagnose",    label: "Understand the disengagement", hint: "Ask what changed. Time, fit, value, life event? Listen before pitching." },
-  { key: "remap_value", label: "Re-map value to their goals",  hint: "Connect a specific eHive benefit to what they're actually trying to do now." },
-  { key: "next_step",   label: "Offer one concrete next step", hint: "A specific session, intro, or 1:1 with a date — low-friction and soon." },
-  { key: "confirm",     label: "Confirm re-engagement",        hint: "They showed up / booked / re-committed. Only then is the save real." },
+  {
+    key: "reach_out",
+    label: "Reach out personally",
+    hint: "A real 1:1 message or call within 3 business days — not an automated nudge.",
+  },
+  {
+    key: "diagnose",
+    label: "Understand the disengagement",
+    hint: "Ask what changed. Time, fit, value, life event? Listen before pitching.",
+  },
+  {
+    key: "remap_value",
+    label: "Re-map value to their goals",
+    hint: "Connect a specific eHive benefit to what they're actually trying to do now.",
+  },
+  {
+    key: "next_step",
+    label: "Offer one concrete next step",
+    hint: "A specific session, intro, or 1:1 with a date — low-friction and soon.",
+  },
+  {
+    key: "confirm",
+    label: "Confirm re-engagement",
+    hint: "They showed up / booked / re-committed. Only then is the save real.",
+  },
 ] as const;
 export type SavePlaybookStepKey = (typeof SAVE_PLAYBOOK_STEPS)[number]["key"];
 export const SAVE_CASE_STATUSES = ["open", "working", "saved", "lost"] as const;
@@ -130,31 +281,94 @@ export type SaveCaseStatus = (typeof SAVE_CASE_STATUSES)[number];
    the chapter_roles appointment. Generic across roles; each officer also has
    their role-specific responsibilities from CHAPTER_ROLES. */
 export const ROLE_ONBOARDING_STEPS = [
-  { key: "charter",   label: "Read the charter & code of conduct", hint: "The chapter charter and the Circle rules you're now a custodian of." },
-  { key: "role",      label: "Know your role & success metric",     hint: "Your responsibilities and how the role is measured — from the role handbook." },
-  { key: "handover",  label: "Meet the board & take handover",      hint: "Sit down with the President and your predecessor; inherit the open threads." },
-  { key: "access",    label: "Get your tools & records",            hint: "Access to the systems, budget, roll, or calendar your role owns." },
-  { key: "plan",      label: "Agree your first 90-day priorities",  hint: "Three things you'll move this term, signed off with the President." },
+  {
+    key: "charter",
+    label: "Read the charter & code of conduct",
+    hint: "The chapter charter and the Circle rules you're now a custodian of.",
+  },
+  {
+    key: "role",
+    label: "Know your role & success metric",
+    hint: "Your responsibilities and how the role is measured — from the role handbook.",
+  },
+  {
+    key: "handover",
+    label: "Meet the board & take handover",
+    hint: "Sit down with the President and your predecessor; inherit the open threads.",
+  },
+  {
+    key: "access",
+    label: "Get your tools & records",
+    hint: "Access to the systems, budget, roll, or calendar your role owns.",
+  },
+  {
+    key: "plan",
+    label: "Agree your first 90-day priorities",
+    hint: "Three things you'll move this term, signed off with the President.",
+  },
 ] as const;
-export type RoleOnboardingStepKey = (typeof ROLE_ONBOARDING_STEPS)[number]["key"];
+export type RoleOnboardingStepKey =
+  (typeof ROLE_ONBOARDING_STEPS)[number]["key"];
 
 /* NA-03 — Recognition Awards. Members nominate peers (and chapters) across
    these categories within an award cycle; the National body shortlists and
    names winners. `subject` says what's being recognised. */
 export const AWARD_CATEGORIES = [
-  { key: "member_of_year",   label: "Member of the Year",    subject: "member",  blurb: "The member who best embodied Build. Belong. Become. this year." },
-  { key: "newcomer",         label: "Newcomer of the Year",  subject: "member",  blurb: "The standout first-year member." },
-  { key: "mentor",           label: "Mentor of the Year",    subject: "member",  blurb: "The member who gave the most to others' growth." },
-  { key: "connector",        label: "Connector of the Year", subject: "member",  blurb: "The member who opened the most doors — intros, referrals, deals." },
-  { key: "chapter_of_year",  label: "Chapter of the Year",   subject: "chapter", blurb: "The healthiest, most alive chapter of the year." },
-  { key: "community_impact", label: "Community Impact",      subject: "member",  blurb: "For give-back that moved the wider community, not just the Circle." },
+  {
+    key: "member_of_year",
+    label: "Member of the Year",
+    subject: "member",
+    blurb: "The member who best embodied Build. Belong. Become. this year.",
+  },
+  {
+    key: "newcomer",
+    label: "Newcomer of the Year",
+    subject: "member",
+    blurb: "The standout first-year member.",
+  },
+  {
+    key: "mentor",
+    label: "Mentor of the Year",
+    subject: "member",
+    blurb: "The member who gave the most to others' growth.",
+  },
+  {
+    key: "connector",
+    label: "Connector of the Year",
+    subject: "member",
+    blurb: "The member who opened the most doors — intros, referrals, deals.",
+  },
+  {
+    key: "chapter_of_year",
+    label: "Chapter of the Year",
+    subject: "chapter",
+    blurb: "The healthiest, most alive chapter of the year.",
+  },
+  {
+    key: "community_impact",
+    label: "Community Impact",
+    subject: "member",
+    blurb: "For give-back that moved the wider community, not just the Circle.",
+  },
 ] as const;
 export type AwardCategoryKey = (typeof AWARD_CATEGORIES)[number]["key"];
-export const AWARD_CATEGORY_LABEL: Record<string, string> =
-  Object.fromEntries(AWARD_CATEGORIES.map((c) => [c.key, c.label]));
-export const AWARD_CYCLE_STATUSES = ["draft", "open", "judging", "announced", "closed"] as const;
+export const AWARD_CATEGORY_LABEL: Record<string, string> = Object.fromEntries(
+  AWARD_CATEGORIES.map(c => [c.key, c.label])
+);
+export const AWARD_CYCLE_STATUSES = [
+  "draft",
+  "open",
+  "judging",
+  "announced",
+  "closed",
+] as const;
 export type AwardCycleStatus = (typeof AWARD_CYCLE_STATUSES)[number];
-export const AWARD_NOMINATION_STATUSES = ["nominated", "shortlisted", "winner", "declined"] as const;
+export const AWARD_NOMINATION_STATUSES = [
+  "nominated",
+  "shortlisted",
+  "winner",
+  "declined",
+] as const;
 export type AwardNominationStatus = (typeof AWARD_NOMINATION_STATUSES)[number];
 
 /* ML-05 Renewal — the annual decision window. The scheduler opens the window
@@ -166,23 +380,36 @@ export const RENEWAL_GRACE_DAYS = 14;
 /** Where a membership sits relative to its renewal date (pure — testable, and
  *  shared by the scheduler and any UI countdown). */
 export function renewalStage(
-  renewalAt: Date, now: Date,
-  windowDays = RENEWAL_WINDOW_DAYS, graceDays = RENEWAL_GRACE_DAYS,
+  renewalAt: Date,
+  now: Date,
+  windowDays = RENEWAL_WINDOW_DAYS,
+  graceDays = RENEWAL_GRACE_DAYS
 ): "none" | "window" | "lapse" {
   const dayMs = 86_400_000;
   const diffDays = (renewalAt.getTime() - now.getTime()) / dayMs;
-  if (diffDays < -graceDays) return "lapse";   // past due beyond grace
-  if (diffDays <= windowDays) return "window";  // window open (incl. grace period)
+  if (diffDays < -graceDays) return "lapse"; // past due beyond grace
+  if (diffDays <= windowDays) return "window"; // window open (incl. grace period)
   return "none";
 }
 
 /* Membership change events carry an approval state. Self-serve actions (pause,
    cancel, renew) are recorded as `applied`; tier upgrades/downgrades a member
    requests are `pending` until management approves or rejects them. */
-export const MEMBERSHIP_EVENT_STATUSES = ["applied", "pending", "approved", "rejected"] as const;
+export const MEMBERSHIP_EVENT_STATUSES = [
+  "applied",
+  "pending",
+  "approved",
+  "rejected",
+] as const;
 export type MembershipEventStatus = (typeof MEMBERSHIP_EVENT_STATUSES)[number];
-export const MEMBERSHIP_EVENT_STATUS_LABEL: Record<MembershipEventStatus, string> = {
-  applied: "Applied", pending: "Pending approval", approved: "Approved", rejected: "Rejected",
+export const MEMBERSHIP_EVENT_STATUS_LABEL: Record<
+  MembershipEventStatus,
+  string
+> = {
+  applied: "Applied",
+  pending: "Pending approval",
+  approved: "Approved",
+  rejected: "Rejected",
 };
 
 export const APPLICATION_STATUSES = [
@@ -216,22 +443,59 @@ export const SCORE_FACTOR_LABEL: Record<ScoreFactor, string> = {
    these can be scheduled from Calendar management with its own audience. Keep in
    sync with the `kind` enum in db/schema.ts (and boot.ts ensureSchema). */
 export const EVENT_KINDS = [
-  "spark", "meetup", "circle", "retreat", "summit",
-  "conference", "conclave", "roundtable", "workshop", "masterclass",
-  "breakfast", "lunch", "dinner", "social", "webinar",
+  "spark",
+  "meetup",
+  "circle",
+  "retreat",
+  "summit",
+  "conference",
+  "conclave",
+  "roundtable",
+  "workshop",
+  "masterclass",
+  "breakfast",
+  "lunch",
+  "dinner",
+  "social",
+  "webinar",
 ] as const;
 export type EventKind = (typeof EVENT_KINDS)[number];
 export const EVENT_KIND_LABEL: Record<EventKind, string> = {
-  spark: "Spark Evening", meetup: "Meetup", circle: "Circle Dinner",
-  retreat: "Retreat", summit: "Summit", conference: "Conference",
-  conclave: "Conclave", roundtable: "Roundtable", workshop: "Workshop",
-  masterclass: "Masterclass", breakfast: "Breakfast", lunch: "Lunch",
-  dinner: "Dinner", social: "Social", webinar: "Webinar",
+  spark: "Spark Evening",
+  meetup: "Meetup",
+  circle: "Circle Dinner",
+  retreat: "Retreat",
+  summit: "Summit",
+  conference: "Conference",
+  conclave: "Conclave",
+  roundtable: "Roundtable",
+  workshop: "Workshop",
+  masterclass: "Masterclass",
+  breakfast: "Breakfast",
+  lunch: "Lunch",
+  dinner: "Dinner",
+  social: "Social",
+  webinar: "Webinar",
 };
-export const EVENT_KIND_COLOR: Record<EventKind, "blue" | "purple" | "green" | "gold" | "grey"> = {
-  spark: "blue", meetup: "grey", circle: "purple", retreat: "green", summit: "gold",
-  conference: "gold", conclave: "purple", roundtable: "blue", workshop: "blue", masterclass: "gold",
-  breakfast: "green", lunch: "green", dinner: "purple", social: "grey", webinar: "blue",
+export const EVENT_KIND_COLOR: Record<
+  EventKind,
+  "blue" | "purple" | "green" | "gold" | "grey"
+> = {
+  spark: "blue",
+  meetup: "grey",
+  circle: "purple",
+  retreat: "green",
+  summit: "gold",
+  conference: "gold",
+  conclave: "purple",
+  roundtable: "blue",
+  workshop: "blue",
+  masterclass: "gold",
+  breakfast: "green",
+  lunch: "green",
+  dinner: "purple",
+  social: "grey",
+  webinar: "blue",
 };
 
 /* Who an activity is for. `public` shows it to everyone (incl. prospects);
@@ -246,27 +510,39 @@ export const EVENT_AUDIENCE_LABEL: Record<EventAudience, string> = {
 
 /** Attendance can only be recorded inside this window around the start time —
  *  a member cannot check in to an event that hasn't happened yet. */
-export const EVENT_CHECKIN_OPENS_BEFORE_MS = 2 * 60 * 60 * 1000;   // 2h before start
-export const EVENT_CHECKIN_CLOSES_AFTER_MS = 12 * 60 * 60 * 1000;  // 12h after start
+export const EVENT_CHECKIN_OPENS_BEFORE_MS = 2 * 60 * 60 * 1000; // 2h before start
+export const EVENT_CHECKIN_CLOSES_AFTER_MS = 12 * 60 * 60 * 1000; // 12h after start
 
 /** The tiers eligible to see & join an event, given its audience settings.
  *  `members`/`public` → every tier at or above the (legacy) tier gate;
  *  `tiers` → exactly the named set. Shared by client and server. */
 export function eventEligibleTiers(ev: {
-  audience?: string | null; audienceTiers?: string | null; tierGate?: string | null;
+  audience?: string | null;
+  audienceTiers?: string | null;
+  tierGate?: string | null;
 }): Tier[] {
   if (ev.audience === "tiers") {
-    const set = (ev.audienceTiers ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-    const valid = set.filter((t): t is Tier => (TIERS as readonly string[]).includes(t));
+    const set = (ev.audienceTiers ?? "")
+      .split(",")
+      .map(s => s.trim())
+      .filter(Boolean);
+    const valid = set.filter((t): t is Tier =>
+      (TIERS as readonly string[]).includes(t)
+    );
     return valid.length ? valid : [...TIERS];
   }
   const floor = tierRank(ev.tierGate || "horizon");
-  return TIERS.filter((t) => tierRank(t) >= floor);
+  return TIERS.filter(t => tierRank(t) >= floor);
 }
 /** Whether a member of `tier` may access an event under its audience rules. */
-export function memberCanAccessEvent(tier: string, ev: {
-  audience?: string | null; audienceTiers?: string | null; tierGate?: string | null;
-}): boolean {
+export function memberCanAccessEvent(
+  tier: string,
+  ev: {
+    audience?: string | null;
+    audienceTiers?: string | null;
+    tierGate?: string | null;
+  }
+): boolean {
   return (eventEligibleTiers(ev) as string[]).includes(tier);
 }
 
@@ -277,10 +553,19 @@ export const MILESTONE_LABEL: Record<MilestoneKey, string> = {
   model: "Financial model",
   dataroom: "Data room",
 };
-export const MILESTONE_STATUSES = ["not_started", "in_progress", "submitted", "reviewed"] as const;
+export const MILESTONE_STATUSES = [
+  "not_started",
+  "in_progress",
+  "submitted",
+  "reviewed",
+] as const;
 
-export const LIBRARY_KINDS = ["playbook", "template", "recording", "note"] as const;
-
+export const LIBRARY_KINDS = [
+  "playbook",
+  "template",
+  "recording",
+  "note",
+] as const;
 
 /* ---- BRD v2: engagement engine, dormancy, chapters ---- */
 
@@ -330,7 +615,12 @@ export const POINT_RULE_DEFAULTS: Record<PointRuleKey, number> = {
   no_show_excused: -5,
 };
 
-export const DORMANCY_STAGES = ["active", "at_risk", "dormant", "non_renewal"] as const;
+export const DORMANCY_STAGES = [
+  "active",
+  "at_risk",
+  "dormant",
+  "non_renewal",
+] as const;
 export type DormancyStage = (typeof DORMANCY_STAGES)[number];
 export const DORMANCY_LABEL: Record<DormancyStage, string> = {
   active: "Active",
@@ -340,13 +630,29 @@ export const DORMANCY_LABEL: Record<DormancyStage, string> = {
 };
 
 export const ONE_TO_ONE_KINDS = ["one_to_one", "mentoring"] as const;
-export const REFERRAL_STATUSES = ["submitted", "converted", "rejected"] as const;
+export const REFERRAL_STATUSES = [
+  "submitted",
+  "converted",
+  "rejected",
+] as const;
 
-export const ZENITH_APP_STATUSES = ["nominated", "endorsing", "review", "approved", "rejected"] as const;
+export const ZENITH_APP_STATUSES = [
+  "nominated",
+  "endorsing",
+  "review",
+  "approved",
+  "rejected",
+] as const;
 export type ZenithAppStatus = (typeof ZENITH_APP_STATUSES)[number];
 export const ZENITH_CAP = 50;
 
-export const CHAPTER_STATUSES = ["seed", "provisional", "chartered", "mature", "at_risk"] as const;
+export const CHAPTER_STATUSES = [
+  "seed",
+  "provisional",
+  "chartered",
+  "mature",
+  "at_risk",
+] as const;
 export type ChapterStatus = (typeof CHAPTER_STATUSES)[number];
 export const CHAPTER_STATUS_LABEL: Record<ChapterStatus, string> = {
   seed: "Seed",
@@ -361,29 +667,95 @@ export const CHAPTER_STATUS_LABEL: Record<ChapterStatus, string> = {
    number"). Terms are one year with a two-consecutive-term limit; `other`
    allows an optional Member Experience Officer or a custom seat. */
 export const CHAPTER_ROLES = [
-  { key: "president", label: "President", responsibilities: "Chairs the board and the chapter. Owns overall chapter health, represents the chapter on the Zone Council, sets the annual plan, and is custodian of chapter culture and the code of conduct.", metric: "Chapter health index; member retention" },
-  { key: "vice_president", label: "Vice President / President-Elect", responsibilities: "Deputises for the President, owns one major portfolio for the year, and prepares to assume the presidency — the succession mechanism that makes each handover deliberate.", metric: "Readiness to lead; portfolio delivery" },
-  { key: "secretary", label: "Secretary", responsibilities: "Guardian of governance: agendas, minutes, the member roll, the chapter charter, elections administration and compliance with Circle rules.", metric: "Governance compliance; accurate records & roll" },
-  { key: "treasurer", label: "Treasurer", responsibilities: "Owns the chapter budget and any locally raised funds within eHive's financial controls. Reconciles, reports monthly, and enforces spend limits.", metric: "Financial compliance; budget accuracy; clean audit" },
-  { key: "vp_membership", label: "VP Membership", responsibilities: "Owns growth and retention: the prospect pipeline, guest experience, onboarding of new members, and the early-warning system for members at risk of lapsing.", metric: "Net member growth; retention rate; onboarding completion" },
-  { key: "vp_programming", label: "VP Programming", responsibilities: "Owns the calendar: regular meetings, signature events, speakers and formats that make attendance worth the members' time.", metric: "Event cadence & attendance; programme satisfaction" },
-  { key: "vp_learning", label: "VP Learning & Mentorship", responsibilities: "Owns member development: peer mentoring, connection to eHive's methodology and content, and the deliberate matching that turns a room of strangers into a network.", metric: "Mentoring pairs active; member development participation" },
-  { key: "vp_communications", label: "VP Communications", responsibilities: "Owns the chapter's voice within brand guardrails: member stories, internal communication and the chapter's public presence, with the Community Manager.", metric: "Communication reach; brand compliance" },
-  { key: "past_president", label: "Immediate Past President", responsibilities: "Continuity and counsel. Chairs Nominations & Elections, mentors the President, and holds institutional memory across the handover.", metric: "Election integrity; leadership pipeline depth" },
-  { key: "member_experience", label: "Member Experience Officer", responsibilities: "Optional in larger chapters: owns in-room culture, new-member integration and the standard of conduct at events.", metric: "In-room culture; new-member integration" },
+  {
+    key: "president",
+    label: "President",
+    responsibilities:
+      "Chairs the board and the chapter. Owns overall chapter health, represents the chapter on the Zone Council, sets the annual plan, and is custodian of chapter culture and the code of conduct.",
+    metric: "Chapter health index; member retention",
+  },
+  {
+    key: "vice_president",
+    label: "Vice President / President-Elect",
+    responsibilities:
+      "Deputises for the President, owns one major portfolio for the year, and prepares to assume the presidency — the succession mechanism that makes each handover deliberate.",
+    metric: "Readiness to lead; portfolio delivery",
+  },
+  {
+    key: "secretary",
+    label: "Secretary",
+    responsibilities:
+      "Guardian of governance: agendas, minutes, the member roll, the chapter charter, elections administration and compliance with Circle rules.",
+    metric: "Governance compliance; accurate records & roll",
+  },
+  {
+    key: "treasurer",
+    label: "Treasurer",
+    responsibilities:
+      "Owns the chapter budget and any locally raised funds within eHive's financial controls. Reconciles, reports monthly, and enforces spend limits.",
+    metric: "Financial compliance; budget accuracy; clean audit",
+  },
+  {
+    key: "vp_membership",
+    label: "VP Membership",
+    responsibilities:
+      "Owns growth and retention: the prospect pipeline, guest experience, onboarding of new members, and the early-warning system for members at risk of lapsing.",
+    metric: "Net member growth; retention rate; onboarding completion",
+  },
+  {
+    key: "vp_programming",
+    label: "VP Programming",
+    responsibilities:
+      "Owns the calendar: regular meetings, signature events, speakers and formats that make attendance worth the members' time.",
+    metric: "Event cadence & attendance; programme satisfaction",
+  },
+  {
+    key: "vp_learning",
+    label: "VP Learning & Mentorship",
+    responsibilities:
+      "Owns member development: peer mentoring, connection to eHive's methodology and content, and the deliberate matching that turns a room of strangers into a network.",
+    metric: "Mentoring pairs active; member development participation",
+  },
+  {
+    key: "vp_communications",
+    label: "VP Communications",
+    responsibilities:
+      "Owns the chapter's voice within brand guardrails: member stories, internal communication and the chapter's public presence, with the Community Manager.",
+    metric: "Communication reach; brand compliance",
+  },
+  {
+    key: "past_president",
+    label: "Immediate Past President",
+    responsibilities:
+      "Continuity and counsel. Chairs Nominations & Elections, mentors the President, and holds institutional memory across the handover.",
+    metric: "Election integrity; leadership pipeline depth",
+  },
+  {
+    key: "member_experience",
+    label: "Member Experience Officer",
+    responsibilities:
+      "Optional in larger chapters: owns in-room culture, new-member integration and the standard of conduct at events.",
+    metric: "In-room culture; new-member integration",
+  },
   { key: "other", label: "Other role", responsibilities: "", metric: "" },
 ] as const;
 export type ChapterRoleKey = (typeof CHAPTER_ROLES)[number]["key"];
-export const CHAPTER_ROLE_LABEL: Record<string, string> =
-  Object.fromEntries(CHAPTER_ROLES.map((r) => [r.key, r.label]));
-export const CHAPTER_ROLE_RESP: Record<string, string> =
-  Object.fromEntries(CHAPTER_ROLES.map((r) => [r.key, r.responsibilities]));
-export const CHAPTER_ROLE_METRIC: Record<string, string> =
-  Object.fromEntries(CHAPTER_ROLES.map((r) => [r.key, r.metric]));
+export const CHAPTER_ROLE_LABEL: Record<string, string> = Object.fromEntries(
+  CHAPTER_ROLES.map(r => [r.key, r.label])
+);
+export const CHAPTER_ROLE_RESP: Record<string, string> = Object.fromEntries(
+  CHAPTER_ROLES.map(r => [r.key, r.responsibilities])
+);
+export const CHAPTER_ROLE_METRIC: Record<string, string> = Object.fromEntries(
+  CHAPTER_ROLES.map(r => [r.key, r.metric])
+);
 /** Chapter offices are one-year terms, max two consecutive (§9). */
 export const CHAPTER_TERM_LIMIT_CONSECUTIVE = 2;
 /** Human title for a stored role row (custom title wins for `other`). */
-export function chapterRoleTitle(role: string, customTitle?: string | null): string {
+export function chapterRoleTitle(
+  role: string,
+  customTitle?: string | null
+): string {
   if (role === "other") return customTitle || "Officer";
   return CHAPTER_ROLE_LABEL[role] ?? role;
 }
@@ -391,12 +763,42 @@ export function chapterRoleTitle(role: string, customTitle?: string | null): str
 /* Chapter Health Index (Operations Manual M7 / §4.4 / CH-06). The single number
    the President owns — a weighted blend of six measures, each 0–100. */
 export const HEALTH_COMPONENTS = [
-  { key: "retention",  label: "Retention",           weight: 25, desc: "Share of members who stay — the truest test of value." },
-  { key: "engagement", label: "Engagement",          weight: 25, desc: "Active participation, not just headcount on the roll." },
-  { key: "growth",     label: "Growth",              weight: 15, desc: "Net new members against the chapter's stage target." },
-  { key: "programme",  label: "Programme",           weight: 15, desc: "A consistent calendar delivered, not promised." },
-  { key: "leadership", label: "Leadership pipeline", weight: 10, desc: "Enough members developing toward office." },
-  { key: "governance", label: "Governance & finance",weight: 10, desc: "Clean records, compliant spend, elections on time." },
+  {
+    key: "retention",
+    label: "Retention",
+    weight: 25,
+    desc: "Share of members who stay — the truest test of value.",
+  },
+  {
+    key: "engagement",
+    label: "Engagement",
+    weight: 25,
+    desc: "Active participation, not just headcount on the roll.",
+  },
+  {
+    key: "growth",
+    label: "Growth",
+    weight: 15,
+    desc: "Net new members against the chapter's stage target.",
+  },
+  {
+    key: "programme",
+    label: "Programme",
+    weight: 15,
+    desc: "A consistent calendar delivered, not promised.",
+  },
+  {
+    key: "leadership",
+    label: "Leadership pipeline",
+    weight: 10,
+    desc: "Enough members developing toward office.",
+  },
+  {
+    key: "governance",
+    label: "Governance & finance",
+    weight: 10,
+    desc: "Clean records, compliant spend, elections on time.",
+  },
 ] as const;
 export type HealthComponentKey = (typeof HEALTH_COMPONENTS)[number]["key"];
 /** Below this index a chapter is under the health bar — remediation recommended. */
@@ -406,16 +808,25 @@ export function healthBand(total: number): HealthBand {
   return total >= 75 ? "healthy" : total >= HEALTH_BAR ? "watch" : "below";
 }
 export const HEALTH_BAND_LABEL: Record<HealthBand, string> = {
-  healthy: "Healthy", watch: "Watch", below: "Below the bar",
+  healthy: "Healthy",
+  watch: "Watch",
+  below: "Below the bar",
 };
 export const HEALTH_BAND_COLOR: Record<HealthBand, "green" | "gold" | "red"> = {
-  healthy: "green", watch: "gold", below: "red",
+  healthy: "green",
+  watch: "gold",
+  below: "red",
 };
 
 export const ELECTION_STATUSES = ["open", "voting", "closed"] as const;
 export const MOTION_STATUSES = ["open", "passed", "rejected"] as const;
 export const BUDGET_KINDS = ["allocation", "sponsorship", "spend"] as const;
-export const BUDGET_STATUSES = ["proposed", "approved", "spent", "rejected"] as const;
+export const BUDGET_STATUSES = [
+  "proposed",
+  "approved",
+  "spent",
+  "rejected",
+] as const;
 
 export const DATA_REQUEST_KINDS = ["export", "deletion"] as const;
 
@@ -431,7 +842,7 @@ export const PUSH_CATEGORIES = [
   { key: "membership", label: "Membership & renewals" },
   { key: "governance", label: "Governance & chapters" },
 ] as const;
-export const PUSH_CATEGORY_KEYS = PUSH_CATEGORIES.map((c) => c.key);
+export const PUSH_CATEGORY_KEYS = PUSH_CATEGORIES.map(c => c.key);
 
 /* ---- Admin capability scopes (segregation of duties). Modelled on the eHive
    Circle pillar's org roles so a staff member's portal access matches their
@@ -439,30 +850,67 @@ export const PUSH_CATEGORY_KEYS = PUSH_CATEGORIES.map((c) => c.key);
    "*" is explicit full access (Director eHive Circle / COO / CEO). Otherwise
    the admin may only perform actions whose scope is in their list. ---- */
 export const ADMIN_SCOPES = [
-  { key: "membership", label: "Membership Growth — applications, admissions, tiers & status" },
-  { key: "community", label: "Community Manager — pods, buddies, 1-2-1s & referrals" },
-  { key: "events", label: "Programming & Events — events, sessions & check-in" },
-  { key: "chapters", label: "Chapter Development — chapters, governance & elections" },
-  { key: "member_success", label: "Member Success — Zenith concierge & dormancy" },
-  { key: "partnerships", label: "Partnerships & Member Value — offers, deals & investor intros" },
-  { key: "content", label: "Content & Editorial — Hive Journal, library & insights" },
-  { key: "finance", label: "Finance & Compliance — payments, leads & PDPL data requests" },
-  { key: "conduct", label: "Conduct & Safeguarding — incident reports, cases & member removal" },
+  {
+    key: "membership",
+    label: "Membership Growth — applications, admissions, tiers & status",
+  },
+  {
+    key: "community",
+    label: "Community Manager — pods, buddies, 1-2-1s & referrals",
+  },
+  {
+    key: "events",
+    label: "Programming & Events — events, sessions & check-in",
+  },
+  {
+    key: "chapters",
+    label: "Chapter Development — chapters, governance & elections",
+  },
+  {
+    key: "member_success",
+    label: "Member Success — Zenith concierge & dormancy",
+  },
+  {
+    key: "partnerships",
+    label: "Partnerships & Member Value — offers, deals & investor intros",
+  },
+  {
+    key: "content",
+    label: "Content & Editorial — Hive Journal, library & insights",
+  },
+  {
+    key: "finance",
+    label: "Finance & Compliance — payments, leads & PDPL data requests",
+  },
+  {
+    key: "conduct",
+    label: "Conduct & Safeguarding — incident reports, cases & member removal",
+  },
 ] as const;
 export type AdminScope = (typeof ADMIN_SCOPES)[number]["key"];
 
 /* ML-01 — prospect funnel stages. */
-export const PROSPECT_STAGES = ["prospect", "guest", "invited", "converted", "declined"] as const;
+export const PROSPECT_STAGES = [
+  "prospect",
+  "guest",
+  "invited",
+  "converted",
+  "declined",
+] as const;
 export type ProspectStage = (typeof PROSPECT_STAGES)[number];
 export const PROSPECT_STAGE_LABEL: Record<ProspectStage, string> = {
-  prospect: "Prospect", guest: "Guest", invited: "Invited to apply", converted: "Converted", declined: "Declined",
+  prospect: "Prospect",
+  guest: "Guest",
+  invited: "Invited to apply",
+  converted: "Converted",
+  declined: "Declined",
 };
 
 /* M10 — recognition badges, derived from real data (tenure + contribution).
    Pure and testable; shown on the member's page. */
 export function memberBadges(
   m: { createdAt: Date | string; hiveScore: number },
-  now = new Date(),
+  now = new Date()
 ): string[] {
   const badges: string[] = [];
   const created = new Date(m.createdAt);
@@ -486,19 +934,35 @@ export const MEETING_KINDS = [
   { key: "other", label: "Other", sop: "" },
 ] as const;
 export type MeetingKind = (typeof MEETING_KINDS)[number]["key"];
-export const MEETING_KIND_LABEL: Record<string, string> =
-  Object.fromEntries(MEETING_KINDS.map((k) => [k.key, k.label]));
+export const MEETING_KIND_LABEL: Record<string, string> = Object.fromEntries(
+  MEETING_KINDS.map(k => [k.key, k.label])
+);
 export const MEETING_AGENDA_TEMPLATES: Record<string, string> = {
   chapter_meeting: [
-    "1. Arrival & networking", "2. Welcome & purpose", "3. Member wins & spotlight",
-    "4. Core content", "5. Structured asks & offers", "6. Guest welcome",
-    "7. Chapter business", "8. Close & single call to action",
+    "1. Arrival & networking",
+    "2. Welcome & purpose",
+    "3. Member wins & spotlight",
+    "4. Core content",
+    "5. Structured asks & offers",
+    "6. Guest welcome",
+    "7. Chapter business",
+    "8. Close & single call to action",
   ].join("\n"),
   board_meeting: [
-    "1. Prior actions", "2. Health review", "3. Membership & pipeline", "4. Finance",
-    "5. Programming & PODs", "6. Decisions & issues", "7. Actions & close",
+    "1. Prior actions",
+    "2. Health review",
+    "3. Membership & pipeline",
+    "4. Finance",
+    "5. Programming & PODs",
+    "6. Decisions & issues",
+    "7. Actions & close",
   ].join("\n"),
-  huddle: ["1. Wins since last week", "2. Pipeline update", "3. This week's asks", "4. Blockers"].join("\n"),
+  huddle: [
+    "1. Wins since last week",
+    "2. Pipeline update",
+    "3. This week's asks",
+    "4. Blockers",
+  ].join("\n"),
   other: "",
 };
 
@@ -509,31 +973,64 @@ export const SPEND_APPROVAL_THRESHOLD_AED = 2000;
 
 /* XC-04 — Conduct & incident handling. */
 export const CONDUCT_CATEGORIES = [
-  "Respect & behaviour", "Confidentiality breach", "Harassment", "Conflict of interest",
-  "Solicitation / spam", "Safeguarding", "Other",
+  "Respect & behaviour",
+  "Confidentiality breach",
+  "Harassment",
+  "Conflict of interest",
+  "Solicitation / spam",
+  "Safeguarding",
+  "Other",
 ] as const;
-export const CONDUCT_SEVERITIES = ["low", "moderate", "high", "safeguarding"] as const;
+export const CONDUCT_SEVERITIES = [
+  "low",
+  "moderate",
+  "high",
+  "safeguarding",
+] as const;
 export type ConductSeverity = (typeof CONDUCT_SEVERITIES)[number];
 export const CONDUCT_SEVERITY_LABEL: Record<ConductSeverity, string> = {
-  low: "Low", moderate: "Moderate", high: "High", safeguarding: "Safeguarding",
+  low: "Low",
+  moderate: "Moderate",
+  high: "High",
+  safeguarding: "Safeguarding",
 };
-export const CONDUCT_STATUSES = ["open", "reviewing", "actioned", "escalated", "closed"] as const;
+export const CONDUCT_STATUSES = [
+  "open",
+  "reviewing",
+  "actioned",
+  "escalated",
+  "closed",
+] as const;
 export type ConductStatus = (typeof CONDUCT_STATUSES)[number];
 export const CONDUCT_STATUS_LABEL: Record<ConductStatus, string> = {
-  open: "Open", reviewing: "Under review", actioned: "Actioned", escalated: "Escalated", closed: "Closed",
+  open: "Open",
+  reviewing: "Under review",
+  actioned: "Actioned",
+  escalated: "Escalated",
+  closed: "Closed",
 };
-export const ADMIN_SCOPE_KEYS = ADMIN_SCOPES.map((s) => s.key);
+export const ADMIN_SCOPE_KEYS = ADMIN_SCOPES.map(s => s.key);
 
 /** Leads CRM pipeline. */
-export const LEAD_STATUSES = ["new", "contacted", "qualified", "won", "lost"] as const;
+export const LEAD_STATUSES = [
+  "new",
+  "contacted",
+  "qualified",
+  "won",
+  "lost",
+] as const;
 export type LeadStatus = (typeof LEAD_STATUSES)[number];
 export const LEAD_STATUS_LABEL: Record<LeadStatus, string> = {
-  new: "New", contacted: "Contacted", qualified: "Qualified", won: "Won", lost: "Lost",
+  new: "New",
+  contacted: "Contacted",
+  qualified: "Qualified",
+  won: "Won",
+  lost: "Lost",
 };
 
 /** Verification / reset token lifetimes (ms). */
-export const VERIFY_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;   // 24h
-export const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;         // 1h
+export const VERIFY_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24h
+export const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1h
 
 /** Days within which a new member must be paired with a buddy */
 export const BUDDY_PAIR_WITHIN_DAYS = 5;

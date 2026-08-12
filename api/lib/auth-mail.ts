@@ -1,8 +1,13 @@
 import { sendMail, mailEnabled } from "./mailer";
 
 const esc = (v: unknown) =>
-  String(v ?? "").replace(/[&<>"']/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
+  String(v ?? "").replace(
+    /[&<>"']/g,
+    c =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+        c
+      ] as string
+  );
 
 function shell(bodyHtml: string): string {
   return `<div style="margin:0;padding:24px;background:#faf7f1;font-family:Inter,Arial,sans-serif">
@@ -28,7 +33,11 @@ function button(href: string, label: string): string {
  *  surface the token another way in non-configured environments). */
 export const authMailEnabled = mailEnabled;
 
-export async function sendVerifyEmail(to: string, name: string, link: string): Promise<boolean> {
+export async function sendVerifyEmail(
+  to: string,
+  name: string,
+  link: string
+): Promise<boolean> {
   const first = name?.split(" ")[0] || "there";
   return sendMail({
     to,
@@ -42,7 +51,11 @@ export async function sendVerifyEmail(to: string, name: string, link: string): P
   });
 }
 
-export async function sendResetEmail(to: string, name: string, link: string): Promise<boolean> {
+export async function sendResetEmail(
+  to: string,
+  name: string,
+  link: string
+): Promise<boolean> {
   const first = name?.split(" ")[0] || "there";
   return sendMail({
     to,

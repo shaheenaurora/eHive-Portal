@@ -12,12 +12,12 @@ third-party identity provider to register. The first account that signs up with
 
 ## 0. What the Portal needs to run (hard dependencies)
 
-| # | Dependency | Why it's required | Who provides it |
-|---|---|---|---|
-| 1 | **MySQL 8** database | All data (members, pods, events, scores…) | You — managed DB or the bundled `db` container |
-| 2 | **`APP_SECRET`** (long random string) | Signs the session cookie (JWT) | You — generate once, e.g. `openssl rand -hex 32` |
-| 3 | **`OWNER_EMAIL`** | The account signing up with it becomes the first admin | You — your own email |
-| 4 | A host that runs a Node 20 container on a public URL over HTTPS | Serves site + portal + API | You — VM, PaaS, or similar |
+| #   | Dependency                                                      | Why it's required                                      | Who provides it                                  |
+| --- | --------------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------ |
+| 1   | **MySQL 8** database                                            | All data (members, pods, events, scores…)              | You — managed DB or the bundled `db` container   |
+| 2   | **`APP_SECRET`** (long random string)                           | Signs the session cookie (JWT)                         | You — generate once, e.g. `openssl rand -hex 32` |
+| 3   | **`OWNER_EMAIL`**                                               | The account signing up with it becomes the first admin | You — your own email                             |
+| 4   | A host that runs a Node 20 container on a public URL over HTTPS | Serves site + portal + API                             | You — VM, PaaS, or similar                       |
 
 Optional integrations — the app runs fully without them, and each switches on
 the moment its env vars are present (see §2C):
@@ -39,11 +39,11 @@ cp .env.example .env
 
 Fill in every value:
 
-| Variable | Example / source |
-|---|---|
-| `APP_SECRET` | `openssl rand -hex 32` — signs session cookies |
+| Variable       | Example / source                                                        |
+| -------------- | ----------------------------------------------------------------------- |
+| `APP_SECRET`   | `openssl rand -hex 32` — signs session cookies                          |
 | `DATABASE_URL` | `mysql://ehive:PASSWORD@db:3306/ehive` (compose) or your managed DB URL |
-| `OWNER_EMAIL` | your email → the account you register with it becomes admin |
+| `OWNER_EMAIL`  | your email → the account you register with it becomes admin             |
 
 For the bundled MySQL container, also set `MYSQL_PASSWORD`,
 `MYSQL_ROOT_PASSWORD` (and optionally `MYSQL_DATABASE`, `MYSQL_USER`,
@@ -61,11 +61,11 @@ provides the MySQL database — no code changes, no TLS setup.
 2. **Add a database:** in the project, **New → Database → MySQL**. Railway
    creates it on the private network.
 3. **Wire the app's variables** (app service → Variables):
-   - `DATABASE_URL` = `${{ MySQL.MYSQL_URL }}`  ← reference the MySQL service
+   - `DATABASE_URL` = `${{ MySQL.MYSQL_URL }}` ← reference the MySQL service
    - `APP_SECRET` = output of `openssl rand -hex 32`
    - `OWNER_EMAIL` = your email
    - (leave `DATABASE_SSL` unset — the private network doesn't need TLS)
-   Railway injects `PORT` automatically; the server already binds `0.0.0.0`.
+     Railway injects `PORT` automatically; the server already binds `0.0.0.0`.
 4. **Create the schema (one-time).** With the Railway CLI:
    `railway run npm run db:push` (and optionally `railway run npx tsx db/seed.ts`).
    Or add `npm run db:push` as a one-off in the service shell.
@@ -85,7 +85,7 @@ domain serves the request. Steps (example: `www.ehiveglobal.com`):
    add a record:
    - Type `CNAME`, Name/Host `www`, Value the Railway target, TTL default.
 3. **Root/apex** (`ehiveglobal.com` with no www) — optional but recommended:
-   - Add `ehiveglobal.com` as a *second* custom domain in Railway, then either point
+   - Add `ehiveglobal.com` as a _second_ custom domain in Railway, then either point
      the apex at the Railway target using your provider's `ALIAS`/`ANAME`/
      CNAME-flattening (Cloudflare does this automatically), **or** set a
      registrar redirect `ehiveglobal.com → www.ehiveglobal.com`.
@@ -121,14 +121,14 @@ service → Variables, or your `.env`) — no code change, just redeploy.
 
 **Email (SMTP).** Turn on lead notifications + submitter confirmations:
 
-| Variable | Example / source |
-|---|---|
-| `SMTP_HOST` | `smtp.gmail.com`, `smtp.zoho.com`, `email-smtp.<region>.amazonaws.com` |
-| `SMTP_PORT` | `587` (STARTTLS) or `465` (implicit TLS) |
-| `SMTP_SECURE` | `true` for port 465; leave empty for 587 |
-| `SMTP_USER` / `SMTP_PASS` | mailbox login. For Gmail, create an **App Password** (2FA required) |
-| `MAIL_FROM` | `hello@ehiveglobal.com` (defaults to `SMTP_USER`) |
-| `LEAD_NOTIFY_EMAIL` | where new-lead alerts go (defaults to `OWNER_EMAIL`) |
+| Variable                  | Example / source                                                       |
+| ------------------------- | ---------------------------------------------------------------------- |
+| `SMTP_HOST`               | `smtp.gmail.com`, `smtp.zoho.com`, `email-smtp.<region>.amazonaws.com` |
+| `SMTP_PORT`               | `587` (STARTTLS) or `465` (implicit TLS)                               |
+| `SMTP_SECURE`             | `true` for port 465; leave empty for 587                               |
+| `SMTP_USER` / `SMTP_PASS` | mailbox login. For Gmail, create an **App Password** (2FA required)    |
+| `MAIL_FROM`               | `hello@ehiveglobal.com` (defaults to `SMTP_USER`)                      |
+| `LEAD_NOTIFY_EMAIL`       | where new-lead alerts go (defaults to `OWNER_EMAIL`)                   |
 
 Every website form (newsletter, Get Started, booking, setup calculator, the
 Clarity Scorecard) then emails a formatted alert to `LEAD_NOTIFY_EMAIL` and a

@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
+import { ThemeProvider } from "next-themes";
 import { TRPCProvider } from "@/providers/trpc";
 import App from "./App";
 import "./index.css";
@@ -8,16 +9,24 @@ import "./index.css";
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
-      <TRPCProvider>
-        <App />
-      </TRPCProvider>
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="light"
+        enableSystem={false}
+      >
+        <TRPCProvider>
+          <App />
+        </TRPCProvider>
+      </ThemeProvider>
     </BrowserRouter>
-  </StrictMode>,
+  </StrictMode>
 );
 
 // Register the PWA service worker (installable + offline app shell).
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => { /* non-fatal */ });
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      /* non-fatal */
+    });
   });
 }

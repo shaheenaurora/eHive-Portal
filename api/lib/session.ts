@@ -1,5 +1,6 @@
 import * as jose from "jose";
 import * as cookie from "cookie";
+import { createHash } from "node:crypto";
 import { env } from "./env";
 import { getSessionCookieOptions } from "./cookies";
 import { Session } from "@contracts/constants";
@@ -8,47 +9,91 @@ import { findUserByUnionId, ensureOwnerRole } from "../queries/users";
 
 const JWT_ALG = "HS256";
 
-type SessionPayload = { uid: string };
+type SessionPayload = { uid: string; tv: number };
 
-export async function signSessionToken(uid: string): Promise<string> {
+/** Best-effort client fingerprint for binding short-lived 2FA challenges to the
+ *  same connection context. Not a substitute for device trust, but prevents a
+ *  stolen challenge token from being redeemed from a wildly different client. */
+function clientFingerprint(headers: Headers): string {
+  const forwarded = (headers.get("x-forwarded-for") ?? "")
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean);
+  const ip = forwarded.at(-1) ?? headers.get("x-real-ip") ?? "";
+  const ua = headers.get("user-agent") ?? "";
+  return createHash("sha256")
+    .update(`${ip}|${ua}`)
+    .digest("base64url")
+    .slice(0, 32);
+}
+
+// 30 days for primary sessions — long enough for UX, short enough that a stolen
+// cookie has a bounded lifetime. Sliding refresh can be added later.
+const SESSION_EXPIRES_IN = "30d";
+
+export async function signSessionToken(
+  uid: string,
+  tokenVersion: number
+): Promise<string> {
   const secret = new TextEncoder().encode(env.appSecret);
-  return new jose.SignJWT({ uid })
+  return new jose.SignJWT({ uid, tv: tokenVersion })
     .setProtectedHeader({ alg: JWT_ALG })
     .setIssuedAt()
-    .setExpirationTime("1 year")
+    .setExpirationTime(SESSION_EXPIRES_IN)
     .sign(secret);
 }
 
-async function verifySessionToken(token: string): Promise<SessionPayload | null> {
+async function verifySessionToken(
+  token: string
+): Promise<SessionPayload | null> {
   if (!token) return null;
   try {
     const secret = new TextEncoder().encode(env.appSecret);
-    const { payload } = await jose.jwtVerify(token, secret, { algorithms: [JWT_ALG] });
+    const { payload } = await jose.jwtVerify(token, secret, {
+      algorithms: [JWT_ALG],
+    });
     const uid = payload.uid;
-    if (typeof uid !== "string" || !uid) return null;
-    return { uid };
+    const tv = payload.tv;
+    if (typeof uid !== "string" || !uid || typeof tv !== "number") return null;
+    return { uid, tv };
   } catch {
     return null;
   }
 }
 
+type ChallengePayload = { twofa: number; fp: string };
+
 /** Short-lived signed token that proves a password check passed and a 2FA code
- *  is still required. Carries the userId; expires quickly. */
-export async function sign2faChallenge(userId: number): Promise<string> {
-  const secret = new TextEncoder().encode(env.appSecret);
-  return new jose.SignJWT({ twofa: userId })
+ *  is still required. Carries the userId and a client fingerprint so the
+ *  challenge can't be replayed from a different IP/UA. Signed with a dedicated
+ *  secret so session-key rotation does not break in-flight 2FA flows.
+ */
+export async function sign2faChallenge(
+  userId: number,
+  headers: Headers
+): Promise<string> {
+  const secret = new TextEncoder().encode(env.totpSecret);
+  return new jose.SignJWT({ twofa: userId, fp: clientFingerprint(headers) })
     .setProtectedHeader({ alg: JWT_ALG })
     .setIssuedAt()
     .setExpirationTime("10m")
     .sign(secret);
 }
 
-export async function verify2faChallenge(token: string): Promise<number | null> {
+export async function verify2faChallenge(
+  token: string,
+  headers: Headers
+): Promise<number | null> {
   if (!token) return null;
   try {
-    const secret = new TextEncoder().encode(env.appSecret);
-    const { payload } = await jose.jwtVerify(token, secret, { algorithms: [JWT_ALG] });
-    return typeof payload.twofa === "number" ? payload.twofa : null;
+    const secret = new TextEncoder().encode(env.totpSecret);
+    const { payload } = await jose.jwtVerify(token, secret, {
+      algorithms: [JWT_ALG],
+    });
+    const p = payload as Partial<ChallengePayload>;
+    if (typeof p.twofa !== "number" || p.fp !== clientFingerprint(headers))
+      return null;
+    return p.twofa;
   } catch {
     return null;
   }
@@ -63,12 +108,19 @@ export async function authenticateRequest(headers: Headers) {
   if (!claim) throw Errors.forbidden("Invalid or expired session.");
   const user = await findUserByUnionId(claim.uid);
   if (!user) throw Errors.forbidden("Account not found. Please sign in again.");
+  if (user.tokenVersion !== claim.tv) {
+    throw Errors.forbidden("Session revoked. Please sign in again.");
+  }
   return ensureOwnerRole(user);
 }
 
 /** Serialize a Set-Cookie header value that establishes the session. */
-export async function sessionSetCookie(uid: string, headers: Headers): Promise<string> {
-  const token = await signSessionToken(uid);
+export async function sessionSetCookie(
+  uid: string,
+  tokenVersion: number,
+  headers: Headers
+): Promise<string> {
+  const token = await signSessionToken(uid, tokenVersion);
   const opts = getSessionCookieOptions(headers);
   return cookie.serialize(Session.cookieName, token, {
     httpOnly: opts.httpOnly,

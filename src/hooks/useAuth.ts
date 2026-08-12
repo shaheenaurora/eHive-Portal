@@ -53,6 +53,6 @@ export function useAuth(options?: UseAuthOptions) {
       logout,
       refresh: refetch,
     }),
-    [user, isLoading, logoutMutation.isPending, error, logout, refetch],
+    [user, isLoading, logoutMutation.isPending, error, logout, refetch]
   );
 }

@@ -34,7 +34,9 @@ describe("admin capability scopes (segregation of duties)", () => {
 
   it("a non-admin holds no capability regardless of scope string", () => {
     expect(hasScope(member, "membership")).toBe(false);
-    expect(hasScope({ role: "user", adminScopes: "*" }, "membership")).toBe(false);
+    expect(hasScope({ role: "user", adminScopes: "*" }, "membership")).toBe(
+      false
+    );
     expect(isFullAdmin(member)).toBe(false);
   });
 

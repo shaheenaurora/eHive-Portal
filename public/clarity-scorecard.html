@@ -1,526 +1,1073 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>eHive Clarity Scorecard</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --navy:#0F1C3A;
-    --navy-soft:#16264C;
-    --gold:#DA3A22;
-    --gold-lite:#E4DECF;
-    --cream:#F3F1EA;
-    --paper:#FBF9F5;
-    --ink:#0F1C3A;
-    --muted:#5F5C53;
-    --white:#fff;
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%}
-  body{
-    font-family:'Hanken Grotesk',"Segoe UI",system-ui,-apple-system,sans-serif;
-    background:var(--paper);
-    color:var(--ink);
-    line-height:1.55;
-    -webkit-font-smoothing:antialiased;
-  }
-  .wrap{max-width:760px;margin:0 auto;padding:32px 20px 64px}
-  /* Light wordmark sits in a navy chip so it reads on the light page. */
-  .brand{display:inline-block;line-height:0;background:var(--navy);padding:9px 14px;border-radius:9px}
-  .brand img{height:22px;width:auto;display:block}
-  /* When shown inside the site's popup, trim the outer padding a touch. */
-  body.embed .wrap{padding-top:18px}
-  .rule{height:3px;width:56px;background:var(--gold);margin:10px 0 0}
-  h1{font-family:'Archivo',system-ui,sans-serif;font-size:clamp(28px,5vw,42px);line-height:1.15;font-weight:700;margin:22px 0 14px}
-  h2{font-family:'Archivo',system-ui,sans-serif;font-size:clamp(21px,3.4vw,27px);line-height:1.25;font-weight:700;margin:0 0 10px}
-  p.lede{font-size:17px;color:var(--muted);max-width:56ch}
-  .meta{display:flex;gap:22px;flex-wrap:wrap;margin:26px 0 30px;padding:16px 0;border-top:1px solid var(--gold-lite);border-bottom:1px solid var(--gold-lite)}
-  .meta div{font-size:13px;color:var(--muted)}
-  .meta b{display:block;font-family:'Archivo',system-ui,sans-serif;font-size:17px;color:var(--navy)}
-  button{font-family:inherit;font-size:inherit;cursor:pointer;border:none;background:none;color:inherit}
-  .btn{
-    display:inline-block;background:var(--navy);color:var(--white);
-    padding:14px 28px;border-radius:4px;font-size:16px;font-weight:600;
-    transition:background .18s ease,transform .12s ease;
-  }
-  .btn:hover{background:#16264C}
-  .btn:active{transform:translateY(1px)}
-  .btn:disabled{opacity:.35;cursor:not-allowed}
-  .btn-ghost{background:none;color:var(--muted);padding:12px 4px;font-size:14px;text-decoration:underline;text-underline-offset:3px}
-  :focus-visible{outline:2.5px solid var(--gold);outline-offset:3px;border-radius:3px}
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>eHive Clarity Scorecard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --navy: #0f1c3a;
+        --navy-soft: #16264c;
+        --gold: #da3a22;
+        --gold-lite: #e4decf;
+        --cream: #f3f1ea;
+        --paper: #fbf9f5;
+        --ink: #0f1c3a;
+        --muted: #5f5c53;
+        --white: #fff;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        font-family:
+          "Hanken Grotesk",
+          "Segoe UI",
+          system-ui,
+          -apple-system,
+          sans-serif;
+        background: var(--paper);
+        color: var(--ink);
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 32px 20px 64px;
+      }
+      /* Light wordmark sits in a navy chip so it reads on the light page. */
+      .brand {
+        display: inline-block;
+        line-height: 0;
+        background: var(--navy);
+        padding: 9px 14px;
+        border-radius: 9px;
+      }
+      .brand img {
+        height: 22px;
+        width: auto;
+        display: block;
+      }
+      /* When shown inside the site's popup, trim the outer padding a touch. */
+      body.embed .wrap {
+        padding-top: 18px;
+      }
+      .rule {
+        height: 3px;
+        width: 56px;
+        background: var(--gold);
+        margin: 10px 0 0;
+      }
+      h1 {
+        font-family: "Archivo", system-ui, sans-serif;
+        font-size: clamp(28px, 5vw, 42px);
+        line-height: 1.15;
+        font-weight: 700;
+        margin: 22px 0 14px;
+      }
+      h2 {
+        font-family: "Archivo", system-ui, sans-serif;
+        font-size: clamp(21px, 3.4vw, 27px);
+        line-height: 1.25;
+        font-weight: 700;
+        margin: 0 0 10px;
+      }
+      p.lede {
+        font-size: 17px;
+        color: var(--muted);
+        max-width: 56ch;
+      }
+      .meta {
+        display: flex;
+        gap: 22px;
+        flex-wrap: wrap;
+        margin: 26px 0 30px;
+        padding: 16px 0;
+        border-top: 1px solid var(--gold-lite);
+        border-bottom: 1px solid var(--gold-lite);
+      }
+      .meta div {
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .meta b {
+        display: block;
+        font-family: "Archivo", system-ui, sans-serif;
+        font-size: 17px;
+        color: var(--navy);
+      }
+      button {
+        font-family: inherit;
+        font-size: inherit;
+        cursor: pointer;
+        border: none;
+        background: none;
+        color: inherit;
+      }
+      .btn {
+        display: inline-block;
+        background: var(--navy);
+        color: var(--white);
+        padding: 14px 28px;
+        border-radius: 4px;
+        font-size: 16px;
+        font-weight: 600;
+        transition:
+          background 0.18s ease,
+          transform 0.12s ease;
+      }
+      .btn:hover {
+        background: #16264c;
+      }
+      .btn:active {
+        transform: translateY(1px);
+      }
+      .btn:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
+      .btn-ghost {
+        background: none;
+        color: var(--muted);
+        padding: 12px 4px;
+        font-size: 14px;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+      :focus-visible {
+        outline: 2.5px solid var(--gold);
+        outline-offset: 3px;
+        border-radius: 3px;
+      }
 
-  /* hex progress — 8 domains, one hexagon each */
-  .hexrow{display:flex;gap:7px;justify-content:center;margin:0 0 28px;flex-wrap:wrap}
-  .hex{
-    width:26px;height:30px;background:var(--gold-lite);
-    clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);
-    transition:background .35s ease;
-  }
-  .hex.done{background:var(--gold)}
-  .hex.active{background:var(--navy)}
+      /* hex progress — 8 domains, one hexagon each */
+      .hexrow {
+        display: flex;
+        gap: 7px;
+        justify-content: center;
+        margin: 0 0 28px;
+        flex-wrap: wrap;
+      }
+      .hex {
+        width: 26px;
+        height: 30px;
+        background: var(--gold-lite);
+        clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+        transition: background 0.35s ease;
+      }
+      .hex.done {
+        background: var(--gold);
+      }
+      .hex.active {
+        background: var(--navy);
+      }
 
-  .qcount{text-align:center;font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
-  .domain{text-align:center;font-family:'Archivo',system-ui,sans-serif;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:22px}
-  .qtext{font-family:'Archivo',system-ui,sans-serif;font-size:clamp(20px,3.6vw,27px);line-height:1.35;text-align:center;margin:0 auto 30px;max-width:24ch;font-weight:700}
+      .qcount {
+        text-align: center;
+        font-size: 12.5px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 10px;
+      }
+      .domain {
+        text-align: center;
+        font-family: "Archivo", system-ui, sans-serif;
+        font-size: 13px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--gold);
+        font-weight: 700;
+        margin-bottom: 22px;
+      }
+      .qtext {
+        font-family: "Archivo", system-ui, sans-serif;
+        font-size: clamp(20px, 3.6vw, 27px);
+        line-height: 1.35;
+        text-align: center;
+        margin: 0 auto 30px;
+        max-width: 24ch;
+        font-weight: 700;
+      }
 
-  .scale{display:flex;flex-direction:column;gap:9px;max-width:520px;margin:0 auto}
-  .opt{
-    display:flex;align-items:center;gap:14px;width:100%;text-align:left;
-    background:var(--white);border:1.5px solid var(--gold-lite);border-radius:5px;
-    padding:14px 16px;font-size:15.5px;transition:border-color .15s ease,background .15s ease;
-  }
-  .opt:hover{border-color:var(--gold);background:#fffdf8}
-  .opt .num{
-    flex:0 0 30px;height:30px;border-radius:50%;background:var(--cream);color:var(--navy);
-    display:grid;place-items:center;font-weight:700;font-size:14px;font-family:'Archivo',system-ui,sans-serif;
-  }
-  .opt.sel{border-color:var(--navy);background:var(--navy);color:var(--white)}
-  .opt.sel .num{background:var(--gold);color:var(--navy)}
+      .scale {
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+        max-width: 520px;
+        margin: 0 auto;
+      }
+      .opt {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        width: 100%;
+        text-align: left;
+        background: var(--white);
+        border: 1.5px solid var(--gold-lite);
+        border-radius: 5px;
+        padding: 14px 16px;
+        font-size: 15.5px;
+        transition:
+          border-color 0.15s ease,
+          background 0.15s ease;
+      }
+      .opt:hover {
+        border-color: var(--gold);
+        background: #fffdf8;
+      }
+      .opt .num {
+        flex: 0 0 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: var(--cream);
+        color: var(--navy);
+        display: grid;
+        place-items: center;
+        font-weight: 700;
+        font-size: 14px;
+        font-family: "Archivo", system-ui, sans-serif;
+      }
+      .opt.sel {
+        border-color: var(--navy);
+        background: var(--navy);
+        color: var(--white);
+      }
+      .opt.sel .num {
+        background: var(--gold);
+        color: var(--navy);
+      }
 
-  .nav{display:flex;justify-content:space-between;align-items:center;margin-top:26px;max-width:520px;margin-left:auto;margin-right:auto}
+      .nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 26px;
+        max-width: 520px;
+        margin-left: auto;
+        margin-right: auto;
+      }
 
-  /* email gate */
-  label{display:block;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 6px;font-weight:600}
-  input, select{
-    width:100%;padding:13px 14px;font-family:inherit;font-size:16px;
-    border:1.5px solid var(--gold-lite);border-radius:4px;background:var(--white);color:var(--ink);
-    appearance:none;-webkit-appearance:none;
-  }
-  select{
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23B8862E' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
-    background-repeat:no-repeat;background-position:right 14px center;padding-right:38px;cursor:pointer;
-  }
-  input:focus, select:focus{border-color:var(--gold);outline:none}
-  .field{margin-bottom:16px}
-  .err{color:#A5342B;font-size:13.5px;margin-top:8px;display:none}
-  .fineprint{font-size:12.5px;color:var(--muted);margin-top:14px}
+      /* email gate */
+      label {
+        display: block;
+        font-size: 13px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin: 0 0 6px;
+        font-weight: 600;
+      }
+      input,
+      select {
+        width: 100%;
+        padding: 13px 14px;
+        font-family: inherit;
+        font-size: 16px;
+        border: 1.5px solid var(--gold-lite);
+        border-radius: 4px;
+        background: var(--white);
+        color: var(--ink);
+        appearance: none;
+        -webkit-appearance: none;
+      }
+      select {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23B8862E' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 14px center;
+        padding-right: 38px;
+        cursor: pointer;
+      }
+      input:focus,
+      select:focus {
+        border-color: var(--gold);
+        outline: none;
+      }
+      .field {
+        margin-bottom: 16px;
+      }
+      .err {
+        color: #a5342b;
+        font-size: 13.5px;
+        margin-top: 8px;
+        display: none;
+      }
+      .fineprint {
+        font-size: 12.5px;
+        color: var(--muted);
+        margin-top: 14px;
+      }
 
-  /* results */
-  .scorecard{background:var(--navy);color:var(--white);border-radius:6px;padding:30px 26px;margin:0 0 28px}
-  .scorenum{font-family:'Archivo',system-ui,sans-serif;font-size:56px;line-height:1;font-weight:700;color:var(--white)}
-  .scorenum small{font-size:22px;color:var(--gold-lite);font-weight:400}
-  .band{font-family:'Archivo',system-ui,sans-serif;font-size:22px;color:var(--gold);margin:12px 0 8px;font-weight:700}
-  .scorecard p{color:var(--cream);font-size:15.5px;max-width:58ch}
+      /* results */
+      .scorecard {
+        background: var(--navy);
+        color: var(--white);
+        border-radius: 6px;
+        padding: 30px 26px;
+        margin: 0 0 28px;
+      }
+      .scorenum {
+        font-family: "Archivo", system-ui, sans-serif;
+        font-size: 56px;
+        line-height: 1;
+        font-weight: 700;
+        color: var(--white);
+      }
+      .scorenum small {
+        font-size: 22px;
+        color: var(--gold-lite);
+        font-weight: 400;
+      }
+      .band {
+        font-family: "Archivo", system-ui, sans-serif;
+        font-size: 22px;
+        color: var(--gold);
+        margin: 12px 0 8px;
+        font-weight: 700;
+      }
+      .scorecard p {
+        color: var(--cream);
+        font-size: 15.5px;
+        max-width: 58ch;
+      }
 
-  .bars{margin:0 0 30px}
-  .bar{display:grid;grid-template-columns:132px 1fr 34px;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--gold-lite)}
-  .bar .name{font-size:14px;font-weight:600}
-  .track{height:9px;background:var(--cream);border-radius:5px;overflow:hidden}
-  .fill{height:100%;background:var(--navy);border-radius:5px;width:0;transition:width .7s cubic-bezier(.22,1,.36,1)}
-  .fill.weak{background:var(--gold)}
-  .bar .val{font-size:13px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
-  .bar.weakest .name{color:var(--gold)}
+      .bars {
+        margin: 0 0 30px;
+      }
+      .bar {
+        display: grid;
+        grid-template-columns: 132px 1fr 34px;
+        gap: 12px;
+        align-items: center;
+        padding: 9px 0;
+        border-bottom: 1px solid var(--gold-lite);
+      }
+      .bar .name {
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .track {
+        height: 9px;
+        background: var(--cream);
+        border-radius: 5px;
+        overflow: hidden;
+      }
+      .fill {
+        height: 100%;
+        background: var(--navy);
+        border-radius: 5px;
+        width: 0;
+        transition: width 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      .fill.weak {
+        background: var(--gold);
+      }
+      .bar .val {
+        font-size: 13px;
+        color: var(--muted);
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+      .bar.weakest .name {
+        color: var(--gold);
+      }
 
-  .rec{border-left:4px solid var(--gold);background:var(--cream);padding:22px 24px;border-radius:0 5px 5px 0;margin-bottom:26px}
-  .rec .kicker{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:8px}
-  .rec h3{font-family:'Archivo',system-ui,sans-serif;font-size:22px;margin-bottom:8px}
-  .rec p{font-size:15.5px;max-width:58ch}
+      .rec {
+        border-left: 4px solid var(--gold);
+        background: var(--cream);
+        padding: 22px 24px;
+        border-radius: 0 5px 5px 0;
+        margin-bottom: 26px;
+      }
+      .rec .kicker {
+        font-size: 12px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--muted);
+        font-weight: 700;
+        margin-bottom: 8px;
+      }
+      .rec h3 {
+        font-family: "Archivo", system-ui, sans-serif;
+        font-size: 22px;
+        margin-bottom: 8px;
+      }
+      .rec p {
+        font-size: 15.5px;
+        max-width: 58ch;
+      }
 
-  .hidden{display:none}
-  @media (max-width:520px){
-    .bar{grid-template-columns:104px 1fr 30px;gap:9px}
-    .bar .name{font-size:12.5px}
-    .hex{width:22px;height:26px}
-  }
-  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
-</style>
-<link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#16264C"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="eHive">
-</head>
-<body>
-<script>if(new URLSearchParams(location.search).get("embed")==="1")document.body.classList.add("embed");</script>
-<div class="wrap">
+      .hidden {
+        display: none;
+      }
+      @media (max-width: 520px) {
+        .bar {
+          grid-template-columns: 104px 1fr 30px;
+          gap: 9px;
+        }
+        .bar .name {
+          font-size: 12.5px;
+        }
+        .hex {
+          width: 22px;
+          height: 26px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          transition: none !important;
+        }
+      }
+    </style>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#16264C" />
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="eHive" />
+  </head>
+  <body>
+    <script>
+      if (new URLSearchParams(location.search).get("embed") === "1")
+        document.body.classList.add("embed");
+    </script>
+    <div class="wrap">
+      <!-- ============ INTRO ============ -->
+      <section id="intro">
+        <a class="brand" href="/" aria-label="eHive — home"
+          ><img src="/assets/ehive-wordmark.png" alt="eHive"
+        /></a>
+        <div class="rule"></div>
+        <h1>How clear is your business, really?</h1>
+        <p class="lede">
+          Sixteen honest questions across the eight areas every business runs
+          on. You'll get a score for each one — and see exactly where the
+          weakest link is.
+        </p>
+        <div class="meta">
+          <div><b>3 minutes</b>16 questions</div>
+          <div><b>8 areas</b>Scored individually</div>
+          <div><b>Free</b>No call required</div>
+        </div>
+        <button class="btn" id="start">Start the scorecard</button>
+        <p class="fineprint">
+          Answer honestly — a flattering score helps nobody. Nothing here is
+          shared with anyone.
+        </p>
+      </section>
 
-  <!-- ============ INTRO ============ -->
-  <section id="intro">
-    <a class="brand" href="/" aria-label="eHive — home"><img src="/assets/ehive-wordmark.png" alt="eHive"></a>
-    <div class="rule"></div>
-    <h1>How clear is your business, really?</h1>
-    <p class="lede">Sixteen honest questions across the eight areas every business runs on. You'll get a score for each one — and see exactly where the weakest link is.</p>
-    <div class="meta">
-      <div><b>3 minutes</b>16 questions</div>
-      <div><b>8 areas</b>Scored individually</div>
-      <div><b>Free</b>No call required</div>
+      <!-- ============ QUESTIONS ============ -->
+      <section id="quiz" class="hidden">
+        <div class="hexrow" id="hexrow"></div>
+        <div class="qcount" id="qcount"></div>
+        <div class="domain" id="qdomain"></div>
+        <p class="qtext" id="qtext"></p>
+        <div class="scale" id="scale"></div>
+        <div class="nav">
+          <button class="btn-ghost" id="back">← Back</button>
+          <span></span>
+        </div>
+      </section>
+
+      <!-- ============ EMAIL GATE ============ -->
+      <section id="gate" class="hidden">
+        <a class="brand" href="/" aria-label="eHive — home"
+          ><img src="/assets/ehive-wordmark.png" alt="eHive"
+        /></a>
+        <div class="rule"></div>
+        <h1>Your scorecard is ready.</h1>
+        <p class="lede">
+          Tell us where to send a copy, and we'll show your results now.
+        </p>
+        <div style="max-width: 440px; margin-top: 26px">
+          <div class="field">
+            <label for="name">Full name</label>
+            <input
+              id="name"
+              type="text"
+              autocomplete="name"
+              placeholder="Your name"
+            />
+          </div>
+          <div class="field">
+            <label for="email">Email</label>
+            <input
+              id="email"
+              type="email"
+              autocomplete="email"
+              placeholder="you@company.com"
+            />
+          </div>
+          <div class="field">
+            <label for="phone">Phone</label>
+            <input
+              id="phone"
+              type="tel"
+              autocomplete="tel"
+              inputmode="tel"
+              placeholder="+971 50 000 0000"
+            />
+          </div>
+          <div class="field">
+            <label for="company">Business name</label>
+            <input
+              id="company"
+              type="text"
+              autocomplete="organization"
+              placeholder="Your business name"
+            />
+          </div>
+          <div class="field">
+            <label for="location">Location</label>
+            <input
+              id="location"
+              type="text"
+              autocomplete="address-level2"
+              placeholder="City / Emirate (e.g. Dubai, UAE)"
+            />
+          </div>
+          <div class="field">
+            <label for="industry">Industry</label>
+            <select id="industry">
+              <option value="" disabled selected>Select your industry…</option>
+              <option>Retail &amp; E-commerce</option>
+              <option>Food &amp; Beverage</option>
+              <option>Professional Services</option>
+              <option>Technology &amp; Software</option>
+              <option>Real Estate &amp; Construction</option>
+              <option>Health &amp; Wellness</option>
+              <option>Manufacturing &amp; Trading</option>
+              <option>Marketing &amp; Creative</option>
+              <option>Education &amp; Training</option>
+              <option>Finance &amp; Consulting</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <p class="err" id="gateErr">
+            Please complete all fields with a valid email and phone number to
+            continue.
+          </p>
+          <button class="btn" id="reveal">Show my results</button>
+          <p class="fineprint">
+            We'll email your scorecard and occasional guidance for founders.
+            Unsubscribe anytime.
+          </p>
+        </div>
+      </section>
+
+      <!-- ============ RESULTS ============ -->
+      <section id="results" class="hidden">
+        <a class="brand" href="/" aria-label="eHive — home"
+          ><img src="/assets/ehive-wordmark.png" alt="eHive"
+        /></a>
+        <div class="rule"></div>
+        <h1 style="margin-bottom: 20px">Your Clarity Score</h1>
+
+        <div class="scorecard">
+          <div class="scorenum" id="pct">0<small>/100</small></div>
+          <div class="band" id="bandName"></div>
+          <p id="bandCopy"></p>
+        </div>
+
+        <h2>Area by area</h2>
+        <p
+          class="lede"
+          id="areaHint"
+          style="margin-bottom: 18px; font-size: 15.5px"
+        >
+          Gold marks your weakest area — that's where attention pays back
+          fastest.
+        </p>
+        <div class="bars" id="bars"></div>
+
+        <div class="rec">
+          <div class="kicker">Recommended next step</div>
+          <h3 id="recTitle"></h3>
+          <p id="recCopy"></p>
+        </div>
+
+        <a class="btn" id="ctaBtn" href="#">Book a conversation</a>
+        <p class="fineprint">
+          A copy of this scorecard is on its way to your inbox.
+        </p>
+        <div style="margin-top: 22px">
+          <button class="btn-ghost" id="restart">Start over</button>
+        </div>
+      </section>
     </div>
-    <button class="btn" id="start">Start the scorecard</button>
-    <p class="fineprint">Answer honestly — a flattering score helps nobody. Nothing here is shared with anyone.</p>
-  </section>
 
-  <!-- ============ QUESTIONS ============ -->
-  <section id="quiz" class="hidden">
-    <div class="hexrow" id="hexrow"></div>
-    <div class="qcount" id="qcount"></div>
-    <div class="domain" id="qdomain"></div>
-    <p class="qtext" id="qtext"></p>
-    <div class="scale" id="scale"></div>
-    <div class="nav">
-      <button class="btn-ghost" id="back">← Back</button>
-      <span></span>
-    </div>
-  </section>
+    <script>
+      (function () {
+        "use strict";
 
-  <!-- ============ EMAIL GATE ============ -->
-  <section id="gate" class="hidden">
-    <a class="brand" href="/" aria-label="eHive — home"><img src="/assets/ehive-wordmark.png" alt="eHive"></a>
-    <div class="rule"></div>
-    <h1>Your scorecard is ready.</h1>
-    <p class="lede">Tell us where to send a copy, and we'll show your results now.</p>
-    <div style="max-width:440px;margin-top:26px">
-      <div class="field">
-        <label for="name">Full name</label>
-        <input id="name" type="text" autocomplete="name" placeholder="Your name">
-      </div>
-      <div class="field">
-        <label for="email">Email</label>
-        <input id="email" type="email" autocomplete="email" placeholder="you@company.com">
-      </div>
-      <div class="field">
-        <label for="phone">Phone</label>
-        <input id="phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="+971 50 000 0000">
-      </div>
-      <div class="field">
-        <label for="company">Business name</label>
-        <input id="company" type="text" autocomplete="organization" placeholder="Your business name">
-      </div>
-      <div class="field">
-        <label for="location">Location</label>
-        <input id="location" type="text" autocomplete="address-level2" placeholder="City / Emirate (e.g. Dubai, UAE)">
-      </div>
-      <div class="field">
-        <label for="industry">Industry</label>
-        <select id="industry">
-          <option value="" disabled selected>Select your industry…</option>
-          <option>Retail &amp; E-commerce</option>
-          <option>Food &amp; Beverage</option>
-          <option>Professional Services</option>
-          <option>Technology &amp; Software</option>
-          <option>Real Estate &amp; Construction</option>
-          <option>Health &amp; Wellness</option>
-          <option>Manufacturing &amp; Trading</option>
-          <option>Marketing &amp; Creative</option>
-          <option>Education &amp; Training</option>
-          <option>Finance &amp; Consulting</option>
-          <option>Other</option>
-        </select>
-      </div>
-      <p class="err" id="gateErr">Please complete all fields with a valid email and phone number to continue.</p>
-      <button class="btn" id="reveal">Show my results</button>
-      <p class="fineprint">We'll email your scorecard and occasional guidance for founders. Unsubscribe anytime.</p>
-    </div>
-  </section>
+        // ---- 8 domains x 2 questions. Concrete statements, not abstract ratings. ----
+        var DOMAINS = [
+          {
+            key: "Strategy",
+            qs: [
+              "I can say in one sentence what we're best in the world at — and my team would say the same thing.",
+              "We have written goals for the next 12 months that my team could name without looking them up.",
+            ],
+          },
+          {
+            key: "Business Model",
+            qs: [
+              "I know which customers and services actually make us the most profit — not just the most revenue.",
+              "Our prices are set on the value we deliver, not on what competitors charge.",
+            ],
+          },
+          {
+            key: "Revenue Engine",
+            qs: [
+              "I can predict next quarter's revenue with reasonable confidence — it doesn't come down to luck.",
+              "We have a repeatable way of turning a lead into a customer that doesn't depend on me personally.",
+            ],
+          },
+          {
+            key: "Marketing",
+            qs: [
+              "A stranger on our website would understand in ten seconds who we're for and why we're different.",
+              "Our leads come from a system, not from me chasing people or posting when I remember to.",
+            ],
+          },
+          {
+            key: "Operations",
+            qs: [
+              "The same problems don't come back week after week.",
+              "Our key processes are written down — a new hire could follow them without asking me.",
+            ],
+          },
+          {
+            key: "People & Culture",
+            qs: [
+              "Every important result in this business has one named owner who isn't me.",
+              "My team decides things at their level instead of escalating everything to me.",
+            ],
+          },
+          {
+            key: "Systems",
+            qs: [
+              "Our information lives in one place we trust — not scattered across spreadsheets and people's heads.",
+              "Our tools genuinely reduce manual work rather than adding more of it.",
+            ],
+          },
+          {
+            key: "Finance",
+            qs: [
+              "I know what it actually costs us to deliver each service, and what margin it leaves.",
+              "I look at our numbers on a regular rhythm and make real decisions from them.",
+            ],
+          },
+        ];
 
-  <!-- ============ RESULTS ============ -->
-  <section id="results" class="hidden">
-    <a class="brand" href="/" aria-label="eHive — home"><img src="/assets/ehive-wordmark.png" alt="eHive"></a>
-    <div class="rule"></div>
-    <h1 style="margin-bottom:20px">Your Clarity Score</h1>
+        var SCALE = [
+          { v: 1, t: "Not true at all" },
+          { v: 2, t: "Rarely true" },
+          { v: 3, t: "Sometimes true" },
+          { v: 4, t: "Mostly true" },
+          { v: 5, t: "Completely true" },
+        ];
 
-    <div class="scorecard">
-      <div class="scorenum" id="pct">0<small>/100</small></div>
-      <div class="band" id="bandName"></div>
-      <p id="bandCopy"></p>
-    </div>
+        // Flatten to a question list
+        var QS = [];
+        DOMAINS.forEach(function (d, di) {
+          d.qs.forEach(function (q) {
+            QS.push({ domain: d.key, di: di, text: q });
+          });
+        });
 
-    <h2>Area by area</h2>
-    <p class="lede" id="areaHint" style="margin-bottom:18px;font-size:15.5px">Gold marks your weakest area — that's where attention pays back fastest.</p>
-    <div class="bars" id="bars"></div>
+        var answers = new Array(QS.length).fill(0);
+        var idx = 0;
 
-    <div class="rec">
-      <div class="kicker">Recommended next step</div>
-      <h3 id="recTitle"></h3>
-      <p id="recCopy"></p>
-    </div>
+        var $ = function (id) {
+          return document.getElementById(id);
+        };
+        function show(id) {
+          ["intro", "quiz", "gate", "results"].forEach(function (s) {
+            $(s).classList.add("hidden");
+          });
+          $(id).classList.remove("hidden");
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
 
-    <a class="btn" id="ctaBtn" href="#">Book a conversation</a>
-    <p class="fineprint">A copy of this scorecard is on its way to your inbox.</p>
-    <div style="margin-top:22px"><button class="btn-ghost" id="restart">Start over</button></div>
-  </section>
+        // ---- hex progress: one hexagon per domain ----
+        function buildHex() {
+          var r = $("hexrow");
+          r.innerHTML = "";
+          DOMAINS.forEach(function (d, i) {
+            var h = document.createElement("div");
+            h.className = "hex";
+            h.title = d.key;
+            r.appendChild(h);
+          });
+        }
+        function paintHex() {
+          var hexes = $("hexrow").children;
+          var cur = QS[idx].di;
+          for (var i = 0; i < hexes.length; i++) {
+            hexes[i].className =
+              "hex" + (i < cur ? " done" : i === cur ? " active" : "");
+          }
+        }
 
-</div>
+        function renderQ() {
+          var q = QS[idx];
+          $("qcount").textContent =
+            "Question " + (idx + 1) + " of " + QS.length;
+          $("qdomain").textContent = q.domain;
+          $("qtext").textContent = q.text;
+          paintHex();
 
-<script>
-(function(){
-  "use strict";
+          var s = $("scale");
+          s.innerHTML = "";
+          SCALE.forEach(function (o) {
+            var b = document.createElement("button");
+            b.className = "opt" + (answers[idx] === o.v ? " sel" : "");
+            b.setAttribute("type", "button");
+            b.innerHTML =
+              '<span class="num">' + o.v + "</span><span>" + o.t + "</span>";
+            b.addEventListener("click", function () {
+              answers[idx] = o.v;
+              // brief visual confirmation, then advance
+              var sibs = s.querySelectorAll(".opt");
+              for (var i = 0; i < sibs.length; i++)
+                sibs[i].classList.remove("sel");
+              b.classList.add("sel");
+              setTimeout(next, 180);
+            });
+            s.appendChild(b);
+          });
+          $("back").style.visibility = idx === 0 ? "hidden" : "visible";
+        }
 
-  // ---- 8 domains x 2 questions. Concrete statements, not abstract ratings. ----
-  var DOMAINS = [
-    {key:"Strategy", qs:[
-      "I can say in one sentence what we're best in the world at — and my team would say the same thing.",
-      "We have written goals for the next 12 months that my team could name without looking them up."
-    ]},
-    {key:"Business Model", qs:[
-      "I know which customers and services actually make us the most profit — not just the most revenue.",
-      "Our prices are set on the value we deliver, not on what competitors charge."
-    ]},
-    {key:"Revenue Engine", qs:[
-      "I can predict next quarter's revenue with reasonable confidence — it doesn't come down to luck.",
-      "We have a repeatable way of turning a lead into a customer that doesn't depend on me personally."
-    ]},
-    {key:"Marketing", qs:[
-      "A stranger on our website would understand in ten seconds who we're for and why we're different.",
-      "Our leads come from a system, not from me chasing people or posting when I remember to."
-    ]},
-    {key:"Operations", qs:[
-      "The same problems don't come back week after week.",
-      "Our key processes are written down — a new hire could follow them without asking me."
-    ]},
-    {key:"People & Culture", qs:[
-      "Every important result in this business has one named owner who isn't me.",
-      "My team decides things at their level instead of escalating everything to me."
-    ]},
-    {key:"Systems", qs:[
-      "Our information lives in one place we trust — not scattered across spreadsheets and people's heads.",
-      "Our tools genuinely reduce manual work rather than adding more of it."
-    ]},
-    {key:"Finance", qs:[
-      "I know what it actually costs us to deliver each service, and what margin it leaves.",
-      "I look at our numbers on a regular rhythm and make real decisions from them."
-    ]}
-  ];
+        function next() {
+          if (idx < QS.length - 1) {
+            idx++;
+            renderQ();
+          } else {
+            show("gate");
+          }
+        }
 
-  var SCALE = [
-    {v:1,t:"Not true at all"},
-    {v:2,t:"Rarely true"},
-    {v:3,t:"Sometimes true"},
-    {v:4,t:"Mostly true"},
-    {v:5,t:"Completely true"}
-  ];
+        $("start").addEventListener("click", function () {
+          idx = 0;
+          buildHex();
+          renderQ();
+          show("quiz");
+        });
+        $("back").addEventListener("click", function () {
+          if (idx > 0) {
+            idx--;
+            renderQ();
+          }
+        });
+        $("restart").addEventListener("click", function () {
+          answers = new Array(QS.length).fill(0);
+          idx = 0;
+          $("name").value = "";
+          $("email").value = "";
+          $("phone").value = "";
+          $("company").value = "";
+          $("location").value = "";
+          $("industry").value = "";
+          show("intro");
+        });
 
-  // Flatten to a question list
-  var QS = [];
-  DOMAINS.forEach(function(d,di){
-    d.qs.forEach(function(q){ QS.push({domain:d.key, di:di, text:q}); });
-  });
+        // ---- email gate ----
+        $("reveal").addEventListener("click", function () {
+          var name = $("name").value.trim();
+          var email = $("email").value.trim();
+          var phone = $("phone").value.trim();
+          var company = $("company").value.trim();
+          var location = $("location").value.trim();
+          var industry = $("industry").value;
+          var emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
+          // Accept international/local formats: at least 7 digits once symbols are stripped.
+          var phoneOk = phone.replace(/[^\d]/g, "").length >= 7;
+          var firstEmpty = !name
+            ? "name"
+            : !emailOk
+              ? "email"
+              : !phoneOk
+                ? "phone"
+                : !company
+                  ? "company"
+                  : !location
+                    ? "location"
+                    : !industry
+                      ? "industry"
+                      : null;
+          if (firstEmpty) {
+            $("gateErr").style.display = "block";
+            $(firstEmpty).focus();
+            return;
+          }
+          $("gateErr").style.display = "none";
 
-  var answers = new Array(QS.length).fill(0);
-  var idx = 0;
+          // ---- Capture the lead + scores into the eHive Leads inbox (admin panel). ----
+          // The response tells us whether the confirmation email was actually sent, so
+          // we can give the user honest feedback instead of claiming it is on its way.
+          renderResults();
+          show("results");
+          var emailNote = document.querySelector("#results .fineprint");
+          try {
+            fetch("/api/lead", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+              },
+              keepalive: true,
+              body: JSON.stringify({
+                form: "clarity-scorecard",
+                name: name,
+                email: email,
+                phone: phone,
+                company: company,
+                location: location,
+                industry: industry,
+                source_page: "/clarity-scorecard.html",
+                total: totalPct(),
+                domains: domainScores(),
+              }),
+            })
+              .then(function (r) {
+                return r.json();
+              })
+              .then(function (d) {
+                if (emailNote && d && d.emailSent === false) {
+                  emailNote.textContent =
+                    "We saved your scorecard, but the confirmation email could not be sent" +
+                    (d.emailError ? " (" + d.emailError + ")" : "") +
+                    ". A team member will follow up directly.";
+                }
+              })
+              .catch(function () {});
+          } catch (e) {
+            /* never block the UX on lead capture */
+          }
+        });
 
-  var $ = function(id){ return document.getElementById(id); };
-  function show(id){
-    ["intro","quiz","gate","results"].forEach(function(s){ $(s).classList.add("hidden"); });
-    $(id).classList.remove("hidden");
-    window.scrollTo({top:0,behavior:"smooth"});
-  }
+        function domainScores() {
+          return DOMAINS.map(function (d, i) {
+            var a = answers[i * 2],
+              b = answers[i * 2 + 1];
+            return {
+              key: d.key,
+              raw: a + b,
+              pct: Math.round(((a + b) / 10) * 100),
+            };
+          });
+        }
+        function totalPct() {
+          var sum = answers.reduce(function (a, b) {
+            return a + b;
+          }, 0);
+          return Math.round((sum / (QS.length * 5)) * 100);
+        }
 
-  // ---- hex progress: one hexagon per domain ----
-  function buildHex(){
-    var r = $("hexrow"); r.innerHTML = "";
-    DOMAINS.forEach(function(d,i){
-      var h = document.createElement("div");
-      h.className = "hex"; h.title = d.key;
-      r.appendChild(h);
-    });
-  }
-  function paintHex(){
-    var hexes = $("hexrow").children;
-    var cur = QS[idx].di;
-    for(var i=0;i<hexes.length;i++){
-      hexes[i].className = "hex" + (i < cur ? " done" : (i === cur ? " active" : ""));
-    }
-  }
+        // ---- scoring bands: a genuinely strong business is told it's strong ----
+        var BANDS = [
+          {
+            min: 82,
+            name: "Well built",
+            copy: "This is a genuinely well-run business. Most of the fundamentals are in place and documented. You don't need a rebuild — you need to protect what's working and keep the discipline as you grow.",
+          },
+          {
+            min: 64,
+            name: "Solid, with specific gaps",
+            copy: "The foundations are sound, but one or two areas are lagging behind the rest. These gaps tend to be the quiet ceiling on growth — worth fixing deliberately rather than hoping they resolve.",
+          },
+          {
+            min: 45,
+            name: "Working hard against friction",
+            copy: "There's a real business here, but too much of it depends on you holding it together. The pattern below is common and fixable — the issue is usually structural, not effort.",
+          },
+          {
+            min: 0,
+            name: "Foundations need attention",
+            copy: "Several core areas are unclear or undocumented right now. That's not a judgement on the business — most founders reach this point before anyone helps them build the structure underneath it.",
+          },
+        ];
 
-  function renderQ(){
-    var q = QS[idx];
-    $("qcount").textContent = "Question " + (idx+1) + " of " + QS.length;
-    $("qdomain").textContent = q.domain;
-    $("qtext").textContent = q.text;
-    paintHex();
+        // ---- routing: weakest domain decides the recommendation ----
+        var ROUTES = {
+          Strategy: {
+            p: "Clarity Sprint™",
+            c: "Your weakest area is direction itself. Before building anything else, it's worth getting clear on the one thing this business should be best at — that decision changes everything downstream.",
+          },
+          "Business Model": {
+            p: "Strategy Sprint™",
+            c: "The model underneath the business is where your score is lowest. A Strategy Sprint re-engineers how the business makes money and turns it into a documented 90-day plan.",
+          },
+          "Revenue Engine": {
+            p: "Strategy Sprint™",
+            c: "Revenue predictability is your weakest point. That usually traces back to the model and the plan — which is exactly what a Strategy Sprint rebuilds.",
+          },
+          Marketing: {
+            p: "Brand 3D™",
+            c: "Marketing scored lowest. That's rarely an advertising problem — it's usually positioning. Brand 3D fixes the engine first, so demand compounds instead of depending on you.",
+          },
+          Operations: {
+            p: "OpsBlueprint™",
+            c: "Operations is your weakest area. OpsBlueprint engineers the operating system — documented processes, clear roles, visible KPIs — so the same fires stop repeating.",
+          },
+          "People & Culture": {
+            p: "OpsBlueprint™",
+            c: "Ownership and decision-making scored lowest. That's an operating-model problem: OpsBlueprint puts named owners, clear roles and decision rights in place.",
+          },
+          Systems: {
+            p: "OpsBlueprint™",
+            c: "Your systems and data scored lowest. OpsBlueprint maps what you actually need before you spend on software — so tools reduce work instead of adding to it.",
+          },
+          Finance: {
+            p: "GapNavigator™",
+            c: "Financial visibility is your weakest area, and it often masks issues elsewhere. A full GapNavigator diagnostic scores the whole business on evidence before you commit to a fix.",
+          },
+        };
 
-    var s = $("scale"); s.innerHTML = "";
-    SCALE.forEach(function(o){
-      var b = document.createElement("button");
-      b.className = "opt" + (answers[idx] === o.v ? " sel" : "");
-      b.setAttribute("type","button");
-      b.innerHTML = '<span class="num">'+o.v+'</span><span>'+o.t+'</span>';
-      b.addEventListener("click", function(){
-        answers[idx] = o.v;
-        // brief visual confirmation, then advance
-        var sibs = s.querySelectorAll(".opt");
-        for(var i=0;i<sibs.length;i++) sibs[i].classList.remove("sel");
-        b.classList.add("sel");
-        setTimeout(next, 180);
-      });
-      s.appendChild(b);
-    });
-    $("back").style.visibility = idx === 0 ? "hidden" : "visible";
-  }
+        function renderResults() {
+          var ds = domainScores();
+          var pct = totalPct();
 
-  function next(){
-    if(idx < QS.length - 1){ idx++; renderQ(); }
-    else { show("gate"); }
-  }
+          // animate the headline number
+          var el = $("pct"),
+            n = 0;
+          var step = Math.max(1, Math.round(pct / 28));
+          var timer = setInterval(function () {
+            n += step;
+            if (n >= pct) {
+              n = pct;
+              clearInterval(timer);
+            }
+            el.innerHTML = n + "<small>/100</small>";
+          }, 22);
 
-  $("start").addEventListener("click", function(){
-    idx = 0; buildHex(); renderQ(); show("quiz");
-  });
-  $("back").addEventListener("click", function(){
-    if(idx > 0){ idx--; renderQ(); }
-  });
-  $("restart").addEventListener("click", function(){
-    answers = new Array(QS.length).fill(0); idx = 0;
-    $("name").value=""; $("email").value=""; $("phone").value="";
-    $("company").value=""; $("location").value=""; $("industry").value="";
-    show("intro");
-  });
+          var band = BANDS.find(function (b) {
+            return pct >= b.min;
+          });
+          $("bandName").textContent = band.name;
+          $("bandCopy").textContent = band.copy;
 
-  // ---- email gate ----
-  $("reveal").addEventListener("click", function(){
-    var name = $("name").value.trim();
-    var email = $("email").value.trim();
-    var phone = $("phone").value.trim();
-    var company = $("company").value.trim();
-    var location = $("location").value.trim();
-    var industry = $("industry").value;
-    var emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
-    // Accept international/local formats: at least 7 digits once symbols are stripped.
-    var phoneOk = (phone.replace(/[^\d]/g, "").length >= 7);
-    var firstEmpty = !name ? "name" : !emailOk ? "email" : !phoneOk ? "phone"
-      : !company ? "company" : !location ? "location" : !industry ? "industry" : null;
-    if(firstEmpty){
-      $("gateErr").style.display = "block";
-      $(firstEmpty).focus();
-      return;
-    }
-    $("gateErr").style.display = "none";
+          // A domain is only a "weak point" when it's the lowest AND genuinely low.
+          // If every area ties, or the lowest is still healthy, nothing is flagged —
+          // a perfect score shows no gold/alert bars.
+          var min = Math.min.apply(
+            null,
+            ds.map(function (d) {
+              return d.raw;
+            })
+          );
+          var max = Math.max.apply(
+            null,
+            ds.map(function (d) {
+              return d.raw;
+            })
+          );
+          var spread = max - min;
+          var minPct = Math.min.apply(
+            null,
+            ds.map(function (d) {
+              return d.pct;
+            })
+          );
+          var WEAK = 64; // below the "solid, with gaps" band
+          var showWeak = minPct < WEAK;
+          var weakest = showWeak
+            ? ds.filter(function (d) {
+                return d.raw === min;
+              })
+            : [];
+          var lead = weakest[0];
 
-    // ---- Capture the lead + scores into the eHive Leads inbox (admin panel). ----
-    // Fire-and-forget so a slow/failed network never blocks the member's results.
-    try {
-      fetch("/api/lead", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        keepalive: true,
-        body: JSON.stringify({
-          form: "clarity-scorecard",
-          name: name,
-          email: email,
-          phone: phone,
-          company: company,
-          location: location,
-          industry: industry,
-          source_page: "/clarity-scorecard.html",
-          total: totalPct(),
-          domains: domainScores()
-        })
-      }).catch(function(){});
-    } catch (e) { /* never block the UX on lead capture */ }
+          // Show the "gold marks your weakest area" hint only when there is one.
+          var hint = $("areaHint");
+          if (hint) hint.style.display = showWeak ? "" : "none";
 
-    renderResults();
-    show("results");
-  });
+          var bars = $("bars");
+          bars.innerHTML = "";
+          ds.forEach(function (d) {
+            var isWeak = showWeak && d.raw === min;
+            var row = document.createElement("div");
+            row.className = "bar" + (isWeak ? " weakest" : "");
+            row.innerHTML =
+              '<div class="name">' +
+              d.key +
+              "</div>" +
+              '<div class="track"><div class="fill' +
+              (isWeak ? " weak" : "") +
+              '"></div></div>' +
+              '<div class="val">' +
+              d.pct +
+              "%</div>";
+            bars.appendChild(row);
+            // trigger width transition after paint
+            requestAnimationFrame(function () {
+              row.querySelector(".fill").style.width = Math.max(d.pct, 3) + "%";
+            });
+          });
 
-  function domainScores(){
-    return DOMAINS.map(function(d,i){
-      var a = answers[i*2], b = answers[i*2+1];
-      return { key:d.key, raw:a+b, pct: Math.round(((a+b)/10)*100) };
-    });
-  }
-  function totalPct(){
-    var sum = answers.reduce(function(a,b){ return a+b; }, 0);
-    return Math.round((sum/(QS.length*5))*100);
-  }
+          var route;
+          if (pct >= 82 && !showWeak) {
+            route = {
+              p: "Momentum90™",
+              c: "You don't need a rebuild. What protects a business at this level is execution discipline — clear owners, visible KPIs and a weekly rhythm that holds when things get busy.",
+            };
+          } else if (pct < 45 && spread <= 3) {
+            route = {
+              p: "GapNavigator™",
+              c: "Your scores are low across the board rather than in one place — so fixing a single area wouldn't get you far. A full GapNavigator diagnostic scores the whole business on evidence and ranks the three to seven moves that actually matter.",
+            };
+          } else if (weakest.length >= 3) {
+            route = {
+              p: "GapNavigator™",
+              c: "Several areas are weak at once, which means the real bottleneck isn't obvious from a short questionnaire. A GapNavigator diagnostic goes deeper and ranks what to fix first.",
+            };
+          } else if (weakest.length >= 1) {
+            route = ROUTES[lead.key];
+          } else {
+            route = {
+              p: "GapNavigator™",
+              c: "Your business scores evenly with no single weak point — a full GapNavigator diagnostic finds the highest-leverage move to lift the whole score.",
+            };
+          }
 
-  // ---- scoring bands: a genuinely strong business is told it's strong ----
-  var BANDS = [
-    {min:82, name:"Well built",
-     copy:"This is a genuinely well-run business. Most of the fundamentals are in place and documented. You don't need a rebuild — you need to protect what's working and keep the discipline as you grow."},
-    {min:64, name:"Solid, with specific gaps",
-     copy:"The foundations are sound, but one or two areas are lagging behind the rest. These gaps tend to be the quiet ceiling on growth — worth fixing deliberately rather than hoping they resolve."},
-    {min:45, name:"Working hard against friction",
-     copy:"There's a real business here, but too much of it depends on you holding it together. The pattern below is common and fixable — the issue is usually structural, not effort."},
-    {min:0,  name:"Foundations need attention",
-     copy:"Several core areas are unclear or undocumented right now. That's not a judgement on the business — most founders reach this point before anyone helps them build the structure underneath it."}
-  ];
+          $("recTitle").textContent = route.p;
+          $("recCopy").textContent = route.c;
+          $("ctaBtn").textContent =
+            route.p === "Momentum90™"
+              ? "Talk to us about Momentum90"
+              : "Book a conversation";
 
-  // ---- routing: weakest domain decides the recommendation ----
-  var ROUTES = {
-    "Strategy":        {p:"Clarity Sprint™", c:"Your weakest area is direction itself. Before building anything else, it's worth getting clear on the one thing this business should be best at — that decision changes everything downstream."},
-    "Business Model":  {p:"Strategy Sprint™", c:"The model underneath the business is where your score is lowest. A Strategy Sprint re-engineers how the business makes money and turns it into a documented 90-day plan."},
-    "Revenue Engine":  {p:"Strategy Sprint™", c:"Revenue predictability is your weakest point. That usually traces back to the model and the plan — which is exactly what a Strategy Sprint rebuilds."},
-    "Marketing":       {p:"Brand 3D™", c:"Marketing scored lowest. That's rarely an advertising problem — it's usually positioning. Brand 3D fixes the engine first, so demand compounds instead of depending on you."},
-    "Operations":      {p:"OpsBlueprint™", c:"Operations is your weakest area. OpsBlueprint engineers the operating system — documented processes, clear roles, visible KPIs — so the same fires stop repeating."},
-    "People & Culture":{p:"OpsBlueprint™", c:"Ownership and decision-making scored lowest. That's an operating-model problem: OpsBlueprint puts named owners, clear roles and decision rights in place."},
-    "Systems":         {p:"OpsBlueprint™", c:"Your systems and data scored lowest. OpsBlueprint maps what you actually need before you spend on software — so tools reduce work instead of adding to it."},
-    "Finance":         {p:"GapNavigator™", c:"Financial visibility is your weakest area, and it often masks issues elsewhere. A full GapNavigator diagnostic scores the whole business on evidence before you commit to a fix."}
-  };
-
-  function renderResults(){
-    var ds = domainScores();
-    var pct = totalPct();
-
-    // animate the headline number
-    var el = $("pct"), n = 0;
-    var step = Math.max(1, Math.round(pct/28));
-    var timer = setInterval(function(){
-      n += step; if(n >= pct){ n = pct; clearInterval(timer); }
-      el.innerHTML = n + '<small>/100</small>';
-    }, 22);
-
-    var band = BANDS.find(function(b){ return pct >= b.min; });
-    $("bandName").textContent = band.name;
-    $("bandCopy").textContent = band.copy;
-
-    // A domain is only a "weak point" when it's the lowest AND genuinely low.
-    // If every area ties, or the lowest is still healthy, nothing is flagged —
-    // a perfect score shows no gold/alert bars.
-    var min = Math.min.apply(null, ds.map(function(d){ return d.raw; }));
-    var max = Math.max.apply(null, ds.map(function(d){ return d.raw; }));
-    var spread = max - min;
-    var minPct = Math.min.apply(null, ds.map(function(d){ return d.pct; }));
-    var WEAK = 64;                       // below the "solid, with gaps" band
-    var showWeak = minPct < WEAK;
-    var weakest = showWeak ? ds.filter(function(d){ return d.raw === min; }) : [];
-    var lead = weakest[0];
-
-    // Show the "gold marks your weakest area" hint only when there is one.
-    var hint = $("areaHint");
-    if(hint) hint.style.display = showWeak ? "" : "none";
-
-    var bars = $("bars"); bars.innerHTML = "";
-    ds.forEach(function(d){
-      var isWeak = showWeak && d.raw === min;
-      var row = document.createElement("div");
-      row.className = "bar" + (isWeak ? " weakest" : "");
-      row.innerHTML =
-        '<div class="name">' + d.key + '</div>' +
-        '<div class="track"><div class="fill' + (isWeak ? ' weak' : '') + '"></div></div>' +
-        '<div class="val">' + d.pct + '%</div>';
-      bars.appendChild(row);
-      // trigger width transition after paint
-      requestAnimationFrame(function(){
-        row.querySelector(".fill").style.width = Math.max(d.pct,3) + "%";
-      });
-    });
-
-    var route;
-    if(pct >= 82 && !showWeak){
-      route = {p:"Momentum90™", c:"You don't need a rebuild. What protects a business at this level is execution discipline — clear owners, visible KPIs and a weekly rhythm that holds when things get busy."};
-    } else if(pct < 45 && spread <= 3){
-      route = {p:"GapNavigator™", c:"Your scores are low across the board rather than in one place — so fixing a single area wouldn't get you far. A full GapNavigator diagnostic scores the whole business on evidence and ranks the three to seven moves that actually matter."};
-    } else if(weakest.length >= 3){
-      route = {p:"GapNavigator™", c:"Several areas are weak at once, which means the real bottleneck isn't obvious from a short questionnaire. A GapNavigator diagnostic goes deeper and ranks what to fix first."};
-    } else if(weakest.length >= 1){
-      route = ROUTES[lead.key];
-    } else {
-      route = {p:"GapNavigator™", c:"Your business scores evenly with no single weak point — a full GapNavigator diagnostic finds the highest-leverage move to lift the whole score."};
-    }
-
-    $("recTitle").textContent = route.p;
-    $("recCopy").textContent = route.c;
-    $("ctaBtn").textContent = route.p === "Momentum90™" ? "Talk to us about Momentum90" : "Book a conversation";
-
-    // Route the CTA into the matching booking page, carrying the recommendation.
-    var SLUG = {
-      "Clarity Sprint™": "clarity-sprint", "Strategy Sprint™": "strategy-sprint",
-      "Brand 3D™": "brand-3d", "OpsBlueprint™": "opsblueprint",
-      "GapNavigator™": "gapnavigator", "Momentum90™": "momentum90"
-    };
-    var slug = SLUG[route.p] || "";
-    $("ctaBtn").setAttribute("href", "book.html?product=" + slug + "&src=scorecard");
-  }
-
-})();
-</script>
-</body>
+          // Route the CTA into the matching booking page, carrying the recommendation.
+          var SLUG = {
+            "Clarity Sprint™": "clarity-sprint",
+            "Strategy Sprint™": "strategy-sprint",
+            "Brand 3D™": "brand-3d",
+            "OpsBlueprint™": "opsblueprint",
+            "GapNavigator™": "gapnavigator",
+            "Momentum90™": "momentum90",
+          };
+          var slug = SLUG[route.p] || "";
+          $("ctaBtn").setAttribute(
+            "href",
+            "book.html?product=" + slug + "&src=scorecard"
+          );
+        }
+      })();
+    </script>
+  </body>
 </html>

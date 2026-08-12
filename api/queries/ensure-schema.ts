@@ -14,12 +14,15 @@ import { env } from "../lib/env";
 export async function ensureSchema(): Promise<void> {
   const conn = await mysql.createConnection({
     uri: env.databaseUrl,
-    ssl: process.env.DATABASE_SSL === "true" ? { minVersion: "TLSv1.2" } : undefined,
+    ssl:
+      process.env.DATABASE_SSL === "true"
+        ? { minVersion: "TLSv1.2" }
+        : undefined,
   });
   try {
     const [rows] = (await conn.query(
       `select table_name as t, column_name as c, column_type as ct
-         from information_schema.columns where table_schema = database()`,
+         from information_schema.columns where table_schema = database()`
     )) as [Array<{ t: string; c: string; ct: string }>, unknown];
 
     const cols = new Map<string, string>(); // "table.column" -> COLUMN_TYPE
@@ -31,27 +34,35 @@ export async function ensureSchema(): Promise<void> {
 
     const stmts: string[] = [];
 
-    // --- events: activity master (audience) + widened kind catalogue ---
+    // --- events: activity master (audience) + widened kind catalogue + soft-delete ---
     if (tables.has("events")) {
       if (!cols.has("events.audience"))
         stmts.push(
-          "ALTER TABLE events ADD COLUMN audience enum('public','members','tiers') NOT NULL DEFAULT 'members'",
+          "ALTER TABLE events ADD COLUMN audience enum('public','members','tiers') NOT NULL DEFAULT 'members'"
         );
       if (!cols.has("events.audienceTiers"))
-        stmts.push("ALTER TABLE events ADD COLUMN audienceTiers varchar(128) NULL");
+        stmts.push(
+          "ALTER TABLE events ADD COLUMN audienceTiers varchar(128) NULL"
+        );
+      if (!cols.has("events.deletedAt"))
+        stmts.push("ALTER TABLE events ADD COLUMN deletedAt timestamp NULL");
       const kind = cols.get("events.kind") ?? "";
       if (kind && !kind.includes("'webinar'"))
         stmts.push(
           "ALTER TABLE events MODIFY COLUMN kind enum('spark','meetup','circle','retreat','summit'," +
             "'conference','conclave','roundtable','workshop','masterclass'," +
-            "'breakfast','lunch','dinner','social','webinar') NOT NULL DEFAULT 'meetup'",
+            "'breakfast','lunch','dinner','social','webinar') NOT NULL DEFAULT 'meetup'"
         );
     }
+
+    // --- pods: soft-delete ---
+    if (tables.has("pods") && !cols.has("pods.deletedAt"))
+      stmts.push("ALTER TABLE pods ADD COLUMN deletedAt timestamp NULL");
 
     // --- members: lifecycle state machine (M1) ---
     if (tables.has("members") && !cols.has("members.lifecycleState")) {
       stmts.push(
-        "ALTER TABLE members ADD COLUMN lifecycleState enum('prospect','guest','applicant','onboarding','active','at_risk','renewal','lapsed','alumni','suspended') NOT NULL DEFAULT 'active'",
+        "ALTER TABLE members ADD COLUMN lifecycleState enum('prospect','guest','applicant','onboarding','active','at_risk','renewal','lapsed','alumni','suspended') NOT NULL DEFAULT 'active'"
       );
       // One-time backfill from existing status/dormancy so the CRM board is
       // populated the moment the column exists.
@@ -60,20 +71,27 @@ export async function ensureSchema(): Promise<void> {
           "WHEN status = 'cancelled' THEN 'alumni' " +
           "WHEN status = 'paused' THEN 'at_risk' " +
           "WHEN dormancyStage IN ('at_risk','dormant','non_renewal') THEN 'at_risk' " +
-          "ELSE 'active' END",
+          "ELSE 'active' END"
       );
     }
 
     // --- members: POD profile (PD-01 matching) ---
     if (tables.has("members")) {
-      for (const [col, def] of [["sector", "varchar(128) NULL"], ["stage", "varchar(64) NULL"], ["goals", "varchar(500) NULL"]] as Array<[string, string]>)
-        if (!cols.has(`members.${col}`)) stmts.push(`ALTER TABLE members ADD COLUMN ${col} ${def}`);
+      for (const [col, def] of [
+        ["sector", "varchar(128) NULL"],
+        ["stage", "varchar(64) NULL"],
+        ["goals", "varchar(500) NULL"],
+      ] as Array<[string, string]>)
+        if (!cols.has(`members.${col}`))
+          stmts.push(`ALTER TABLE members ADD COLUMN ${col} ${def}`);
     }
     // --- pod_members: confidentiality gate (PD-03) ---
     if (tables.has("pod_members") && !cols.has("pod_members.confidentialityAt"))
-      stmts.push("ALTER TABLE pod_members ADD COLUMN confidentialityAt timestamp NULL");
+      stmts.push(
+        "ALTER TABLE pod_members ADD COLUMN confidentialityAt timestamp NULL"
+      );
 
-    // --- chapters: BNI-style geographic formation standards ---
+    // --- chapters: BNI-style geographic formation standards + soft-delete ---
     if (tables.has("chapters")) {
       const add: Array<[string, string]> = [
         ["code", "varchar(24) NULL"],
@@ -81,21 +99,27 @@ export async function ensureSchema(): Promise<void> {
         ["state", "varchar(128) NULL"],
         ["zone", "varchar(128) NULL"],
         ["meetingCadence", "varchar(64) NULL"],
+        ["deletedAt", "timestamp NULL"],
       ];
       for (const [col, def] of add)
-        if (!cols.has(`chapters.${col}`)) stmts.push(`ALTER TABLE chapters ADD COLUMN ${col} ${def}`);
+        if (!cols.has(`chapters.${col}`))
+          stmts.push(`ALTER TABLE chapters ADD COLUMN ${col} ${def}`);
     }
 
     // --- membership_events: tier-change approval workflow ---
     if (tables.has("membership_events")) {
       if (!cols.has("membership_events.status"))
         stmts.push(
-          "ALTER TABLE membership_events ADD COLUMN status enum('applied','pending','approved','rejected') NOT NULL DEFAULT 'applied'",
+          "ALTER TABLE membership_events ADD COLUMN status enum('applied','pending','approved','rejected') NOT NULL DEFAULT 'applied'"
         );
       if (!cols.has("membership_events.actorEmail"))
-        stmts.push("ALTER TABLE membership_events ADD COLUMN actorEmail varchar(320) NULL");
+        stmts.push(
+          "ALTER TABLE membership_events ADD COLUMN actorEmail varchar(320) NULL"
+        );
       if (!cols.has("membership_events.decidedAt"))
-        stmts.push("ALTER TABLE membership_events ADD COLUMN decidedAt timestamp NULL");
+        stmts.push(
+          "ALTER TABLE membership_events ADD COLUMN decidedAt timestamp NULL"
+        );
     }
 
     // --- payment_records: manual-payment note + refund tracking (Finance module) ---
@@ -106,7 +130,8 @@ export async function ensureSchema(): Promise<void> {
         ["refundReason", "varchar(500) NULL"],
         ["refundedAt", "timestamp NULL"],
       ] as Array<[string, string]>)
-        if (!cols.has(`payment_records.${col}`)) stmts.push(`ALTER TABLE payment_records ADD COLUMN ${col} ${def}`);
+        if (!cols.has(`payment_records.${col}`))
+          stmts.push(`ALTER TABLE payment_records ADD COLUMN ${col} ${def}`);
     }
 
     // New tables added after the initial schema — created here so a deploy that
@@ -137,7 +162,7 @@ export async function ensureSchema(): Promise<void> {
         status enum('active','ended') NOT NULL DEFAULT 'active',
         appointedBy varchar(320) NULL,
         createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
-      )`,
+      )`
     );
     stmts.push(
       `CREATE TABLE IF NOT EXISTS chapter_posts (
@@ -148,7 +173,7 @@ export async function ensureSchema(): Promise<void> {
         body text NULL,
         url varchar(512) NULL,
         createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
-      )`,
+      )`
     );
     stmts.push(
       `CREATE TABLE IF NOT EXISTS health_snapshots (
@@ -163,7 +188,7 @@ export async function ensureSchema(): Promise<void> {
         governance int NOT NULL,
         memberCount int NOT NULL DEFAULT 0,
         createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
-      )`,
+      )`
     );
     stmts.push(
       `CREATE TABLE IF NOT EXISTS onboarding_milestones (
@@ -172,7 +197,7 @@ export async function ensureSchema(): Promise<void> {
         milestone varchar(48) NOT NULL,
         note varchar(500) NULL,
         completedAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
-      )`,
+      )`
     );
     tables.add("chapter_transfers"); // so its indexes are considered this run
     tables.add("chapter_roles");
@@ -372,7 +397,7 @@ export async function ensureSchema(): Promise<void> {
         status enum('open','done','dismissed') NOT NULL DEFAULT 'open',
         createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
         doneAt timestamp NULL
-      )`,
+      )`
     );
     tables.add("health_snapshots");
     tables.add("member_save_cases");
@@ -394,32 +419,60 @@ export async function ensureSchema(): Promise<void> {
       stmts.push("ALTER TABLE chapters ADD COLUMN zoneId bigint unsigned NULL");
 
     // --- chapter_roles: role-onboarding playbook progress ---
-    if (tables.has("chapter_roles") && !cols.has("chapter_roles.onboardingMask"))
-      stmts.push("ALTER TABLE chapter_roles ADD COLUMN onboardingMask int NOT NULL DEFAULT 0");
+    if (
+      tables.has("chapter_roles") &&
+      !cols.has("chapter_roles.onboardingMask")
+    )
+      stmts.push(
+        "ALTER TABLE chapter_roles ADD COLUMN onboardingMask int NOT NULL DEFAULT 0"
+      );
 
     // --- members: email-notification preference ---
     if (tables.has("members") && !cols.has("members.emailNotify"))
-      stmts.push("ALTER TABLE members ADD COLUMN emailNotify int NOT NULL DEFAULT 1");
+      stmts.push(
+        "ALTER TABLE members ADD COLUMN emailNotify int NOT NULL DEFAULT 1"
+      );
 
     // --- conduct_cases: MOD-04 appeal fields ---
     if (tables.has("conduct_cases")) {
       if (!cols.has("conduct_cases.appealStatus"))
-        stmts.push("ALTER TABLE conduct_cases ADD COLUMN appealStatus enum('none','open','upheld','reduced','reversed') NOT NULL DEFAULT 'none'");
-      if (!cols.has("conduct_cases.appealReason")) stmts.push("ALTER TABLE conduct_cases ADD COLUMN appealReason text NULL");
-      if (!cols.has("conduct_cases.appealReviewerUserId")) stmts.push("ALTER TABLE conduct_cases ADD COLUMN appealReviewerUserId bigint unsigned NULL");
-      if (!cols.has("conduct_cases.appealOutcome")) stmts.push("ALTER TABLE conduct_cases ADD COLUMN appealOutcome text NULL");
-      if (!cols.has("conduct_cases.appealedAt")) stmts.push("ALTER TABLE conduct_cases ADD COLUMN appealedAt timestamp NULL");
-      if (!cols.has("conduct_cases.appealDecidedAt")) stmts.push("ALTER TABLE conduct_cases ADD COLUMN appealDecidedAt timestamp NULL");
+        stmts.push(
+          "ALTER TABLE conduct_cases ADD COLUMN appealStatus enum('none','open','upheld','reduced','reversed') NOT NULL DEFAULT 'none'"
+        );
+      if (!cols.has("conduct_cases.appealReason"))
+        stmts.push(
+          "ALTER TABLE conduct_cases ADD COLUMN appealReason text NULL"
+        );
+      if (!cols.has("conduct_cases.appealReviewerUserId"))
+        stmts.push(
+          "ALTER TABLE conduct_cases ADD COLUMN appealReviewerUserId bigint unsigned NULL"
+        );
+      if (!cols.has("conduct_cases.appealOutcome"))
+        stmts.push(
+          "ALTER TABLE conduct_cases ADD COLUMN appealOutcome text NULL"
+        );
+      if (!cols.has("conduct_cases.appealedAt"))
+        stmts.push(
+          "ALTER TABLE conduct_cases ADD COLUMN appealedAt timestamp NULL"
+        );
+      if (!cols.has("conduct_cases.appealDecidedAt"))
+        stmts.push(
+          "ALTER TABLE conduct_cases ADD COLUMN appealDecidedAt timestamp NULL"
+        );
     }
 
     // --- chapter_budgets: spend-approval trail (AF-02) ---
     if (tables.has("chapter_budgets")) {
       if (!cols.has("chapter_budgets.approvedByUserId"))
-        stmts.push("ALTER TABLE chapter_budgets ADD COLUMN approvedByUserId bigint unsigned NULL");
+        stmts.push(
+          "ALTER TABLE chapter_budgets ADD COLUMN approvedByUserId bigint unsigned NULL"
+        );
       if (!cols.has("chapter_budgets.note"))
         stmts.push("ALTER TABLE chapter_budgets ADD COLUMN note text NULL");
       if (!cols.has("chapter_budgets.decidedAt"))
-        stmts.push("ALTER TABLE chapter_budgets ADD COLUMN decidedAt timestamp NULL");
+        stmts.push(
+          "ALTER TABLE chapter_budgets ADD COLUMN decidedAt timestamp NULL"
+        );
     }
 
     for (const s of stmts) {
@@ -439,9 +492,9 @@ export async function ensureSchema(): Promise<void> {
     // against information_schema.statistics.
     const [idxRows] = (await conn.query(
       `select table_name as t, index_name as i
-         from information_schema.statistics where table_schema = database()`,
+         from information_schema.statistics where table_schema = database()`
     )) as [Array<{ t: string; i: string }>, unknown];
-    const haveIdx = new Set(idxRows.map((r) => `${r.t}.${r.i}`));
+    const haveIdx = new Set(idxRows.map(r => `${r.t}.${r.i}`));
 
     const indexes: Array<[string, string, string]> = [
       // table, index name, column list
@@ -499,7 +552,8 @@ export async function ensureSchema(): Promise<void> {
       }
     }
 
-    if (!stmts.length && !added) console.log("[ensureSchema] schema up to date");
+    if (!stmts.length && !added)
+      console.log("[ensureSchema] schema up to date");
   } finally {
     await conn.end();
   }

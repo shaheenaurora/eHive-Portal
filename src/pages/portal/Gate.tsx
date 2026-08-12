@@ -20,7 +20,10 @@ export default function Gate() {
     if (!me.data) return;
     const { member, application } = me.data;
     if (member) navigate("/portal/dashboard", { replace: true });
-    else if (application && ["received", "screening", "interview"].includes(application.status))
+    else if (
+      application &&
+      ["received", "screening", "interview"].includes(application.status)
+    )
       navigate("/portal/status", { replace: true });
     else navigate("/portal/apply", { replace: true });
   }, [me.data, unauthenticated, navigate]);

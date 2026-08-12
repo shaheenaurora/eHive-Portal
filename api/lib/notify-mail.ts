@@ -5,8 +5,13 @@ import { sendMail, mailEnabled } from "./mailer";
 import { env } from "./env";
 
 const esc = (v: unknown) =>
-  String(v ?? "").replace(/[&<>"']/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
+  String(v ?? "").replace(
+    /[&<>"']/g,
+    c =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+        c
+      ] as string
+  );
 
 /* Subject line per notification kind — keeps the inbox scannable. */
 const KIND_SUBJECT: Record<string, string> = {
@@ -22,9 +27,16 @@ const KIND_SUBJECT: Record<string, string> = {
   info: "An update from eHive Circle",
 };
 const KIND_EYEBROW: Record<string, string> = {
-  connect: "Connect", membership: "Membership", renewal: "Renewal", conduct: "Membership",
-  event: "Events", onboarding: "Onboarding", health: "Chapter", score: "Hive Score",
-  dormancy: "Engagement", info: "Update",
+  connect: "Connect",
+  membership: "Membership",
+  renewal: "Renewal",
+  conduct: "Membership",
+  event: "Events",
+  onboarding: "Onboarding",
+  health: "Chapter",
+  score: "Hive Score",
+  dormancy: "Engagement",
+  info: "Update",
 };
 
 /* Ledger-styled email shell (paper / ink-navy / vermilion). */
@@ -55,19 +67,32 @@ function shell(name: string, text: string, kind: string): string {
 /** Email a copy of an in-app notification to the member — non-blocking and
  *  best-effort. Skips when email isn't configured, the member has no address,
  *  or they've opted out (members.emailNotify). Never throws. */
-export async function emailNotification(memberId: number, text: string, kind: string): Promise<void> {
+export async function emailNotification(
+  memberId: number,
+  text: string,
+  kind: string
+): Promise<void> {
   try {
     if (!mailEnabled()) return;
-    const row = (await getDb()
-      .select({ email: schema.users.email, name: schema.users.name, emailNotify: schema.members.emailNotify })
-      .from(schema.members)
-      .innerJoin(schema.users, eq(schema.users.id, schema.members.userId))
-      .where(eq(schema.members.id, memberId)).limit(1)).at(0);
+    const row = (
+      await getDb()
+        .select({
+          email: schema.users.email,
+          name: schema.users.name,
+          emailNotify: schema.members.emailNotify,
+        })
+        .from(schema.members)
+        .innerJoin(schema.users, eq(schema.users.id, schema.members.userId))
+        .where(eq(schema.members.id, memberId))
+        .limit(1)
+    ).at(0);
     if (!row?.email || !row.emailNotify) return;
     await sendMail({
       to: row.email,
       subject: KIND_SUBJECT[kind] ?? KIND_SUBJECT.info,
       html: shell(row.name ?? "", text, kind),
     });
-  } catch { /* email is best-effort; never breaks the triggering action */ }
+  } catch {
+    /* email is best-effort; never breaks the triggering action */
+  }
 }

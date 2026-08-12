@@ -7,6 +7,7 @@ import {
   timestamp,
   bigint,
   int,
+  uniqueIndex,
 } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
@@ -31,6 +32,9 @@ export const users = mysqlTable("users", {
   // TOTP two-factor (base32 secret; enabled only once confirmed).
   totpSecret: varchar("totpSecret", { length: 64 }),
   totpEnabled: int("totpEnabled").notNull().default(0),
+  // Session invalidation counter: JWTs embed this value; incrementing it
+  // invalidates all existing sessions (e.g. password change, logout, admin action).
+  tokenVersion: int("tokenVersion").notNull().default(0),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt")
     .defaultNow()
@@ -42,21 +46,37 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-
 /* ==========================================================================
    eHive Circle — community vertical (BRD §9) + website leads
    ========================================================================== */
 
 export const members = mysqlTable("members", {
   id: serial("id").primaryKey(),
-  userId: bigint("userId", { mode: "number", unsigned: true }).notNull().unique(),
-  tier: mysqlEnum("tier", ["horizon", "ascent", "vanguard", "zenith"]).notNull().default("horizon"),
-  status: mysqlEnum("status", ["active", "paused", "cancelled"]).notNull().default("active"),
+  userId: bigint("userId", { mode: "number", unsigned: true })
+    .notNull()
+    .unique(),
+  tier: mysqlEnum("tier", ["horizon", "ascent", "vanguard", "zenith"])
+    .notNull()
+    .default("horizon"),
+  status: mysqlEnum("status", ["active", "paused", "cancelled"])
+    .notNull()
+    .default("active"),
   /* Member Lifecycle — the CRM state machine (Operations Manual M1 / Figure 2).
      Distinct from `status` (access/billing): this is the member's journey. */
-  lifecycleState: mysqlEnum("lifecycleState",
-    ["prospect", "guest", "applicant", "onboarding", "active", "at_risk", "renewal", "lapsed", "alumni", "suspended"])
-    .notNull().default("active"),
+  lifecycleState: mysqlEnum("lifecycleState", [
+    "prospect",
+    "guest",
+    "applicant",
+    "onboarding",
+    "active",
+    "at_risk",
+    "renewal",
+    "lapsed",
+    "alumni",
+    "suspended",
+  ])
+    .notNull()
+    .default("active"),
   hiveScore: int("hiveScore").notNull().default(0),
   company: varchar("company", { length: 255 }),
   title: varchar("title", { length: 255 }),
@@ -68,7 +88,14 @@ export const members = mysqlTable("members", {
   joinedAt: timestamp("joinedAt").defaultNow().notNull(),
   renewalAt: timestamp("renewalAt"),
   /* BRD 6.3 — dormancy ladder + engagement */
-  dormancyStage: mysqlEnum("dormancyStage", ["active", "at_risk", "dormant", "non_renewal"]).notNull().default("active"),
+  dormancyStage: mysqlEnum("dormancyStage", [
+    "active",
+    "at_risk",
+    "dormant",
+    "non_renewal",
+  ])
+    .notNull()
+    .default("active"),
   dormancyNote: varchar("dormancyNote", { length: 500 }),
   exceptionPause: int("exceptionPause").notNull().default(0), // boolean: member-initiated pause
   /* BRD 6.2 — member-controlled directory visibility */
@@ -79,20 +106,32 @@ export const members = mysqlTable("members", {
   /* BRD 6.7 — home chapter */
   homeChapterId: bigint("homeChapterId", { mode: "number", unsigned: true }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
 });
 export type Member = typeof members.$inferSelect;
 
 /* Operations Manual ML-03 — completed onboarding milestones a member (or the VP
    Membership) has checked off. Auto milestones are derived from activity and not
    stored here; this holds the manual check-offs. */
-export const onboardingMilestones = mysqlTable("onboarding_milestones", {
-  id: serial("id").primaryKey(),
-  memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
-  milestone: varchar("milestone", { length: 48 }).notNull(),
-  note: varchar("note", { length: 500 }),
-  completedAt: timestamp("completedAt").defaultNow().notNull(),
-});
+export const onboardingMilestones = mysqlTable(
+  "onboarding_milestones",
+  {
+    id: serial("id").primaryKey(),
+    memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+    milestone: varchar("milestone", { length: 48 }).notNull(),
+    note: varchar("note", { length: 500 }),
+    completedAt: timestamp("completedAt").defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("onboarding_milestone_member_unique").on(
+      t.memberId,
+      t.milestone
+    ),
+  ]
+);
 
 export const applications = mysqlTable("applications", {
   id: serial("id").primaryKey(),
@@ -105,8 +144,23 @@ export const applications = mysqlTable("applications", {
   why: text("why"),
   proofPoint: text("proofPoint"),
   consentAt: timestamp("consentAt"),
-  tierRequested: mysqlEnum("tierRequested", ["horizon", "ascent", "vanguard", "zenith"]).notNull().default("ascent"),
-  status: mysqlEnum("status", ["received", "screening", "interview", "approved", "rejected"]).notNull().default("received"),
+  tierRequested: mysqlEnum("tierRequested", [
+    "horizon",
+    "ascent",
+    "vanguard",
+    "zenith",
+  ])
+    .notNull()
+    .default("ascent"),
+  status: mysqlEnum("status", [
+    "received",
+    "screening",
+    "interview",
+    "approved",
+    "rejected",
+  ])
+    .notNull()
+    .default("received"),
   note: text("note"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   decidedAt: timestamp("decidedAt"),
@@ -116,13 +170,22 @@ export type Application = typeof applications.$inferSelect;
 export const membershipEvents = mysqlTable("membership_events", {
   id: serial("id").primaryKey(),
   memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
-  type: mysqlEnum("type", ["approved", "upgrade", "downgrade", "pause", "cancel", "renew"]).notNull(),
+  type: mysqlEnum("type", [
+    "approved",
+    "upgrade",
+    "downgrade",
+    "pause",
+    "cancel",
+    "renew",
+  ]).notNull(),
   fromTier: varchar("fromTier", { length: 32 }),
   toTier: varchar("toTier", { length: 32 }),
   note: text("note"),
   /* Approval state — tier changes a member requests stay `pending` until
      management approves/rejects; self-serve actions are `applied`. */
-  status: mysqlEnum("status", ["applied", "pending", "approved", "rejected"]).notNull().default("applied"),
+  status: mysqlEnum("status", ["applied", "pending", "approved", "rejected"])
+    .notNull()
+    .default("applied"),
   actorEmail: varchar("actorEmail", { length: 320 }), // admin who decided a pending request
   decidedAt: timestamp("decidedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -136,14 +199,34 @@ export const membershipEvents = mysqlTable("membership_events", {
 export const memberChangeRequests = mysqlTable("member_change_requests", {
   id: serial("id").primaryKey(),
   memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
-  category: mysqlEnum("category", ["profile", "tier", "status", "lifecycle", "chapter"]).notNull(),
-  changes: text("changes").notNull(),          // JSON: [{ field, label, from, to }]
+  category: mysqlEnum("category", [
+    "profile",
+    "tier",
+    "status",
+    "lifecycle",
+    "chapter",
+  ]).notNull(),
+  changes: text("changes").notNull(), // JSON: [{ field, label, from, to }]
   reason: varchar("reason", { length: 500 }),
-  status: mysqlEnum("status", ["pending", "approved", "rejected", "applied", "cancelled"]).notNull().default("pending"),
+  status: mysqlEnum("status", [
+    "pending",
+    "approved",
+    "rejected",
+    "applied",
+    "cancelled",
+  ])
+    .notNull()
+    .default("pending"),
   source: mysqlEnum("source", ["member", "officer", "admin"]).notNull(),
-  requestedByUserId: bigint("requestedByUserId", { mode: "number", unsigned: true }).notNull(),
+  requestedByUserId: bigint("requestedByUserId", {
+    mode: "number",
+    unsigned: true,
+  }).notNull(),
   requestedByEmail: varchar("requestedByEmail", { length: 320 }),
-  decidedByUserId: bigint("decidedByUserId", { mode: "number", unsigned: true }),
+  decidedByUserId: bigint("decidedByUserId", {
+    mode: "number",
+    unsigned: true,
+  }),
   decidedByEmail: varchar("decidedByEmail", { length: 320 }),
   decisionNote: varchar("decisionNote", { length: 500 }),
   decidedAt: timestamp("decidedAt"),
@@ -158,8 +241,11 @@ export const pods = mysqlTable("pods", {
   facilitator: varchar("facilitator", { length: 255 }),
   capacity: int("capacity").notNull().default(8),
   cadence: varchar("cadence", { length: 128 }),
-  tierGate: mysqlEnum("tierGate", ["horizon", "ascent", "vanguard", "zenith"]).notNull().default("horizon"),
+  tierGate: mysqlEnum("tierGate", ["horizon", "ascent", "vanguard", "zenith"])
+    .notNull()
+    .default("horizon"),
   description: text("description"),
+  deletedAt: timestamp("deletedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type Pod = typeof pods.$inferSelect;
@@ -182,7 +268,9 @@ export const sessions = mysqlTable("sessions", {
   topic: varchar("topic", { length: 255 }),
   videoLink: varchar("videoLink", { length: 512 }),
   location: varchar("location", { length: 255 }),
-  status: mysqlEnum("status", ["scheduled", "done", "cancelled"]).notNull().default("scheduled"),
+  status: mysqlEnum("status", ["scheduled", "done", "cancelled"])
+    .notNull()
+    .default("scheduled"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type Session = typeof sessions.$inferSelect;
@@ -191,15 +279,22 @@ export const attendance = mysqlTable("attendance", {
   id: serial("id").primaryKey(),
   sessionId: bigint("sessionId", { mode: "number", unsigned: true }).notNull(),
   memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
-  status: mysqlEnum("status", ["attended", "absent", "excused"]).notNull().default("attended"),
+  status: mysqlEnum("status", ["attended", "absent", "excused"])
+    .notNull()
+    .default("attended"),
   markedAt: timestamp("markedAt").defaultNow().notNull(),
 });
 
 export const sessionNotes = mysqlTable("session_notes", {
   id: serial("id").primaryKey(),
-  sessionId: bigint("sessionId", { mode: "number", unsigned: true }).notNull().unique(),
+  sessionId: bigint("sessionId", { mode: "number", unsigned: true })
+    .notNull()
+    .unique(),
   summary: text("summary"),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
 });
 
 export const actionItems = mysqlTable("action_items", {
@@ -221,18 +316,37 @@ export const events = mysqlTable("events", {
   /* Activity master — keep in sync with EVENT_KINDS (contracts/constants) and
      ensureSchema() in api/boot.ts. */
   kind: mysqlEnum("kind", [
-    "spark", "meetup", "circle", "retreat", "summit",
-    "conference", "conclave", "roundtable", "workshop", "masterclass",
-    "breakfast", "lunch", "dinner", "social", "webinar",
-  ]).notNull().default("meetup"),
+    "spark",
+    "meetup",
+    "circle",
+    "retreat",
+    "summit",
+    "conference",
+    "conclave",
+    "roundtable",
+    "workshop",
+    "masterclass",
+    "breakfast",
+    "lunch",
+    "dinner",
+    "social",
+    "webinar",
+  ])
+    .notNull()
+    .default("meetup"),
   description: text("description"),
   startsAt: timestamp("startsAt").notNull(),
   location: varchar("location", { length: 255 }),
-  tierGate: mysqlEnum("tierGate", ["horizon", "ascent", "vanguard", "zenith"]).notNull().default("horizon"),
+  tierGate: mysqlEnum("tierGate", ["horizon", "ascent", "vanguard", "zenith"])
+    .notNull()
+    .default("horizon"),
   /* Audience governance: who may see & join. `tiers` restricts to audienceTiers. */
-  audience: mysqlEnum("audience", ["public", "members", "tiers"]).notNull().default("members"),
+  audience: mysqlEnum("audience", ["public", "members", "tiers"])
+    .notNull()
+    .default("members"),
   audienceTiers: varchar("audienceTiers", { length: 128 }), // CSV of tiers when audience = 'tiers'
   capacity: int("capacity").notNull().default(40),
+  deletedAt: timestamp("deletedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type CircleEvent = typeof events.$inferSelect;
@@ -241,7 +355,14 @@ export const eventRegs = mysqlTable("event_regs", {
   id: serial("id").primaryKey(),
   eventId: bigint("eventId", { mode: "number", unsigned: true }).notNull(),
   memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
-  status: mysqlEnum("status", ["registered", "waitlisted", "attended", "cancelled"]).notNull().default("registered"),
+  status: mysqlEnum("status", [
+    "registered",
+    "waitlisted",
+    "attended",
+    "cancelled",
+  ])
+    .notNull()
+    .default("registered"),
   /* BRD 6.4 — QR check-in code (member shows code at door; check-in writes score real-time) */
   checkinCode: varchar("checkinCode", { length: 12 }),
   guestOf: bigint("guestOf", { mode: "number", unsigned: true }), // set when this seat is a member's guest ticket
@@ -252,7 +373,10 @@ export const hiveScoreConfig = mysqlTable("hive_score_config", {
   id: serial("id").primaryKey(),
   factor: varchar("factor", { length: 64 }).notNull().unique(),
   weight: int("weight").notNull().default(0),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
 });
 
 export const scoreEvents = mysqlTable("score_events", {
@@ -275,9 +399,13 @@ export const hiveScoreHistory = mysqlTable("hive_score_history", {
 export const frpCohorts = mysqlTable("frp_cohorts", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
-  tierGate: mysqlEnum("tierGate", ["horizon", "ascent", "vanguard", "zenith"]).notNull().default("vanguard"),
+  tierGate: mysqlEnum("tierGate", ["horizon", "ascent", "vanguard", "zenith"])
+    .notNull()
+    .default("vanguard"),
   startsAt: timestamp("startsAt"),
-  status: mysqlEnum("status", ["open", "running", "closed"]).notNull().default("open"),
+  status: mysqlEnum("status", ["open", "running", "closed"])
+    .notNull()
+    .default("open"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -285,29 +413,49 @@ export const frpEnrolments = mysqlTable("frp_enrolments", {
   id: serial("id").primaryKey(),
   cohortId: bigint("cohortId", { mode: "number", unsigned: true }).notNull(),
   memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
-  status: mysqlEnum("status", ["enrolled", "active", "completed", "withdrawn"]).notNull().default("enrolled"),
+  status: mysqlEnum("status", ["enrolled", "active", "completed", "withdrawn"])
+    .notNull()
+    .default("enrolled"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
 export const readinessAssessments = mysqlTable("readiness_assessments", {
   id: serial("id").primaryKey(),
-  enrolmentId: bigint("enrolmentId", { mode: "number", unsigned: true }).notNull().unique(),
+  enrolmentId: bigint("enrolmentId", { mode: "number", unsigned: true })
+    .notNull()
+    .unique(),
   team: int("team").notNull().default(0),
   traction: int("traction").notNull().default(0),
   market: int("market").notNull().default(0),
   financials: int("financials").notNull().default(0),
   narrative: int("narrative").notNull().default(0),
   legal: int("legal").notNull().default(0),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
 });
 
 export const frpMilestones = mysqlTable("frp_milestones", {
   id: serial("id").primaryKey(),
-  enrolmentId: bigint("enrolmentId", { mode: "number", unsigned: true }).notNull(),
+  enrolmentId: bigint("enrolmentId", {
+    mode: "number",
+    unsigned: true,
+  }).notNull(),
   key: mysqlEnum("key", ["deck", "model", "dataroom"]).notNull(),
-  status: mysqlEnum("status", ["not_started", "in_progress", "submitted", "reviewed"]).notNull().default("not_started"),
+  status: mysqlEnum("status", [
+    "not_started",
+    "in_progress",
+    "submitted",
+    "reviewed",
+  ])
+    .notNull()
+    .default("not_started"),
   note: text("note"),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
 });
 
 export const govBodies = mysqlTable("gov_bodies", {
@@ -343,19 +491,29 @@ export const policies = mysqlTable("policies", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const policyAcks = mysqlTable("policy_acks", {
-  id: serial("id").primaryKey(),
-  policyId: bigint("policyId", { mode: "number", unsigned: true }).notNull(),
-  memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+export const policyAcks = mysqlTable(
+  "policy_acks",
+  {
+    id: serial("id").primaryKey(),
+    policyId: bigint("policyId", { mode: "number", unsigned: true }).notNull(),
+    memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("policy_acks_policy_member_unique").on(t.policyId, t.memberId),
+  ]
+);
 
 export const libraryItems = mysqlTable("library_items", {
   id: serial("id").primaryKey(),
   title: varchar("title", { length: 255 }).notNull(),
   version: int("version").notNull().default(1),
-  kind: mysqlEnum("kind", ["playbook", "template", "recording", "note"]).notNull().default("playbook"),
-  tierGate: mysqlEnum("tierGate", ["horizon", "ascent", "vanguard", "zenith"]).notNull().default("horizon"),
+  kind: mysqlEnum("kind", ["playbook", "template", "recording", "note"])
+    .notNull()
+    .default("playbook"),
+  tierGate: mysqlEnum("tierGate", ["horizon", "ascent", "vanguard", "zenith"])
+    .notNull()
+    .default("horizon"),
   url: varchar("url", { length: 512 }),
   description: text("description"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -368,7 +526,9 @@ export const offers = mysqlTable("offers", {
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
   ctaUrl: varchar("ctaUrl", { length: 512 }),
-  tierGate: mysqlEnum("tierGate", ["horizon", "ascent", "vanguard", "zenith"]).notNull().default("horizon"),
+  tierGate: mysqlEnum("tierGate", ["horizon", "ascent", "vanguard", "zenith"])
+    .notNull()
+    .default("horizon"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -380,15 +540,23 @@ export const paymentRecords = mysqlTable("payment_records", {
   providerRef: varchar("providerRef", { length: 255 }), // checkout session / intent id
   purpose: varchar("purpose", { length: 32 }).notNull().default("membership"),
   tier: mysqlEnum("tier", ["horizon", "ascent", "vanguard", "zenith"]),
-  amount: int("amount").notNull(),        // minor units (fils)
+  amount: int("amount").notNull(), // minor units (fils)
   currency: varchar("currency", { length: 8 }).notNull().default("aed"),
-  status: mysqlEnum("status", ["pending", "paid", "failed", "refunded"]).notNull().default("pending"),
-  note: varchar("note", { length: 500 }),                 // manual/offline payment note or reference
-  refundedByUserId: bigint("refundedByUserId", { mode: "number", unsigned: true }),
+  status: mysqlEnum("status", ["pending", "paid", "failed", "refunded"])
+    .notNull()
+    .default("pending"),
+  note: varchar("note", { length: 500 }), // manual/offline payment note or reference
+  refundedByUserId: bigint("refundedByUserId", {
+    mode: "number",
+    unsigned: true,
+  }),
   refundReason: varchar("refundReason", { length: 500 }),
   refundedAt: timestamp("refundedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
 });
 
 export const leads = mysqlTable("leads", {
@@ -399,10 +567,15 @@ export const leads = mysqlTable("leads", {
   sourcePage: varchar("sourcePage", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   /* Lightweight CRM: pipeline status, owner (admin) and freeform notes. */
-  status: mysqlEnum("status", ["new", "contacted", "qualified", "won", "lost"]).notNull().default("new"),
+  status: mysqlEnum("status", ["new", "contacted", "qualified", "won", "lost"])
+    .notNull()
+    .default("new"),
   ownerUserId: bigint("ownerUserId", { mode: "number", unsigned: true }),
   notes: text("notes"),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
 });
 export type Lead = typeof leads.$inferSelect;
 
@@ -427,21 +600,29 @@ export type Lead = typeof leads.$inferSelect;
 export const pointRules = mysqlTable("point_rules", {
   id: serial("id").primaryKey(),
   key: varchar("key", { length: 64 }).notNull().unique(), // e.g. event_attend, one_to_one_confirmed
-  factor: varchar("factor", { length: 64 }).notNull(),      // score factor bucket
+  factor: varchar("factor", { length: 64 }).notNull(), // score factor bucket
   points: int("points").notNull(),
   label: varchar("label", { length: 255 }).notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
 });
 
 /* BRD 6.3 — Engagement Standard per tier (quarterly minimums; null = open item) */
 export const engagementConfig = mysqlTable("engagement_config", {
   id: serial("id").primaryKey(),
-  tier: mysqlEnum("tier", ["horizon", "ascent", "vanguard", "zenith"]).notNull().unique(),
-  sessionsRequired: int("sessionsRequired"),   // e.g. 8
-  sessionsOffered: int("sessionsOffered"),     // e.g. 12 ("8 of 12")
+  tier: mysqlEnum("tier", ["horizon", "ascent", "vanguard", "zenith"])
+    .notNull()
+    .unique(),
+  sessionsRequired: int("sessionsRequired"), // e.g. 8
+  sessionsOffered: int("sessionsOffered"), // e.g. 12 ("8 of 12")
   oneToOnesPerQuarter: int("oneToOnesPerQuarter"), // Ascent: 2/month → 6/quarter
-  giveBackPerYear: int("giveBackPerYear"),     // Vanguard: 2
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+  giveBackPerYear: int("giveBackPerYear"), // Vanguard: 2
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
 });
 
 /* BRD 6.3 — dormancy ladder transitions (manual overrides logged too) */
@@ -461,7 +642,10 @@ export const dormancyLog = mysqlTable("dormancy_log", {
 export const appConfig = mysqlTable("app_config", {
   key: varchar("key", { length: 64 }).primaryKey(),
   value: text("value"),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
 });
 
 /* Single-use auth tokens for email verification + password reset. Only the
@@ -485,7 +669,9 @@ export const authTokens = mysqlTable("auth_tokens", {
    alerting are possible. `scopeId` is null for network-wide metrics. */
 export const kpiSnapshots = mysqlTable("kpi_snapshots", {
   id: serial("id").primaryKey(),
-  scope: mysqlEnum("scope", ["network", "chapter", "zone", "region", "country"]).notNull().default("network"),
+  scope: mysqlEnum("scope", ["network", "chapter", "zone", "region", "country"])
+    .notNull()
+    .default("network"),
   scopeId: bigint("scopeId", { mode: "number", unsigned: true }),
   metric: varchar("metric", { length: 48 }).notNull(),
   value: int("value").notNull(),
@@ -499,12 +685,16 @@ export type KpiSnapshot = typeof kpiSnapshots.$inferSelect;
    alert per metric+scope; auto-resolved when the metric recovers. */
 export const kpiAlerts = mysqlTable("kpi_alerts", {
   id: serial("id").primaryKey(),
-  scope: mysqlEnum("scope", ["network", "chapter", "zone", "region", "country"]).notNull().default("network"),
+  scope: mysqlEnum("scope", ["network", "chapter", "zone", "region", "country"])
+    .notNull()
+    .default("network"),
   scopeId: bigint("scopeId", { mode: "number", unsigned: true }),
   metric: varchar("metric", { length: 48 }).notNull(),
   severity: mysqlEnum("severity", ["red", "amber"]).notNull().default("red"),
   message: varchar("message", { length: 500 }).notNull(),
-  status: mysqlEnum("status", ["open", "acknowledged", "resolved"]).notNull().default("open"),
+  status: mysqlEnum("status", ["open", "acknowledged", "resolved"])
+    .notNull()
+    .default("open"),
   acknowledgedByEmail: varchar("acknowledgedByEmail", { length: 320 }),
   acknowledgedAt: timestamp("acknowledgedAt"),
   resolvedAt: timestamp("resolvedAt"),
@@ -514,12 +704,15 @@ export type KpiAlert = typeof kpiAlerts.$inferSelect;
 
 export const adminAuditLog = mysqlTable("admin_audit_log", {
   id: serial("id").primaryKey(),
-  actorUserId: bigint("actorUserId", { mode: "number", unsigned: true }).notNull(),
+  actorUserId: bigint("actorUserId", {
+    mode: "number",
+    unsigned: true,
+  }).notNull(),
   actorEmail: varchar("actorEmail", { length: 320 }),
-  action: varchar("action", { length: 64 }).notNull(),       // e.g. "application.approve"
-  targetType: varchar("targetType", { length: 48 }),         // e.g. "application"
+  action: varchar("action", { length: 64 }).notNull(), // e.g. "application.approve"
+  targetType: varchar("targetType", { length: 48 }), // e.g. "application"
   targetId: varchar("targetId", { length: 64 }),
-  detail: text("detail"),                                    // short human summary
+  detail: text("detail"), // short human summary
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -548,9 +741,13 @@ export const oneToOnes = mysqlTable("one_to_ones", {
   id: serial("id").primaryKey(),
   aMemberId: bigint("aMemberId", { mode: "number", unsigned: true }).notNull(), // logger
   bMemberId: bigint("bMemberId", { mode: "number", unsigned: true }).notNull(), // counterpart
-  kind: mysqlEnum("kind", ["one_to_one", "mentoring"]).notNull().default("one_to_one"),
+  kind: mysqlEnum("kind", ["one_to_one", "mentoring"])
+    .notNull()
+    .default("one_to_one"),
   note: varchar("note", { length: 500 }),
-  status: mysqlEnum("status", ["pending", "confirmed", "declined"]).notNull().default("pending"),
+  status: mysqlEnum("status", ["pending", "confirmed", "declined"])
+    .notNull()
+    .default("pending"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   confirmedAt: timestamp("confirmedAt"),
 });
@@ -558,8 +755,14 @@ export const oneToOnes = mysqlTable("one_to_ones", {
 /* BRD 6.3 — buddy pairing for new members (paired within 5 days, 30-day check-in) */
 export const buddies = mysqlTable("buddies", {
   id: serial("id").primaryKey(),
-  newMemberId: bigint("newMemberId", { mode: "number", unsigned: true }).notNull(),
-  buddyMemberId: bigint("buddyMemberId", { mode: "number", unsigned: true }).notNull(),
+  newMemberId: bigint("newMemberId", {
+    mode: "number",
+    unsigned: true,
+  }).notNull(),
+  buddyMemberId: bigint("buddyMemberId", {
+    mode: "number",
+    unsigned: true,
+  }).notNull(),
   pairedAt: timestamp("pairedAt").defaultNow().notNull(),
   checkinAt: timestamp("checkinAt"),
   note: varchar("note", { length: 500 }),
@@ -572,7 +775,9 @@ export const referrals = mysqlTable("referrals", {
   prospectName: varchar("prospectName", { length: 255 }).notNull(),
   prospectContact: varchar("prospectContact", { length: 255 }),
   note: varchar("note", { length: 500 }),
-  status: mysqlEnum("status", ["submitted", "converted", "rejected"]).notNull().default("submitted"),
+  status: mysqlEnum("status", ["submitted", "converted", "rejected"])
+    .notNull()
+    .default("submitted"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -581,7 +786,9 @@ export const deals = mysqlTable("deals", {
   id: serial("id").primaryKey(),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
-  tierGate: mysqlEnum("tierGate", ["horizon", "ascent", "vanguard", "zenith"]).notNull().default("ascent"),
+  tierGate: mysqlEnum("tierGate", ["horizon", "ascent", "vanguard", "zenith"])
+    .notNull()
+    .default("ascent"),
   postedBy: bigint("postedBy", { mode: "number", unsigned: true }), // memberId, null = staff
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -606,7 +813,10 @@ export const insights = mysqlTable("insights", {
   tag: varchar("tag", { length: 64 }).default("Note"),
   publishedAt: timestamp("publishedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
 });
 
 /* BRD 6.5 — newsletter archive */
@@ -626,7 +836,15 @@ export const zenithApps = mysqlTable("zenith_apps", {
   email: varchar("email", { length: 320 }).notNull(),
   company: varchar("company", { length: 255 }),
   proofPoint: text("proofPoint"), // revenue/funding proof (also used for Vanguard applications)
-  status: mysqlEnum("status", ["nominated", "endorsing", "review", "approved", "rejected"]).notNull().default("nominated"),
+  status: mysqlEnum("status", [
+    "nominated",
+    "endorsing",
+    "review",
+    "approved",
+    "rejected",
+  ])
+    .notNull()
+    .default("nominated"),
   note: varchar("note", { length: 1000 }),
   decidedAt: timestamp("decidedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -646,7 +864,7 @@ export const investorIntros = mysqlTable("investor_intros", {
   investorName: varchar("investorName", { length: 255 }).notNull(),
   firm: varchar("firm", { length: 255 }),
   memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(), // member introduced
-  introducedBy: varchar("introducedBy", { length: 128 }).notNull(),           // staff name
+  introducedBy: varchar("introducedBy", { length: 128 }).notNull(), // staff name
   note: varchar("note", { length: 500 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -693,7 +911,9 @@ export const councilMeetings = mysqlTable("council_meetings", {
   unitId: bigint("unitId", { mode: "number", unsigned: true }).notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   scheduledAt: timestamp("scheduledAt"),
-  status: mysqlEnum("status", ["scheduled", "held", "cancelled"]).notNull().default("scheduled"),
+  status: mysqlEnum("status", ["scheduled", "held", "cancelled"])
+    .notNull()
+    .default("scheduled"),
   agenda: text("agenda"),
   minutes: text("minutes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -704,7 +924,9 @@ export const councilDecisions = mysqlTable("council_decisions", {
   meetingId: bigint("meetingId", { mode: "number", unsigned: true }), // null = standalone decision
   title: varchar("title", { length: 255 }).notNull(),
   detail: text("detail"),
-  status: mysqlEnum("status", ["proposed", "carried", "failed", "deferred"]).notNull().default("proposed"),
+  status: mysqlEnum("status", ["proposed", "carried", "failed", "deferred"])
+    .notNull()
+    .default("proposed"),
   decidedAt: timestamp("decidedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -714,7 +936,15 @@ export const councilDecisions = mysqlTable("council_decisions", {
 export const awardCycles = mysqlTable("award_cycles", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 160 }).notNull(),
-  status: mysqlEnum("status", ["draft", "open", "judging", "announced", "closed"]).notNull().default("draft"),
+  status: mysqlEnum("status", [
+    "draft",
+    "open",
+    "judging",
+    "announced",
+    "closed",
+  ])
+    .notNull()
+    .default("draft"),
   opensAt: timestamp("opensAt"),
   closesAt: timestamp("closesAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -722,12 +952,28 @@ export const awardCycles = mysqlTable("award_cycles", {
 export const awardNominations = mysqlTable("award_nominations", {
   id: serial("id").primaryKey(),
   cycleId: bigint("cycleId", { mode: "number", unsigned: true }).notNull(),
-  category: varchar("category", { length: 48 }).notNull(),        // AWARD_CATEGORIES key
-  nomineeMemberId: bigint("nomineeMemberId", { mode: "number", unsigned: true }),  // member subject
-  nomineeChapterId: bigint("nomineeChapterId", { mode: "number", unsigned: true }), // chapter subject
-  nominatedByMemberId: bigint("nominatedByMemberId", { mode: "number", unsigned: true }), // null = admin-entered
+  category: varchar("category", { length: 48 }).notNull(), // AWARD_CATEGORIES key
+  nomineeMemberId: bigint("nomineeMemberId", {
+    mode: "number",
+    unsigned: true,
+  }), // member subject
+  nomineeChapterId: bigint("nomineeChapterId", {
+    mode: "number",
+    unsigned: true,
+  }), // chapter subject
+  nominatedByMemberId: bigint("nominatedByMemberId", {
+    mode: "number",
+    unsigned: true,
+  }), // null = admin-entered
   citation: text("citation"),
-  status: mysqlEnum("status", ["nominated", "shortlisted", "winner", "declined"]).notNull().default("nominated"),
+  status: mysqlEnum("status", [
+    "nominated",
+    "shortlisted",
+    "winner",
+    "declined",
+  ])
+    .notNull()
+    .default("nominated"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type UnitRole = typeof unitRoles.$inferSelect;
@@ -736,15 +982,24 @@ export const chapters = mysqlTable("chapters", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
   zoneId: bigint("zoneId", { mode: "number", unsigned: true }), // the Zone this chapter rolls up to
-  code: varchar("code", { length: 24 }),        // short chapter code, e.g. "AE-DXB-01"
+  code: varchar("code", { length: 24 }), // short chapter code, e.g. "AE-DXB-01"
   country: varchar("country", { length: 128 }),
-  region: varchar("region", { length: 128 }),   // operating region (e.g. "Gulf", "UAE")
-  state: varchar("state", { length: 128 }),     // state / emirate / province
+  region: varchar("region", { length: 128 }), // operating region (e.g. "Gulf", "UAE")
+  state: varchar("state", { length: 128 }), // state / emirate / province
   city: varchar("city", { length: 128 }),
-  zone: varchar("zone", { length: 128 }),        // area within a city (e.g. "DIFC", "Downtown")
+  zone: varchar("zone", { length: 128 }), // area within a city (e.g. "DIFC", "Downtown")
   meetingCadence: varchar("meetingCadence", { length: 64 }), // e.g. "Weekly · Tue 7:30am"
-  status: mysqlEnum("status", ["seed", "provisional", "chartered", "mature", "at_risk"]).notNull().default("seed"),
+  status: mysqlEnum("status", [
+    "seed",
+    "provisional",
+    "chartered",
+    "mature",
+    "at_risk",
+  ])
+    .notNull()
+    .default("seed"),
   charterDate: timestamp("charterDate"),
+  deletedAt: timestamp("deletedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -755,9 +1010,14 @@ export const chapterTransfers = mysqlTable("chapter_transfers", {
   id: serial("id").primaryKey(),
   memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
   fromChapterId: bigint("fromChapterId", { mode: "number", unsigned: true }),
-  toChapterId: bigint("toChapterId", { mode: "number", unsigned: true }).notNull(),
+  toChapterId: bigint("toChapterId", {
+    mode: "number",
+    unsigned: true,
+  }).notNull(),
   note: varchar("note", { length: 500 }),
-  status: mysqlEnum("status", ["pending", "approved", "rejected"]).notNull().default("pending"),
+  status: mysqlEnum("status", ["pending", "approved", "rejected"])
+    .notNull()
+    .default("pending"),
   actorEmail: varchar("actorEmail", { length: 320 }),
   decidedAt: timestamp("decidedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -768,10 +1028,10 @@ export const chapterTransfers = mysqlTable("chapter_transfers", {
 export const cadences = mysqlTable("cadences", {
   id: serial("id").primaryKey(),
   chapterId: bigint("chapterId", { mode: "number", unsigned: true }).notNull(),
-  type: varchar("type", { length: 48 }).notNull(),          // CADENCE_TEMPLATES type
+  type: varchar("type", { length: 48 }).notNull(), // CADENCE_TEMPLATES type
   title: varchar("title", { length: 128 }).notNull(),
   frequency: varchar("frequency", { length: 16 }).notNull(), // weekly | biweekly | ...
-  ownerRole: varchar("ownerRole", { length: 48 }),           // accountable chapter role
+  ownerRole: varchar("ownerRole", { length: 48 }), // accountable chapter role
   sop: varchar("sop", { length: 16 }),
   active: int("active").notNull().default(1),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -810,7 +1070,10 @@ export const healthSnapshots = mysqlTable("health_snapshots", {
 export const chapterPosts = mysqlTable("chapter_posts", {
   id: serial("id").primaryKey(),
   chapterId: bigint("chapterId", { mode: "number", unsigned: true }).notNull(),
-  authorMemberId: bigint("authorMemberId", { mode: "number", unsigned: true }).notNull(),
+  authorMemberId: bigint("authorMemberId", {
+    mode: "number",
+    unsigned: true,
+  }).notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   body: text("body"),
   url: varchar("url", { length: 512 }),
@@ -824,9 +1087,9 @@ export const chapterRoles = mysqlTable("chapter_roles", {
   id: serial("id").primaryKey(),
   chapterId: bigint("chapterId", { mode: "number", unsigned: true }).notNull(),
   memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
-  role: varchar("role", { length: 64 }).notNull(),          // CHAPTER_ROLES key, or "other"
-  title: varchar("title", { length: 128 }),                 // custom title when role = "other"
-  responsibilities: text("responsibilities"),               // optional override of the default
+  role: varchar("role", { length: 64 }).notNull(), // CHAPTER_ROLES key, or "other"
+  title: varchar("title", { length: 128 }), // custom title when role = "other"
+  responsibilities: text("responsibilities"), // optional override of the default
   electionId: bigint("electionId", { mode: "number", unsigned: true }), // set when elected
   termStart: timestamp("termStart"),
   termEnd: timestamp("termEnd"),
@@ -843,7 +1106,9 @@ export const elections = mysqlTable("elections", {
   chapterId: bigint("chapterId", { mode: "number", unsigned: true }).notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   seat: varchar("seat", { length: 128 }).notNull(),
-  status: mysqlEnum("status", ["open", "voting", "closed"]).notNull().default("open"),
+  status: mysqlEnum("status", ["open", "voting", "closed"])
+    .notNull()
+    .default("open"),
   opensAt: timestamp("opensAt"),
   closesAt: timestamp("closesAt"),
   quorumPct: int("quorumPct").notNull().default(50),
@@ -853,7 +1118,10 @@ export const elections = mysqlTable("elections", {
 
 export const candidates = mysqlTable("candidates", {
   id: serial("id").primaryKey(),
-  electionId: bigint("electionId", { mode: "number", unsigned: true }).notNull(),
+  electionId: bigint("electionId", {
+    mode: "number",
+    unsigned: true,
+  }).notNull(),
   memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
   statement: varchar("statement", { length: 1000 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -861,14 +1129,23 @@ export const candidates = mysqlTable("candidates", {
 
 export const ballots = mysqlTable("ballots", {
   id: serial("id").primaryKey(),
-  electionId: bigint("electionId", { mode: "number", unsigned: true }).notNull(),
-  candidateId: bigint("candidateId", { mode: "number", unsigned: true }).notNull(),
+  electionId: bigint("electionId", {
+    mode: "number",
+    unsigned: true,
+  }).notNull(),
+  candidateId: bigint("candidateId", {
+    mode: "number",
+    unsigned: true,
+  }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
 export const ballotRoll = mysqlTable("ballot_roll", {
   id: serial("id").primaryKey(),
-  electionId: bigint("electionId", { mode: "number", unsigned: true }).notNull(),
+  electionId: bigint("electionId", {
+    mode: "number",
+    unsigned: true,
+  }).notNull(),
   memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(), // voted — not how
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -879,7 +1156,9 @@ export const motions = mysqlTable("motions", {
   chapterId: bigint("chapterId", { mode: "number", unsigned: true }).notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   body: text("body"),
-  status: mysqlEnum("status", ["open", "passed", "rejected"]).notNull().default("open"),
+  status: mysqlEnum("status", ["open", "passed", "rejected"])
+    .notNull()
+    .default("open"),
   closesAt: timestamp("closesAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -897,11 +1176,18 @@ export const chapterBudgets = mysqlTable("chapter_budgets", {
   id: serial("id").primaryKey(),
   chapterId: bigint("chapterId", { mode: "number", unsigned: true }).notNull(),
   label: varchar("label", { length: 255 }).notNull(),
-  kind: mysqlEnum("kind", ["allocation", "sponsorship", "spend"]).notNull().default("allocation"),
+  kind: mysqlEnum("kind", ["allocation", "sponsorship", "spend"])
+    .notNull()
+    .default("allocation"),
   amount: int("amount").notNull(), // AED
-  status: mysqlEnum("status", ["proposed", "approved", "spent", "rejected"]).notNull().default("proposed"),
-  approvedByUserId: bigint("approvedByUserId", { mode: "number", unsigned: true }), // who approved/rejected
-  note: text("note"),                    // decision note / justification
+  status: mysqlEnum("status", ["proposed", "approved", "spent", "rejected"])
+    .notNull()
+    .default("proposed"),
+  approvedByUserId: bigint("approvedByUserId", {
+    mode: "number",
+    unsigned: true,
+  }), // who approved/rejected
+  note: text("note"), // decision note / justification
   decidedAt: timestamp("decidedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -921,26 +1207,59 @@ export type Motion = typeof motions.$inferSelect;
    about a situation rather than a named member. */
 export const conductCases = mysqlTable("conduct_cases", {
   id: serial("id").primaryKey(),
-  reporterMemberId: bigint("reporterMemberId", { mode: "number", unsigned: true }), // null = anonymous
-  subjectMemberId: bigint("subjectMemberId", { mode: "number", unsigned: true }),   // null = not a named member
+  reporterMemberId: bigint("reporterMemberId", {
+    mode: "number",
+    unsigned: true,
+  }), // null = anonymous
+  subjectMemberId: bigint("subjectMemberId", {
+    mode: "number",
+    unsigned: true,
+  }), // null = not a named member
   chapterId: bigint("chapterId", { mode: "number", unsigned: true }),
   category: varchar("category", { length: 64 }).notNull(),
-  severity: mysqlEnum("severity", ["low", "moderate", "high", "safeguarding"]).notNull().default("moderate"),
-  status: mysqlEnum("status", ["open", "reviewing", "actioned", "escalated", "closed"]).notNull().default("open"),
+  severity: mysqlEnum("severity", ["low", "moderate", "high", "safeguarding"])
+    .notNull()
+    .default("moderate"),
+  status: mysqlEnum("status", [
+    "open",
+    "reviewing",
+    "actioned",
+    "escalated",
+    "closed",
+  ])
+    .notNull()
+    .default("open"),
   summary: varchar("summary", { length: 255 }).notNull(),
   detail: text("detail"),
-  handledByUserId: bigint("handledByUserId", { mode: "number", unsigned: true }),
+  handledByUserId: bigint("handledByUserId", {
+    mode: "number",
+    unsigned: true,
+  }),
   resolution: text("resolution"),
   /* MOD-04 — appeal: the subject may challenge an action; reviewed one level up
      (never the original decider). none until the member appeals. */
-  appealStatus: mysqlEnum("appealStatus", ["none", "open", "upheld", "reduced", "reversed"]).notNull().default("none"),
+  appealStatus: mysqlEnum("appealStatus", [
+    "none",
+    "open",
+    "upheld",
+    "reduced",
+    "reversed",
+  ])
+    .notNull()
+    .default("none"),
   appealReason: text("appealReason"),
-  appealReviewerUserId: bigint("appealReviewerUserId", { mode: "number", unsigned: true }),
+  appealReviewerUserId: bigint("appealReviewerUserId", {
+    mode: "number",
+    unsigned: true,
+  }),
   appealOutcome: text("appealOutcome"),
   appealedAt: timestamp("appealedAt"),
   appealDecidedAt: timestamp("appealDecidedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
 });
 
 /* ML-04b — Save Playbook cases. One tracked intervention per At-Risk episode:
@@ -951,7 +1270,9 @@ export const memberSaveCases = mysqlTable("member_save_cases", {
   id: serial("id").primaryKey(),
   memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
   chapterId: bigint("chapterId", { mode: "number", unsigned: true }),
-  status: mysqlEnum("status", ["open", "working", "saved", "lost"]).notNull().default("open"),
+  status: mysqlEnum("status", ["open", "working", "saved", "lost"])
+    .notNull()
+    .default("open"),
   reason: varchar("reason", { length: 255 }).notNull(),
   ownerUserId: bigint("ownerUserId", { mode: "number", unsigned: true }),
   stepsMask: int("stepsMask").notNull().default(0),
@@ -959,7 +1280,10 @@ export const memberSaveCases = mysqlTable("member_save_cases", {
   resolution: text("resolution"),
   openedAt: timestamp("openedAt").defaultNow().notNull(),
   closedAt: timestamp("closedAt"),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
 });
 export type ConductCase = typeof conductCases.$inferSelect;
 
@@ -968,10 +1292,19 @@ export type ConductCase = typeof conductCases.$inferSelect;
 export const meetings = mysqlTable("meetings", {
   id: serial("id").primaryKey(),
   chapterId: bigint("chapterId", { mode: "number", unsigned: true }).notNull(),
-  kind: mysqlEnum("kind", ["chapter_meeting", "board_meeting", "huddle", "other"]).notNull().default("chapter_meeting"),
+  kind: mysqlEnum("kind", [
+    "chapter_meeting",
+    "board_meeting",
+    "huddle",
+    "other",
+  ])
+    .notNull()
+    .default("chapter_meeting"),
   title: varchar("title", { length: 255 }).notNull(),
   scheduledAt: timestamp("scheduledAt"),
-  status: mysqlEnum("status", ["scheduled", "held", "cancelled"]).notNull().default("scheduled"),
+  status: mysqlEnum("status", ["scheduled", "held", "cancelled"])
+    .notNull()
+    .default("scheduled"),
   agenda: text("agenda"),
   minutes: text("minutes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -983,7 +1316,9 @@ export const meetingAttendance = mysqlTable("meeting_attendance", {
   id: serial("id").primaryKey(),
   meetingId: bigint("meetingId", { mode: "number", unsigned: true }).notNull(),
   memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
-  status: mysqlEnum("status", ["present", "absent", "excused"]).notNull().default("present"),
+  status: mysqlEnum("status", ["present", "absent", "excused"])
+    .notNull()
+    .default("present"),
 });
 export type MeetingAttendance = typeof meetingAttendance.$inferSelect;
 
@@ -996,12 +1331,23 @@ export const prospects = mysqlTable("prospects", {
   phone: varchar("phone", { length: 40 }),
   company: varchar("company", { length: 255 }),
   chapterId: bigint("chapterId", { mode: "number", unsigned: true }),
-  stage: mysqlEnum("stage", ["prospect", "guest", "invited", "converted", "declined"]).notNull().default("prospect"),
+  stage: mysqlEnum("stage", [
+    "prospect",
+    "guest",
+    "invited",
+    "converted",
+    "declined",
+  ])
+    .notNull()
+    .default("prospect"),
   source: varchar("source", { length: 120 }),
   notes: text("notes"),
   ownerUserId: bigint("ownerUserId", { mode: "number", unsigned: true }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
 });
 export type Prospect = typeof prospects.$inferSelect;
 
@@ -1015,7 +1361,9 @@ export const followUps = mysqlTable("follow_ups", {
   ownerUserId: bigint("ownerUserId", { mode: "number", unsigned: true }),
   title: varchar("title", { length: 255 }).notNull(),
   dueAt: timestamp("dueAt"),
-  status: mysqlEnum("status", ["open", "done", "dismissed"]).notNull().default("open"),
+  status: mysqlEnum("status", ["open", "done", "dismissed"])
+    .notNull()
+    .default("open"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   doneAt: timestamp("doneAt"),
 });

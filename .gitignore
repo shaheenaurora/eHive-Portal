@@ -39,3 +39,5 @@ build/
 # Test coverage
 coverage/
 .nyc_output/
+# Local package-manager cache
+.npm-cache/

@@ -23,28 +23,41 @@ export const appRouter = createRouter({
 
   /* ---- public content (marketing site): published insights + newsletter archive ---- */
   insightsPublic: publicQuery.query(async () => {
-    const rows = await getDb().select({
-      id: schema.insights.id, title: schema.insights.title, slug: schema.insights.slug,
-      excerpt: schema.insights.excerpt, tag: schema.insights.tag, publishedAt: schema.insights.publishedAt,
-    }).from(schema.insights)
+    const rows = await getDb()
+      .select({
+        id: schema.insights.id,
+        title: schema.insights.title,
+        slug: schema.insights.slug,
+        excerpt: schema.insights.excerpt,
+        tag: schema.insights.tag,
+        publishedAt: schema.insights.publishedAt,
+      })
+      .from(schema.insights)
       .where(sql`${schema.insights.publishedAt} is not null`)
-      .orderBy(desc(schema.insights.publishedAt)).limit(30);
+      .orderBy(desc(schema.insights.publishedAt))
+      .limit(30);
     return rows;
   }),
 
   insightBySlug: publicQuery
     .input(z.object({ slug: z.string().max(255) }))
     .query(async ({ input }) => {
-      const rows = await getDb().select().from(schema.insights)
-        .where(eq(schema.insights.slug, input.slug)).limit(1);
+      const rows = await getDb()
+        .select()
+        .from(schema.insights)
+        .where(eq(schema.insights.slug, input.slug))
+        .limit(1);
       const row = rows.at(0);
       if (!row || !row.publishedAt) return null;
       return row;
     }),
 
   newslettersPublic: publicQuery.query(async () => {
-    return getDb().select().from(schema.newsletters)
-      .orderBy(desc(schema.newsletters.publishedAt)).limit(24);
+    return getDb()
+      .select()
+      .from(schema.newsletters)
+      .orderBy(desc(schema.newsletters.publishedAt))
+      .limit(24);
   }),
 });
 

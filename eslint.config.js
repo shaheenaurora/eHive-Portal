@@ -1,14 +1,14 @@
-import js from '@eslint/js'
-import globals from 'globals'
-import reactHooks from 'eslint-plugin-react-hooks'
-import reactRefresh from 'eslint-plugin-react-refresh'
-import tseslint from 'typescript-eslint'
-import { defineConfig, globalIgnores } from 'eslint/config'
+import js from "@eslint/js";
+import globals from "globals";
+import reactHooks from "eslint-plugin-react-hooks";
+import reactRefresh from "eslint-plugin-react-refresh";
+import tseslint from "typescript-eslint";
+import { defineConfig, globalIgnores } from "eslint/config";
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(["dist"]),
   {
-    files: ['**/*.{ts,tsx}'],
+    files: ["**/*.{ts,tsx}"],
     extends: [
       js.configs.recommended,
       tseslint.configs.recommended,
@@ -26,20 +26,20 @@ export default defineConfig([
        `any` in a few forwarded-prop signatures, and seed a random skeleton
        width (purity). These are library files, not hand-authored app code, so
        relax the rules that only flag those generated patterns. */
-    files: ['src/components/ui/**/*.{ts,tsx}'],
+    files: ["src/components/ui/**/*.{ts,tsx}"],
     rules: {
-      'react-refresh/only-export-components': 'off',
-      '@typescript-eslint/no-explicit-any': 'off',
-      'react-hooks/purity': 'off',
+      "react-refresh/only-export-components": "off",
+      "@typescript-eslint/no-explicit-any": "off",
+      "react-hooks/purity": "off",
     },
   },
   {
     /* eh.tsx is the app's shared component + helper kit and trpc.tsx is the
        tRPC provider module — both legitimately export helpers/objects next to
        components, which is all the react-refresh rule flags here. */
-    files: ['src/components/eh.tsx', 'src/providers/trpc.tsx'],
+    files: ["src/components/eh.tsx", "src/providers/trpc.tsx"],
     rules: {
-      'react-refresh/only-export-components': 'off',
+      "react-refresh/only-export-components": "off",
     },
   },
-])
+]);

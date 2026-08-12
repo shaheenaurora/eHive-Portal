@@ -5,16 +5,19 @@ export type CheckoutInput = {
   tier: Tier;
   userId: number;
   email: string;
-  amount: number;   // minor units (e.g. fils)
+  amount: number; // minor units (e.g. fils)
   currency: string; // e.g. "aed"
   successUrl: string;
   cancelUrl: string;
 };
 
 /** Normalized outcome of a provider webhook, gateway-agnostic. */
-export type WebhookResult =
-  | { providerRef: string; status: "paid" | "failed"; userId?: number; tier?: Tier }
-  | null;
+export type WebhookResult = {
+  providerRef: string;
+  status: "paid" | "failed";
+  userId?: number;
+  tier?: Tier;
+} | null;
 
 /**
  * The single interface the Portal uses to charge people (SRS INT-01). No call
@@ -23,7 +26,9 @@ export type WebhookResult =
  */
 export interface PaymentProvider {
   readonly name: string;
-  createCheckoutSession(input: CheckoutInput): Promise<{ url: string; providerRef: string }>;
+  createCheckoutSession(
+    input: CheckoutInput
+  ): Promise<{ url: string; providerRef: string }>;
   handleWebhook(rawBody: string, signature: string): Promise<WebhookResult>;
   refund(providerRef: string): Promise<void>;
 }

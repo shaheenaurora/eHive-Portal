@@ -5,14 +5,14 @@ member portal, and the admin portal that runs the community — one full-stack a
 
 ## What's inside
 
-| Area | URL | What it is |
-|---|---|---|
-| Marketing site | `/`, `/*.html` | 18 static pages (verbatim, unchanged URLs) |
-| Member portal | `/portal/*` | React SPA — dashboard, pods, events, Hive Score, FRP, governance, library, offers, membership, application flow |
-| Admin portal | `/admin/*` | React SPA (role-gated) — applications screening, member 360°, pods/sessions/attendance, events, score engine, FRP reviews, governance, library, offers, website leads |
-| API | `/api/trpc/*` | tRPC 11, end-to-end typed |
-| Lead capture | `POST /api/lead` | Marketing forms land in the admin Leads inbox |
-| Auth | Email + password | `eh_sid` JWT session cookie; owner email auto-gets admin |
+| Area           | URL              | What it is                                                                                                                                                            |
+| -------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Marketing site | `/`, `/*.html`   | 18 static pages (verbatim, unchanged URLs)                                                                                                                            |
+| Member portal  | `/portal/*`      | React SPA — dashboard, pods, events, Hive Score, FRP, governance, library, offers, membership, application flow                                                       |
+| Admin portal   | `/admin/*`       | React SPA (role-gated) — applications screening, member 360°, pods/sessions/attendance, events, score engine, FRP reviews, governance, library, offers, website leads |
+| API            | `/api/trpc/*`    | tRPC 11, end-to-end typed                                                                                                                                             |
+| Lead capture   | `POST /api/lead` | Marketing forms land in the admin Leads inbox                                                                                                                         |
+| Auth           | Email + password | `eh_sid` JWT session cookie; owner email auto-gets admin                                                                                                              |
 
 ## Stack
 
@@ -61,10 +61,10 @@ Full launch steps are in **[DEPLOY.md](./DEPLOY.md)**.
 
 ## Useful scripts
 
-| Command | Purpose |
-|---|---|
-| `npm run check` | Type-check everything (must stay clean) |
-| `npm run build` | Vite frontend + esbuild backend bundle |
-| `npm start` | Production server on :3000 |
-| `npm run db:push` | Sync Drizzle schema to MySQL |
-| `npx tsx db/seed.ts` | Reset + seed demo data |
+| Command              | Purpose                                 |
+| -------------------- | --------------------------------------- |
+| `npm run check`      | Type-check everything (must stay clean) |
+| `npm run build`      | Vite frontend + esbuild backend bundle  |
+| `npm start`          | Production server on :3000              |
+| `npm run db:push`    | Sync Drizzle schema to MySQL            |
+| `npx tsx db/seed.ts` | Reset + seed demo data                  |

@@ -1,5 +1,6 @@
 import nodemailer, { type Transporter } from "nodemailer";
 import { env } from "./env";
+import { maskEmail } from "./audit";
 
 /** Which transport (if any) is active. ZeptoMail's HTTPS API takes priority —
  *  it works where hosts block outbound SMTP ports. */
@@ -49,9 +50,15 @@ export type MailInput = {
 
 /** Send via Zoho ZeptoMail's REST API over HTTPS. Surfaces the API's error text
  *  so misconfiguration (unverified sender, bad token) is diagnosable. */
-async function sendViaZepto(input: MailInput): Promise<{ ok: boolean; error?: string }> {
+async function sendViaZepto(
+  input: MailInput
+): Promise<{ ok: boolean; error?: string }> {
   const from = fromAddress();
-  if (!from) return { ok: false, error: "Set MAIL_FROM to a sender address verified in ZeptoMail." };
+  if (!from)
+    return {
+      ok: false,
+      error: "Set MAIL_FROM to a sender address verified in ZeptoMail.",
+    };
   let res: Response;
   try {
     res = await fetch(env.zeptoApiUrl, {
@@ -71,22 +78,39 @@ async function sendViaZepto(input: MailInput): Promise<{ ok: boolean; error?: st
       }),
     });
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
   }
   const bodyText = await res.text().catch(() => "");
   if (res.ok) return { ok: true };
   let detail = `${res.status} ${res.statusText}`;
   try {
-    const j = JSON.parse(bodyText) as { message?: string; error?: { message?: string }; details?: { message?: string; target?: string }[] };
+    const j = JSON.parse(bodyText) as {
+      message?: string;
+      error?: { message?: string };
+      details?: { message?: string; target?: string }[];
+    };
     detail = j.message || j.error?.message || detail;
-    if (j.details?.length) detail += " — " + j.details.map((d) => d.message || d.target || "").filter(Boolean).join("; ");
-  } catch { if (bodyText) detail = bodyText.slice(0, 300); }
+    if (j.details?.length)
+      detail +=
+        " — " +
+        j.details
+          .map(d => d.message || d.target || "")
+          .filter(Boolean)
+          .join("; ");
+  } catch {
+    if (bodyText) detail = bodyText.slice(0, 300);
+  }
   return { ok: false, error: `ZeptoMail: ${detail}` };
 }
 
 /** Single delivery path used by both sendMail and the admin test send. Routes
  *  to ZeptoMail when configured, otherwise SMTP. Returns the real error text. */
-async function deliver(input: MailInput): Promise<{ ok: boolean; error?: string }> {
+async function deliver(
+  input: MailInput
+): Promise<{ ok: boolean; error?: string }> {
   const provider = mailProvider();
   if (provider === "zeptomail") return sendViaZepto(input);
   if (provider === "smtp") {
@@ -101,20 +125,36 @@ async function deliver(input: MailInput): Promise<{ ok: boolean; error?: string 
       });
       return { ok: true };
     } catch (err) {
-      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+      };
     }
   }
   return { ok: false, error: "No email transport configured." };
 }
 
+/** Send one email and return the real transport result (including any error
+ *  message). Never throws so callers can decide whether to surface the failure. */
+export async function sendMailDetailed(
+  input: MailInput
+): Promise<{ ok: boolean; error?: string }> {
+  if (!mailEnabled()) {
+    console.warn(
+      "[mail] skipped (email not configured):",
+      input.subject,
+      "->",
+      maskEmail(input.to)
+    );
+    return { ok: false, error: "Email is not configured." };
+  }
+  return deliver(input);
+}
+
 /** Send one email. Never throws — logs and returns false on failure so a mail
  *  hiccup can't break the request that triggered it. */
 export async function sendMail(input: MailInput): Promise<boolean> {
-  if (!mailEnabled()) {
-    console.warn("[mail] skipped (email not configured):", input.subject, "->", input.to);
-    return false;
-  }
-  const r = await deliver(input);
+  const r = await sendMailDetailed(input);
   if (!r.ok) console.error("[mail] send failed:", r.error);
   return r.ok;
 }
@@ -134,7 +174,7 @@ export function mailStatus() {
   return {
     configured: provider !== null,
     provider,
-    host: provider === "zeptomail" ? env.zeptoApiUrl : (env.smtpHost || null),
+    host: provider === "zeptomail" ? env.zeptoApiUrl : env.smtpHost || null,
     port: env.smtpPort,
     secure: env.smtpSecure || env.smtpPort === 465,
     user: env.smtpUser || null,
@@ -148,12 +188,21 @@ export function mailStatus() {
  * portal. Unlike sendMail this surfaces the real transport error (auth, port,
  * unverified sender…) so setup problems are diagnosable without server logs.
  */
-export async function sendTestEmail(to: string): Promise<{ ok: boolean; error?: string }> {
+export async function sendTestEmail(
+  to: string
+): Promise<{ ok: boolean; error?: string }> {
   const provider = mailProvider();
   if (!provider) {
-    return { ok: false, error: "Email isn't configured yet. Set ZEPTOMAIL_TOKEN (recommended), or SMTP_HOST/SMTP_USER/SMTP_PASS, then try again." };
+    return {
+      ok: false,
+      error:
+        "Email isn't configured yet. Set ZEPTOMAIL_TOKEN (recommended), or SMTP_HOST/SMTP_USER/SMTP_PASS, then try again.",
+    };
   }
-  const via = provider === "zeptomail" ? "ZeptoMail API" : `${env.smtpHost}:${env.smtpPort}`;
+  const via =
+    provider === "zeptomail"
+      ? "ZeptoMail API"
+      : `${env.smtpHost}:${env.smtpPort}`;
   const html = `<div style="font-family:Inter,Arial,sans-serif;padding:24px;background:#faf7f1">
     <div style="max-width:520px;margin:0 auto;background:#fff;border:1px solid #efe9dd;border-radius:14px;overflow:hidden">
       <div style="background:#101d2c;padding:18px 24px"><span style="color:#f5efe2;font-family:Georgia,serif;font-size:18px;font-weight:600">eHive</span></div>
@@ -174,5 +223,10 @@ export async function sendTestEmail(to: string): Promise<{ ok: boolean; error?: 
 }
 
 const esc = (v: unknown) =>
-  String(v ?? "").replace(/[&<>"']/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
+  String(v ?? "").replace(
+    /[&<>"']/g,
+    c =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+        c
+      ] as string
+  );

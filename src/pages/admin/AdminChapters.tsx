@@ -1,40 +1,109 @@
 import { useState } from "react";
 import { trpc } from "@/providers/trpc";
-import { EhShell, ADMIN_NAV, PageHead, Pill, Spinner, Modal, Field, Empty, Bar, toast } from "@/components/eh";
+import {
+  EhShell,
+  ADMIN_NAV,
+  PageHead,
+  Pill,
+  Spinner,
+  Modal,
+  Field,
+  Empty,
+  Bar,
+  toast,
+} from "@/components/eh";
 import { fmtDate, fmtDateTime, initials } from "@/lib/ehf";
-import { CHAPTER_STATUS_LABEL, CHAPTER_ROLES, CHAPTER_ROLE_RESP, CHAPTER_ROLE_METRIC, chapterRoleTitle,
-  HEALTH_COMPONENTS, HEALTH_BAND_LABEL, HEALTH_BAND_COLOR, HEALTH_BAR, healthBand,
-  SPEND_APPROVAL_THRESHOLD_AED, MEETING_KINDS, MEETING_KIND_LABEL } from "@contracts/constants";
-import { FREQUENCY_LABEL, periodLabel, type Frequency } from "@contracts/cadence";
+import {
+  CHAPTER_STATUS_LABEL,
+  CHAPTER_ROLES,
+  CHAPTER_ROLE_RESP,
+  CHAPTER_ROLE_METRIC,
+  chapterRoleTitle,
+  HEALTH_COMPONENTS,
+  HEALTH_BAND_LABEL,
+  HEALTH_BAND_COLOR,
+  HEALTH_BAR,
+  healthBand,
+  SPEND_APPROVAL_THRESHOLD_AED,
+  MEETING_KINDS,
+  MEETING_KIND_LABEL,
+} from "@contracts/constants";
+import {
+  FREQUENCY_LABEL,
+  periodLabel,
+  type Frequency,
+} from "@contracts/cadence";
 import type { ChapterStatus } from "@contracts/constants";
 
-const CADENCE_STATUS_COLOR: Record<string, "green" | "gold" | "red" | "grey"> = {
-  kept: "green", rescheduled: "gold", missed: "red", open: "grey",
-};
+const CADENCE_STATUS_COLOR: Record<string, "green" | "gold" | "red" | "grey"> =
+  {
+    kept: "green",
+    rescheduled: "gold",
+    missed: "red",
+    open: "grey",
+  };
 
-const STATUS_COLOR: Record<string, "grey" | "blue" | "gold" | "green" | "red"> = {
-  seed: "grey", provisional: "blue", chartered: "gold", mature: "green", at_risk: "red",
-};
+const STATUS_COLOR: Record<string, "grey" | "blue" | "gold" | "green" | "red"> =
+  {
+    seed: "grey",
+    provisional: "blue",
+    chartered: "gold",
+    mature: "green",
+    at_risk: "red",
+  };
 
 type ChapterVals = {
-  name: string; code?: string; country?: string; region?: string;
-  state?: string; city?: string; zone?: string; meetingCadence?: string; status: ChapterStatus;
+  name: string;
+  code?: string;
+  country?: string;
+  region?: string;
+  state?: string;
+  city?: string;
+  zone?: string;
+  meetingCadence?: string;
+  status: ChapterStatus;
 };
 
 /** BNI-style location line: Zone · City · State · Region · Country. */
-function geoLine(c: { zone?: string | null; city?: string | null; state?: string | null; region?: string | null; country?: string | null }): string {
-  return [c.zone, c.city, c.state, c.region, c.country].filter(Boolean).join(" · ") || "—";
+function geoLine(c: {
+  zone?: string | null;
+  city?: string | null;
+  state?: string | null;
+  region?: string | null;
+  country?: string | null;
+}): string {
+  return (
+    [c.zone, c.city, c.state, c.region, c.country]
+      .filter(Boolean)
+      .join(" · ") || "—"
+  );
 }
 
 export default function AdminChapters() {
   const utils = trpc.useUtils();
-  const list = trpc.adminEngage.chaptersAdmin.useQuery(undefined, { retry: false });
-  const overview = trpc.adminEngage.chaptersOverview.useQuery(undefined, { retry: false });
-  const transfers = trpc.adminEngage.pendingChapterTransfers.useQuery(undefined, { retry: false });
+  const list = trpc.adminEngage.chaptersAdmin.useQuery(undefined, {
+    retry: false,
+  });
+  const overview = trpc.adminEngage.chaptersOverview.useQuery(undefined, {
+    retry: false,
+  });
+  const transfers = trpc.adminEngage.pendingChapterTransfers.useQuery(
+    undefined,
+    { retry: false }
+  );
   const [sel, setSel] = useState<number | null>(null);
-  const detail = trpc.adminEngage.chapterDetail.useQuery({ id: sel! }, { retry: false, enabled: sel !== null });
-  const health = trpc.adminEngage.chapterHealth.useQuery({ id: sel! }, { retry: false, enabled: sel !== null });
-  const activity = trpc.adminEngage.chapterActivity.useQuery({ id: sel! }, { retry: false, enabled: sel !== null });
+  const detail = trpc.adminEngage.chapterDetail.useQuery(
+    { id: sel! },
+    { retry: false, enabled: sel !== null }
+  );
+  const health = trpc.adminEngage.chapterHealth.useQuery(
+    { id: sel! },
+    { retry: false, enabled: sel !== null }
+  );
+  const activity = trpc.adminEngage.chapterActivity.useQuery(
+    { id: sel! },
+    { retry: false, enabled: sel !== null }
+  );
 
   const [chapterOpen, setChapterOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -45,7 +114,10 @@ export default function AdminChapters() {
   const [meetingOpen, setMeetingOpen] = useState(false);
   const [editMeetingId, setEditMeetingId] = useState<number | null>(null);
   const [roleOpen, setRoleOpen] = useState(false);
-  const [rolePrefill, setRolePrefill] = useState<{ memberId: number; name: string } | null>(null);
+  const [rolePrefill, setRolePrefill] = useState<{
+    memberId: number;
+    name: string;
+  } | null>(null);
 
   function refresh() {
     utils.adminEngage.chaptersAdmin.invalidate();
@@ -56,168 +128,392 @@ export default function AdminChapters() {
   }
 
   const saveSnapshot = trpc.adminEngage.saveHealthSnapshot.useMutation({
-    onSuccess: (r) => { toast(`Quarterly snapshot saved — index ${r.total}.`); refresh(); },
-    onError: (e) => toast(e.message),
+    onSuccess: r => {
+      toast(`Quarterly snapshot saved — index ${r.total}.`);
+      refresh();
+    },
+    onError: e => toast(e.message),
   });
   const setupCadences = trpc.adminEngage.setupChapterCadences.useMutation({
-    onSuccess: (r) => { toast(r.added ? `Operating rhythm set up — ${r.added} cadences.` : "Already set up."); refresh(); },
-    onError: (e) => toast(e.message),
+    onSuccess: r => {
+      toast(
+        r.added
+          ? `Operating rhythm set up — ${r.added} cadences.`
+          : "Already set up."
+      );
+      refresh();
+    },
+    onError: e => toast(e.message),
   });
   const markCadence = trpc.adminEngage.markChapterCadence.useMutation({
-    onSuccess: () => { toast("Cadence updated."); refresh(); },
-    onError: (e) => toast(e.message),
+    onSuccess: () => {
+      toast("Cadence updated.");
+      refresh();
+    },
+    onError: e => toast(e.message),
   });
 
   const saveChapter = trpc.adminEngage.saveChapter.useMutation({
-    onSuccess: () => { toast("Chapter saved."); setChapterOpen(false); setEditOpen(false); refresh(); },
-    onError: (e) => toast(e.message),
+    onSuccess: () => {
+      toast("Chapter saved.");
+      setChapterOpen(false);
+      setEditOpen(false);
+      refresh();
+    },
+    onError: e => toast(e.message),
   });
   const setHome = trpc.adminEngage.setHomeChapter.useMutation({
-    onSuccess: () => { toast("Member assigned to this chapter."); refresh(); },
-    onError: (e) => toast(e.message),
+    onSuccess: () => {
+      toast("Member assigned to this chapter.");
+      refresh();
+    },
+    onError: e => toast(e.message),
   });
   const decideTransfer = trpc.adminEngage.decideChapterTransfer.useMutation({
-    onSuccess: (_r, v) => { toast(v.decision === "approve" ? "Transfer approved — home chapter moved." : "Transfer rejected."); refresh(); },
-    onError: (e) => toast(e.message),
+    onSuccess: (_r, v) => {
+      toast(
+        v.decision === "approve"
+          ? "Transfer approved — home chapter moved."
+          : "Transfer rejected."
+      );
+      refresh();
+    },
+    onError: e => toast(e.message),
   });
   const saveElection = trpc.adminEngage.saveElection.useMutation({
-    onSuccess: () => { toast("Election created — nominations open."); setElectionOpen(false); refresh(); },
-    onError: (e) => toast(e.message),
+    onSuccess: () => {
+      toast("Election created — nominations open.");
+      setElectionOpen(false);
+      refresh();
+    },
+    onError: e => toast(e.message),
   });
   const assignRole = trpc.adminEngage.assignChapterRole.useMutation({
-    onSuccess: () => { toast("Role assigned."); setRoleOpen(false); setRolePrefill(null); refresh(); },
-    onError: (e) => toast(e.message),
+    onSuccess: () => {
+      toast("Role assigned.");
+      setRoleOpen(false);
+      setRolePrefill(null);
+      refresh();
+    },
+    onError: e => toast(e.message),
   });
   const endRole = trpc.adminEngage.endChapterRole.useMutation({
-    onSuccess: () => { toast("Role ended."); refresh(); },
-    onError: (e) => toast(e.message),
+    onSuccess: () => {
+      toast("Role ended.");
+      refresh();
+    },
+    onError: e => toast(e.message),
   });
   const setElStatus = trpc.adminEngage.setElectionStatus.useMutation({
-    onSuccess: (r) => {
+    onSuccess: r => {
       if (r.quorumMet !== undefined) {
-        toast(`Election closed — turnout ${r.turnout}/${r.memberCount}, quorum ${r.quorumMet ? "met" : "NOT met"}.`);
+        toast(
+          `Election closed — turnout ${r.turnout}/${r.memberCount}, quorum ${r.quorumMet ? "met" : "NOT met"}.`
+        );
         if (r.winner) {
-          toast(`Winner: ${r.winner.name} (${r.winner.votes} votes) — appoint to a role.`);
+          toast(
+            `Winner: ${r.winner.name} (${r.winner.votes} votes) — appoint to a role.`
+          );
           setRolePrefill({ memberId: r.winner.memberId, name: r.winner.name });
           setRoleOpen(true);
         }
       } else toast("Election updated.");
       refresh();
     },
-    onError: (e) => toast(e.message),
+    onError: e => toast(e.message),
   });
   const saveMotion = trpc.adminEngage.saveMotion.useMutation({
-    onSuccess: () => { toast("Motion tabled."); setMotionOpen(false); refresh(); },
-    onError: (e) => toast(e.message),
+    onSuccess: () => {
+      toast("Motion tabled.");
+      setMotionOpen(false);
+      refresh();
+    },
+    onError: e => toast(e.message),
   });
   const closeMotion = trpc.adminEngage.closeMotion.useMutation({
-    onSuccess: (r) => { toast(`Motion ${r.status} — yes ${r.yes}, no ${r.no}.`); refresh(); },
-    onError: (e) => toast(e.message),
+    onSuccess: r => {
+      toast(`Motion ${r.status} — yes ${r.yes}, no ${r.no}.`);
+      refresh();
+    },
+    onError: e => toast(e.message),
   });
   const createMeeting = trpc.adminEngage.createMeeting.useMutation({
-    onSuccess: () => { toast("Meeting created — agenda pre-loaded."); setMeetingOpen(false); refresh(); },
-    onError: (e) => toast(e.message),
+    onSuccess: () => {
+      toast("Meeting created — agenda pre-loaded.");
+      setMeetingOpen(false);
+      refresh();
+    },
+    onError: e => toast(e.message),
   });
   const decideBudget = trpc.adminEngage.decideBudgetLine.useMutation({
-    onSuccess: (_r, v) => { toast(v.decision === "approve" ? "Spend approved." : "Line rejected."); refresh(); },
-    onError: (e) => toast(e.message),
+    onSuccess: (_r, v) => {
+      toast(v.decision === "approve" ? "Spend approved." : "Line rejected.");
+      refresh();
+    },
+    onError: e => toast(e.message),
   });
   const saveBudget = trpc.adminEngage.saveBudget.useMutation({
-    onSuccess: () => { toast("Budget line saved."); setBudgetOpen(false); refresh(); },
-    onError: (e) => toast(e.message),
+    onSuccess: () => {
+      toast("Budget line saved.");
+      setBudgetOpen(false);
+      refresh();
+    },
+    onError: e => toast(e.message),
   });
 
   const ch = detail.data?.chapter;
 
   return (
     <EhShell groups={ADMIN_NAV} brandSub="Admin Portal" roleRequired="admin">
-      <PageHead eyebrow="Chapters" title="Chapter lifecycle"
-                sub="Seed → Provisional → Chartered → Mature. Members are admitted into a chapter; elections, motions and budgets run inside each one." />
+      <PageHead
+        eyebrow="Chapters"
+        title="Chapter lifecycle"
+        sub="Seed → Provisional → Chartered → Mature. Members are admitted into a chapter; elections, motions and budgets run inside each one."
+      />
 
       {/* Transfer requests — always visible so requests never get missed. */}
       {(transfers.data ?? []).length > 0 && (
         <div className="eh-card eh-mb">
           <div className="eh-between" style={{ marginBottom: ".6rem" }}>
             <h3 style={{ margin: 0 }}>Chapter transfer requests</h3>
-            <Pill color="amber">{transfers.data!.length} awaiting approval</Pill>
+            <Pill color="amber">
+              {transfers.data!.length} awaiting approval
+            </Pill>
           </div>
           <div className="eh-list">
-            {transfers.data!.map(({ req, memberName, memberEmail, fromName, toName }) => (
-              <div className="row" key={req.id} style={{ alignItems: "flex-start" }}>
-                <div style={{ flex: 1 }}>
-                  <div className="t">{memberName ?? memberEmail ?? "Member"}</div>
-                  <div className="d">{fromName ?? "No chapter"} → <b>{toName ?? "?"}</b></div>
-                  {req.note && <div className="d" style={{ marginTop: ".2rem" }}>“{req.note}”</div>}
-                  <div className="d eh-muted">{fmtDate(req.createdAt)}</div>
+            {transfers.data!.map(
+              ({ req, memberName, memberEmail, fromName, toName }) => (
+                <div
+                  className="row"
+                  key={req.id}
+                  style={{ alignItems: "flex-start" }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <div className="t">
+                      {memberName ?? memberEmail ?? "Member"}
+                    </div>
+                    <div className="d">
+                      {fromName ?? "No chapter"} → <b>{toName ?? "?"}</b>
+                    </div>
+                    {req.note && (
+                      <div className="d" style={{ marginTop: ".2rem" }}>
+                        “{req.note}”
+                      </div>
+                    )}
+                    <div className="d eh-muted">{fmtDate(req.createdAt)}</div>
+                  </div>
+                  <div className="eh-row">
+                    <button
+                      className="eh-btn gold sm"
+                      disabled={decideTransfer.isPending}
+                      onClick={() =>
+                        decideTransfer.mutate({
+                          id: req.id,
+                          decision: "approve",
+                        })
+                      }
+                    >
+                      Approve
+                    </button>
+                    <button
+                      className="eh-btn ghost sm danger"
+                      disabled={decideTransfer.isPending}
+                      onClick={() =>
+                        decideTransfer.mutate({
+                          id: req.id,
+                          decision: "reject",
+                        })
+                      }
+                    >
+                      Reject
+                    </button>
+                  </div>
                 </div>
-                <div className="eh-row">
-                  <button className="eh-btn gold sm" disabled={decideTransfer.isPending}
-                          onClick={() => decideTransfer.mutate({ id: req.id, decision: "approve" })}>Approve</button>
-                  <button className="eh-btn ghost sm danger" disabled={decideTransfer.isPending}
-                          onClick={() => decideTransfer.mutate({ id: req.id, decision: "reject" })}>Reject</button>
-                </div>
-              </div>
-            ))}
+              )
+            )}
           </div>
         </div>
       )}
 
       {!ch && overview.data && (
         <div className="eh-grid g4 eh-mb">
-          <ChMetric k="Chapters" v={overview.data.chapters} n={`${overview.data.members} members`} />
-          <ChMetric k="Avg CHI" v={overview.data.avgChi ?? "—"} n={overview.data.avgChi != null ? (overview.data.avgChi >= 65 ? "At/above bar" : "Below bar") : "No snapshots yet"} accent={overview.data.avgChi != null && overview.data.avgChi < 65 ? "#b8862e" : "var(--eh-good, #2e7d5b)"} />
-          <ChMetric k="Chapters at bar" v={`${overview.data.atBar}%`} n="CHI ≥ 65" accent={overview.data.atBar >= 80 ? "var(--eh-good, #2e7d5b)" : "#b8862e"} />
-          <ChMetric k="At-risk chapters" v={overview.data.atRisk} n="Stage at-risk or CHI < 50" accent={overview.data.atRisk > 0 ? "var(--eh-red, #b23a2e)" : undefined} />
+          <ChMetric
+            k="Chapters"
+            v={overview.data.chapters}
+            n={`${overview.data.members} members`}
+          />
+          <ChMetric
+            k="Avg CHI"
+            v={overview.data.avgChi ?? "—"}
+            n={
+              overview.data.avgChi != null
+                ? overview.data.avgChi >= 65
+                  ? "At/above bar"
+                  : "Below bar"
+                : "No snapshots yet"
+            }
+            accent={
+              overview.data.avgChi != null && overview.data.avgChi < 65
+                ? "#b8862e"
+                : "var(--eh-good, #2e7d5b)"
+            }
+          />
+          <ChMetric
+            k="Chapters at bar"
+            v={`${overview.data.atBar}%`}
+            n="CHI ≥ 65"
+            accent={
+              overview.data.atBar >= 80 ? "var(--eh-good, #2e7d5b)" : "#b8862e"
+            }
+          />
+          <ChMetric
+            k="At-risk chapters"
+            v={overview.data.atRisk}
+            n="Stage at-risk or CHI < 50"
+            accent={
+              overview.data.atRisk > 0 ? "var(--eh-red, #b23a2e)" : undefined
+            }
+          />
         </div>
       )}
 
       {!ch && (
         <>
           <div className="eh-between eh-mb">
-            <span className="eh-muted eh-sm">{list.data?.length ?? 0} chapter(s)</span>
-            <button className="eh-btn gold" onClick={() => setChapterOpen(true)}>New chapter →</button>
+            <span className="eh-muted eh-sm">
+              {list.data?.length ?? 0} chapter(s)
+            </span>
+            <button
+              className="eh-btn gold"
+              onClick={() => setChapterOpen(true)}
+            >
+              New chapter →
+            </button>
           </div>
           {list.isLoading && <Spinner />}
           <div className="eh-grid g3">
-            {(list.data ?? []).map((c) => (
-              <button key={c.id} className="eh-card" style={{ textAlign: "left", cursor: "pointer", display: "flex", flexDirection: "column", gap: ".7rem", minHeight: 146 }}
-                      onClick={() => setSel(c.id)}>
-                <div className="eh-row" style={{ justifyContent: "space-between", alignItems: "center", gap: ".5rem", flexWrap: "wrap" }}>
-                  <Pill color={STATUS_COLOR[c.status] ?? "grey"}>{CHAPTER_STATUS_LABEL[c.status as ChapterStatus]}</Pill>
-                  <span className="eh-row" style={{ gap: ".4rem", alignItems: "center" }}>
-                    {c.lastHealth != null && <Pill color={HEALTH_BAND_COLOR[healthBand(c.lastHealth)]}>health {c.lastHealth}</Pill>}
-                    <span className="eh-muted eh-sm eh-num">{c.memberCount} members</span>
+            {(list.data ?? []).map(c => (
+              <button
+                key={c.id}
+                className="eh-card"
+                style={{
+                  textAlign: "left",
+                  cursor: "pointer",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: ".7rem",
+                  minHeight: 146,
+                }}
+                onClick={() => setSel(c.id)}
+              >
+                <div
+                  className="eh-row"
+                  style={{
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: ".5rem",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <Pill color={STATUS_COLOR[c.status] ?? "grey"}>
+                    {CHAPTER_STATUS_LABEL[c.status as ChapterStatus]}
+                  </Pill>
+                  <span
+                    className="eh-row"
+                    style={{ gap: ".4rem", alignItems: "center" }}
+                  >
+                    {c.lastHealth != null && (
+                      <Pill color={HEALTH_BAND_COLOR[healthBand(c.lastHealth)]}>
+                        health {c.lastHealth}
+                      </Pill>
+                    )}
+                    <span className="eh-muted eh-sm eh-num">
+                      {c.memberCount} members
+                    </span>
                   </span>
                 </div>
                 <div style={{ marginTop: "auto" }}>
-                  <h3 style={{ margin: 0, lineHeight: 1.25 }}>{c.name}{c.code ? <span className="eh-muted eh-sm eh-num" style={{ marginLeft: ".4rem", fontWeight: 400 }}>{c.code}</span> : null}</h3>
-                  <p className="eh-sm eh-muted" style={{ margin: ".25rem 0 0" }}>{geoLine(c)}</p>
+                  <h3 style={{ margin: 0, lineHeight: 1.25 }}>
+                    {c.name}
+                    {c.code ? (
+                      <span
+                        className="eh-muted eh-sm eh-num"
+                        style={{ marginLeft: ".4rem", fontWeight: 400 }}
+                      >
+                        {c.code}
+                      </span>
+                    ) : null}
+                  </h3>
+                  <p
+                    className="eh-sm eh-muted"
+                    style={{ margin: ".25rem 0 0" }}
+                  >
+                    {geoLine(c)}
+                  </p>
                 </div>
               </button>
             ))}
           </div>
           {list.data && list.data.length === 0 && (
-            <div className="eh-card"><Empty big="No chapters yet." p="Create the first seed chapter to get started." /></div>
+            <div className="eh-card">
+              <Empty
+                big="No chapters yet."
+                p="Create the first seed chapter to get started."
+              />
+            </div>
           )}
         </>
       )}
 
       {ch && (
         <>
-          <button className="eh-btn ghost sm eh-mb" onClick={() => setSel(null)}>← All chapters</button>
+          <button
+            className="eh-btn ghost sm eh-mb"
+            onClick={() => setSel(null)}
+          >
+            ← All chapters
+          </button>
           <div className="eh-card eh-mb">
             <div className="eh-between">
               <div>
-                <h3 style={{ margin: 0 }}>{ch.name}{ch.code ? <span className="eh-muted eh-sm eh-num" style={{ marginLeft: ".5rem" }}>{ch.code}</span> : null}</h3>
-                <div className="eh-muted eh-sm">{geoLine(ch)} · {detail.data!.roster.length} members</div>
-                {ch.meetingCadence && <div className="eh-muted eh-sm">Meets: {ch.meetingCadence}</div>}
+                <h3 style={{ margin: 0 }}>
+                  {ch.name}
+                  {ch.code ? (
+                    <span
+                      className="eh-muted eh-sm eh-num"
+                      style={{ marginLeft: ".5rem" }}
+                    >
+                      {ch.code}
+                    </span>
+                  ) : null}
+                </h3>
+                <div className="eh-muted eh-sm">
+                  {geoLine(ch)} · {detail.data!.roster.length} members
+                </div>
+                {ch.meetingCadence && (
+                  <div className="eh-muted eh-sm">
+                    Meets: {ch.meetingCadence}
+                  </div>
+                )}
               </div>
-              <Pill color={STATUS_COLOR[ch.status] ?? "grey"}>{CHAPTER_STATUS_LABEL[ch.status as ChapterStatus]}</Pill>
+              <Pill color={STATUS_COLOR[ch.status] ?? "grey"}>
+                {CHAPTER_STATUS_LABEL[ch.status as ChapterStatus]}
+              </Pill>
             </div>
             <div className="eh-row eh-mt">
-              <button className="eh-btn ghost sm" onClick={() => setEditOpen(true)}>Edit details</button>
-              <ChapterStatusSelect current={ch.status} pending={saveChapter.isPending}
-                                   onChange={(status) => saveChapter.mutate({ id: ch.id, name: ch.name, status })} />
+              <button
+                className="eh-btn ghost sm"
+                onClick={() => setEditOpen(true)}
+              >
+                Edit details
+              </button>
+              <ChapterStatusSelect
+                current={ch.status}
+                pending={saveChapter.isPending}
+                onChange={status =>
+                  saveChapter.mutate({ id: ch.id, name: ch.name, status })
+                }
+              />
             </div>
           </div>
 
@@ -227,38 +523,98 @@ export default function AdminChapters() {
               <div className="eh-between" style={{ alignItems: "flex-start" }}>
                 <div>
                   <h3 style={{ margin: 0 }}>Chapter Health Index</h3>
-                  <div className="eh-muted eh-sm">The single number the chapter owns · reviewed with the Zone each quarter.</div>
+                  <div className="eh-muted eh-sm">
+                    The single number the chapter owns · reviewed with the Zone
+                    each quarter.
+                  </div>
                 </div>
                 <div style={{ textAlign: "right" }}>
-                  <div className="eh-num" style={{ fontSize: "2.4rem", fontWeight: 700, lineHeight: 1, color: "var(--eh-gold)" }}>{health.data.total}</div>
-                  <Pill color={HEALTH_BAND_COLOR[healthBand(health.data.total)]}>{HEALTH_BAND_LABEL[healthBand(health.data.total)]}</Pill>
+                  <div
+                    className="eh-num"
+                    style={{
+                      fontSize: "2.4rem",
+                      fontWeight: 700,
+                      lineHeight: 1,
+                      color: "var(--eh-gold)",
+                    }}
+                  >
+                    {health.data.total}
+                  </div>
+                  <Pill
+                    color={HEALTH_BAND_COLOR[healthBand(health.data.total)]}
+                  >
+                    {HEALTH_BAND_LABEL[healthBand(health.data.total)]}
+                  </Pill>
                 </div>
               </div>
               {health.data.total < HEALTH_BAR && (
-                <div className="eh-banner eh-mt" style={{ borderColor: "#e5c0b9" }}>
-                  <span className="eh-sm" style={{ color: "var(--eh-red)" }}>Below the health bar ({HEALTH_BAR}) — remediation recommended with the Zone (CH-06 / ZO-03).</span>
+                <div
+                  className="eh-banner eh-mt"
+                  style={{ borderColor: "#e5c0b9" }}
+                >
+                  <span className="eh-sm" style={{ color: "var(--eh-red)" }}>
+                    Below the health bar ({HEALTH_BAR}) — remediation
+                    recommended with the Zone (CH-06 / ZO-03).
+                  </span>
                 </div>
               )}
               <div className="eh-mt" style={{ display: "grid", gap: ".5rem" }}>
-                {HEALTH_COMPONENTS.map((c) => {
-                  const v = (health.data!.components as Record<string, number>)[c.key];
+                {HEALTH_COMPONENTS.map(c => {
+                  const v = (health.data!.components as Record<string, number>)[
+                    c.key
+                  ];
                   return (
-                    <div key={c.key} style={{ display: "grid", gridTemplateColumns: "10rem 1fr 2.6rem", alignItems: "center", gap: ".6rem" }}>
-                      <span className="eh-sm" title={c.desc}>{c.label} <span className="eh-muted">·{c.weight}%</span></span>
+                    <div
+                      key={c.key}
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "10rem 1fr 2.6rem",
+                        alignItems: "center",
+                        gap: ".6rem",
+                      }}
+                    >
+                      <span className="eh-sm" title={c.desc}>
+                        {c.label} <span className="eh-muted">·{c.weight}%</span>
+                      </span>
                       <Bar pct={v} />
-                      <span className="eh-num eh-sm" style={{ textAlign: "right" }}>{v}</span>
+                      <span
+                        className="eh-num eh-sm"
+                        style={{ textAlign: "right" }}
+                      >
+                        {v}
+                      </span>
                     </div>
                   );
                 })}
               </div>
               <div className="eh-row eh-mt">
-                <button className="eh-btn sm gold" disabled={saveSnapshot.isPending}
-                        onClick={() => saveSnapshot.mutate({ id: ch.id })}>Save quarterly snapshot</button>
+                <button
+                  className="eh-btn sm gold"
+                  disabled={saveSnapshot.isPending}
+                  onClick={() => saveSnapshot.mutate({ id: ch.id })}
+                >
+                  Save quarterly snapshot
+                </button>
                 {health.data.lastSnapshot && (
                   <span className="eh-muted eh-sm">
-                    Last snapshot {health.data.lastSnapshot.total} · {fmtDate(health.data.lastSnapshot.createdAt)}
-                    {(() => { const d = health.data!.total - health.data!.lastSnapshot!.total;
-                      return d === 0 ? "" : <b style={{ color: d > 0 ? "var(--eh-green)" : "var(--eh-red)", marginLeft: ".4rem" }}>{d > 0 ? "▲" : "▼"} {Math.abs(d)}</b>; })()}
+                    Last snapshot {health.data.lastSnapshot.total} ·{" "}
+                    {fmtDate(health.data.lastSnapshot.createdAt)}
+                    {(() => {
+                      const d =
+                        health.data!.total - health.data!.lastSnapshot!.total;
+                      return d === 0 ? (
+                        ""
+                      ) : (
+                        <b
+                          style={{
+                            color: d > 0 ? "var(--eh-green)" : "var(--eh-red)",
+                            marginLeft: ".4rem",
+                          }}
+                        >
+                          {d > 0 ? "▲" : "▼"} {Math.abs(d)}
+                        </b>
+                      );
+                    })()}
                   </span>
                 )}
               </div>
@@ -267,37 +623,93 @@ export default function AdminChapters() {
 
           {/* operating rhythm */}
           <div className="eh-between" style={{ margin: "1.25rem 0 .75rem" }}>
-            <h2 className="eh-h2" style={{ margin: 0 }}>Operating rhythm</h2>
-            {detail.data!.cadence && detail.data!.cadence.cadences.length > 0 && (
-              <Pill color={detail.data!.cadence.adherence >= 80 ? "green" : detail.data!.cadence.adherence >= 60 ? "gold" : "red"}>
-                {detail.data!.cadence.adherence}% kept
-              </Pill>
-            )}
+            <h2 className="eh-h2" style={{ margin: 0 }}>
+              Operating rhythm
+            </h2>
+            {detail.data!.cadence &&
+              detail.data!.cadence.cadences.length > 0 && (
+                <Pill
+                  color={
+                    detail.data!.cadence.adherence >= 80
+                      ? "green"
+                      : detail.data!.cadence.adherence >= 60
+                        ? "gold"
+                        : "red"
+                  }
+                >
+                  {detail.data!.cadence.adherence}% kept
+                </Pill>
+              )}
           </div>
           <div className="eh-card">
-            {(!detail.data!.cadence || detail.data!.cadence.cadences.length === 0) ? (
+            {!detail.data!.cadence ||
+            detail.data!.cadence.cadences.length === 0 ? (
               <div style={{ textAlign: "center", padding: ".5rem 0" }}>
-                <Empty big="No cadences yet." p="Set the chapter's recurring rhythm — meetings, huddle, board, financial close — to standard." />
-                <button className="eh-btn gold" disabled={setupCadences.isPending} onClick={() => setupCadences.mutate({ id: ch.id })}>
+                <Empty
+                  big="No cadences yet."
+                  p="Set the chapter's recurring rhythm — meetings, huddle, board, financial close — to standard."
+                />
+                <button
+                  className="eh-btn gold"
+                  disabled={setupCadences.isPending}
+                  onClick={() => setupCadences.mutate({ id: ch.id })}
+                >
                   Set up the operating rhythm →
                 </button>
               </div>
             ) : (
               <div className="eh-list">
-                {detail.data!.cadence.cadences.map((c) => (
-                  <div className="row" key={c.id} style={{ alignItems: "flex-start" }}>
+                {detail.data!.cadence.cadences.map(c => (
+                  <div
+                    className="row"
+                    key={c.id}
+                    style={{ alignItems: "flex-start" }}
+                  >
                     <div style={{ flex: 1 }}>
-                      <div className="t">{c.title} <span className="eh-muted eh-sm">· {FREQUENCY_LABEL[c.frequency as Frequency]}{c.sop ? ` · ${c.sop}` : ""}</span></div>
-                      <div className="d">Last {c.expected}: {c.kept} kept{c.missed ? `, ${c.missed} missed` : ""}</div>
+                      <div className="t">
+                        {c.title}{" "}
+                        <span className="eh-muted eh-sm">
+                          · {FREQUENCY_LABEL[c.frequency as Frequency]}
+                          {c.sop ? ` · ${c.sop}` : ""}
+                        </span>
+                      </div>
+                      <div className="d">
+                        Last {c.expected}: {c.kept} kept
+                        {c.missed ? `, ${c.missed} missed` : ""}
+                      </div>
                     </div>
                     <div className="eh-row" style={{ gap: ".4rem" }}>
-                      <Pill color={CADENCE_STATUS_COLOR[c.currentStatus]}>{c.currentStatus === "open" ? `due ${periodLabel(c.frequency as Frequency)}` : c.currentStatus}</Pill>
+                      <Pill color={CADENCE_STATUS_COLOR[c.currentStatus]}>
+                        {c.currentStatus === "open"
+                          ? `due ${periodLabel(c.frequency as Frequency)}`
+                          : c.currentStatus}
+                      </Pill>
                       {c.currentStatus !== "kept" && (
                         <>
-                          <button className="eh-btn sm gold" disabled={markCadence.isPending}
-                                  onClick={() => markCadence.mutate({ cadenceId: c.id, status: "kept" })}>Kept</button>
-                          <button className="eh-btn sm ghost" disabled={markCadence.isPending}
-                                  onClick={() => markCadence.mutate({ cadenceId: c.id, status: "rescheduled" })}>Rescheduled</button>
+                          <button
+                            className="eh-btn sm gold"
+                            disabled={markCadence.isPending}
+                            onClick={() =>
+                              markCadence.mutate({
+                                cadenceId: c.id,
+                                status: "kept",
+                              })
+                            }
+                          >
+                            Kept
+                          </button>
+                          <button
+                            className="eh-btn sm ghost"
+                            disabled={markCadence.isPending}
+                            onClick={() =>
+                              markCadence.mutate({
+                                cadenceId: c.id,
+                                status: "rescheduled",
+                              })
+                            }
+                          >
+                            Rescheduled
+                          </button>
                         </>
                       )}
                     </div>
@@ -309,21 +721,55 @@ export default function AdminChapters() {
 
           {/* leadership board */}
           <div className="eh-between" style={{ margin: "1.25rem 0 .75rem" }}>
-            <h2 className="eh-h2" style={{ margin: 0 }}>Leadership board</h2>
-            <button className="eh-btn sm gold" onClick={() => { setRolePrefill(null); setRoleOpen(true); }}>+ Assign role</button>
+            <h2 className="eh-h2" style={{ margin: 0 }}>
+              Leadership board
+            </h2>
+            <button
+              className="eh-btn sm gold"
+              onClick={() => {
+                setRolePrefill(null);
+                setRoleOpen(true);
+              }}
+            >
+              + Assign role
+            </button>
           </div>
           <div className="eh-card">
-            {(detail.data!.board ?? []).length === 0 && <Empty big="No officers yet." p="Assign roles directly, or close an election to appoint the winner." />}
+            {(detail.data!.board ?? []).length === 0 && (
+              <Empty
+                big="No officers yet."
+                p="Assign roles directly, or close an election to appoint the winner."
+              />
+            )}
             <div className="eh-list">
-              {(detail.data!.board ?? []).map((b) => (
-                <div className="row" key={b.id} style={{ alignItems: "flex-start" }}>
+              {(detail.data!.board ?? []).map(b => (
+                <div
+                  className="row"
+                  key={b.id}
+                  style={{ alignItems: "flex-start" }}
+                >
                   <div style={{ flex: 1 }}>
-                    <div className="t">{chapterRoleTitle(b.role, b.title)} — <b>{b.memberName}</b>{b.electionId ? <Pill color="gold">elected</Pill> : null}</div>
-                    <div className="d">{b.responsibilities || CHAPTER_ROLE_RESP[b.role] || ""}</div>
-                    {CHAPTER_ROLE_METRIC[b.role] && <div className="d eh-muted">Accountable for: {CHAPTER_ROLE_METRIC[b.role]}</div>}
+                    <div className="t">
+                      {chapterRoleTitle(b.role, b.title)} —{" "}
+                      <b>{b.memberName}</b>
+                      {b.electionId ? <Pill color="gold">elected</Pill> : null}
+                    </div>
+                    <div className="d">
+                      {b.responsibilities || CHAPTER_ROLE_RESP[b.role] || ""}
+                    </div>
+                    {CHAPTER_ROLE_METRIC[b.role] && (
+                      <div className="d eh-muted">
+                        Accountable for: {CHAPTER_ROLE_METRIC[b.role]}
+                      </div>
+                    )}
                   </div>
-                  <button className="eh-btn ghost sm danger" disabled={endRole.isPending}
-                          onClick={() => endRole.mutate({ id: b.id })}>End term</button>
+                  <button
+                    className="eh-btn ghost sm danger"
+                    disabled={endRole.isPending}
+                    onClick={() => endRole.mutate({ id: b.id })}
+                  >
+                    End term
+                  </button>
                 </div>
               ))}
             </div>
@@ -331,23 +777,44 @@ export default function AdminChapters() {
 
           {/* members / roster */}
           <div className="eh-between" style={{ margin: "1.25rem 0 .75rem" }}>
-            <h2 className="eh-h2" style={{ margin: 0 }}>Members</h2>
-            <button className="eh-btn sm gold" onClick={() => setAddOpen(true)}>+ Add members</button>
+            <h2 className="eh-h2" style={{ margin: 0 }}>
+              Members
+            </h2>
+            <button className="eh-btn sm gold" onClick={() => setAddOpen(true)}>
+              + Add members
+            </button>
           </div>
           <div className="eh-card">
-            {detail.data!.roster.length === 0 && <Empty big="No members yet." p="Assign members to this chapter to build its roster." />}
+            {detail.data!.roster.length === 0 && (
+              <Empty
+                big="No members yet."
+                p="Assign members to this chapter to build its roster."
+              />
+            )}
             <div className="eh-list">
               {detail.data!.roster.map(({ member, user }) => (
                 <div className="row" key={member.id}>
-                  <div className="eh-row" style={{ flexWrap: "nowrap", flex: 1 }}>
+                  <div
+                    className="eh-row"
+                    style={{ flexWrap: "nowrap", flex: 1 }}
+                  >
                     <span className="eh-avatar">{initials(user.name)}</span>
                     <div>
                       <div className="t">{user.name ?? user.email}</div>
-                      <div className="d">{member.company ?? user.email ?? ""}</div>
+                      <div className="d">
+                        {member.company ?? user.email ?? ""}
+                      </div>
                     </div>
                   </div>
-                  <button className="eh-btn ghost sm" disabled={setHome.isPending}
-                          onClick={() => setHome.mutate({ memberId: member.id, chapterId: null })}>Remove</button>
+                  <button
+                    className="eh-btn ghost sm"
+                    disabled={setHome.isPending}
+                    onClick={() =>
+                      setHome.mutate({ memberId: member.id, chapterId: null })
+                    }
+                  >
+                    Remove
+                  </button>
                 </div>
               ))}
             </div>
@@ -355,27 +822,67 @@ export default function AdminChapters() {
 
           {/* elections */}
           <div className="eh-between" style={{ margin: "1.25rem 0 .75rem" }}>
-            <h2 className="eh-h2" style={{ margin: 0 }}>Elections</h2>
-            <button className="eh-btn sm gold" onClick={() => setElectionOpen(true)}>New election →</button>
+            <h2 className="eh-h2" style={{ margin: 0 }}>
+              Elections
+            </h2>
+            <button
+              className="eh-btn sm gold"
+              onClick={() => setElectionOpen(true)}
+            >
+              New election →
+            </button>
           </div>
-          {(detail.data!.elections ?? []).length === 0 && <div className="eh-card"><Empty big="No elections." /></div>}
-          {(detail.data!.elections ?? []).map((e) => (
+          {(detail.data!.elections ?? []).length === 0 && (
+            <div className="eh-card">
+              <Empty big="No elections." />
+            </div>
+          )}
+          {(detail.data!.elections ?? []).map(e => (
             <div className="eh-card eh-mb" key={e.id}>
               <div className="eh-between">
                 <div>
                   <h3 style={{ margin: 0 }}>{e.title}</h3>
-                  <div className="eh-muted eh-sm">Seat: {e.seat} · quorum {e.quorumPct}%{e.resultHash ? ` · digest ${e.resultHash.slice(0, 12)}…` : ""}</div>
+                  <div className="eh-muted eh-sm">
+                    Seat: {e.seat} · quorum {e.quorumPct}%
+                    {e.resultHash
+                      ? ` · digest ${e.resultHash.slice(0, 12)}…`
+                      : ""}
+                  </div>
                 </div>
-                <Pill color={e.status === "closed" ? "green" : e.status === "voting" ? "gold" : "blue"}>{e.status}</Pill>
+                <Pill
+                  color={
+                    e.status === "closed"
+                      ? "green"
+                      : e.status === "voting"
+                        ? "gold"
+                        : "blue"
+                  }
+                >
+                  {e.status}
+                </Pill>
               </div>
               <div className="eh-row eh-mt">
                 {e.status === "open" && (
-                  <button className="eh-btn sm" disabled={setElStatus.isPending}
-                          onClick={() => setElStatus.mutate({ id: e.id, status: "voting" })}>Open voting</button>
+                  <button
+                    className="eh-btn sm"
+                    disabled={setElStatus.isPending}
+                    onClick={() =>
+                      setElStatus.mutate({ id: e.id, status: "voting" })
+                    }
+                  >
+                    Open voting
+                  </button>
                 )}
                 {e.status === "voting" && (
-                  <button className="eh-btn sm gold" disabled={setElStatus.isPending}
-                          onClick={() => setElStatus.mutate({ id: e.id, status: "closed" })}>Close & tally</button>
+                  <button
+                    className="eh-btn sm gold"
+                    disabled={setElStatus.isPending}
+                    onClick={() =>
+                      setElStatus.mutate({ id: e.id, status: "closed" })
+                    }
+                  >
+                    Close & tally
+                  </button>
                 )}
               </div>
             </div>
@@ -383,76 +890,162 @@ export default function AdminChapters() {
 
           {/* motions */}
           <div className="eh-between" style={{ margin: "1.25rem 0 .75rem" }}>
-            <h2 className="eh-h2" style={{ margin: 0 }}>Motions</h2>
-            <button className="eh-btn sm gold" onClick={() => setMotionOpen(true)}>Table a motion →</button>
+            <h2 className="eh-h2" style={{ margin: 0 }}>
+              Motions
+            </h2>
+            <button
+              className="eh-btn sm gold"
+              onClick={() => setMotionOpen(true)}
+            >
+              Table a motion →
+            </button>
           </div>
-          {(detail.data!.motions ?? []).length === 0 && <div className="eh-card"><Empty big="No motions." /></div>}
-          {(detail.data!.motions ?? []).map((m) => (
+          {(detail.data!.motions ?? []).length === 0 && (
+            <div className="eh-card">
+              <Empty big="No motions." />
+            </div>
+          )}
+          {(detail.data!.motions ?? []).map(m => (
             <div className="eh-card eh-mb" key={m.id}>
               <div className="eh-between">
                 <div>
                   <h3 style={{ margin: 0 }}>{m.title}</h3>
                   {m.body && <div className="eh-muted eh-sm">{m.body}</div>}
                 </div>
-                {m.status === "open"
-                  ? <button className="eh-btn sm" disabled={closeMotion.isPending}
-                            onClick={() => closeMotion.mutate({ id: m.id })}>Close & count</button>
-                  : <Pill color={m.status === "passed" ? "green" : "grey"}>{m.status}</Pill>}
+                {m.status === "open" ? (
+                  <button
+                    className="eh-btn sm"
+                    disabled={closeMotion.isPending}
+                    onClick={() => closeMotion.mutate({ id: m.id })}
+                  >
+                    Close & count
+                  </button>
+                ) : (
+                  <Pill color={m.status === "passed" ? "green" : "grey"}>
+                    {m.status}
+                  </Pill>
+                )}
               </div>
             </div>
           ))}
 
           {/* budgets */}
           <div className="eh-between" style={{ margin: "1.25rem 0 .75rem" }}>
-            <h2 className="eh-h2" style={{ margin: 0 }}>Budget</h2>
-            <button className="eh-btn sm gold" onClick={() => setBudgetOpen(true)}>Add line →</button>
+            <h2 className="eh-h2" style={{ margin: 0 }}>
+              Budget
+            </h2>
+            <button
+              className="eh-btn sm gold"
+              onClick={() => setBudgetOpen(true)}
+            >
+              Add line →
+            </button>
           </div>
           <FinanceSummary budgets={detail.data!.budgets ?? []} />
           <div className="eh-card">
-            {(detail.data!.budgets ?? []).length === 0 && <Empty big="No budget lines." />}
+            {(detail.data!.budgets ?? []).length === 0 && (
+              <Empty big="No budget lines." />
+            )}
             <div className="eh-list">
-              {(detail.data!.budgets ?? []).map((b) => (
+              {(detail.data!.budgets ?? []).map(b => (
                 <div className="row" key={b.id}>
                   <div style={{ flex: 1 }}>
                     <div className="t">{b.label}</div>
-                    <div className="d">{b.kind} · {fmtDate(b.createdAt)}</div>
+                    <div className="d">
+                      {b.kind} · {fmtDate(b.createdAt)}
+                    </div>
                   </div>
-                  <span className="eh-num">AED {b.amount.toLocaleString()}</span>
-                  <Pill color={b.status === "approved" ? "green" : b.status === "spent" ? "purple" : b.status === "rejected" ? "grey" : "blue"}>
+                  <span className="eh-num">
+                    AED {b.amount.toLocaleString()}
+                  </span>
+                  <Pill
+                    color={
+                      b.status === "approved"
+                        ? "green"
+                        : b.status === "spent"
+                          ? "purple"
+                          : b.status === "rejected"
+                            ? "grey"
+                            : "blue"
+                    }
+                  >
                     {b.status}
                   </Pill>
                   {b.status === "proposed" && (
                     <div className="eh-row" style={{ gap: ".35rem" }}>
-                      <button className="eh-btn sm" disabled={decideBudget.isPending}
-                              onClick={() => decideBudget.mutate({ id: b.id, decision: "approve" })}>Approve</button>
-                      <button className="eh-btn ghost sm" disabled={decideBudget.isPending}
-                              onClick={() => decideBudget.mutate({ id: b.id, decision: "reject" })}>Reject</button>
+                      <button
+                        className="eh-btn sm"
+                        disabled={decideBudget.isPending}
+                        onClick={() =>
+                          decideBudget.mutate({ id: b.id, decision: "approve" })
+                        }
+                      >
+                        Approve
+                      </button>
+                      <button
+                        className="eh-btn ghost sm"
+                        disabled={decideBudget.isPending}
+                        onClick={() =>
+                          decideBudget.mutate({ id: b.id, decision: "reject" })
+                        }
+                      >
+                        Reject
+                      </button>
                     </div>
                   )}
                 </div>
               ))}
             </div>
             <p className="eh-sm eh-muted" style={{ margin: ".75rem 0 0" }}>
-              Spends over AED {SPEND_APPROVAL_THRESHOLD_AED.toLocaleString()} need a full administrator
-              (President / Director) to approve.
+              Spends over AED {SPEND_APPROVAL_THRESHOLD_AED.toLocaleString()}{" "}
+              need a full administrator (President / Director) to approve.
             </p>
           </div>
 
           {/* meetings (M3) */}
           <div className="eh-between" style={{ margin: "1.25rem 0 .75rem" }}>
-            <h2 className="eh-h2" style={{ margin: 0 }}>Meetings</h2>
-            <button className="eh-btn sm gold" onClick={() => setMeetingOpen(true)}>New meeting →</button>
+            <h2 className="eh-h2" style={{ margin: 0 }}>
+              Meetings
+            </h2>
+            <button
+              className="eh-btn sm gold"
+              onClick={() => setMeetingOpen(true)}
+            >
+              New meeting →
+            </button>
           </div>
           <div className="eh-card">
-            {(detail.data!.meetings ?? []).length === 0 && <Empty big="No meetings yet." p="Create a chapter or board meeting — the agenda is pre-loaded from the manual." />}
+            {(detail.data!.meetings ?? []).length === 0 && (
+              <Empty
+                big="No meetings yet."
+                p="Create a chapter or board meeting — the agenda is pre-loaded from the manual."
+              />
+            )}
             <div className="eh-list">
-              {(detail.data!.meetings ?? []).map((m) => (
-                <div className="row click" key={m.id} onClick={() => setEditMeetingId(m.id)}>
+              {(detail.data!.meetings ?? []).map(m => (
+                <div
+                  className="row click"
+                  key={m.id}
+                  onClick={() => setEditMeetingId(m.id)}
+                >
                   <div style={{ flex: 1 }}>
                     <div className="t">{m.title}</div>
-                    <div className="d">{MEETING_KIND_LABEL[m.kind] ?? m.kind}{m.scheduledAt ? ` · ${fmtDate(m.scheduledAt)}` : ""}</div>
+                    <div className="d">
+                      {MEETING_KIND_LABEL[m.kind] ?? m.kind}
+                      {m.scheduledAt ? ` · ${fmtDate(m.scheduledAt)}` : ""}
+                    </div>
                   </div>
-                  <Pill color={m.status === "held" ? "green" : m.status === "cancelled" ? "grey" : "blue"}>{m.status}</Pill>
+                  <Pill
+                    color={
+                      m.status === "held"
+                        ? "green"
+                        : m.status === "cancelled"
+                          ? "grey"
+                          : "blue"
+                    }
+                  >
+                    {m.status}
+                  </Pill>
                   <span className="eh-btn ghost sm">Open →</span>
                 </div>
               ))}
@@ -461,18 +1054,34 @@ export default function AdminChapters() {
 
           {/* activity ledger — ERP parity */}
           <div className="eh-between" style={{ margin: "1.25rem 0 .75rem" }}>
-            <h2 className="eh-h2" style={{ margin: 0 }}>Activity</h2>
+            <h2 className="eh-h2" style={{ margin: 0 }}>
+              Activity
+            </h2>
           </div>
           <div className="eh-card">
             {activity.isLoading && <Spinner />}
-            {activity.data && activity.data.length === 0 && <Empty big="No activity yet." p="Health snapshots, elections, motions, budgets, meetings and role changes appear here as they happen." />}
+            {activity.data && activity.data.length === 0 && (
+              <Empty
+                big="No activity yet."
+                p="Health snapshots, elections, motions, budgets, meetings and role changes appear here as they happen."
+              />
+            )}
             <div className="eh-timeline">
               {(activity.data ?? []).map((a, i) => (
                 <div className="ev" key={i}>
                   <div className="w">{fmtDateTime(a.at)}</div>
-                  <div className="x"><span aria-hidden style={{ marginRight: ".4rem" }}>{a.icon}</span>{a.title}</div>
+                  <div className="x">
+                    <span aria-hidden style={{ marginRight: ".4rem" }}>
+                      {a.icon}
+                    </span>
+                    {a.title}
+                  </div>
                   {a.detail && <div className="n">{a.detail}</div>}
-                  {a.actor && <div className="n eh-muted" style={{ fontSize: ".75rem" }}>{a.actor}</div>}
+                  {a.actor && (
+                    <div className="n eh-muted" style={{ fontSize: ".75rem" }}>
+                      {a.actor}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -481,105 +1090,210 @@ export default function AdminChapters() {
       )}
 
       {meetingOpen && sel !== null && (
-        <MeetingCreate pending={createMeeting.isPending}
-                       onClose={() => setMeetingOpen(false)}
-                       onSubmit={(v) => createMeeting.mutate({ chapterId: sel, ...v })} />
+        <MeetingCreate
+          pending={createMeeting.isPending}
+          onClose={() => setMeetingOpen(false)}
+          onSubmit={v => createMeeting.mutate({ chapterId: sel, ...v })}
+        />
       )}
       {editMeetingId !== null && (
-        <MeetingEditor meetingId={editMeetingId}
-                       meeting={(detail.data?.meetings ?? []).find((m) => m.id === editMeetingId)}
-                       roster={detail.data?.roster ?? []}
-                       onClose={() => setEditMeetingId(null)}
-                       onSaved={() => refresh()} />
+        <MeetingEditor
+          meetingId={editMeetingId}
+          meeting={(detail.data?.meetings ?? []).find(
+            m => m.id === editMeetingId
+          )}
+          roster={detail.data?.roster ?? []}
+          onClose={() => setEditMeetingId(null)}
+          onSaved={() => refresh()}
+        />
       )}
 
       {chapterOpen && (
         <Modal title="New chapter" onClose={() => setChapterOpen(false)}>
-          <ChapterForm pending={saveChapter.isPending} submitLabel="Create seed chapter →"
-                       onSubmit={(v) => saveChapter.mutate(v)} />
+          <ChapterForm
+            pending={saveChapter.isPending}
+            submitLabel="Create seed chapter →"
+            onSubmit={v => saveChapter.mutate(v)}
+          />
         </Modal>
       )}
       {editOpen && ch && (
         <Modal title="Edit chapter" onClose={() => setEditOpen(false)}>
-          <ChapterForm pending={saveChapter.isPending} submitLabel="Save chapter →"
-                       initial={ch} onSubmit={(v) => saveChapter.mutate({ ...v, id: ch.id })} />
+          <ChapterForm
+            pending={saveChapter.isPending}
+            submitLabel="Save chapter →"
+            initial={ch}
+            onSubmit={v => saveChapter.mutate({ ...v, id: ch.id })}
+          />
         </Modal>
       )}
       {addOpen && ch && (
-        <Modal title={`Add members to ${ch.name}`} onClose={() => setAddOpen(false)} wide>
-          <AddMembers chapterId={ch.id} pending={setHome.isPending}
-                      onAssign={(memberId) => setHome.mutate({ memberId, chapterId: ch.id })} />
+        <Modal
+          title={`Add members to ${ch.name}`}
+          onClose={() => setAddOpen(false)}
+          wide
+        >
+          <AddMembers
+            chapterId={ch.id}
+            pending={setHome.isPending}
+            onAssign={memberId =>
+              setHome.mutate({ memberId, chapterId: ch.id })
+            }
+          />
         </Modal>
       )}
       {roleOpen && ch && (
-        <Modal title="Assign a leadership role" onClose={() => { setRoleOpen(false); setRolePrefill(null); }}>
+        <Modal
+          title="Assign a leadership role"
+          onClose={() => {
+            setRoleOpen(false);
+            setRolePrefill(null);
+          }}
+        >
           <AssignRoleForm
-            roster={detail.data!.roster.map((r) => ({ id: r.member.id, name: r.user.name ?? r.user.email ?? "Member" }))}
-            prefill={rolePrefill} pending={assignRole.isPending}
-            onSubmit={(v) => assignRole.mutate({ chapterId: ch.id, ...v })} />
+            roster={detail.data!.roster.map(r => ({
+              id: r.member.id,
+              name: r.user.name ?? r.user.email ?? "Member",
+            }))}
+            prefill={rolePrefill}
+            pending={assignRole.isPending}
+            onSubmit={v => assignRole.mutate({ chapterId: ch.id, ...v })}
+          />
         </Modal>
       )}
       {electionOpen && ch && (
         <Modal title="New election" onClose={() => setElectionOpen(false)}>
-          <ElectionForm pending={saveElection.isPending}
-                        onSubmit={(v) => saveElection.mutate({ ...v, chapterId: ch.id })} />
+          <ElectionForm
+            pending={saveElection.isPending}
+            onSubmit={v => saveElection.mutate({ ...v, chapterId: ch.id })}
+          />
         </Modal>
       )}
       {motionOpen && ch && (
         <Modal title="Table a motion" onClose={() => setMotionOpen(false)}>
-          <MotionForm pending={saveMotion.isPending}
-                      onSubmit={(v) => saveMotion.mutate({ ...v, chapterId: ch.id })} />
+          <MotionForm
+            pending={saveMotion.isPending}
+            onSubmit={v => saveMotion.mutate({ ...v, chapterId: ch.id })}
+          />
         </Modal>
       )}
       {budgetOpen && ch && (
         <Modal title="Add budget line" onClose={() => setBudgetOpen(false)}>
-          <BudgetForm pending={saveBudget.isPending}
-                      onSubmit={(v) => saveBudget.mutate({ ...v, chapterId: ch.id })} />
+          <BudgetForm
+            pending={saveBudget.isPending}
+            onSubmit={v => saveBudget.mutate({ ...v, chapterId: ch.id })}
+          />
         </Modal>
       )}
     </EhShell>
   );
 }
 
-function ChMetric({ k, v, n, accent }: { k: string; v: React.ReactNode; n?: string; accent?: string }) {
+function ChMetric({
+  k,
+  v,
+  n,
+  accent,
+}: {
+  k: string;
+  v: React.ReactNode;
+  n?: string;
+  accent?: string;
+}) {
   return (
-    <div className="eh-card" style={{ padding: "1rem 1.1rem", borderLeft: accent ? `3px solid ${accent}` : undefined }}>
-      <div className="eh-eyebrow" style={{ marginBottom: ".2rem" }}>{k}</div>
-      <div className="eh-num" style={{ fontSize: "1.6rem", fontWeight: 800, lineHeight: 1.1, color: accent ?? "var(--eh-ink)" }}>{v}</div>
-      {n && <div className="eh-muted eh-sm" style={{ marginTop: ".25rem" }}>{n}</div>}
+    <div
+      className="eh-card"
+      style={{
+        padding: "1rem 1.1rem",
+        borderLeft: accent ? `3px solid ${accent}` : undefined,
+      }}
+    >
+      <div className="eh-eyebrow" style={{ marginBottom: ".2rem" }}>
+        {k}
+      </div>
+      <div
+        className="eh-num"
+        style={{
+          fontSize: "1.6rem",
+          fontWeight: 800,
+          lineHeight: 1.1,
+          color: accent ?? "var(--eh-ink)",
+        }}
+      >
+        {v}
+      </div>
+      {n && (
+        <div className="eh-muted eh-sm" style={{ marginTop: ".25rem" }}>
+          {n}
+        </div>
+      )}
     </div>
   );
 }
 
-function ChapterStatusSelect(props: { current: string; pending: boolean; onChange: (s: ChapterStatus) => void }) {
+function ChapterStatusSelect(props: {
+  current: string;
+  pending: boolean;
+  onChange: (s: ChapterStatus) => void;
+}) {
   const [v, setV] = useState(props.current);
   return (
-    <span style={{ display: "inline-flex", gap: ".5rem", alignItems: "center" }}>
-      <select className="eh-select" style={{ width: "auto" }} value={v} onChange={(e) => setV(e.target.value)}>
-        {(Object.keys(CHAPTER_STATUS_LABEL) as ChapterStatus[]).map((s) => (
-          <option key={s} value={s}>{CHAPTER_STATUS_LABEL[s]}</option>
+    <span
+      style={{ display: "inline-flex", gap: ".5rem", alignItems: "center" }}
+    >
+      <select
+        className="eh-select"
+        style={{ width: "auto" }}
+        value={v}
+        onChange={e => setV(e.target.value)}
+      >
+        {(Object.keys(CHAPTER_STATUS_LABEL) as ChapterStatus[]).map(s => (
+          <option key={s} value={s}>
+            {CHAPTER_STATUS_LABEL[s]}
+          </option>
         ))}
       </select>
-      <button className="eh-btn sm" disabled={props.pending || v === props.current}
-              onClick={() => props.onChange(v as ChapterStatus)}>Move stage</button>
+      <button
+        className="eh-btn sm"
+        disabled={props.pending || v === props.current}
+        onClick={() => props.onChange(v as ChapterStatus)}
+      >
+        Move stage
+      </button>
     </span>
   );
 }
 
-function AddMembers(props: { chapterId: number; pending: boolean; onAssign: (memberId: number) => void }) {
+function AddMembers(props: {
+  chapterId: number;
+  pending: boolean;
+  onAssign: (memberId: number) => void;
+}) {
   const [q, setQ] = useState("");
   const res = trpc.adminEngage.assignableMembers.useQuery(
-    { q: q || undefined, excludeChapterId: props.chapterId }, { retry: false },
+    { q: q || undefined, excludeChapterId: props.chapterId },
+    { retry: false }
   );
   return (
     <>
       <Field label="Search members by name, email or company">
-        <input className="eh-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Start typing…" autoFocus />
+        <input
+          className="eh-input"
+          value={q}
+          onChange={e => setQ(e.target.value)}
+          placeholder="Start typing…"
+          autoFocus
+        />
       </Field>
       {res.isLoading && <Spinner />}
-      {res.data && res.data.length === 0 && <Empty big="No members match." p="Everyone matching is already in this chapter." />}
+      {res.data && res.data.length === 0 && (
+        <Empty
+          big="No members match."
+          p="Everyone matching is already in this chapter."
+        />
+      )}
       <div className="eh-list">
-        {(res.data ?? []).map((m) => (
+        {(res.data ?? []).map(m => (
           <div className="row" key={m.id}>
             <div className="eh-row" style={{ flexWrap: "nowrap", flex: 1 }}>
               <span className="eh-avatar">{initials(m.name)}</span>
@@ -587,12 +1301,22 @@ function AddMembers(props: { chapterId: number; pending: boolean; onAssign: (mem
                 <div className="t">{m.name ?? m.email}</div>
                 <div className="d">
                   {m.company ?? m.email ?? ""}
-                  {m.chapterName ? <> · currently <b>{m.chapterName}</b></> : <> · no chapter</>}
+                  {m.chapterName ? (
+                    <>
+                      {" "}
+                      · currently <b>{m.chapterName}</b>
+                    </>
+                  ) : (
+                    <> · no chapter</>
+                  )}
                 </div>
               </div>
             </div>
-            <button className="eh-btn sm gold" disabled={props.pending}
-                    onClick={() => props.onAssign(m.id)}>
+            <button
+              className="eh-btn sm gold"
+              disabled={props.pending}
+              onClick={() => props.onAssign(m.id)}
+            >
               {m.chapterName ? "Move here" : "Assign"}
             </button>
           </div>
@@ -603,43 +1327,121 @@ function AddMembers(props: { chapterId: number; pending: boolean; onAssign: (mem
 }
 
 function ChapterForm(props: {
-  pending: boolean; submitLabel: string;
+  pending: boolean;
+  submitLabel: string;
   initial?: Partial<{ [K in keyof ChapterVals]: ChapterVals[K] | null }>;
   onSubmit: (v: ChapterVals) => void;
 }) {
   const i = props.initial ?? {};
   const [v, setV] = useState<ChapterVals>({
-    name: i.name ?? "", code: i.code ?? "", country: i.country ?? "", region: i.region ?? "",
-    state: i.state ?? "", city: i.city ?? "", zone: i.zone ?? "", meetingCadence: i.meetingCadence ?? "",
+    name: i.name ?? "",
+    code: i.code ?? "",
+    country: i.country ?? "",
+    region: i.region ?? "",
+    state: i.state ?? "",
+    city: i.city ?? "",
+    zone: i.zone ?? "",
+    meetingCadence: i.meetingCadence ?? "",
     status: (i.status as ChapterStatus) ?? "seed",
   });
-  const set = (k: keyof ChapterVals) => (e: React.ChangeEvent<HTMLInputElement>) => setV({ ...v, [k]: e.target.value });
+  const set =
+    (k: keyof ChapterVals) => (e: React.ChangeEvent<HTMLInputElement>) =>
+      setV({ ...v, [k]: e.target.value });
   const clean = (): ChapterVals => ({
-    name: v.name.trim(), code: v.code || undefined, country: v.country || undefined, region: v.region || undefined,
-    state: v.state || undefined, city: v.city || undefined, zone: v.zone || undefined,
-    meetingCadence: v.meetingCadence || undefined, status: v.status,
+    name: v.name.trim(),
+    code: v.code || undefined,
+    country: v.country || undefined,
+    region: v.region || undefined,
+    state: v.state || undefined,
+    city: v.city || undefined,
+    zone: v.zone || undefined,
+    meetingCadence: v.meetingCadence || undefined,
+    status: v.status,
   });
   return (
     <>
       <div className="eh-grid g2">
-        <Field label="Chapter name"><input className="eh-input" value={v.name} onChange={set("name")} minLength={2} placeholder="eHive Dubai" /></Field>
-        <Field label="Chapter code"><input className="eh-input" value={v.code} onChange={set("code")} placeholder="AE-DXB-01" /></Field>
+        <Field label="Chapter name">
+          <input
+            className="eh-input"
+            value={v.name}
+            onChange={set("name")}
+            minLength={2}
+            placeholder="eHive Dubai"
+          />
+        </Field>
+        <Field label="Chapter code">
+          <input
+            className="eh-input"
+            value={v.code}
+            onChange={set("code")}
+            placeholder="AE-DXB-01"
+          />
+        </Field>
       </div>
-      <div className="eh-eyebrow" style={{ margin: ".2rem 0 .4rem" }}>Location — Country → Region → State → City → Zone</div>
+      <div className="eh-eyebrow" style={{ margin: ".2rem 0 .4rem" }}>
+        Location — Country → Region → State → City → Zone
+      </div>
       <div className="eh-grid g2">
-        <Field label="Country"><input className="eh-input" value={v.country} onChange={set("country")} placeholder="United Arab Emirates" /></Field>
-        <Field label="Region"><input className="eh-input" value={v.region} onChange={set("region")} placeholder="Gulf" /></Field>
+        <Field label="Country">
+          <input
+            className="eh-input"
+            value={v.country}
+            onChange={set("country")}
+            placeholder="United Arab Emirates"
+          />
+        </Field>
+        <Field label="Region">
+          <input
+            className="eh-input"
+            value={v.region}
+            onChange={set("region")}
+            placeholder="Gulf"
+          />
+        </Field>
       </div>
       <div className="eh-grid g2">
-        <Field label="State / Emirate"><input className="eh-input" value={v.state} onChange={set("state")} placeholder="Dubai" /></Field>
-        <Field label="City"><input className="eh-input" value={v.city} onChange={set("city")} placeholder="Dubai" /></Field>
+        <Field label="State / Emirate">
+          <input
+            className="eh-input"
+            value={v.state}
+            onChange={set("state")}
+            placeholder="Dubai"
+          />
+        </Field>
+        <Field label="City">
+          <input
+            className="eh-input"
+            value={v.city}
+            onChange={set("city")}
+            placeholder="Dubai"
+          />
+        </Field>
       </div>
       <div className="eh-grid g2">
-        <Field label="Zone / Area"><input className="eh-input" value={v.zone} onChange={set("zone")} placeholder="DIFC" /></Field>
-        <Field label="Meeting cadence"><input className="eh-input" value={v.meetingCadence} onChange={set("meetingCadence")} placeholder="Weekly · Tue 7:30am" /></Field>
+        <Field label="Zone / Area">
+          <input
+            className="eh-input"
+            value={v.zone}
+            onChange={set("zone")}
+            placeholder="DIFC"
+          />
+        </Field>
+        <Field label="Meeting cadence">
+          <input
+            className="eh-input"
+            value={v.meetingCadence}
+            onChange={set("meetingCadence")}
+            placeholder="Weekly · Tue 7:30am"
+          />
+        </Field>
       </div>
-      <button className="eh-btn gold" style={{ width: "100%" }} disabled={props.pending || v.name.trim().length < 2}
-              onClick={() => props.onSubmit(clean())}>
+      <button
+        className="eh-btn gold"
+        style={{ width: "100%" }}
+        disabled={props.pending || v.name.trim().length < 2}
+        onClick={() => props.onSubmit(clean())}
+      >
         {props.pending ? "Saving…" : props.submitLabel}
       </button>
     </>
@@ -650,81 +1452,193 @@ function AssignRoleForm(props: {
   roster: { id: number; name: string }[];
   prefill: { memberId: number; name: string } | null;
   pending: boolean;
-  onSubmit: (v: { memberId: number; role: string; title?: string; responsibilities?: string }) => void;
+  onSubmit: (v: {
+    memberId: number;
+    role: string;
+    title?: string;
+    responsibilities?: string;
+  }) => void;
 }) {
-  const [memberId, setMemberId] = useState<string>(props.prefill ? String(props.prefill.memberId) : "");
+  const [memberId, setMemberId] = useState<string>(
+    props.prefill ? String(props.prefill.memberId) : ""
+  );
   const [role, setRole] = useState<string>("president");
   const [title, setTitle] = useState("");
   const [resp, setResp] = useState("");
-  const def = CHAPTER_ROLES.find((r) => r.key === role);
+  const def = CHAPTER_ROLES.find(r => r.key === role);
   return (
     <>
       <Field label="Member">
-        <select className="eh-select" value={memberId} onChange={(e) => setMemberId(e.target.value)}>
+        <select
+          className="eh-select"
+          value={memberId}
+          onChange={e => setMemberId(e.target.value)}
+        >
           <option value="">Select a member…</option>
-          {props.roster.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+          {props.roster.map(m => (
+            <option key={m.id} value={m.id}>
+              {m.name}
+            </option>
+          ))}
         </select>
       </Field>
-      {props.roster.length === 0 && <p className="eh-sm" style={{ color: "var(--eh-gold)" }}>Add members to this chapter first.</p>}
+      {props.roster.length === 0 && (
+        <p className="eh-sm" style={{ color: "var(--eh-gold)" }}>
+          Add members to this chapter first.
+        </p>
+      )}
       <Field label="Role">
-        <select className="eh-select" value={role} onChange={(e) => setRole(e.target.value)}>
-          {CHAPTER_ROLES.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
+        <select
+          className="eh-select"
+          value={role}
+          onChange={e => setRole(e.target.value)}
+        >
+          {CHAPTER_ROLES.map(r => (
+            <option key={r.key} value={r.key}>
+              {r.label}
+            </option>
+          ))}
         </select>
       </Field>
       {def && def.key !== "other" && (
         <div className="eh-banner" style={{ marginBottom: ".75rem" }}>
           <div className="eh-sm">{def.responsibilities}</div>
-          {def.metric && <div className="eh-sm eh-muted" style={{ marginTop: ".3rem" }}><b>Accountable for:</b> {def.metric}</div>}
+          {def.metric && (
+            <div className="eh-sm eh-muted" style={{ marginTop: ".3rem" }}>
+              <b>Accountable for:</b> {def.metric}
+            </div>
+          )}
         </div>
       )}
       {role === "other" && (
-        <Field label="Role title"><input className="eh-input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Visitor Host" /></Field>
+        <Field label="Role title">
+          <input
+            className="eh-input"
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            placeholder="e.g. Visitor Host"
+          />
+        </Field>
       )}
       <Field label="Responsibilities">
-        <textarea className="eh-textarea" value={resp} onChange={(e) => setResp(e.target.value)}
-                  placeholder={def?.responsibilities || "What this officer owns."} maxLength={2000} />
+        <textarea
+          className="eh-textarea"
+          value={resp}
+          onChange={e => setResp(e.target.value)}
+          placeholder={def?.responsibilities || "What this officer owns."}
+          maxLength={2000}
+        />
       </Field>
-      <button className="eh-btn gold" style={{ width: "100%" }}
-              disabled={props.pending || !memberId || (role === "other" && !title.trim())}
-              onClick={() => props.onSubmit({
-                memberId: Number(memberId), role,
-                title: role === "other" ? title.trim() : undefined,
-                responsibilities: resp.trim() || undefined,
-              })}>
+      <button
+        className="eh-btn gold"
+        style={{ width: "100%" }}
+        disabled={
+          props.pending || !memberId || (role === "other" && !title.trim())
+        }
+        onClick={() =>
+          props.onSubmit({
+            memberId: Number(memberId),
+            role,
+            title: role === "other" ? title.trim() : undefined,
+            responsibilities: resp.trim() || undefined,
+          })
+        }
+      >
         {props.pending ? "Assigning…" : "Assign role →"}
       </button>
     </>
   );
 }
 
-function ElectionForm(props: { pending: boolean; onSubmit: (v: { title: string; seat: string; quorumPct: number }) => void }) {
+function ElectionForm(props: {
+  pending: boolean;
+  onSubmit: (v: { title: string; seat: string; quorumPct: number }) => void;
+}) {
   const [title, setTitle] = useState("");
   const [seat, setSeat] = useState("");
   const [quorum, setQuorum] = useState(50);
   return (
     <>
-      <Field label="Election title"><input className="eh-input" value={title} onChange={(e) => setTitle(e.target.value)} minLength={3} placeholder="Chapter Board 2026" /></Field>
-      <Field label="Seat"><input className="eh-input" value={seat} onChange={(e) => setSeat(e.target.value)} minLength={2} placeholder="President / Treasurer / Secretary" /></Field>
-      <Field label="Quorum % (min turnout for a valid result)">
-        <input className="eh-input" type="number" min={1} max={100} value={quorum} onChange={(e) => setQuorum(Number(e.target.value) || 50)} />
+      <Field label="Election title">
+        <input
+          className="eh-input"
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          minLength={3}
+          placeholder="Chapter Board 2026"
+        />
       </Field>
-      <button className="eh-btn gold" style={{ width: "100%" }} disabled={props.pending || title.trim().length < 3 || seat.trim().length < 2}
-              onClick={() => props.onSubmit({ title: title.trim(), seat: seat.trim(), quorumPct: quorum })}>
+      <Field label="Seat">
+        <input
+          className="eh-input"
+          value={seat}
+          onChange={e => setSeat(e.target.value)}
+          minLength={2}
+          placeholder="President / Treasurer / Secretary"
+        />
+      </Field>
+      <Field label="Quorum % (min turnout for a valid result)">
+        <input
+          className="eh-input"
+          type="number"
+          min={1}
+          max={100}
+          value={quorum}
+          onChange={e => setQuorum(Number(e.target.value) || 50)}
+        />
+      </Field>
+      <button
+        className="eh-btn gold"
+        style={{ width: "100%" }}
+        disabled={
+          props.pending || title.trim().length < 3 || seat.trim().length < 2
+        }
+        onClick={() =>
+          props.onSubmit({
+            title: title.trim(),
+            seat: seat.trim(),
+            quorumPct: quorum,
+          })
+        }
+      >
         {props.pending ? "Creating…" : "Open nominations →"}
       </button>
     </>
   );
 }
 
-function MotionForm(props: { pending: boolean; onSubmit: (v: { title: string; body?: string }) => void }) {
+function MotionForm(props: {
+  pending: boolean;
+  onSubmit: (v: { title: string; body?: string }) => void;
+}) {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   return (
     <>
-      <Field label="Motion title"><input className="eh-input" value={title} onChange={(e) => setTitle(e.target.value)} minLength={3} /></Field>
-      <Field label="Text"><textarea className="eh-textarea" value={body} onChange={(e) => setBody(e.target.value)} maxLength={4000} /></Field>
-      <button className="eh-btn gold" style={{ width: "100%" }} disabled={props.pending || title.trim().length < 3}
-              onClick={() => props.onSubmit({ title: title.trim(), body: body || undefined })}>
+      <Field label="Motion title">
+        <input
+          className="eh-input"
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          minLength={3}
+        />
+      </Field>
+      <Field label="Text">
+        <textarea
+          className="eh-textarea"
+          value={body}
+          onChange={e => setBody(e.target.value)}
+          maxLength={4000}
+        />
+      </Field>
+      <button
+        className="eh-btn gold"
+        style={{ width: "100%" }}
+        disabled={props.pending || title.trim().length < 3}
+        onClick={() =>
+          props.onSubmit({ title: title.trim(), body: body || undefined })
+        }
+      >
         {props.pending ? "Tabling…" : "Table motion →"}
       </button>
     </>
@@ -733,31 +1647,79 @@ function MotionForm(props: { pending: boolean; onSubmit: (v: { title: string; bo
 
 function BudgetForm(props: {
   pending: boolean;
-  onSubmit: (v: { label: string; kind: "allocation" | "sponsorship" | "spend"; amount: number; status: "proposed" | "approved" | "spent" | "rejected" }) => void;
+  onSubmit: (v: {
+    label: string;
+    kind: "allocation" | "sponsorship" | "spend";
+    amount: number;
+    status: "proposed" | "approved" | "spent" | "rejected";
+  }) => void;
 }) {
   const [label, setLabel] = useState("");
-  const [kind, setKind] = useState<"allocation" | "sponsorship" | "spend">("allocation");
+  const [kind, setKind] = useState<"allocation" | "sponsorship" | "spend">(
+    "allocation"
+  );
   const [amount, setAmount] = useState("");
-  const [status, setStatus] = useState<"proposed" | "approved" | "spent" | "rejected">("proposed");
+  const [status, setStatus] = useState<
+    "proposed" | "approved" | "spent" | "rejected"
+  >("proposed");
   return (
     <>
-      <Field label="Label"><input className="eh-input" value={label} onChange={(e) => setLabel(e.target.value)} minLength={3} placeholder="Q3 venue sponsorship" /></Field>
+      <Field label="Label">
+        <input
+          className="eh-input"
+          value={label}
+          onChange={e => setLabel(e.target.value)}
+          minLength={3}
+          placeholder="Q3 venue sponsorship"
+        />
+      </Field>
       <div className="eh-grid g2">
         <Field label="Kind">
-          <select className="eh-select" value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}>
-            <option value="allocation">Allocation</option><option value="sponsorship">Sponsorship</option><option value="spend">Spend</option>
+          <select
+            className="eh-select"
+            value={kind}
+            onChange={e => setKind(e.target.value as typeof kind)}
+          >
+            <option value="allocation">Allocation</option>
+            <option value="sponsorship">Sponsorship</option>
+            <option value="spend">Spend</option>
           </select>
         </Field>
-        <Field label="Amount (AED)"><input className="eh-input" type="number" min={0} value={amount} onChange={(e) => setAmount(e.target.value)} /></Field>
+        <Field label="Amount (AED)">
+          <input
+            className="eh-input"
+            type="number"
+            min={0}
+            value={amount}
+            onChange={e => setAmount(e.target.value)}
+          />
+        </Field>
       </div>
       <Field label="Status">
-        <select className="eh-select" value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
-          <option value="proposed">Proposed</option><option value="approved">Approved</option>
-          <option value="spent">Spent</option><option value="rejected">Rejected</option>
+        <select
+          className="eh-select"
+          value={status}
+          onChange={e => setStatus(e.target.value as typeof status)}
+        >
+          <option value="proposed">Proposed</option>
+          <option value="approved">Approved</option>
+          <option value="spent">Spent</option>
+          <option value="rejected">Rejected</option>
         </select>
       </Field>
-      <button className="eh-btn gold" style={{ width: "100%" }} disabled={props.pending || label.trim().length < 3 || !amount}
-              onClick={() => props.onSubmit({ label: label.trim(), kind, amount: Math.max(0, Number(amount) || 0), status })}>
+      <button
+        className="eh-btn gold"
+        style={{ width: "100%" }}
+        disabled={props.pending || label.trim().length < 3 || !amount}
+        onClick={() =>
+          props.onSubmit({
+            label: label.trim(),
+            kind,
+            amount: Math.max(0, Number(amount) || 0),
+            status,
+          })
+        }
+      >
         {props.pending ? "Saving…" : "Add line →"}
       </button>
     </>
@@ -765,108 +1727,239 @@ function BudgetForm(props: {
 }
 
 type MeetingRow = {
-  id: number; chapterId: number; kind: string; title: string;
-  scheduledAt: string | Date | null; status: "scheduled" | "held" | "cancelled";
-  agenda: string | null; minutes: string | null;
+  id: number;
+  chapterId: number;
+  kind: string;
+  title: string;
+  scheduledAt: string | Date | null;
+  status: "scheduled" | "held" | "cancelled";
+  agenda: string | null;
+  minutes: string | null;
 };
-type RosterEntry = { member: { id: number }; user: { name: string | null; email: string | null } };
+type RosterEntry = {
+  member: { id: number };
+  user: { name: string | null; email: string | null };
+};
 
-function MeetingCreate({ pending, onClose, onSubmit }: {
-  pending: boolean; onClose: () => void;
-  onSubmit: (v: { kind: "chapter_meeting" | "board_meeting" | "huddle" | "other"; title: string; scheduledAt?: string }) => void;
+function MeetingCreate({
+  pending,
+  onClose,
+  onSubmit,
+}: {
+  pending: boolean;
+  onClose: () => void;
+  onSubmit: (v: {
+    kind: "chapter_meeting" | "board_meeting" | "huddle" | "other";
+    title: string;
+    scheduledAt?: string;
+  }) => void;
 }) {
-  const [kind, setKind] = useState<"chapter_meeting" | "board_meeting" | "huddle" | "other">("chapter_meeting");
+  const [kind, setKind] = useState<
+    "chapter_meeting" | "board_meeting" | "huddle" | "other"
+  >("chapter_meeting");
   const [title, setTitle] = useState("");
   const [when, setWhen] = useState("");
   return (
     <Modal title="New meeting" onClose={onClose}>
       <Field label="Type">
-        <select className="eh-select" value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}>
-          {MEETING_KINDS.map((k) => <option key={k.key} value={k.key}>{k.label}{k.sop ? ` (${k.sop})` : ""}</option>)}
+        <select
+          className="eh-select"
+          value={kind}
+          onChange={e => setKind(e.target.value as typeof kind)}
+        >
+          {MEETING_KINDS.map(k => (
+            <option key={k.key} value={k.key}>
+              {k.label}
+              {k.sop ? ` (${k.sop})` : ""}
+            </option>
+          ))}
         </select>
       </Field>
       <Field label="Title">
-        <input className="eh-input" value={title} onChange={(e) => setTitle(e.target.value)}
-               placeholder="e.g. March Chapter Meeting" />
+        <input
+          className="eh-input"
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          placeholder="e.g. March Chapter Meeting"
+        />
       </Field>
       <Field label="When (optional)">
-        <input className="eh-input" type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
+        <input
+          className="eh-input"
+          type="datetime-local"
+          value={when}
+          onChange={e => setWhen(e.target.value)}
+        />
       </Field>
-      <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>The standard agenda for this type is loaded automatically — edit it after creating.</p>
-      <button className="eh-btn gold" disabled={pending || title.trim().length < 3}
-              onClick={() => onSubmit({ kind, title, scheduledAt: when ? new Date(when).toISOString() : undefined })}>
+      <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>
+        The standard agenda for this type is loaded automatically — edit it
+        after creating.
+      </p>
+      <button
+        className="eh-btn gold"
+        disabled={pending || title.trim().length < 3}
+        onClick={() =>
+          onSubmit({
+            kind,
+            title,
+            scheduledAt: when ? new Date(when).toISOString() : undefined,
+          })
+        }
+      >
         {pending ? "Creating…" : "Create meeting →"}
       </button>
     </Modal>
   );
 }
 
-function MeetingEditor({ meetingId, meeting, roster, onClose, onSaved }: {
-  meetingId: number; meeting: MeetingRow | undefined; roster: RosterEntry[];
-  onClose: () => void; onSaved: () => void;
+function MeetingEditor({
+  meetingId,
+  meeting,
+  roster,
+  onClose,
+  onSaved,
+}: {
+  meetingId: number;
+  meeting: MeetingRow | undefined;
+  roster: RosterEntry[];
+  onClose: () => void;
+  onSaved: () => void;
 }) {
-  const att = trpc.adminEngage.meetingAttendance.useQuery({ meetingId }, { retry: false });
+  const att = trpc.adminEngage.meetingAttendance.useQuery(
+    { meetingId },
+    { retry: false }
+  );
   const save = trpc.adminEngage.saveMeeting.useMutation({
-    onSuccess: () => { toast("Meeting saved."); onSaved(); },
-    onError: (e) => toast(e.message),
+    onSuccess: () => {
+      toast("Meeting saved.");
+      onSaved();
+    },
+    onError: e => toast(e.message),
   });
   const saveAtt = trpc.adminEngage.setMeetingAttendance.useMutation({
-    onSuccess: (r) => { toast(`Attendance saved — ${r.count} present.`); onSaved(); att.refetch(); },
-    onError: (e) => toast(e.message),
+    onSuccess: r => {
+      toast(`Attendance saved — ${r.count} present.`);
+      onSaved();
+      att.refetch();
+    },
+    onError: e => toast(e.message),
   });
 
   const [title, setTitle] = useState(meeting?.title ?? "");
-  const [status, setStatus] = useState<MeetingRow["status"]>(meeting?.status ?? "scheduled");
+  const [status, setStatus] = useState<MeetingRow["status"]>(
+    meeting?.status ?? "scheduled"
+  );
   const [agenda, setAgenda] = useState(meeting?.agenda ?? "");
   const [minutes, setMinutes] = useState(meeting?.minutes ?? "");
   const [present, setPresent] = useState<Set<number>>(new Set());
   const [seeded, setSeeded] = useState(false);
-  if (!seeded && att.data) { setPresent(new Set(att.data.filter((a) => a.status === "present").map((a) => a.memberId))); setSeeded(true); }
+  if (!seeded && att.data) {
+    setPresent(
+      new Set(att.data.filter(a => a.status === "present").map(a => a.memberId))
+    );
+    setSeeded(true);
+  }
 
   return (
-    <Modal title={meeting ? MEETING_KIND_LABEL[meeting.kind] ?? "Meeting" : "Meeting"} onClose={onClose} wide>
+    <Modal
+      title={
+        meeting ? (MEETING_KIND_LABEL[meeting.kind] ?? "Meeting") : "Meeting"
+      }
+      onClose={onClose}
+      wide
+    >
       <div className="eh-grid g2">
-        <Field label="Title"><input className="eh-input" value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
+        <Field label="Title">
+          <input
+            className="eh-input"
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+          />
+        </Field>
         <Field label="Status">
-          <select className="eh-select" value={status} onChange={(e) => setStatus(e.target.value as MeetingRow["status"])}>
-            <option value="scheduled">Scheduled</option><option value="held">Held</option><option value="cancelled">Cancelled</option>
+          <select
+            className="eh-select"
+            value={status}
+            onChange={e => setStatus(e.target.value as MeetingRow["status"])}
+          >
+            <option value="scheduled">Scheduled</option>
+            <option value="held">Held</option>
+            <option value="cancelled">Cancelled</option>
           </select>
         </Field>
       </div>
       <Field label="Agenda">
-        <textarea className="eh-textarea" style={{ minHeight: "9rem" }} value={agenda} onChange={(e) => setAgenda(e.target.value)} />
+        <textarea
+          className="eh-textarea"
+          style={{ minHeight: "9rem" }}
+          value={agenda}
+          onChange={e => setAgenda(e.target.value)}
+        />
       </Field>
       <Field label="Minutes">
-        <textarea className="eh-textarea" style={{ minHeight: "9rem" }} value={minutes} onChange={(e) => setMinutes(e.target.value)}
-                  placeholder="Decisions, discussion and outcomes…" />
+        <textarea
+          className="eh-textarea"
+          style={{ minHeight: "9rem" }}
+          value={minutes}
+          onChange={e => setMinutes(e.target.value)}
+          placeholder="Decisions, discussion and outcomes…"
+        />
       </Field>
-      <button className="eh-btn gold" disabled={save.isPending}
-              onClick={() => save.mutate({ id: meetingId, title, status, agenda, minutes })}>
+      <button
+        className="eh-btn gold"
+        disabled={save.isPending}
+        onClick={() =>
+          save.mutate({ id: meetingId, title, status, agenda, minutes })
+        }
+      >
         {save.isPending ? "Saving…" : "Save meeting"}
       </button>
 
-      <div className="eh-eyebrow eh-mt" style={{ marginBottom: ".4rem" }}>Attendance</div>
-      {roster.length === 0 && <p className="eh-sm eh-muted">No chapter members to mark yet.</p>}
+      <div className="eh-eyebrow eh-mt" style={{ marginBottom: ".4rem" }}>
+        Attendance
+      </div>
+      {roster.length === 0 && (
+        <p className="eh-sm eh-muted">No chapter members to mark yet.</p>
+      )}
       <div className="eh-list eh-mb">
         {roster.map(({ member, user }) => (
           <label key={member.id} className="row" style={{ cursor: "pointer" }}>
-            <span className="t">{user.name ?? user.email ?? `Member #${member.id}`}</span>
-            <input type="checkbox" checked={present.has(member.id)} style={{ accentColor: "#b8862e" }}
-                   onChange={(e) => {
-                     const next = new Set(present);
-                     if (e.target.checked) next.add(member.id); else next.delete(member.id);
-                     setPresent(next);
-                   }} />
+            <span className="t">
+              {user.name ?? user.email ?? `Member #${member.id}`}
+            </span>
+            <input
+              type="checkbox"
+              checked={present.has(member.id)}
+              style={{ accentColor: "#b8862e" }}
+              onChange={e => {
+                const next = new Set(present);
+                if (e.target.checked) next.add(member.id);
+                else next.delete(member.id);
+                setPresent(next);
+              }}
+            />
           </label>
         ))}
       </div>
       {roster.length > 0 && (
-        <button className="eh-btn" disabled={saveAtt.isPending}
-                onClick={() => saveAtt.mutate({
-                  meetingId,
-                  entries: roster.map(({ member }) => ({ memberId: member.id, status: present.has(member.id) ? "present" as const : "absent" as const })),
-                })}>
-          {saveAtt.isPending ? "Saving…" : `Save attendance (${present.size} present)`}
+        <button
+          className="eh-btn"
+          disabled={saveAtt.isPending}
+          onClick={() =>
+            saveAtt.mutate({
+              meetingId,
+              entries: roster.map(({ member }) => ({
+                memberId: member.id,
+                status: present.has(member.id)
+                  ? ("present" as const)
+                  : ("absent" as const),
+              })),
+            })
+          }
+        >
+          {saveAtt.isPending
+            ? "Saving…"
+            : `Save attendance (${present.size} present)`}
         </button>
       )}
     </Modal>
@@ -877,27 +1970,48 @@ type BudgetLine = { kind: string; amount: number; status: string };
 function FinanceSummary({ budgets }: { budgets: BudgetLine[] }) {
   if (!budgets.length) return null;
   const sum = (kind: string, statuses: string[]) =>
-    budgets.filter((b) => b.kind === kind && statuses.includes(b.status)).reduce((a, b) => a + b.amount, 0);
+    budgets
+      .filter(b => b.kind === kind && statuses.includes(b.status))
+      .reduce((a, b) => a + b.amount, 0);
   const allocations = sum("allocation", ["approved", "spent"]);
   const sponsorship = sum("sponsorship", ["approved", "spent"]);
   const spent = sum("spend", ["approved", "spent"]);
-  const pending = budgets.filter((b) => b.kind === "spend" && b.status === "proposed").reduce((a, b) => a + b.amount, 0);
+  const pending = budgets
+    .filter(b => b.kind === "spend" && b.status === "proposed")
+    .reduce((a, b) => a + b.amount, 0);
   const available = allocations + sponsorship;
   const remaining = available - spent;
   const cell = (label: string, value: number, tone?: string) => (
     <div style={{ flex: "1 1 120px" }}>
-      <div className="eh-eyebrow" style={{ marginBottom: ".2rem" }}>{label}</div>
-      <div className="eh-num" style={{ fontFamily: "Georgia, serif", fontSize: "1.3rem", fontWeight: 700, color: tone }}>
+      <div className="eh-eyebrow" style={{ marginBottom: ".2rem" }}>
+        {label}
+      </div>
+      <div
+        className="eh-num"
+        style={{
+          fontFamily: "Georgia, serif",
+          fontSize: "1.3rem",
+          fontWeight: 700,
+          color: tone,
+        }}
+      >
         AED {value.toLocaleString()}
       </div>
     </div>
   );
   return (
-    <div className="eh-card eh-mb" style={{ display: "flex", flexWrap: "wrap", gap: "1rem" }}>
+    <div
+      className="eh-card eh-mb"
+      style={{ display: "flex", flexWrap: "wrap", gap: "1rem" }}
+    >
       {cell("Allocated", allocations)}
       {cell("Sponsorship", sponsorship)}
       {cell("Spent", spent)}
-      {cell("Remaining", remaining, remaining < 0 ? "var(--eh-red)" : "var(--eh-green)")}
+      {cell(
+        "Remaining",
+        remaining,
+        remaining < 0 ? "var(--eh-red)" : "var(--eh-green)"
+      )}
       {pending > 0 && cell("Pending approval", pending, "var(--eh-gold)")}
     </div>
   );

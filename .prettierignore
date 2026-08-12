@@ -6,6 +6,15 @@ node_modules/
 dist/
 build/
 *.dist
+.next/
+
+# Minified assets (source files are formatted; minified copies are generated)
+*.min.js
+*.min.css
+public/app.min.js
+public/apps.min.js
+public/styles.min.css
+public/apps.min.css
 
 # Generated files
 *.tsbuildinfo

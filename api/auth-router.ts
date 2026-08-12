@@ -2,14 +2,25 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { VERIFY_TOKEN_TTL_MS, RESET_TOKEN_TTL_MS } from "@contracts/constants";
 import { createRouter, publicQuery, authedQuery } from "./middleware";
-import { hashPassword, verifyPassword } from "./lib/password";
+import { hashPassword, verifyPassword, validatePassword } from "./lib/password";
 import {
-  sessionSetCookie, sessionClearCookie, sign2faChallenge, verify2faChallenge,
+  sessionSetCookie,
+  sessionClearCookie,
+  sign2faChallenge,
+  verify2faChallenge,
 } from "./lib/session";
 import {
-  findUserByEmail, findUserById, createUser, touchLastSignIn,
-  setUserPassword, markEmailVerified, setTotpSecret, setTotpEnabled,
+  findUserByEmail,
+  findUserById,
+  createUser,
+  touchLastSignIn,
+  setUserPassword,
+  markEmailVerified,
+  setTotpSecret,
+  setTotpEnabled,
+  incrementTokenVersion,
 } from "./queries/users";
+import { env } from "./lib/env";
 import { createAuthToken, consumeAuthToken } from "./lib/tokens";
 import { sendVerifyEmail, sendResetEmail } from "./lib/auth-mail";
 import { rateLimit, rateLimitReset } from "./lib/rate-limit";
@@ -33,21 +44,31 @@ const credentials = z.object({
 
 /** Best-effort client IP from proxy headers (Railway sets x-forwarded-for). */
 function clientIp(headers: Headers): string {
-  return (headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
-}
-function originOf(req: Request): string {
-  return req.headers.get("origin") ?? new URL(req.url).origin;
+  // Use the rightmost untrusted address in X-Forwarded-For so the client can't
+  // spoof an arbitrary IP by adding values on the left. Railway/Fly append the
+  // actual connecting IP at the end.
+  const forwarded = (headers.get("x-forwarded-for") ?? "")
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean);
+  return forwarded.at(-1) ?? headers.get("x-real-ip") ?? "unknown";
 }
 
-async function issueVerification(userId: number, email: string, name: string, origin: string) {
+async function issueVerification(userId: number, email: string, name: string) {
   try {
     const raw = await createAuthToken(userId, "verify", VERIFY_TOKEN_TTL_MS);
-    await sendVerifyEmail(email, name, `${origin}/verify-email?token=${raw}`);
-  } catch (e) { console.error("verification email failed", e); }
+    await sendVerifyEmail(
+      email,
+      name,
+      `${env.publicUrl}/verify-email?token=${raw}`
+    );
+  } catch (e) {
+    console.error("verification email failed", e);
+  }
 }
 
 export const authRouter = createRouter({
-  me: authedQuery.query((opts) => safeUser(opts.ctx.user)),
+  me: authedQuery.query(opts => safeUser(opts.ctx.user)),
 
   /* Public runtime flags for the client (e.g. whether to show the email-verify
      nudge — pointless until SMTP is configured). */
@@ -58,11 +79,21 @@ export const authRouter = createRouter({
     .mutation(async ({ ctx, input }) => {
       const ip = clientIp(ctx.req.headers);
       if (!rateLimit(`register:${ip}`, 5, 60 * 60 * 1000)) {
-        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many sign-up attempts. Please try again later." });
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "Too many sign-up attempts. Please try again later.",
+        });
       }
       const existing = await findUserByEmail(input.email);
       if (existing) {
-        throw new TRPCError({ code: "CONFLICT", message: "An account with this email already exists." });
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "An account with this email already exists.",
+        });
+      }
+      const pwdCheck = validatePassword(input.password);
+      if (!pwdCheck.ok) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: pwdCheck.error });
       }
       const user = await createUser({
         email: input.email,
@@ -70,56 +101,100 @@ export const authRouter = createRouter({
         name: input.name,
       });
       if (!user) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Could not create account." });
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Could not create account.",
+        });
       }
-      await issueVerification(user.id, user.email!, user.name ?? "", originOf(ctx.req));
-      ctx.resHeaders.append("set-cookie", await sessionSetCookie(user.unionId, ctx.req.headers));
+      await issueVerification(user.id, user.email!, user.name ?? "");
+      ctx.resHeaders.append(
+        "set-cookie",
+        await sessionSetCookie(user.unionId, user.tokenVersion, ctx.req.headers)
+      );
       return safeUser(user);
     }),
 
-  login: publicQuery
-    .input(credentials)
-    .mutation(async ({ ctx, input }) => {
-      const ip = clientIp(ctx.req.headers);
-      const email = input.email.toLowerCase();
-      // Two windows: broad per-IP, tighter per-account, to slow brute force.
-      if (!rateLimit(`login:ip:${ip}`, 20, 15 * 60 * 1000) || !rateLimit(`login:acct:${email}`, 8, 15 * 60 * 1000)) {
-        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many attempts. Please wait a few minutes and try again." });
-      }
-      const user = await findUserByEmail(input.email);
-      if (!user || !verifyPassword(input.password, user.passwordHash)) {
-        throw new TRPCError({ code: "UNAUTHORIZED", message: "Incorrect email or password." });
-      }
-      rateLimitReset(`login:acct:${email}`);
-      // Password OK. If 2FA is on, defer the session until a valid code — hand
-      // back a short-lived challenge instead of signing in.
-      if (user.totpEnabled) {
-        return { needs2fa: true as const, challenge: await sign2faChallenge(user.id) };
-      }
-      await touchLastSignIn(user.id);
-      ctx.resHeaders.append("set-cookie", await sessionSetCookie(user.unionId, ctx.req.headers));
-      return { needs2fa: false as const, user: safeUser(user) };
-    }),
+  login: publicQuery.input(credentials).mutation(async ({ ctx, input }) => {
+    const ip = clientIp(ctx.req.headers);
+    const email = input.email.toLowerCase();
+    // Two windows: broad per-IP, tighter per-account, to slow brute force.
+    if (
+      !rateLimit(`login:ip:${ip}`, 20, 15 * 60 * 1000) ||
+      !rateLimit(`login:acct:${email}`, 8, 15 * 60 * 1000)
+    ) {
+      throw new TRPCError({
+        code: "TOO_MANY_REQUESTS",
+        message: "Too many attempts. Please wait a few minutes and try again.",
+      });
+    }
+    const user = await findUserByEmail(input.email);
+    if (!user || !verifyPassword(input.password, user.passwordHash)) {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "Incorrect email or password.",
+      });
+    }
+    rateLimitReset(`login:acct:${email}`);
+    // Password OK. If 2FA is on, defer the session until a valid code — hand
+    // back a short-lived challenge instead of signing in.
+    if (user.totpEnabled) {
+      return {
+        needs2fa: true as const,
+        challenge: await sign2faChallenge(user.id, ctx.req.headers),
+      };
+    }
+    await touchLastSignIn(user.id);
+    ctx.resHeaders.append(
+      "set-cookie",
+      await sessionSetCookie(user.unionId, user.tokenVersion, ctx.req.headers)
+    );
+    return { needs2fa: false as const, user: safeUser(user) };
+  }),
 
   /* Second factor: exchange a login challenge + TOTP code for a session. */
   loginVerify2fa: publicQuery
-    .input(z.object({ challenge: z.string().min(10), code: z.string().min(6).max(10) }))
+    .input(
+      z.object({
+        challenge: z.string().min(10),
+        code: z.string().min(6).max(10),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
-      const userId = await verify2faChallenge(input.challenge);
-      if (!userId) throw new TRPCError({ code: "UNAUTHORIZED", message: "Your login session expired — please sign in again." });
+      const userId = await verify2faChallenge(input.challenge, ctx.req.headers);
+      if (!userId)
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Your login session expired — please sign in again.",
+        });
       if (!rateLimit(`2fa:${userId}`, 6, 15 * 60 * 1000)) {
-        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many codes. Please wait a few minutes." });
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "Too many codes. Please wait a few minutes.",
+        });
       }
       const user = await findUserById(userId);
-      if (!user || !user.totpEnabled || !user.totpSecret || !verifyTotp(input.code, user.totpSecret)) {
-        throw new TRPCError({ code: "UNAUTHORIZED", message: "That code isn't right. Check your authenticator app and try again." });
+      if (
+        !user ||
+        !user.totpEnabled ||
+        !user.totpSecret ||
+        !verifyTotp(input.code, user.totpSecret)
+      ) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message:
+            "That code isn't right. Check your authenticator app and try again.",
+        });
       }
       await touchLastSignIn(user.id);
-      ctx.resHeaders.append("set-cookie", await sessionSetCookie(user.unionId, ctx.req.headers));
+      ctx.resHeaders.append(
+        "set-cookie",
+        await sessionSetCookie(user.unionId, user.tokenVersion, ctx.req.headers)
+      );
       return { user: safeUser(user) };
     }),
 
   logout: authedQuery.mutation(async ({ ctx }) => {
+    await incrementTokenVersion(ctx.user.id);
     ctx.resHeaders.append("set-cookie", sessionClearCookie(ctx.req.headers));
     return { success: true };
   }),
@@ -128,9 +203,12 @@ export const authRouter = createRouter({
   resendVerification: authedQuery.mutation(async ({ ctx }) => {
     if (ctx.user.emailVerifiedAt) return { ok: true, alreadyVerified: true };
     if (!rateLimit(`verify:${ctx.user.id}`, 3, 60 * 60 * 1000)) {
-      throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Please wait before requesting another verification email." });
+      throw new TRPCError({
+        code: "TOO_MANY_REQUESTS",
+        message: "Please wait before requesting another verification email.",
+      });
     }
-    await issueVerification(ctx.user.id, ctx.user.email!, ctx.user.name ?? "", originOf(ctx.req));
+    await issueVerification(ctx.user.id, ctx.user.email!, ctx.user.name ?? "");
     return { ok: true };
   }),
 
@@ -138,7 +216,11 @@ export const authRouter = createRouter({
     .input(z.object({ token: z.string().min(10).max(200) }))
     .mutation(async ({ input }) => {
       const userId = await consumeAuthToken(input.token, "verify");
-      if (!userId) throw new TRPCError({ code: "BAD_REQUEST", message: "This verification link is invalid or has expired." });
+      if (!userId)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This verification link is invalid or has expired.",
+        });
       await markEmailVerified(userId);
       return { ok: true };
     }),
@@ -149,23 +231,49 @@ export const authRouter = createRouter({
     .mutation(async ({ ctx, input }) => {
       const ip = clientIp(ctx.req.headers);
       // Rate-limited, and always returns ok so we don't leak which emails exist.
-      if (rateLimit(`reset:${ip}`, 5, 60 * 60 * 1000) && rateLimit(`reset:acct:${input.email.toLowerCase()}`, 3, 60 * 60 * 1000)) {
+      if (
+        rateLimit(`reset:${ip}`, 5, 60 * 60 * 1000) &&
+        rateLimit(`reset:acct:${input.email.toLowerCase()}`, 3, 60 * 60 * 1000)
+      ) {
         const user = await findUserByEmail(input.email);
         if (user) {
           try {
-            const raw = await createAuthToken(user.id, "reset", RESET_TOKEN_TTL_MS);
-            await sendResetEmail(user.email!, user.name ?? "", `${originOf(ctx.req)}/reset-password?token=${raw}`);
-          } catch (e) { console.error("reset email failed", e); }
+            const raw = await createAuthToken(
+              user.id,
+              "reset",
+              RESET_TOKEN_TTL_MS
+            );
+            await sendResetEmail(
+              user.email!,
+              user.name ?? "",
+              `${env.publicUrl}/reset-password?token=${raw}`
+            );
+          } catch (e) {
+            console.error("reset email failed", e);
+          }
         }
       }
       return { ok: true };
     }),
 
   resetPassword: publicQuery
-    .input(z.object({ token: z.string().min(10).max(200), password: z.string().min(8).max(200) }))
+    .input(
+      z.object({
+        token: z.string().min(10).max(200),
+        password: z.string().min(8).max(200),
+      })
+    )
     .mutation(async ({ input }) => {
       const userId = await consumeAuthToken(input.token, "reset");
-      if (!userId) throw new TRPCError({ code: "BAD_REQUEST", message: "This reset link is invalid or has expired." });
+      if (!userId)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This reset link is invalid or has expired.",
+        });
+      const pwdCheck = validatePassword(input.password);
+      if (!pwdCheck.ok) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: pwdCheck.error });
+      }
       await setUserPassword(userId, hashPassword(input.password));
       // A password reset also proves control of the mailbox.
       const user = await findUserById(userId);
@@ -174,23 +282,36 @@ export const authRouter = createRouter({
     }),
 
   /* ---- two-factor authentication (TOTP) ---- */
-  twoFactorStatus: authedQuery.query(({ ctx }) => ({ enabled: !!ctx.user.totpEnabled })),
+  twoFactorStatus: authedQuery.query(({ ctx }) => ({
+    enabled: !!ctx.user.totpEnabled,
+  })),
 
   /* Begin enrolment: mint a secret, return it + the otpauth URI for a QR code.
      Not active until confirmed with a valid code via twoFactorEnable. */
   twoFactorSetup: authedQuery.mutation(async ({ ctx }) => {
     const secret = generateTotpSecret();
     await setTotpSecret(ctx.user.id, secret);
-    return { secret, otpauthUri: totpKeyUri(secret, ctx.user.email ?? "member") };
+    return {
+      secret,
+      otpauthUri: totpKeyUri(secret, ctx.user.email ?? "member"),
+    };
   }),
 
   twoFactorEnable: authedQuery
     .input(z.object({ code: z.string().min(6).max(10) }))
     .mutation(async ({ ctx, input }) => {
       const user = await findUserById(ctx.user.id);
-      if (!user?.totpSecret) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Start setup first." });
+      if (!user?.totpSecret)
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Start setup first.",
+        });
       if (!verifyTotp(input.code, user.totpSecret)) {
-        throw new TRPCError({ code: "UNAUTHORIZED", message: "That code isn't right — make sure you scanned the QR, then enter a fresh code." });
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message:
+            "That code isn't right — make sure you scanned the QR, then enter a fresh code.",
+        });
       }
       await setTotpEnabled(ctx.user.id, true);
       return { ok: true };
@@ -201,7 +322,10 @@ export const authRouter = createRouter({
     .mutation(async ({ ctx, input }) => {
       const user = await findUserById(ctx.user.id);
       if (!user?.totpSecret || !verifyTotp(input.code, user.totpSecret)) {
-        throw new TRPCError({ code: "UNAUTHORIZED", message: "Enter a current code to turn off two-factor." });
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Enter a current code to turn off two-factor.",
+        });
       }
       await setTotpEnabled(ctx.user.id, false);
       return { ok: true };

@@ -1,483 +1,797 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>eHive Circle — Never build alone. | eHive</title>
-<meta name="description" content="A structured founder community in Dubai. Four tiers — Horizon, Ascent, Vanguard, Zenith — with peer circles, mentoring and investor access. Founding cohort opens 1 August 2026.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3 27 9.5v13L16 29 5 22.5v-13z' fill='none' stroke='%23D4A24C' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23D4A24C'/%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.min.css">
-<link rel="stylesheet" href="apps.min.css">
-<link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#16264C"><link rel="apple-touch-icon" href="/assets/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="eHive">
-</head>
-<body>
-<a class="skip" href="#main">Skip to content</a>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>eHive Circle — Never build alone. | eHive</title>
+    <meta
+      name="description"
+      content="A structured founder community in Dubai. Four tiers — Horizon, Ascent, Vanguard, Zenith — with peer circles, mentoring and investor access. Founding cohort opens 1 August 2026."
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3 27 9.5v13L16 29 5 22.5v-13z' fill='none' stroke='%23D4A24C' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23D4A24C'/%3E%3C/svg%3E"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.min.css" />
+    <link rel="stylesheet" href="apps.min.css" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#16264C" />
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="eHive" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
 
-<header class="site-nav" id="siteNav">
-  <nav aria-label="Primary">
-    <a class="brand" href="index.html" aria-label="eHive — home">
-      <img src="assets/ehive-wordmark.png" alt="eHive" width="146" height="26">
-    </a>
-    <button class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="navMenu" aria-label="Menu">
-      <span></span><span></span><span></span>
-    </button>
-    <ul class="nav-links" id="navMenu">
-      <li><a href="business-setup.html">Business Setup</a></li>
-      <li><a href="consulting.html">Consulting</a></li>
-      <li><a href="circle.html" aria-current="page">eHive Circle</a></li>
-      <li><a href="/clarity-scorecard.html">Scorecard</a></li><li><a href="/login">Login</a></li>
-      <li><a class="btn btn-primary btn-sm" href="get-started.html">Get Started</a></li>
-    </ul>
-  </nav>
-</header>
-
-<main id="main">
-<!-- ================= CIRCLE HERO ================= -->
-<section class="p-hero c-hero" aria-labelledby="page-h">
-  <div class="wrap">
-    <p class="crumbs"><a href="index.html">Home</a><i>·</i><span>eHive Circle</span></p>
-    <div class="p-hero-grid">
-      <div>
-        <p class="p-name">eHive Circle</p>
-        <h1 id="page-h">Never build <em>alone.</em></h1>
-        <p class="sub">The community pillar of the eHive ecosystem — a structured membership where
-          founders, mentors, experts and investors connect, collaborate, and grow. Peer circles,
-          mentoring, investor access, and rooms you earn your way into. Built on one belief:
-          nobody succeeds alone.</p>
-        <div class="c-chips">
-          <!-- COPY-NEEDED: circle-member-count --><span class="chip">Founding cohort forming now</span>
-          <span class="chip">Four tiers · one tribe</span>
-          <span class="chip">Founding chapter: Dubai</span>
-          <span class="chip">Opens 1 August 2026</span>
-        </div>
-      </div>
-      <div class="reveal" style="--d:.15s">
-        <!-- Circle motif: four concentric rings — the four tiers around one centre -->
-        <svg class="rings" viewBox="0 0 440 440" fill="none" aria-hidden="true">
-          <g class="ra">
-            <circle cx="220" cy="220" r="60" stroke="#4B5563" stroke-width="1.1"/>
-            <circle cx="220" cy="220" r="150" stroke="#4B5563" stroke-width="1.1"/>
-            <g fill="#E4573F">
-              <circle cx="220" cy="160" r="3.6"/>
-              <circle cx="168" cy="250" r="3.2"/>
-              <circle cx="272" cy="250" r="3.2"/>
-              <circle cx="220" cy="70" r="4"/>
-              <circle cx="94" cy="220" r="3.4"/>
-              <circle cx="346" cy="220" r="3.4"/>
-              <circle cx="114" cy="326" r="3.2"/>
-              <circle cx="326" cy="326" r="3.2"/>
-            </g>
-          </g>
-          <g class="rb">
-            <circle cx="220" cy="220" r="105" stroke="#4B5563" stroke-width="1.1"/>
-            <circle cx="220" cy="220" r="195" stroke="#4B5563" stroke-width="1.1"/>
-            <g fill="#DA3A22">
-              <circle cx="220" cy="115" r="3.8"/>
-              <circle cx="131" cy="168" r="3.2"/>
-              <circle cx="309" cy="168" r="3.2"/>
-              <circle cx="131" cy="272" r="3.2"/>
-              <circle cx="309" cy="272" r="3.2"/>
-              <circle cx="220" cy="25" r="4.2"/>
-              <circle cx="57" cy="122" r="3.4"/>
-              <circle cx="383" cy="122" r="3.4"/>
-              <circle cx="57" cy="318" r="3.4"/>
-              <circle cx="383" cy="318" r="3.4"/>
-              <circle cx="220" cy="415" r="3.8"/>
-            </g>
-          </g>
-          <path d="M220 196l21 12v24l-21 12-21-12v-24z" stroke="#E4573F" stroke-width="1.6"/>
-          <circle cx="220" cy="220" r="4" fill="#E4573F"/>
-        </svg>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ================= THE FOUNDING BELIEF ================= -->
-<section class="promise" aria-label="The founding belief">
-  <div class="narrow">
-    <blockquote class="reveal">&ldquo;Nobody <b>succeeds</b> alone. Every business you admire was built
-      in rooms like these — <b>the Circle is where those rooms are</b>.&rdquo;</blockquote>
-    <p class="attr reveal" style="--d:.15s">The Circle&rsquo;s founding belief</p>
-  </div>
-</section>
-
-<!-- ================= WHAT THE CIRCLE IS ================= -->
-<section class="light" aria-labelledby="who-h">
-  <div class="wrap pad">
-    <p class="eyebrow reveal">What the Circle is</p>
-    <h2 class="h2 reveal" style="--d:.08s" id="who-h">A tribe with tiers — and a culture of giving back.</h2>
-    <div class="who-grid">
-      <div class="who-copy reveal" style="--d:.12s">
-        <p>eHive Circle is the community pillar of the eHive ecosystem — a membership for founders,
-          mentors, experts and investors who know that businesses grow faster when people grow together.
-          It is deliberately structured: not a networking free-for-all, but curated rooms, designed
-          formats, and conversations with a point.</p>
-        <p>It is a <b>tribe with tiers</b>. Four levels of membership, each one a home rather than a
-          waiting room for the next — with peer circles, mentoring and events designed around where you
-          actually are in the journey, from your first year to the boardroom.</p>
-        <p>And it runs on <b>reciprocity</b>. Senior members mentor the tiers below them. Access is
-          earned through contribution, not just paid for. And what&rsquo;s said in the Hive stays in the
-          Hive — confidentiality is a condition of membership, not a courtesy.</p>
-      </div>
-      <aside class="fact-card reveal" style="--d:.2s" aria-label="The Circle at a glance">
-        <h3>The Circle, at a glance</h3>
-        <ul>
-          <li><b>Founding chapter</b><br>Dubai, UAE</li>
-          <li><b>Structure</b><br>Four tiers — Horizon, Ascent, Vanguard, Zenith*</li>
-          <li><b>Culture</b><br>Give-back built in; access earned via the Hive Score</li>
-          <li><b>Member platform</b><br>Live now — <a href="/login" style="color:var(--gold);border-bottom:1px solid rgba(218,58,34,.4)">sign in to the portal →</a></li>
-          <li><b>Opens</b><br>1 August 2026</li>
-        </ul>
-      </aside>
-    </div>
-  </div>
-</section>
-
-<!-- chapter-break banner -->
-<figure class="img-banner">
-  <img src="assets/img/img-circle.jpg" alt="A constellation of golden nodes connecting into one hive-like network in deep navy space" loading="lazy" decoding="async" width="1920" height="1012">
-  <div class="ib-overlay" aria-hidden="true"></div>
-  <figcaption>Real value is created between meetings — an introduction, a conversation, a shared struggle.</figcaption>
-</figure>
-
-<!-- ================= THE FOUR TIERS ================= -->
-<!-- NOTE: tier names are working titles, pending trademark clearance.
-     Prices & benefits reflect the pre-launch rulebook snapshot. -->
-<section class="light" style="background:var(--ivory-2)" aria-labelledby="tiers-h">
-  <div class="wrap pad">
-    <p class="eyebrow reveal">Membership</p>
-    <h2 class="h2 reveal" style="--d:.08s" id="tiers-h">Four tiers. One tribe.</h2>
-    <p class="lede reveal" style="--d:.14s">Every tier is a home, not a waiting room for the next one.
-      Annual membership, priced for the stage you&rsquo;re actually at.</p>
-    <div class="tiers t4">
-      <div class="tier reveal" style="--d:.05s">
-        <p class="t-no">Tier 01</p>
-        <p class="t-name">Horizon</p>
-        <p class="t-ident">Your first year, surrounded.</p>
-        <p class="t-price">AED 999 <span class="t-per">/ year</span></p>
-        <ul class="t-list">
-          <li>A Peer Pod of 8–10 founders at your stage</li>
-          <li>A buddy from day one — 30-day pairing</li>
-          <li>Six ticketed events a year, at member rates</li>
-          <li>10% off eHive services</li>
-        </ul>
-        <span class="badge-row" style="margin:0"><span class="badge badge--live">Open enrolment</span></span>
-      </div>
-      <div class="tier reco reveal" style="--d:.12s">
-        <span class="reco-tag">Recommended for most founders</span>
-        <p class="t-no">Tier 02</p>
-        <p class="t-name">Ascent</p>
-        <p class="t-ident">In active construction.</p>
-        <p class="t-price">AED 5,999 <span class="t-per">/ year</span></p>
-        <ul class="t-list">
-          <li>Mastermind group — max 20, meeting bi-weekly</li>
-          <li>Two 1-on-1 mentoring sessions per quarter</li>
-          <li>The Growth Kit — plan, pitch &amp; finance templates</li>
-          <li>15% off eHive services</li>
-        </ul>
-        <span class="badge-row" style="margin:0"><span class="badge badge--live">Application · screened</span></span>
-      </div>
-      <div class="tier reveal" style="--d:.19s">
-        <p class="t-no">Tier 03</p>
-        <p class="t-name">Vanguard</p>
-        <p class="t-ident">Scaling, with doors held open.</p>
-        <p class="t-price">AED 11,999 <span class="t-per">/ year</span></p>
-        <ul class="t-list">
-          <li>Funding Readiness Programme + two investor introductions a year</li>
-          <li>Founder Circle — 20 peers, monthly</li>
-          <li>Quarterly Vanguard Council</li>
-          <li>20% off eHive services</li>
-        </ul>
-        <p class="t-give">Give-back: Vanguards mentor the tier below — two hours a quarter.</p>
-        <span class="badge-row" style="margin:0"><span class="badge badge--roadmap">Thresholds at launch</span></span>
-      </div>
-      <div class="tier reveal" style="--d:.26s">
-        <p class="t-no">Tier 04</p>
-        <p class="t-name">Zenith</p>
-        <p class="t-ident">The inner room. Earned, never bought.</p>
-        <p class="t-price">AED 29,999 <span class="t-per">/ year</span></p>
-        <ul class="t-list">
-          <li>Advisory Council seat, with voting rights</li>
-          <li>Bi-annual private sessions with founders &amp; CEOs</li>
-          <li>A dedicated relationship manager</li>
-          <li>One international delegation per year</li>
-        </ul>
-        <p class="t-cap">Capped at 50 members. Earned annually through contribution.</p>
-        <span class="badge-row" style="margin:0"><span class="badge badge--invite">Invitation only</span></span>
-      </div>
-    </div>
-    <!-- COPY-NEEDED: vanguard-thresholds, tier-names-trademark -->
-    <p class="tier-note-full reveal" style="--d:.1s">* Tier names are working titles, pending trademark
-      clearance. Vanguard eligibility thresholds (revenue / team size) are set pre-launch, and final
-      benefits are published in the member rulebook at launch.</p>
-  </div>
-</section>
-
-<!-- ================= HOW MEMBERSHIP WORKS ================= -->
-<section class="hiw" aria-labelledby="hiw-h">
-  <div class="wrap pad">
-    <p class="eyebrow reveal">How membership works</p>
-    <h2 class="h2 reveal" style="--d:.08s" id="hiw-h">Three steps in. Thirty days to your first room.</h2>
-    <div class="steps">
-      <div class="step reveal" style="--d:.05s">
-        <span class="n">01</span>
-        <h3>Apply</h3>
-        <p>Ten minutes, online. Tell us who you are, what you&rsquo;re building, and where you&rsquo;re
-          stuck. No pitch decks required.</p>
-      </div>
-      <div class="step reveal" style="--d:.12s">
-        <span class="n">02</span>
-        <h3>Vetting</h3>
-        <p>A conversation, not a filter. We vet for stage and fit — never for status, school,
-          or surname.</p>
-      </div>
-      <div class="step reveal" style="--d:.19s">
-        <span class="n">03</span>
-        <h3>Onboarding</h3>
-        <p>Pod pairing, a buddy, and your first event — all inside your first 30 days. Nobody
-          joins the Circle and sits alone.</p>
-      </div>
-    </div>
-
-    <div class="access-strip">
-      <h3 class="reveal">Access is earned, not bought.</h3>
-      <div class="ladder">
-        <div class="rung pub reveal" style="--d:.05s">
-          <span class="r-step">01 · Open</span>
-          <div><h3>Open events</h3><p>A taste of the Circle — Spark Talks and select ecosystem events, open to anyone curious.</p></div>
-          <span class="r-price">Free to attend</span>
-        </div>
-        <div class="rung reveal" style="--d:.12s">
-          <span class="r-step">02 · Members</span>
-          <div><h3>Member gatherings</h3><p>The all-member rooms — Meetups, Event Circles, the annual Retreat.</p></div>
-          <span class="r-price">From AED 999 / yr</span>
-        </div>
-        <div class="rung reveal" style="--d:.19s">
-          <span class="r-step">03 · Cross-tier</span>
-          <div><h3>Cross-tier rooms</h3><p>Where tiers mix by design — mentoring sessions, councils, summit tables.</p></div>
-          <span class="r-price">Hive Score earned</span>
-        </div>
-        <div class="rung apex reveal" style="--d:.26s">
-          <span class="r-step">04 · Inner rooms</span>
-          <div><h3>Exclusive circles</h3><p>Tier-specific rooms that never open downward. Senior rooms stay senior.</p></div>
-          <span class="r-price">Invitation</span>
-        </div>
-      </div>
-      <p class="hscore reveal" style="--d:.1s">Movement between tiers is driven by your <b>Hive Score</b> —
-        showing up, contributing, giving back, and hitting your milestones. The Circle measures what you
-        give, not just what you take.</p>
-    </div>
-
-
-    <!-- ================= HIVE SCORE SIMULATOR (interactive) ================= -->
-    <div class="sim reveal" id="hsSim" style="--d:.15s">
-      <div class="sim-head">
-        <p class="eyebrow">Try it</p>
-        <h3>The Hive Score, in your hands.</h3>
-        <p>Every action in the Circle earns points. See how a quarter of showing up adds up —
-          demo mechanics; the final rules live in the member rulebook.</p>
-      </div>
-      <div class="sim-grid">
-        <div class="sim-ringwrap">
-          <svg class="sim-ring" viewBox="0 0 120 120" aria-hidden="true">
-            <circle class="sim-track" cx="60" cy="60" r="52"/>
-            <circle class="sim-arc" cx="60" cy="60" r="52" id="simArc"/>
-          </svg>
-          <div class="sim-score"><b id="simScore">0</b><span>Hive Score</span></div>
-          <p class="sim-unlock" id="simUnlock">Your first action starts the journey.</p>
-        </div>
-        <div class="sim-actions" role="group" aria-label="Circle actions">
-          <button type="button" class="sim-act" data-pts="4"><b>+4</b><span>Attend an event</span></button>
-          <button type="button" class="sim-act" data-pts="6"><b>+6</b><span>Give an intro</span></button>
-          <button type="button" class="sim-act" data-pts="8"><b>+8</b><span>Mentor a founder</span></button>
-          <button type="button" class="sim-act" data-pts="10"><b>+10</b><span>Host a session</span></button>
-          <button type="button" class="sim-reset" id="simReset">Reset</button>
-        </div>
-      </div>
-      <ul class="sim-miles" id="simMiles">
-        <li data-at="10"><b>10</b><span>New-member badge</span></li>
-        <li data-at="25"><b>25</b><span>Cross-tier rooms open</span></li>
-        <li data-at="50"><b>50</b><span>Council eligibility</span></li>
-        <li data-at="80"><b>80</b><span>Vanguard eligibility</span></li>
-      </ul>
-    </div>
-
-    <div class="honest reveal" style="--d:.1s">
-      <h4>We only promise what exists.</h4>
-      <p>The member portal is live and in members&rsquo; hands today. The partner network and chapter facilities
-        are still in active development — founding members don&rsquo;t buy a render, they see the roadmap
-        and shape it first.</p>
-    </div>
-  </div>
-</section>
-
-<!-- ================= CHAPTERS & EVENTS ================= -->
-<section class="light" aria-labelledby="ch-h">
-  <div class="wrap pad">
-    <p class="eyebrow reveal">Chapters &amp; events</p>
-    <h2 class="h2 reveal" style="--d:.08s" id="ch-h">A taste, not a calendar.</h2>
-    <p class="lede reveal" style="--d:.14s">Four formats run through the year. Some are open to all;
-      the rest you earn by tier.</p>
-    <div class="ev-grid">
-      <div class="ev reveal" style="--d:.05s">
-        <h3>Event Circles</h3>
-        <p>Small, curated rooms around one theme — once or twice a month, in your chapter.</p>
-        <span class="ev-tag">Members</span>
-      </div>
-      <div class="ev reveal" style="--d:.12s">
-        <h3>Spark Talks</h3>
-        <p>Short, sharp founder talks. Monthly, and open to the wider ecosystem.</p>
-        <span class="ev-tag">Open</span>
-      </div>
-      <div class="ev reveal" style="--d:.19s">
-        <h3>eHive Meetup</h3>
-        <p>The quarterly all-member gathering — every tier in one room.</p>
-        <span class="ev-tag">Members</span>
-      </div>
-      <div class="ev reveal" style="--d:.26s">
-        <h3>Ecosystem Events</h3>
-        <p>Partner and flagship events across the region, at member rates.</p>
-        <span class="ev-tag">Mixed</span>
-      </div>
-    </div>
-    <!-- COPY-NEEDED: chapter-schedule -->
-    <p class="chapter-note reveal" style="--d:.1s">Our founding chapter is <b>Dubai</b>. Abu Dhabi and
-      Sharjah follow as membership grows — and the chapter model is built to travel beyond the UAE.
-      The chapter calendar is announced to founding members first.</p>
-  </div>
-</section>
-
-<!-- ================= THE FOUNDING COHORT ================= -->
-<section class="founding" aria-labelledby="fc-h">
-  <div class="wrap pad">
-    <div class="found-grid">
-      <div>
-        <p class="eyebrow reveal">The Founding Cohort</p>
-        <h2 class="h2 reveal" style="--d:.08s" id="fc-h">Believed first. Remembered permanently.</h2>
-        <p class="lede reveal" style="--d:.14s">A small, hand-selected group of founders forms the founding
-          cohort — the people who build the culture before it has a name. Founding members are recognised
-          for as long as the Circle exists:</p>
-        <ul class="found-list">
-          <li class="reveal" style="--d:.2s">Founding rates — locked for life</li>
-          <li class="reveal" style="--d:.26s">The Founding Member badge</li>
-          <li class="reveal" style="--d:.32s">A permanent place on the Founders Wall</li>
-        </ul>
-      </div>
-      <div class="count-card reveal" style="--d:.2s" aria-label="Founding cohort countdown">
-        <p class="count-eyebrow">Founding cohort opens</p>
-        <p class="count-date">1 August 2026</p>
-        <div class="count-grid" data-countdown role="timer" aria-live="off">
-          <div class="count-cell"><b class="cd-d">0</b><span>Days</span></div>
-          <div class="count-cell"><b class="cd-h">00</b><span>Hours</span></div>
-          <div class="count-cell"><b class="cd-m">00</b><span>Minutes</span></div>
-          <div class="count-cell"><b class="cd-s">00</b><span>Seconds</span></div>
-        </div>
-        <div class="count-actions">
-          <a class="btn btn-primary" href="get-started.html?door=circle">Join the waitlist</a>
-          <a class="btn btn-ghost on-dark" href="get-started.html?door=circle">Request Zenith consideration <span class="arr">→</span></a>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ================= MEMBER VOICES (placeholders) ================= -->
-<section class="voices" aria-labelledby="voices-h">
-  <div class="wrap pad">
-    <p class="eyebrow reveal">Member voices</p>
-    <h2 class="reveal" style="--d:.08s" id="voices-h">From inside the Hive.</h2>
-    <figure class="quote-card ph reveal" style="--d:.12s">
-      <!-- COPY-NEEDED: testimonials --><blockquote>A founding member&rsquo;s words will live here — why they joined
-        before launch, in their own voice. Published with consent once the cohort forms.</blockquote>
-      <figcaption>
-        <span class="avatar">—</span>
-        <span><b>Founding member</b><br><span>Shared with consent, at launch</span></span>
-      </figcaption>
-    </figure>
-    <figure class="quote-card ph reveal" style="--d:.2s">
-      <blockquote>A mentor&rsquo;s voice will live here — why they give their time to the Circle,
-        and what they&rsquo;ve seen founders gain. Published with consent.</blockquote>
-      <figcaption>
-        <span class="avatar">—</span>
-        <span><b>Circle mentor</b><br><span>Shared with consent, at launch</span></span>
-      </figcaption>
-    </figure>
-  </div>
-</section>
-
-<!-- ================= FINAL CTA ================= -->
-<section class="c-cta" aria-labelledby="cta-h">
-  <div class="wrap pad">
-    <h2 class="reveal" id="cta-h">The door is open.<br>The room is forming.</h2>
-    <p class="lede reveal" style="--d:.1s">Membership opens 1 August 2026, with the founding cohort.
-      Waitlist applications are reviewed in the order they arrive.</p>
-    <div class="doors reveal" style="--d:.18s">
-      <a class="btn btn-primary" href="get-started.html?door=circle">Join the waitlist</a>
-      <a class="btn btn-ghost on-dark" href="get-started.html?door=circle">Request Zenith consideration <span class="arr">→</span></a>
-    </div>
-    <p class="fine reveal" style="--d:.24s">Not sure which tier fits? Apply anyway — vetting is a
-      conversation, and we&rsquo;ll place you where you&rsquo;ll get the most.</p>
-  </div>
-</section>
-</main>
-
-<footer>
-  <div class="wrap">
-    <div class="foot-grid">
-      <div class="foot-brand">
-        <img src="assets/ehive-full.png" alt="eHive — Build. Belong. Become." width="150">
-        <p>To advance the human race by enabling individuals and organisations to do better —
-          sustainably, relevantly, and beneficially.</p>
-      </div>
-      <div class="foot-col">
-        <h4>The Ecosystem</h4>
-        <ul>
+    <header class="site-nav" id="siteNav">
+      <nav aria-label="Primary">
+        <a class="brand" href="index.html" aria-label="eHive — home">
+          <img
+            src="assets/ehive-wordmark.png"
+            alt="eHive"
+            width="146"
+            height="26"
+          />
+        </a>
+        <button
+          class="nav-toggle"
+          id="navToggle"
+          aria-expanded="false"
+          aria-controls="navMenu"
+          aria-label="Menu"
+        >
+          <span></span><span></span><span></span>
+        </button>
+        <ul class="nav-links" id="navMenu">
           <li><a href="business-setup.html">Business Setup</a></li>
           <li><a href="consulting.html">Consulting</a></li>
-          <li><a href="circle.html">eHive Circle</a></li>
-          <li><a href="business-setup.html#calculator">Cost Calculator</a></li>
+          <li><a href="circle.html" aria-current="page">eHive Circle</a></li>
+          <li><a href="/clarity-scorecard.html">Scorecard</a></li>
+          <li><a href="/login">Login</a></li>
+          <li>
+            <a class="btn btn-primary btn-sm" href="get-started.html"
+              >Get Started</a
+            >
+          </li>
         </ul>
-      </div>
-      <div class="foot-col">
-        <h4>Company</h4>
-        <ul>
-          <li><a href="about.html">About</a></li>
-          <li><a href="insights.html">Insights — The Hive Journal</a></li>
-          <li><a href="about.html#join">Join the Network</a></li>
-          <li><a href="/clarity-scorecard.html">Scorecard</a></li><li><a href="/login">Login</a></li>
-        </ul>
-      </div>
-      <div class="foot-col">
-        <h4>Connect</h4>
-        <p class="foot-loc">Dubai, UAE<span>Expanding across the region</span></p>
-        <form class="news-form" method="post" aria-label="Newsletter signup">
-          <label class="visually-hidden" for="news-email">Email address</label>
-          <input id="news-email" type="email" placeholder="Your email" required>
-          <button type="submit">Subscribe</button>
-        </form>
-      </div>
-    </div>
-    <div class="foot-bottom">
-      <span>© <span id="year">2026</span> eHive. All rights reserved.</span>
-      <div class="foot-legal">
-        <a href="privacy.html">Privacy</a>
-        <a href="terms.html">Terms</a>
-      </div>
-      <div class="socials">
-        <!-- COPY-NEEDED: social-urls -->
-        <span class="soc-soon">LinkedIn</span>
-        <span class="soc-soon">Instagram</span>
-        <span class="soc-soon">X</span>
-      </div>
-    </div>
-  </div>
-</footer>
+      </nav>
+    </header>
 
-<script src="app.min.js" defer></script>
-<script src="apps.min.js" defer></script>
-</body>
+    <main id="main">
+      <!-- ================= CIRCLE HERO ================= -->
+      <section class="p-hero c-hero" aria-labelledby="page-h">
+        <div class="wrap">
+          <p class="crumbs">
+            <a href="index.html">Home</a><i>·</i><span>eHive Circle</span>
+          </p>
+          <div class="p-hero-grid">
+            <div>
+              <p class="p-name">eHive Circle</p>
+              <h1 id="page-h">Never build <em>alone.</em></h1>
+              <p class="sub">
+                The community pillar of the eHive ecosystem — a structured
+                membership where founders, mentors, experts and investors
+                connect, collaborate, and grow. Peer circles, mentoring,
+                investor access, and rooms you earn your way into. Built on one
+                belief: nobody succeeds alone.
+              </p>
+              <div class="c-chips">
+                <!-- COPY-NEEDED: circle-member-count --><span class="chip"
+                  >Founding cohort forming now</span
+                >
+                <span class="chip">Four tiers · one tribe</span>
+                <span class="chip">Founding chapter: Dubai</span>
+                <span class="chip"
+                  >Opens <span data-launch-date>1 August 2026</span></span
+                >
+              </div>
+            </div>
+            <div class="reveal" style="--d: 0.15s">
+              <!-- Circle motif: four concentric rings — the four tiers around one centre -->
+              <svg
+                class="rings"
+                viewBox="0 0 440 440"
+                fill="none"
+                aria-hidden="true"
+              >
+                <g class="ra">
+                  <circle
+                    cx="220"
+                    cy="220"
+                    r="60"
+                    stroke="#4B5563"
+                    stroke-width="1.1"
+                  />
+                  <circle
+                    cx="220"
+                    cy="220"
+                    r="150"
+                    stroke="#4B5563"
+                    stroke-width="1.1"
+                  />
+                  <g fill="#E4573F">
+                    <circle cx="220" cy="160" r="3.6" />
+                    <circle cx="168" cy="250" r="3.2" />
+                    <circle cx="272" cy="250" r="3.2" />
+                    <circle cx="220" cy="70" r="4" />
+                    <circle cx="94" cy="220" r="3.4" />
+                    <circle cx="346" cy="220" r="3.4" />
+                    <circle cx="114" cy="326" r="3.2" />
+                    <circle cx="326" cy="326" r="3.2" />
+                  </g>
+                </g>
+                <g class="rb">
+                  <circle
+                    cx="220"
+                    cy="220"
+                    r="105"
+                    stroke="#4B5563"
+                    stroke-width="1.1"
+                  />
+                  <circle
+                    cx="220"
+                    cy="220"
+                    r="195"
+                    stroke="#4B5563"
+                    stroke-width="1.1"
+                  />
+                  <g fill="#DA3A22">
+                    <circle cx="220" cy="115" r="3.8" />
+                    <circle cx="131" cy="168" r="3.2" />
+                    <circle cx="309" cy="168" r="3.2" />
+                    <circle cx="131" cy="272" r="3.2" />
+                    <circle cx="309" cy="272" r="3.2" />
+                    <circle cx="220" cy="25" r="4.2" />
+                    <circle cx="57" cy="122" r="3.4" />
+                    <circle cx="383" cy="122" r="3.4" />
+                    <circle cx="57" cy="318" r="3.4" />
+                    <circle cx="383" cy="318" r="3.4" />
+                    <circle cx="220" cy="415" r="3.8" />
+                  </g>
+                </g>
+                <path
+                  d="M220 196l21 12v24l-21 12-21-12v-24z"
+                  stroke="#E4573F"
+                  stroke-width="1.6"
+                />
+                <circle cx="220" cy="220" r="4" fill="#E4573F" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= THE FOUNDING BELIEF ================= -->
+      <section class="promise" aria-label="The founding belief">
+        <div class="narrow">
+          <blockquote class="reveal">
+            &ldquo;Nobody <b>succeeds</b> alone. Every business you admire was
+            built in rooms like these —
+            <b>the Circle is where those rooms are</b>.&rdquo;
+          </blockquote>
+          <p class="attr reveal" style="--d: 0.15s">
+            The Circle&rsquo;s founding belief
+          </p>
+        </div>
+      </section>
+
+      <!-- ================= WHAT THE CIRCLE IS ================= -->
+      <section class="light" aria-labelledby="who-h">
+        <div class="wrap pad">
+          <p class="eyebrow reveal">What the Circle is</p>
+          <h2 class="h2 reveal" style="--d: 0.08s" id="who-h">
+            A tribe with tiers — and a culture of giving back.
+          </h2>
+          <div class="who-grid">
+            <div class="who-copy reveal" style="--d: 0.12s">
+              <p>
+                eHive Circle is the community pillar of the eHive ecosystem — a
+                membership for founders, mentors, experts and investors who know
+                that businesses grow faster when people grow together. It is
+                deliberately structured: not a networking free-for-all, but
+                curated rooms, designed formats, and conversations with a point.
+              </p>
+              <p>
+                It is a <b>tribe with tiers</b>. Four levels of membership, each
+                one a home rather than a waiting room for the next — with peer
+                circles, mentoring and events designed around where you actually
+                are in the journey, from your first year to the boardroom.
+              </p>
+              <p>
+                And it runs on <b>reciprocity</b>. Senior members mentor the
+                tiers below them. Access is earned through contribution, not
+                just paid for. And what&rsquo;s said in the Hive stays in the
+                Hive — confidentiality is a condition of membership, not a
+                courtesy.
+              </p>
+            </div>
+            <aside
+              class="fact-card reveal"
+              style="--d: 0.2s"
+              aria-label="The Circle at a glance"
+            >
+              <h3>The Circle, at a glance</h3>
+              <ul>
+                <li><b>Founding chapter</b><br />Dubai, UAE</li>
+                <li>
+                  <b>Structure</b><br />Four tiers — Horizon, Ascent, Vanguard,
+                  Zenith*
+                </li>
+                <li>
+                  <b>Culture</b><br />Give-back built in; access earned via the
+                  Hive Score
+                </li>
+                <li>
+                  <b>Member platform</b><br />Live now —
+                  <a
+                    href="/login"
+                    style="
+                      color: var(--gold);
+                      border-bottom: 1px solid rgba(218, 58, 34, 0.4);
+                    "
+                    >sign in to the portal →</a
+                  >
+                </li>
+                <li>
+                  <b>Opens</b><br /><span data-launch-date>1 August 2026</span>
+                </li>
+              </ul>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <!-- chapter-break banner -->
+      <figure class="img-banner">
+        <img
+          src="assets/img/img-circle.jpg"
+          alt="A constellation of golden nodes connecting into one hive-like network in deep navy space"
+          loading="lazy"
+          decoding="async"
+          width="1920"
+          height="1012"
+        />
+        <div class="ib-overlay" aria-hidden="true"></div>
+        <figcaption>
+          Real value is created between meetings — an introduction, a
+          conversation, a shared struggle.
+        </figcaption>
+      </figure>
+
+      <!-- ================= THE FOUR TIERS ================= -->
+      <!-- NOTE: tier names are working titles, pending trademark clearance.
+     Prices & benefits reflect the pre-launch rulebook snapshot. -->
+      <section
+        class="light"
+        style="background: var(--ivory-2)"
+        aria-labelledby="tiers-h"
+      >
+        <div class="wrap pad">
+          <p class="eyebrow reveal">Membership</p>
+          <h2 class="h2 reveal" style="--d: 0.08s" id="tiers-h">
+            Four tiers. One tribe.
+          </h2>
+          <p class="lede reveal" style="--d: 0.14s">
+            Every tier is a home, not a waiting room for the next one. Annual
+            membership, priced for the stage you&rsquo;re actually at.
+          </p>
+          <div class="tiers t4">
+            <div class="tier reveal" style="--d: 0.05s">
+              <p class="t-no">Tier 01</p>
+              <p class="t-name">Horizon</p>
+              <p class="t-ident">Your first year, surrounded.</p>
+              <p class="t-price">AED 999 <span class="t-per">/ year</span></p>
+              <ul class="t-list">
+                <li>A Peer Pod of 8–10 founders at your stage</li>
+                <li>A buddy from day one — 30-day pairing</li>
+                <li>Six ticketed events a year, at member rates</li>
+                <li>10% off eHive services</li>
+              </ul>
+              <span class="badge-row" style="margin: 0"
+                ><span class="badge badge--live">Open enrolment</span></span
+              >
+            </div>
+            <div class="tier reco reveal" style="--d: 0.12s">
+              <span class="reco-tag">Recommended for most founders</span>
+              <p class="t-no">Tier 02</p>
+              <p class="t-name">Ascent</p>
+              <p class="t-ident">In active construction.</p>
+              <p class="t-price">AED 5,999 <span class="t-per">/ year</span></p>
+              <ul class="t-list">
+                <li>Mastermind group — max 20, meeting bi-weekly</li>
+                <li>Two 1-on-1 mentoring sessions per quarter</li>
+                <li>The Growth Kit — plan, pitch &amp; finance templates</li>
+                <li>15% off eHive services</li>
+              </ul>
+              <span class="badge-row" style="margin: 0"
+                ><span class="badge badge--live"
+                  >Application · screened</span
+                ></span
+              >
+            </div>
+            <div class="tier reveal" style="--d: 0.19s">
+              <p class="t-no">Tier 03</p>
+              <p class="t-name">Vanguard</p>
+              <p class="t-ident">Scaling, with doors held open.</p>
+              <p class="t-price">
+                AED 11,999 <span class="t-per">/ year</span>
+              </p>
+              <ul class="t-list">
+                <li>
+                  Funding Readiness Programme + two investor introductions a
+                  year
+                </li>
+                <li>Founder Circle — 20 peers, monthly</li>
+                <li>Quarterly Vanguard Council</li>
+                <li>20% off eHive services</li>
+              </ul>
+              <p class="t-give">
+                Give-back: Vanguards mentor the tier below — two hours a
+                quarter.
+              </p>
+              <span class="badge-row" style="margin: 0"
+                ><span class="badge badge--roadmap"
+                  >Thresholds at launch</span
+                ></span
+              >
+            </div>
+            <div class="tier reveal" style="--d: 0.26s">
+              <p class="t-no">Tier 04</p>
+              <p class="t-name">Zenith</p>
+              <p class="t-ident">The inner room. Earned, never bought.</p>
+              <p class="t-price">
+                AED 29,999 <span class="t-per">/ year</span>
+              </p>
+              <ul class="t-list">
+                <li>Advisory Council seat, with voting rights</li>
+                <li>Bi-annual private sessions with founders &amp; CEOs</li>
+                <li>A dedicated relationship manager</li>
+                <li>One international delegation per year</li>
+              </ul>
+              <p class="t-cap">
+                Capped at 50 members. Earned annually through contribution.
+              </p>
+              <span class="badge-row" style="margin: 0"
+                ><span class="badge badge--invite">Invitation only</span></span
+              >
+            </div>
+          </div>
+          <!-- COPY-NEEDED: vanguard-thresholds, tier-names-trademark -->
+          <p class="tier-note-full reveal" style="--d: 0.1s">
+            * Tier names are working titles, pending trademark clearance.
+            Vanguard eligibility thresholds (revenue / team size) are set
+            pre-launch, and final benefits are published in the member rulebook
+            at launch.
+          </p>
+        </div>
+      </section>
+
+      <!-- ================= HOW MEMBERSHIP WORKS ================= -->
+      <section class="hiw" aria-labelledby="hiw-h">
+        <div class="wrap pad">
+          <p class="eyebrow reveal">How membership works</p>
+          <h2 class="h2 reveal" style="--d: 0.08s" id="hiw-h">
+            Three steps in. Thirty days to your first room.
+          </h2>
+          <div class="steps">
+            <div class="step reveal" style="--d: 0.05s">
+              <span class="n">01</span>
+              <h3>Apply</h3>
+              <p>
+                Ten minutes, online. Tell us who you are, what you&rsquo;re
+                building, and where you&rsquo;re stuck. No pitch decks required.
+              </p>
+            </div>
+            <div class="step reveal" style="--d: 0.12s">
+              <span class="n">02</span>
+              <h3>Vetting</h3>
+              <p>
+                A conversation, not a filter. We vet for stage and fit — never
+                for status, school, or surname.
+              </p>
+            </div>
+            <div class="step reveal" style="--d: 0.19s">
+              <span class="n">03</span>
+              <h3>Onboarding</h3>
+              <p>
+                Pod pairing, a buddy, and your first event — all inside your
+                first 30 days. Nobody joins the Circle and sits alone.
+              </p>
+            </div>
+          </div>
+
+          <div class="access-strip">
+            <h3 class="reveal">Access is earned, not bought.</h3>
+            <div class="ladder">
+              <div class="rung pub reveal" style="--d: 0.05s">
+                <span class="r-step">01 · Open</span>
+                <div>
+                  <h3>Open events</h3>
+                  <p>
+                    A taste of the Circle — Spark Talks and select ecosystem
+                    events, open to anyone curious.
+                  </p>
+                </div>
+                <span class="r-price">Free to attend</span>
+              </div>
+              <div class="rung reveal" style="--d: 0.12s">
+                <span class="r-step">02 · Members</span>
+                <div>
+                  <h3>Member gatherings</h3>
+                  <p>
+                    The all-member rooms — Meetups, Event Circles, the annual
+                    Retreat.
+                  </p>
+                </div>
+                <span class="r-price">From AED 999 / yr</span>
+              </div>
+              <div class="rung reveal" style="--d: 0.19s">
+                <span class="r-step">03 · Cross-tier</span>
+                <div>
+                  <h3>Cross-tier rooms</h3>
+                  <p>
+                    Where tiers mix by design — mentoring sessions, councils,
+                    summit tables.
+                  </p>
+                </div>
+                <span class="r-price">Hive Score earned</span>
+              </div>
+              <div class="rung apex reveal" style="--d: 0.26s">
+                <span class="r-step">04 · Inner rooms</span>
+                <div>
+                  <h3>Exclusive circles</h3>
+                  <p>
+                    Tier-specific rooms that never open downward. Senior rooms
+                    stay senior.
+                  </p>
+                </div>
+                <span class="r-price">Invitation</span>
+              </div>
+            </div>
+            <p class="hscore reveal" style="--d: 0.1s">
+              Movement between tiers is driven by your <b>Hive Score</b> —
+              showing up, contributing, giving back, and hitting your
+              milestones. The Circle measures what you give, not just what you
+              take.
+            </p>
+          </div>
+
+          <!-- ================= HIVE SCORE SIMULATOR (interactive) ================= -->
+          <div class="sim reveal" id="hsSim" style="--d: 0.15s">
+            <div class="sim-head">
+              <p class="eyebrow">Try it</p>
+              <h3>The Hive Score, in your hands.</h3>
+              <p>
+                Every action in the Circle earns points. See how a quarter of
+                showing up adds up — demo mechanics; the final rules live in the
+                member rulebook.
+              </p>
+            </div>
+            <div class="sim-grid">
+              <div class="sim-ringwrap">
+                <svg class="sim-ring" viewBox="0 0 120 120" aria-hidden="true">
+                  <circle class="sim-track" cx="60" cy="60" r="52" />
+                  <circle class="sim-arc" cx="60" cy="60" r="52" id="simArc" />
+                </svg>
+                <div class="sim-score">
+                  <b id="simScore">0</b><span>Hive Score</span>
+                </div>
+                <p class="sim-unlock" id="simUnlock">
+                  Your first action starts the journey.
+                </p>
+              </div>
+              <div class="sim-actions" role="group" aria-label="Circle actions">
+                <button type="button" class="sim-act" data-pts="4">
+                  <b>+4</b><span>Attend an event</span>
+                </button>
+                <button type="button" class="sim-act" data-pts="6">
+                  <b>+6</b><span>Give an intro</span>
+                </button>
+                <button type="button" class="sim-act" data-pts="8">
+                  <b>+8</b><span>Mentor a founder</span>
+                </button>
+                <button type="button" class="sim-act" data-pts="10">
+                  <b>+10</b><span>Host a session</span>
+                </button>
+                <button type="button" class="sim-reset" id="simReset">
+                  Reset
+                </button>
+              </div>
+            </div>
+            <ul class="sim-miles" id="simMiles">
+              <li data-at="10"><b>10</b><span>New-member badge</span></li>
+              <li data-at="25"><b>25</b><span>Cross-tier rooms open</span></li>
+              <li data-at="50"><b>50</b><span>Council eligibility</span></li>
+              <li data-at="80"><b>80</b><span>Vanguard eligibility</span></li>
+            </ul>
+          </div>
+
+          <div class="honest reveal" style="--d: 0.1s">
+            <h4>We only promise what exists.</h4>
+            <p>
+              The member portal is live and in members&rsquo; hands today. The
+              partner network and chapter facilities are still in active
+              development — founding members don&rsquo;t buy a render, they see
+              the roadmap and shape it first.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= CHAPTERS & EVENTS ================= -->
+      <section class="light" aria-labelledby="ch-h">
+        <div class="wrap pad">
+          <p class="eyebrow reveal">Chapters &amp; events</p>
+          <h2 class="h2 reveal" style="--d: 0.08s" id="ch-h">
+            A taste, not a calendar.
+          </h2>
+          <p class="lede reveal" style="--d: 0.14s">
+            Four formats run through the year. Some are open to all; the rest
+            you earn by tier.
+          </p>
+          <div class="ev-grid">
+            <div class="ev reveal" style="--d: 0.05s">
+              <h3>Event Circles</h3>
+              <p>
+                Small, curated rooms around one theme — once or twice a month,
+                in your chapter.
+              </p>
+              <span class="ev-tag">Members</span>
+            </div>
+            <div class="ev reveal" style="--d: 0.12s">
+              <h3>Spark Talks</h3>
+              <p>
+                Short, sharp founder talks. Monthly, and open to the wider
+                ecosystem.
+              </p>
+              <span class="ev-tag">Open</span>
+            </div>
+            <div class="ev reveal" style="--d: 0.19s">
+              <h3>eHive Meetup</h3>
+              <p>
+                The quarterly all-member gathering — every tier in one room.
+              </p>
+              <span class="ev-tag">Members</span>
+            </div>
+            <div class="ev reveal" style="--d: 0.26s">
+              <h3>Ecosystem Events</h3>
+              <p>
+                Partner and flagship events across the region, at member rates.
+              </p>
+              <span class="ev-tag">Mixed</span>
+            </div>
+          </div>
+          <!-- COPY-NEEDED: chapter-schedule -->
+          <p class="chapter-note reveal" style="--d: 0.1s">
+            Our founding chapter is <b>Dubai</b>. Abu Dhabi and Sharjah follow
+            as membership grows — and the chapter model is built to travel
+            beyond the UAE. The chapter calendar is announced to founding
+            members first.
+          </p>
+        </div>
+      </section>
+
+      <!-- ================= THE FOUNDING COHORT ================= -->
+      <section class="founding" aria-labelledby="fc-h">
+        <div class="wrap pad">
+          <div class="found-grid">
+            <div>
+              <p class="eyebrow reveal">The Founding Cohort</p>
+              <h2 class="h2 reveal" style="--d: 0.08s" id="fc-h">
+                Believed first. Remembered permanently.
+              </h2>
+              <p class="lede reveal" style="--d: 0.14s">
+                A small, hand-selected group of founders forms the founding
+                cohort — the people who build the culture before it has a name.
+                Founding members are recognised for as long as the Circle
+                exists:
+              </p>
+              <ul class="found-list">
+                <li class="reveal" style="--d: 0.2s">
+                  Founding rates — locked for life
+                </li>
+                <li class="reveal" style="--d: 0.26s">
+                  The Founding Member badge
+                </li>
+                <li class="reveal" style="--d: 0.32s">
+                  A permanent place on the Founders Wall
+                </li>
+              </ul>
+            </div>
+            <div
+              class="count-card reveal"
+              style="--d: 0.2s"
+              aria-label="Founding cohort countdown"
+            >
+              <p class="count-eyebrow">Founding cohort opens</p>
+              <p class="count-date">
+                <span data-launch-date>1 August 2026</span>
+              </p>
+              <div
+                class="count-grid"
+                data-countdown
+                role="timer"
+                aria-live="off"
+              >
+                <div class="count-cell">
+                  <b class="cd-d">0</b><span>Days</span>
+                </div>
+                <div class="count-cell">
+                  <b class="cd-h">00</b><span>Hours</span>
+                </div>
+                <div class="count-cell">
+                  <b class="cd-m">00</b><span>Minutes</span>
+                </div>
+                <div class="count-cell">
+                  <b class="cd-s">00</b><span>Seconds</span>
+                </div>
+              </div>
+              <div class="count-actions">
+                <a class="btn btn-primary" href="get-started.html?door=circle"
+                  >Join the waitlist</a
+                >
+                <a
+                  class="btn btn-ghost on-dark"
+                  href="get-started.html?door=circle"
+                  >Request Zenith consideration <span class="arr">→</span></a
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= MEMBER VOICES (placeholders) ================= -->
+      <section class="voices" aria-labelledby="voices-h">
+        <div class="wrap pad">
+          <p class="eyebrow reveal">Member voices</p>
+          <h2 class="reveal" style="--d: 0.08s" id="voices-h">
+            From inside the Hive.
+          </h2>
+          <figure class="quote-card ph reveal" style="--d: 0.12s">
+            <!-- COPY-NEEDED: testimonials -->
+            <blockquote>
+              A founding member&rsquo;s words will live here — why they joined
+              before launch, in their own voice. Published with consent once the
+              cohort forms.
+            </blockquote>
+            <figcaption>
+              <span class="avatar">—</span>
+              <span
+                ><b>Founding member</b><br /><span
+                  >Shared with consent, at launch</span
+                ></span
+              >
+            </figcaption>
+          </figure>
+          <figure class="quote-card ph reveal" style="--d: 0.2s">
+            <blockquote>
+              A mentor&rsquo;s voice will live here — why they give their time
+              to the Circle, and what they&rsquo;ve seen founders gain.
+              Published with consent.
+            </blockquote>
+            <figcaption>
+              <span class="avatar">—</span>
+              <span
+                ><b>Circle mentor</b><br /><span
+                  >Shared with consent, at launch</span
+                ></span
+              >
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <!-- ================= FINAL CTA ================= -->
+      <section class="c-cta" aria-labelledby="cta-h">
+        <div class="wrap pad">
+          <h2 class="reveal" id="cta-h">
+            The door is open.<br />The room is forming.
+          </h2>
+          <p class="lede reveal" style="--d: 0.1s">
+            Membership opens <span data-launch-date>1 August 2026</span>, with
+            the founding cohort. Waitlist applications are reviewed in the order
+            they arrive.
+          </p>
+          <div class="doors reveal" style="--d: 0.18s">
+            <a class="btn btn-primary" href="get-started.html?door=circle"
+              >Join the waitlist</a
+            >
+            <a class="btn btn-ghost on-dark" href="get-started.html?door=circle"
+              >Request Zenith consideration <span class="arr">→</span></a
+            >
+          </div>
+          <p class="fine reveal" style="--d: 0.24s">
+            Not sure which tier fits? Apply anyway — vetting is a conversation,
+            and we&rsquo;ll place you where you&rsquo;ll get the most.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <div class="foot-grid">
+          <div class="foot-brand">
+            <img
+              src="assets/ehive-full.png"
+              alt="eHive — Build. Belong. Become."
+              width="150"
+            />
+            <p>
+              To advance the human race by enabling individuals and
+              organisations to do better — sustainably, relevantly, and
+              beneficially.
+            </p>
+          </div>
+          <div class="foot-col">
+            <h4>The Ecosystem</h4>
+            <ul>
+              <li><a href="business-setup.html">Business Setup</a></li>
+              <li><a href="consulting.html">Consulting</a></li>
+              <li><a href="circle.html">eHive Circle</a></li>
+              <li>
+                <a href="business-setup.html#calculator">Cost Calculator</a>
+              </li>
+            </ul>
+          </div>
+          <div class="foot-col">
+            <h4>Company</h4>
+            <ul>
+              <li><a href="about.html">About</a></li>
+              <li><a href="insights.html">Insights — The Hive Journal</a></li>
+              <li><a href="about.html#join">Join the Network</a></li>
+              <li><a href="/clarity-scorecard.html">Scorecard</a></li>
+              <li><a href="/login">Login</a></li>
+            </ul>
+          </div>
+          <div class="foot-col">
+            <h4>Connect</h4>
+            <p class="foot-loc">
+              Dubai, UAE<span>Expanding across the region</span>
+            </p>
+            <form
+              class="news-form"
+              method="post"
+              aria-label="Newsletter signup"
+            >
+              <label class="visually-hidden" for="news-email"
+                >Email address</label
+              >
+              <input
+                id="news-email"
+                type="email"
+                placeholder="Your email"
+                required
+              />
+              <button type="submit">Subscribe</button>
+            </form>
+          </div>
+        </div>
+        <div class="foot-bottom">
+          <span>© <span id="year">2026</span> eHive. All rights reserved.</span>
+          <div class="foot-legal">
+            <a href="privacy.html">Privacy</a>
+            <a href="terms.html">Terms</a>
+          </div>
+          <div class="socials">
+            <!-- COPY-NEEDED: social-urls -->
+            <span class="soc-soon">LinkedIn</span>
+            <span class="soc-soon">Instagram</span>
+            <span class="soc-soon">X</span>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <script src="app.min.js" defer></script>
+    <script src="apps.min.js" defer></script>
+  </body>
 </html>

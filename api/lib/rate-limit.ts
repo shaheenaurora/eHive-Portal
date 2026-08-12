@@ -1,6 +1,8 @@
 /* Minimal in-process fixed-window rate limiter. No external store — sufficient
-   for a single-instance deployment (Railway). For multi-instance, back this
-   with Redis. Guards credential-stuffing / brute-force on auth endpoints. */
+   for a single-instance deployment. For multi-instance deployments (Railway
+   with more than one replica, Fly, Kubernetes), back this with Redis or another
+   shared store so per-IP/account limits cannot be bypassed by hitting a
+   different instance. Guards credential-stuffing / brute-force on auth endpoints. */
 
 type Bucket = { count: number; resetAt: number };
 const store = new Map<string, Bucket>();
@@ -25,7 +27,10 @@ export function rateLimitReset(key: string): void {
 }
 
 // Opportunistic cleanup so the map can't grow unbounded.
-setInterval(() => {
-  const now = Date.now();
-  for (const [k, b] of store) if (now > b.resetAt) store.delete(k);
-}, 10 * 60 * 1000).unref?.();
+setInterval(
+  () => {
+    const now = Date.now();
+    for (const [k, b] of store) if (now > b.resetAt) store.delete(k);
+  },
+  10 * 60 * 1000
+).unref?.();

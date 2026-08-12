@@ -5,14 +5,21 @@ import { getDb } from "./connection";
 /** Website Article Series — Batch 1. Real editorial content for the Insights
  *  (blog) section, seeded idempotently on boot so it publishes on deploy without
  *  a manual CMS step. Each `body` is trusted, author-written HTML. */
-type Seed = { slug: string; title: string; tag: string; excerpt: string; paras: string[] };
+type Seed = {
+  slug: string;
+  title: string;
+  tag: string;
+  excerpt: string;
+  paras: string[];
+};
 
 const ARTICLES: Seed[] = [
   {
     slug: "business-plan-isnt-dead-ai",
     title: "Your Business Plan Isn't Dead Because of AI. It Was Already Dead.",
     tag: "Strategy",
-    excerpt: "AI didn't kill your business model. It just removed the cover story. Here's how to tell if your business ever had real foundations — before you blame the algorithm.",
+    excerpt:
+      "AI didn't kill your business model. It just removed the cover story. Here's how to tell if your business ever had real foundations — before you blame the algorithm.",
     paras: [
       "Every founder I talk to in Dubai right now has the same explanation ready: “AI changed everything, so we had to pivot.” It's become the most convenient sentence in business. It sounds forward-thinking. It sounds like you're a victim of unstoppable technological change rather than someone whose business never had a foundation to begin with.",
       "I want to be direct about this, because nobody else in this market seems willing to be: AI is not killing businesses. It's exposing which ones were never built on anything real.",
@@ -29,9 +36,11 @@ const ARTICLES: Seed[] = [
   },
   {
     slug: "free-zones-license-not-a-business",
-    title: "Free Zones Are Selling You a License, Not a Business. Here's the Difference.",
+    title:
+      "Free Zones Are Selling You a License, Not a Business. Here's the Difference.",
     tag: "Business Setup",
-    excerpt: "Dubai makes it easy to register a company. Nobody tells you that a trade license and a real business are two completely different things. Here's what actually determines which one you end up with.",
+    excerpt:
+      "Dubai makes it easy to register a company. Nobody tells you that a trade license and a real business are two completely different things. Here's what actually determines which one you end up with.",
     paras: [
       "You can set up a company in the UAE in a matter of days. A trade license, a flexi-desk, a bank account if you're lucky and patient — and suddenly you're a “founder.” The UAE has built one of the most efficient company-formation machines on earth, and I say that as someone whose own firm operates inside that machine.",
       "But I need to say something that isn't good for anyone's marketing, including mine: a trade license is not a business. It's paperwork that makes a business <em>legal</em>. Whether it becomes <em>real</em> has nothing to do with how fast you got it.",
@@ -47,7 +56,8 @@ const ARTICLES: Seed[] = [
     slug: "financial-resilience-founders",
     title: "Being Broke and Looking Rich Are the Same Risk.",
     tag: "Finance",
-    excerpt: "In a market built on visible wealth, the businesses that survive downturns are rarely the ones that look the richest. Here's what actually protects a founder when the market turns.",
+    excerpt:
+      "In a market built on visible wealth, the businesses that survive downturns are rarely the ones that look the richest. Here's what actually protects a founder when the market turns.",
     paras: [
       "This is a hard one to write, because this city runs partly on the appearance of success. The car, the office, the event you were seen at — in a market built on trust and image, looking successful is part of how you win the next deal. I understand it. I've played that game too.",
       "But here's what I need founders to actually sit with: looking financially strong and being financially resilient are not the same thing, and confusing the two is one of the most common ways a business dies quietly before it dies publicly.",
@@ -60,9 +70,11 @@ const ARTICLES: Seed[] = [
   },
   {
     slug: "ai-jobs-wrong-fear",
-    title: "Everyone's Terrified of AI Taking Jobs. Wrong Fear, Wrong Timeline.",
+    title:
+      "Everyone's Terrified of AI Taking Jobs. Wrong Fear, Wrong Timeline.",
     tag: "AI & Work",
-    excerpt: "The AI job-loss panic is aimed at the wrong risk. Here's what the actual 2026 data shows about who's losing ground right now — and it isn't who most people think.",
+    excerpt:
+      "The AI job-loss panic is aimed at the wrong risk. Here's what the actual 2026 data shows about who's losing ground right now — and it isn't who most people think.",
     paras: [
       "Every second conversation I have right now eventually gets to the same anxious question: “Is AI going to take my job / my team's jobs / my industry?” It's the wrong question, aimed at the wrong timeline, and answering it wrong is costing people more than the thing they're actually afraid of.",
       "Let's deal with the actual data first, because the panic and the numbers don't match. The World Economic Forum's Future of Jobs research projects roughly 92 million roles displaced by AI and automation by 2030 — alongside about 170 million new roles created in the same window. Net positive, globally, on paper. But net positive doesn't mean <em>your</em> job is safe, because the people losing roles are rarely the same people filling the new ones. That gap — not the headline number — is where the real risk lives.",
@@ -77,7 +89,8 @@ const ARTICLES: Seed[] = [
     slug: "uae-golden-visa-2026-signal",
     title: "UAE's Golden Visa Reforms Are a Preparation Test, Not a Perk.",
     tag: "UAE Market",
-    excerpt: "Most people read the 2026 Golden Visa changes as a convenience upgrade. Read them as a signal instead — and you'll see what the UAE is actually telling you to prepare for next.",
+    excerpt:
+      "Most people read the 2026 Golden Visa changes as a convenience upgrade. Read them as a signal instead — and you'll see what the UAE is actually telling you to prepare for next.",
     paras: [
       "Most people read the 2026 Golden Visa updates as a simple upgrade — new categories, new thresholds, easier access for the right profile. That's the surface reading, and it's not wrong. But it's incomplete, and reading it only that way means you miss what the reform is actually telling you.",
       "Here's what changed, factually. The property investment threshold for a Golden Visa rose to AED 2 million for completed units, with tighter rules on off-plan eligibility. At the same time, the UAE opened new dedicated categories for AI specialists, climate-tech entrepreneurs, and cultural and creative professionals — fields that barely had a formal pathway a few years ago. On the entrepreneur side specifically, there are now distinct routes: roughly AED 1 million for an SME-style venture, or as low as AED 500,000 for a recognized innovative project, alongside a higher bar for founders who've already sold a business. Family sponsorship rules were also clarified, extending some of the same 10-year alignment to dependents.",
@@ -95,10 +108,23 @@ export async function seedInsights(): Promise<number> {
   const db = getDb();
   let added = 0;
   for (const a of ARTICLES) {
-    const exists = (await db.select({ id: schema.insights.id }).from(schema.insights).where(eq(schema.insights.slug, a.slug)).limit(1)).at(0);
+    const exists = (
+      await db
+        .select({ id: schema.insights.id })
+        .from(schema.insights)
+        .where(eq(schema.insights.slug, a.slug))
+        .limit(1)
+    ).at(0);
     if (exists) continue;
-    const body = a.paras.map((p) => `<p>${p}</p>`).join("\n");
-    await db.insert(schema.insights).values({ title: a.title, slug: a.slug, excerpt: a.excerpt, tag: a.tag, body, publishedAt: new Date() });
+    const body = a.paras.map(p => `<p>${p}</p>`).join("\n");
+    await db.insert(schema.insights).values({
+      title: a.title,
+      slug: a.slug,
+      excerpt: a.excerpt,
+      tag: a.tag,
+      body,
+      publishedAt: new Date(),
+    });
     added++;
   }
   return added;

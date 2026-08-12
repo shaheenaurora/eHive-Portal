@@ -8,7 +8,11 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 }
 
 export function pushSupported(): boolean {
-  return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  return (
+    "serviceWorker" in navigator &&
+    "PushManager" in window &&
+    "Notification" in window
+  );
 }
 
 export async function getExistingSubscription(): Promise<PushSubscription | null> {
@@ -17,9 +21,17 @@ export async function getExistingSubscription(): Promise<PushSubscription | null
   return reg.pushManager.getSubscription();
 }
 
-function serialize(sub: PushSubscription): { endpoint: string; p256dh: string; auth: string } {
+function serialize(sub: PushSubscription): {
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+} {
   const json = sub.toJSON();
-  return { endpoint: sub.endpoint, p256dh: json.keys?.p256dh ?? "", auth: json.keys?.auth ?? "" };
+  return {
+    endpoint: sub.endpoint,
+    p256dh: json.keys?.p256dh ?? "",
+    auth: json.keys?.auth ?? "",
+  };
 }
 
 /** Ask permission (if needed) and subscribe this device; null if declined. */
@@ -32,7 +44,9 @@ export async function subscribeToPush(vapidPublicKey: string) {
   if (!sub) {
     sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource,
+      applicationServerKey: urlBase64ToUint8Array(
+        vapidPublicKey
+      ) as BufferSource,
     });
   }
   return serialize(sub);

@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import * as schema from "@db/schema";
 import type { User } from "@db/schema";
@@ -16,13 +16,19 @@ export async function ensureOwnerRole(user: User): Promise<User> {
   if (user.role === "admin") {
     // Owner always holds the full "*" scope even if promoted before scopes existed.
     if (isOwner && user.adminScopes !== "*") {
-      await getDb().update(schema.users).set({ adminScopes: "*" }).where(eq(schema.users.id, user.id));
+      await getDb()
+        .update(schema.users)
+        .set({ adminScopes: "*" })
+        .where(eq(schema.users.id, user.id));
       return { ...user, adminScopes: "*" };
     }
     return user;
   }
   if (isOwner) {
-    await getDb().update(schema.users).set({ role: "admin", adminScopes: "*" }).where(eq(schema.users.id, user.id));
+    await getDb()
+      .update(schema.users)
+      .set({ role: "admin", adminScopes: "*" })
+      .where(eq(schema.users.id, user.id));
     return { ...user, role: "admin", adminScopes: "*" };
   }
   return user;
@@ -50,43 +56,70 @@ export async function findUserByEmail(email: string) {
  * Create a new email/password account. The account whose email matches
  * OWNER_EMAIL is granted admin automatically (bootstraps the first admin).
  */
-export async function createUser(input: { email: string; passwordHash: string; name: string }) {
+export async function createUser(input: {
+  email: string;
+  passwordHash: string;
+  name: string;
+}) {
   const email = input.email.toLowerCase();
   const unionId = nanoid();
   const isOwner = !!env.ownerEmail && email === env.ownerEmail.toLowerCase();
-  await getDb().insert(schema.users).values({
-    unionId,
-    email,
-    name: input.name,
-    passwordHash: input.passwordHash,
-    role: isOwner ? "admin" : "user",
-    adminScopes: isOwner ? "*" : "",
-    consentAt: new Date(),
-    lastSignInAt: new Date(),
-  });
+  await getDb()
+    .insert(schema.users)
+    .values({
+      unionId,
+      email,
+      name: input.name,
+      passwordHash: input.passwordHash,
+      role: isOwner ? "admin" : "user",
+      adminScopes: isOwner ? "*" : "",
+      consentAt: new Date(),
+      lastSignInAt: new Date(),
+    });
   return findUserByUnionId(unionId);
 }
 
 export async function findUserById(id: number) {
-  const rows = await getDb().select().from(schema.users).where(eq(schema.users.id, id)).limit(1);
+  const rows = await getDb()
+    .select()
+    .from(schema.users)
+    .where(eq(schema.users.id, id))
+    .limit(1);
   return rows.at(0);
 }
 
 export async function setUserPassword(userId: number, passwordHash: string) {
-  await getDb().update(schema.users).set({ passwordHash }).where(eq(schema.users.id, userId));
+  await getDb()
+    .update(schema.users)
+    .set({ passwordHash, tokenVersion: sql`${schema.users.tokenVersion} + 1` })
+    .where(eq(schema.users.id, userId));
+}
+
+export async function incrementTokenVersion(userId: number) {
+  await getDb()
+    .update(schema.users)
+    .set({ tokenVersion: sql`${schema.users.tokenVersion} + 1` })
+    .where(eq(schema.users.id, userId));
 }
 
 export async function markEmailVerified(userId: number) {
-  await getDb().update(schema.users).set({ emailVerifiedAt: new Date() }).where(eq(schema.users.id, userId));
+  await getDb()
+    .update(schema.users)
+    .set({ emailVerifiedAt: new Date() })
+    .where(eq(schema.users.id, userId));
 }
 
 export async function setTotpSecret(userId: number, secret: string) {
   // Store the pending secret; not active until the user confirms a code.
-  await getDb().update(schema.users).set({ totpSecret: secret, totpEnabled: 0 }).where(eq(schema.users.id, userId));
+  await getDb()
+    .update(schema.users)
+    .set({ totpSecret: secret, totpEnabled: 0 })
+    .where(eq(schema.users.id, userId));
 }
 
 export async function setTotpEnabled(userId: number, enabled: boolean) {
-  await getDb().update(schema.users)
+  await getDb()
+    .update(schema.users)
     .set(enabled ? { totpEnabled: 1 } : { totpEnabled: 0, totpSecret: null })
     .where(eq(schema.users.id, userId));
 }

@@ -1,13 +1,12 @@
 # eHive Circle — full-stack portal (marketing site + member/admin SPA + tRPC API)
-FROM node:20-slim AS base
+# Multi-stage build: compile in the builder stage, then copy only the runtime
+# artifacts into a slim production image.
+FROM node:20-slim AS builder
 WORKDIR /app
 
-# Install dependencies first (layer cache).
-# --include=dev is required because build hosts (e.g. Railway) set
-# NODE_ENV=production, which would otherwise make npm ci skip the devDependencies
-# the build needs (vite, esbuild, typescript, tailwind).
+# Install dependencies (dev deps required for the Vite/esbuild/TypeScript build).
 COPY package.json package-lock.json ./
-RUN npm ci --include=dev --no-audit --no-fund
+RUN npm ci --no-audit --no-fund
 
 # Copy source and build frontend (dist/public) + backend bundle (dist/boot.js).
 # Auth is email/password, so there are no build-time (VITE_*) secrets to inject —
@@ -15,9 +14,21 @@ RUN npm ci --include=dev --no-audit --no-fund
 COPY . .
 RUN npm run build
 
+# ------------------------------------------------------------------------------
+FROM node:20-slim AS runner
+WORKDIR /app
 ENV NODE_ENV=production
 EXPOSE 3000
 
+# Copy only the compiled output and the production dependency manifest.
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/package.json /app/package-lock.json ./
+COPY --from=builder /app/public ./public
+
+# Install only production dependencies. Skip optional native modules where
+# possible to keep the image small and reduce attack surface.
+RUN npm ci --omit=dev --no-audit --no-fund && npm cache clean --force
+
 # Start the Hono server: serves marketing pages at /, SPA at /portal* & /admin*,
-# tRPC at /api/trpc/*, OAuth callback and /api/lead.
+# tRPC at /api/trpc/*, lead capture, and payment webhooks.
 CMD ["node", "dist/boot.js"]

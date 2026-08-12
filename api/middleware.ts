@@ -10,7 +10,7 @@ const t = initTRPC.context<TrpcContext>().create({
 export const createRouter = t.router;
 export const publicQuery = t.procedure;
 
-const requireAuth = t.middleware(async (opts) => {
+const requireAuth = t.middleware(async opts => {
   const { ctx, next } = opts;
 
   if (!ctx.user) {
@@ -24,7 +24,7 @@ const requireAuth = t.middleware(async (opts) => {
 });
 
 function requireRole(role: string) {
-  return t.middleware(async (opts) => {
+  return t.middleware(async opts => {
     const { ctx, next } = opts;
 
     if (!ctx.user || ctx.user.role !== role) {
@@ -46,16 +46,22 @@ export const adminQuery = authedQuery.use(requireRole("admin"));
  *  - "*" (owner) or "" (legacy/full admin) → all capabilities
  *  - otherwise the scope must be in the comma-separated adminScopes list
  */
-export function hasScope(user: { role: string; adminScopes?: string | null }, scope: string): boolean {
+export function hasScope(
+  user: { role: string; adminScopes?: string | null },
+  scope: string
+): boolean {
   if (user.role !== "admin") return false;
   const s = (user.adminScopes ?? "").trim();
   if (s === "" || s === "*") return true;
-  return s.split(",").map((x) => x.trim()).includes(scope);
+  return s
+    .split(",")
+    .map(x => x.trim())
+    .includes(scope);
 }
 
 /** Admin procedure additionally gated on a capability scope. */
 export function scopedAdmin(scope: string) {
-  return adminQuery.use(async (opts) => {
+  return adminQuery.use(async opts => {
     const { ctx, next } = opts;
     if (!hasScope(ctx.user as never, scope)) {
       throw new TRPCError({
@@ -68,7 +74,10 @@ export function scopedAdmin(scope: string) {
 }
 
 /** Whether an admin holds full/owner access ("*" owner or "" legacy). */
-export function isFullAdmin(user: { role: string; adminScopes?: string | null }): boolean {
+export function isFullAdmin(user: {
+  role: string;
+  adminScopes?: string | null;
+}): boolean {
   if (user.role !== "admin") return false;
   const s = (user.adminScopes ?? "").trim();
   return s === "" || s === "*";
@@ -76,7 +85,7 @@ export function isFullAdmin(user: { role: string; adminScopes?: string | null })
 
 /** Admin procedure restricted to a full administrator (owner / director).
  *  Platform configuration and cross-cutting tools live here. */
-export const fullAdmin = adminQuery.use(async (opts) => {
+export const fullAdmin = adminQuery.use(async opts => {
   const { ctx, next } = opts;
   if (!isFullAdmin(ctx.user as never)) {
     throw new TRPCError({

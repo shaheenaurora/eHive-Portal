@@ -7,13 +7,22 @@ function esc(v: unknown): string {
 }
 
 /** columns: [key, header] pairs; rows: objects keyed by those keys. */
-export function toCsv(columns: [string, string][], rows: Record<string, unknown>[]): string {
+export function toCsv(
+  columns: [string, string][],
+  rows: Record<string, unknown>[]
+): string {
   const head = columns.map(([, h]) => esc(h)).join(",");
-  const body = rows.map((r) => columns.map(([k]) => esc(r[k])).join(",")).join("\n");
+  const body = rows
+    .map(r => columns.map(([k]) => esc(r[k])).join(","))
+    .join("\n");
   return head + "\n" + body;
 }
 
-export function downloadCsv(filename: string, columns: [string, string][], rows: Record<string, unknown>[]): void {
+export function downloadCsv(
+  filename: string,
+  columns: [string, string][],
+  rows: Record<string, unknown>[]
+): void {
   const csv = toCsv(columns, rows);
   const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);

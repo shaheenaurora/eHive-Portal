@@ -5,7 +5,7 @@ describe("KPI RAG status", () => {
   it("higher-is-better: green at/over target, amber within band, red below", () => {
     expect(ragAtLeast(85, 85)).toBe("green");
     expect(ragAtLeast(90, 85)).toBe("green");
-    expect(ragAtLeast(80, 85)).toBe("amber");   // 80 ≥ 85*0.9 (76.5)
+    expect(ragAtLeast(80, 85)).toBe("amber"); // 80 ≥ 85*0.9 (76.5)
     expect(ragAtLeast(70, 85)).toBe("red");
     expect(ragAtLeast(null, 85)).toBe("none");
   });
@@ -13,7 +13,7 @@ describe("KPI RAG status", () => {
   it("lower-is-better: green at/under target", () => {
     expect(ragAtMost(4, 5)).toBe("green");
     expect(ragAtMost(5, 5)).toBe("green");
-    expect(ragAtMost(5.4, 5)).toBe("amber");     // ≤ 5*1.1
+    expect(ragAtMost(5.4, 5)).toBe("amber"); // ≤ 5*1.1
     expect(ragAtMost(7, 5)).toBe("red");
   });
 

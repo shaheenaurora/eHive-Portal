@@ -2,7 +2,11 @@
 export function fmtDate(d?: string | Date | null): string {
   if (!d) return "—";
   const t = new Date(d);
-  return t.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  return t.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 export function fmtDateTime(d?: string | Date | null): string {
@@ -13,13 +17,21 @@ export function fmtDateTime(d?: string | Date | null): string {
     " · " +
     // Include the timezone abbreviation so members abroad aren't guessing which
     // clock a time is on — each viewer sees their own local time, labelled.
-    t.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZoneName: "short" })
+    t.toLocaleTimeString("en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZoneName: "short",
+    })
   );
 }
 
 export function fmtDay(d?: string | Date | null): string {
   if (!d) return "—";
-  return new Date(d).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+  return new Date(d).toLocaleDateString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
 }
 
 export function initials(name?: string | null): string {
@@ -28,7 +40,7 @@ export function initials(name?: string | null): string {
     .split(" ")
     .filter(Boolean)
     .slice(0, 2)
-    .map((w) => w.charAt(0).toUpperCase())
+    .map(w => w.charAt(0).toUpperCase())
     .join("");
 }
 
