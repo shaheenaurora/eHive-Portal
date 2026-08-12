@@ -1,4 +1,7 @@
-@import url("https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap");
+/* Fonts (Archivo + Hanken Grotesk) are loaded via a non-render-blocking <link>
+   in portal.html. A CSS @import here would be render-blocking: if Google Fonts
+   is slow or blocked, the whole portal stylesheet — and the module script that
+   waits on it — would stall, leaving a blank screen. Do not re-add an @import. */
 
 @tailwind base;
 @tailwind components;
