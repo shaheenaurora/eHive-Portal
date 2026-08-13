@@ -137,6 +137,7 @@ export default function AdminEvents() {
       audienceTiers:
         audience === "tiers" ? ([...audTiers] as never) : undefined,
       capacity: Number(f.get("capacity")) || 40,
+      cpdCredits: Number(f.get("cpdCredits")) || 0,
     });
   }
 
@@ -325,6 +326,15 @@ export default function AdminEvents() {
                   type="number"
                   min={1}
                   defaultValue={40}
+                />
+              </Field>
+              <Field label="CPD credits">
+                <input
+                  className="eh-input"
+                  name="cpdCredits"
+                  type="number"
+                  min={0}
+                  defaultValue={0}
                 />
               </Field>
             </div>

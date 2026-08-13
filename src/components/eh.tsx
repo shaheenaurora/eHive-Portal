@@ -747,6 +747,7 @@ export const MEMBER_NAV: NavGroup[] = [
       { to: "/portal/chapter", label: "My Chapter", icon: "⌂" },
       { to: "/portal/governance", label: "Governance", icon: "§" },
       { to: "/portal/membership", label: "Membership", icon: "◈" },
+      { to: "/portal/documents", label: "Documents", icon: "▦" },
     ],
   },
 ];

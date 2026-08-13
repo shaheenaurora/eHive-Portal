@@ -28,6 +28,8 @@ const Governance = lazy(() => import("./pages/portal/Governance"));
 const Library = lazy(() => import("./pages/portal/Library"));
 const Offers = lazy(() => import("./pages/portal/Offers"));
 const Membership = lazy(() => import("./pages/portal/Membership"));
+const Documents = lazy(() => import("./pages/portal/Documents"));
+const Certificate = lazy(() => import("./pages/portal/Certificate"));
 
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminApplications = lazy(() => import("./pages/admin/AdminApplications"));
@@ -91,6 +93,12 @@ export default function App() {
           <Route path="/portal/library" element={<Library />} />
           <Route path="/portal/offers" element={<Offers />} />
           <Route path="/portal/membership" element={<Membership />} />
+          <Route path="/portal/documents" element={<Documents />} />
+          <Route path="/portal/certificate/:kind" element={<Certificate />} />
+          <Route
+            path="/portal/certificate/:kind/:eventId"
+            element={<Certificate />}
+          />
 
           {/* admin portal */}
           <Route path="/admin" element={<AdminDashboard />} />

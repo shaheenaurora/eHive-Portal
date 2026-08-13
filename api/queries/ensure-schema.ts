@@ -46,6 +46,10 @@ export async function ensureSchema(): Promise<void> {
         );
       if (!cols.has("events.deletedAt"))
         stmts.push("ALTER TABLE events ADD COLUMN deletedAt timestamp NULL");
+      if (!cols.has("events.cpdCredits"))
+        stmts.push(
+          "ALTER TABLE events ADD COLUMN cpdCredits int NOT NULL DEFAULT 0"
+        );
       const kind = cols.get("events.kind") ?? "";
       if (kind && !kind.includes("'webinar'"))
         stmts.push(

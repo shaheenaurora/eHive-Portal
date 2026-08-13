@@ -1367,6 +1367,7 @@ export const adminRouter = createRouter({
         audience: AUDIENCE.default("members"),
         audienceTiers: z.array(TIER).optional(),
         capacity: z.number().int().min(1).max(2000).default(40),
+        cpdCredits: z.number().int().min(0).max(100).default(0),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -1396,6 +1397,7 @@ export const adminRouter = createRouter({
         audience: AUDIENCE.optional(),
         audienceTiers: z.array(TIER).optional(),
         capacity: z.number().int().min(1).max(2000).optional(),
+        cpdCredits: z.number().int().min(0).max(100).optional(),
       })
     )
     .mutation(async ({ input }) => {
