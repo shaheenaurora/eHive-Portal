@@ -27,9 +27,10 @@ function clientFingerprint(headers: Headers): string {
     .slice(0, 32);
 }
 
-// 30 days for primary sessions — long enough for UX, short enough that a stolen
-// cookie has a bounded lifetime. Sliding refresh can be added later.
-const SESSION_EXPIRES_IN = "30d";
+// 7 days for primary sessions — a bounded lifetime for a stolen cookie while
+// still avoiding weekly re-logins for active users. Sliding refresh can be
+// added later to extend this transparently.
+const SESSION_EXPIRES_IN = "7d";
 
 export async function signSessionToken(
   uid: string,
