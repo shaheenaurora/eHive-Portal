@@ -4,6 +4,7 @@ import * as schema from "@db/schema";
 import { getDb } from "./connection";
 import { audit } from "../lib/audit";
 import { notify } from "./circle";
+import { paymentsEnabled, getPaymentProvider } from "../lib/payments";
 import { TIER_PRICE_AED } from "@contracts/constants";
 import {
   summarizePayments,
@@ -189,6 +190,25 @@ export async function recordManualPayment(
   if (!user)
     throw new TRPCError({ code: "NOT_FOUND", message: "User not found." });
 
+  // Validate up-front so "extend renewal" can't silently do nothing when the
+  // payer isn't actually a member (previously the renewal roll-forward was
+  // skipped without any signal to the admin).
+  if (input.extendRenewal) {
+    const isMember = (
+      await db
+        .select({ id: schema.members.id })
+        .from(schema.members)
+        .where(eq(schema.members.userId, input.userId))
+        .limit(1)
+    ).at(0);
+    if (!isMember)
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message:
+          "Can't extend a renewal — this user isn't a member yet. Record the payment without 'extend renewal', or admit them first.",
+      });
+  }
+
   const purpose = input.purpose;
   const tier = input.tier;
   if ((purpose === "membership" || purpose === "renewal") && tier) {
@@ -268,6 +288,28 @@ export async function refundPayment(actor: Actor, id: number, reason: string) {
       code: "CONFLICT",
       message: "Only a paid payment can be refunded.",
     });
+  // Actually move the money back through the gateway before marking the record
+  // refunded. If the gateway refund fails we must NOT flip the DB, or the books
+  // would say "refunded" while the charge is still captured. Manual/cash
+  // payments (no providerRef) are recorded-only — refunded outside the app.
+  if (p.provider !== "manual" && p.providerRef) {
+    if (!paymentsEnabled())
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message:
+          "The payment gateway isn't configured, so this charge can't be refunded automatically.",
+      });
+    try {
+      await getPaymentProvider().refund(p.providerRef);
+    } catch (err) {
+      throw new TRPCError({
+        code: "BAD_GATEWAY",
+        message:
+          "The gateway refused the refund: " +
+          (err instanceof Error ? err.message : String(err)),
+      });
+    }
+  }
   await db
     .update(schema.paymentRecords)
     .set({

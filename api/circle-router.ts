@@ -116,6 +116,20 @@ export const circleRouter = createRouter({
         code: "PRECONDITION_FAILED",
         message: "You don't have a membership to renew.",
       });
+    // A cancelled/suspended/alumni membership can't be self-reactivated by paying
+    // — reinstatement is an admin decision (a member may have been removed for
+    // conduct reasons). Otherwise the post-payment webhook would flip them back
+    // to active with no review.
+    if (
+      m.status === "cancelled" ||
+      m.lifecycleState === "alumni" ||
+      m.lifecycleState === "suspended"
+    )
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message:
+          "Your membership isn't eligible for self-service renewal. Please contact the Circle team to reinstate it.",
+      });
     const tier = m.tier;
     const amount = TIER_PRICE_AED[tier] * 100; // AED → fils
     const origin = ctx.req.headers.get("origin") ?? new URL(ctx.req.url).origin;

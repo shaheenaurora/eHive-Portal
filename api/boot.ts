@@ -16,6 +16,16 @@ import { eq, desc, sql } from "drizzle-orm";
 import { paymentsEnabled, getPaymentProvider } from "./lib/payments";
 import { activateMembership } from "./queries/circle";
 import { notifyLead } from "./lib/lead-mail";
+import { rateLimit } from "./lib/rate-limit";
+
+/** Best-effort client IP from proxy headers (Railway sets x-forwarded-for). */
+function clientIp(c: {
+  req: { header: (n: string) => string | undefined };
+}): string {
+  return (
+    (c.req.header("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown"
+  );
+}
 
 const app = new Hono<{ Bindings: HttpBindings }>();
 
@@ -64,6 +74,24 @@ app.use(
 
 app.use(bodyLimit({ maxSize: 5 * 1024 * 1024 }));
 app.use("/api/trpc/*", async c => {
+  // CSRF defense for cookie-authenticated mutations. A browser always attaches
+  // an Origin header to cross-site POSTs, so reject any state-changing request
+  // whose Origin host doesn't match the host the browser addressed. Compared
+  // against the (forwarded) Host header, not the internal request URL, so it
+  // works behind Railway's proxy. GET queries carry no side effects and pass.
+  if (c.req.method === "POST") {
+    const origin = c.req.header("origin");
+    const host = c.req.header("x-forwarded-host") || c.req.header("host");
+    if (origin) {
+      let ok = false;
+      try {
+        ok = !!host && new URL(origin).host === host;
+      } catch {
+        ok = false;
+      }
+      if (!ok) return c.json({ error: "cross-origin request blocked" }, 403);
+    }
+  }
   return fetchRequestHandler({
     endpoint: "/api/trpc",
     req: c.req.raw,
@@ -75,6 +103,14 @@ app.use("/api/trpc/*", async c => {
 /* Marketing-site lead capture (replaces the old Formspree placeholder).
    Accepts the JSON payloads posted by public/app.js submitLead(). */
 app.post("/api/lead", async c => {
+  // Public endpoint — rate-limit per IP to blunt spam/abuse (20 submissions per
+  // 10 minutes is generous for a real person filling out website forms).
+  if (!rateLimit(`lead:${clientIp(c)}`, 20, 10 * 60 * 1000)) {
+    return c.json(
+      { ok: false, error: "Too many submissions. Please try again shortly." },
+      429
+    );
+  }
   let body: Record<string, unknown>;
   try {
     body = await c.req.json();
