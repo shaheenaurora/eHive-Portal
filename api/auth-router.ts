@@ -97,7 +97,7 @@ export const authRouter = createRouter({
       }
       const user = await createUser({
         email: input.email,
-        passwordHash: hashPassword(input.password),
+        passwordHash: await hashPassword(input.password),
         name: input.name,
       });
       if (!user) {
@@ -128,7 +128,7 @@ export const authRouter = createRouter({
       });
     }
     const user = await findUserByEmail(input.email);
-    if (!user || !verifyPassword(input.password, user.passwordHash)) {
+    if (!user || !(await verifyPassword(input.password, user.passwordHash))) {
       throw new TRPCError({
         code: "UNAUTHORIZED",
         message: "Incorrect email or password.",
@@ -274,7 +274,7 @@ export const authRouter = createRouter({
       if (!pwdCheck.ok) {
         throw new TRPCError({ code: "BAD_REQUEST", message: pwdCheck.error });
       }
-      await setUserPassword(userId, hashPassword(input.password));
+      await setUserPassword(userId, await hashPassword(input.password));
       // A password reset also proves control of the mailbox.
       const user = await findUserById(userId);
       if (user && !user.emailVerifiedAt) await markEmailVerified(userId);

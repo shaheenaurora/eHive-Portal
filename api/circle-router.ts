@@ -4,6 +4,7 @@ import { eq, and, desc, asc, gte, isNull, sql } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "./queries/connection";
 import { createRouter, authedQuery } from "./middleware";
+import { env } from "./lib/env";
 import { safeUser } from "./auth-router";
 import {
   getMemberByUserId,
@@ -78,8 +79,10 @@ export const circleRouter = createRouter({
         });
 
       const amount = TIER_PRICE_AED[input.tier] * 100; // AED → fils
-      const origin =
-        ctx.req.headers.get("origin") ?? new URL(ctx.req.url).origin;
+      // Build redirect URLs from the configured public URL — never the request
+      // Origin header, which an attacker can set to redirect the member to a
+      // phishing domain after checkout.
+      const base = env.publicUrl;
       const provider = getPaymentProvider();
       const { url, providerRef } = await provider.createCheckoutSession({
         tier: input.tier,
@@ -87,8 +90,8 @@ export const circleRouter = createRouter({
         email: ctx.user.email ?? "",
         amount,
         currency: "aed",
-        successUrl: `${origin}/portal?paid=1`,
-        cancelUrl: `${origin}/portal/apply?canceled=1`,
+        successUrl: `${base}/portal?paid=1`,
+        cancelUrl: `${base}/portal/apply?canceled=1`,
       });
       await getDb().insert(schema.paymentRecords).values({
         userId: ctx.user.id,
@@ -134,7 +137,9 @@ export const circleRouter = createRouter({
       });
     const tier = m.tier;
     const amount = TIER_PRICE_AED[tier] * 100; // AED → fils
-    const origin = ctx.req.headers.get("origin") ?? new URL(ctx.req.url).origin;
+    // Redirect URLs come from the configured public URL, not the request Origin
+    // header (which an attacker could point at a phishing domain).
+    const base = env.publicUrl;
     const provider = getPaymentProvider();
     const { url, providerRef } = await provider.createCheckoutSession({
       tier,
@@ -142,8 +147,8 @@ export const circleRouter = createRouter({
       email: ctx.user.email ?? "",
       amount,
       currency: "aed",
-      successUrl: `${origin}/portal/membership?renewed=1`,
-      cancelUrl: `${origin}/portal/membership?canceled=1`,
+      successUrl: `${base}/portal/membership?renewed=1`,
+      cancelUrl: `${base}/portal/membership?canceled=1`,
     });
     await getDb().insert(schema.paymentRecords).values({
       userId: ctx.user.id,
