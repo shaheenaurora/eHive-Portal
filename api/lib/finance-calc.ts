@@ -1,6 +1,7 @@
 /** Pure (DB-free) finance math, so it can be unit-tested in isolation.
  *  Payment amounts are stored in MINOR units (fils); 1 AED = 100 fils.
  *  Chapter-budget amounts are stored in WHOLE AED. */
+import { SPEND_APPROVAL_THRESHOLD_AED } from "@contracts/constants";
 
 /** Format minor units (fils) as an AED string. */
 export function fmtAed(fils: number): string {
@@ -117,4 +118,11 @@ export function computeRefund(
     newStatus:
       newRefundedAmount >= p.amount ? "refunded" : "partially_refunded",
   };
+}
+
+/** A chapter expense at or above the spend-approval threshold must be routed
+ *  through the chapter-budget approval flow (recorded as `proposed`) rather than
+ *  posting directly (`approved`), so large spend gets a second set of eyes. */
+export function expenseNeedsApproval(amountAed: number): boolean {
+  return Math.round(amountAed) >= SPEND_APPROVAL_THRESHOLD_AED;
 }

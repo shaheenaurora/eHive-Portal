@@ -11,6 +11,7 @@ import {
   rollupBudgets,
   isRenewalDue,
   computeRefund,
+  expenseNeedsApproval,
   type PayLite,
   type BudgetLite,
 } from "../lib/finance-calc";
@@ -514,19 +515,25 @@ export async function recordExpense(
       code: "BAD_REQUEST",
       message: "Amount must be greater than zero.",
     });
+  // Spend at or above the approval threshold enters the chapter-budget approval
+  // flow as a "proposed" line (decided via decideBudgetLine) rather than being
+  // auto-approved — so a finance-scoped admin can't spend chapter money over the
+  // threshold without a second set of eyes. Smaller amounts post directly.
+  const needsApproval = expenseNeedsApproval(amount);
+  const status = needsApproval ? "proposed" : "approved";
   const res = await db.insert(schema.chapterBudgets).values({
     chapterId: input.chapterId,
     label: input.label.slice(0, 255),
     kind: "spend",
     amount,
     category: input.category ?? null,
-    status: "approved",
+    status,
     note: input.note ?? null,
   });
   await audit(actor, "finance.expense", {
     type: "chapterBudget",
     id: Number((res as unknown as { insertId?: number }).insertId ?? 0),
-    detail: `${chapter.name}: AED ${amount} · ${input.category ?? "uncategorised"} · ${input.label}`,
+    detail: `${chapter.name}: AED ${amount} · ${input.category ?? "uncategorised"} · ${input.label}${needsApproval ? " · pending approval" : ""}`,
   });
-  return { ok: true };
+  return { ok: true, pending: needsApproval };
 }
