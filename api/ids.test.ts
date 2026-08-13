@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { refCode, parseRefCode, ID_PREFIX } from "@contracts/ids";
+import {
+  refCode,
+  parseRefCode,
+  ID_PREFIX,
+  auditEntityType,
+} from "@contracts/ids";
 
 describe("refCode", () => {
   it("formats each entity with its prefix and padding", () => {
@@ -31,5 +36,19 @@ describe("parseRefCode", () => {
     expect(parseRefCode("XX-9-1")).toBeNull();
     expect(parseRefCode("EH-ZZ-0001")).toBeNull();
     expect(parseRefCode("not a code")).toBeNull();
+  });
+});
+
+describe("auditEntityType", () => {
+  it("maps known audit target types to entity types", () => {
+    expect(auditEntityType("event")).toBe("event");
+    expect(auditEntityType("payment")).toBe("payment");
+    expect(auditEntityType("awardCycle")).toBe("award");
+    expect(auditEntityType("member")).toBe("member");
+  });
+  it("returns null for unmapped or missing types", () => {
+    expect(auditEntityType("chapterBudget")).toBeNull();
+    expect(auditEntityType(null)).toBeNull();
+    expect(auditEntityType(undefined)).toBeNull();
   });
 });

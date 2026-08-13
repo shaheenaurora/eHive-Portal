@@ -6,8 +6,10 @@ import {
   Pill,
   Empty,
   Spinner,
+  RefCode,
 } from "@/components/eh";
 import { fmtDateTime } from "@/lib/ehf";
+import { auditEntityType } from "@contracts/ids";
 
 const ACTION_TONE: Record<string, "green" | "red" | "gold" | "blue"> = {
   approve: "green",
@@ -84,7 +86,15 @@ export default function AdminAudit() {
                     <Pill color={toneFor(r.action)}>{r.action}</Pill>
                   </td>
                   <td className="eh-sm eh-muted" data-label="Target">
-                    {r.targetType ? `${r.targetType} ${r.targetId ?? ""}` : "—"}
+                    {(() => {
+                      const et = auditEntityType(r.targetType);
+                      const idNum = Number(r.targetId);
+                      if (et && r.targetId && Number.isInteger(idNum))
+                        return <RefCode type={et} id={idNum} />;
+                      return r.targetType
+                        ? `${r.targetType} ${r.targetId ?? ""}`
+                        : "—";
+                    })()}
                   </td>
                   <td className="eh-sm" data-label="Detail">
                     {r.detail ?? "—"}
