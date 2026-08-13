@@ -72,9 +72,8 @@ async function main() {
         "[pre-deploy] existing database detected; baselining migrations"
       );
       const journal: Journal = JSON.parse(readFileSync(JOURNAL_PATH, "utf-8"));
-      const first = journal.entries[0];
-      if (!first) throw new Error("No migrations found in journal");
-      const hash = sha256(`${MIGRATIONS_FOLDER}/${first.tag}.sql`);
+      if (journal.entries.length === 0)
+        throw new Error("No migrations found in journal");
 
       await conn.query(`
         create table if not exists __drizzle_migrations (
@@ -83,11 +82,20 @@ async function main() {
           created_at bigint
         )
       `);
-      await conn.query(
-        `insert into __drizzle_migrations (hash, created_at) values (?, ?)`,
-        [hash, first.when]
-      );
-      console.log(`[pre-deploy] baselined ${first.tag}`);
+      // An existing db:push database already reflects the full current schema —
+      // every table AND every index these migrations would create is present.
+      // Baseline the ENTIRE journal (not just the first entry) so the migration
+      // runner is a no-op here; re-running any migration (e.g. the secondary-
+      // index migration 0001) against the live schema would fail on a duplicate
+      // key/table. Only genuinely new migrations added later will apply.
+      for (const entry of journal.entries) {
+        const hash = sha256(`${MIGRATIONS_FOLDER}/${entry.tag}.sql`);
+        await conn.query(
+          `insert into __drizzle_migrations (hash, created_at) values (?, ?)`,
+          [hash, entry.when]
+        );
+        console.log(`[pre-deploy] baselined ${entry.tag}`);
+      }
     }
   } finally {
     await conn.end();
