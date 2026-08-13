@@ -776,13 +776,27 @@ export const adminEngageRouter = createRouter({
         } else {
           const renew = new Date();
           renew.setFullYear(renew.getFullYear() + 1);
-          await db.insert(schema.members).values({
+          // A newly inducted Zenith member enters onboarding like any other new
+          // member (status stays active via statusForLifecycle) so they run the
+          // first 30/60/90-day journey and receive the onboarding welcome.
+          const res = await db.insert(schema.members).values({
             userId: user.id,
             tier: "zenith",
             status: "active",
+            lifecycleState: "onboarding",
             renewalAt: renew,
             inductionNo,
           });
+          const memberId = Number(res[0].insertId);
+          try {
+            await notify(
+              memberId,
+              "Welcome to eHive Circle. Your onboarding journey starts now.",
+              "membership"
+            );
+          } catch {
+            /* non-fatal */
+          }
         }
       }
       await db
