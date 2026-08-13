@@ -67,12 +67,18 @@ export class StripeProvider implements PaymentProvider {
     return null;
   }
 
-  async refund(providerRef: string) {
+  async refund(providerRef: string, amountMinor?: number) {
     const session = await this.stripe.checkout.sessions.retrieve(providerRef);
     const pi =
       typeof session.payment_intent === "string"
         ? session.payment_intent
         : session.payment_intent?.id;
-    if (pi) await this.stripe.refunds.create({ payment_intent: pi });
+    if (pi)
+      await this.stripe.refunds.create({
+        payment_intent: pi,
+        // Omit amount for a full refund; Stripe treats a provided amount as a
+        // partial refund (must be ≤ the captured amount).
+        ...(amountMinor != null ? { amount: Math.round(amountMinor) } : {}),
+      });
   }
 }

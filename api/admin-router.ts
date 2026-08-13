@@ -60,7 +60,11 @@ import { mailStatus, sendTestEmail } from "./lib/mailer";
 import { env } from "./lib/env";
 import { runDailyJobs } from "./lib/scheduler";
 import { removeDemoData, loadFullDemo } from "./queries/demo-data";
-import { tierRank, EVENT_CHECKIN_OPENS_BEFORE_MS } from "@contracts/constants";
+import {
+  tierRank,
+  EVENT_CHECKIN_OPENS_BEFORE_MS,
+  EXPENSE_CATEGORY_KEYS,
+} from "@contracts/constants";
 
 const SCOPE_ENUM = z.enum([
   "membership",
@@ -2109,10 +2113,12 @@ export const adminRouter = createRouter({
       z.object({
         id: z.number().int().positive(),
         reason: z.string().min(2).max(500),
+        // Omit for a full refund; provide a smaller AED amount for a partial one.
+        amountAed: z.number().positive().max(1_000_000).optional(),
       })
     )
     .mutation(({ ctx, input }) =>
-      refundPayment(ctx.user, input.id, input.reason)
+      refundPayment(ctx.user, input.id, input.reason, input.amountAed)
     ),
 
   expenses: scopedAdmin("finance")
@@ -2127,6 +2133,9 @@ export const adminRouter = createRouter({
         chapterId: z.number().int().positive(),
         label: z.string().min(2).max(255),
         amountAed: z.number().positive().max(1_000_000),
+        category: z
+          .enum(EXPENSE_CATEGORY_KEYS as [string, ...string[]])
+          .optional(),
         note: z.string().max(500).optional(),
       })
     )

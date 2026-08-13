@@ -545,7 +545,13 @@ export const paymentRecords = mysqlTable("payment_records", {
   tier: mysqlEnum("tier", ["horizon", "ascent", "vanguard", "zenith"]),
   amount: int("amount").notNull(), // minor units (fils)
   currency: varchar("currency", { length: 8 }).notNull().default("aed"),
-  status: mysqlEnum("status", ["pending", "paid", "failed", "refunded"])
+  status: mysqlEnum("status", [
+    "pending",
+    "paid",
+    "failed",
+    "refunded",
+    "partially_refunded",
+  ])
     .notNull()
     .default("pending"),
   note: varchar("note", { length: 500 }), // manual/offline payment note or reference
@@ -553,6 +559,9 @@ export const paymentRecords = mysqlTable("payment_records", {
     mode: "number",
     unsigned: true,
   }),
+  // Cumulative amount refunded (minor units). Equals `amount` for a full refund,
+  // less for a partial. `status` becomes refunded / partially_refunded to match.
+  refundedAmount: int("refundedAmount").notNull().default(0),
   refundReason: varchar("refundReason", { length: 500 }),
   refundedAt: timestamp("refundedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -1183,6 +1192,9 @@ export const chapterBudgets = mysqlTable("chapter_budgets", {
     .notNull()
     .default("allocation"),
   amount: int("amount").notNull(), // AED
+  // Expense category (EXPENSE_CATEGORIES key) for spend rows — null on
+  // allocations/sponsorships. Enables spend-by-category reporting.
+  category: varchar("category", { length: 48 }),
   status: mysqlEnum("status", ["proposed", "approved", "spent", "rejected"])
     .notNull()
     .default("proposed"),

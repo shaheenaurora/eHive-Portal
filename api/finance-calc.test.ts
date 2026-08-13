@@ -5,6 +5,7 @@ import {
   isRenewalDue,
   summarizePayments,
   rollupBudgets,
+  computeRefund,
   type PayLite,
   type BudgetLite,
 } from "./lib/finance-calc";
@@ -86,5 +87,63 @@ describe("budget rollup", () => {
     expect(r.spent).toBe(6000);
     expect(r.remaining).toBe(9000);
     expect(r.pendingApprovals).toBe(1);
+  });
+});
+
+describe("computeRefund", () => {
+  const paid = { amount: 100000, refundedAmount: 0, status: "paid" };
+
+  it("full refund when no amount is given", () => {
+    expect(computeRefund(paid)).toEqual({
+      requestedMinor: 100000,
+      newRefundedAmount: 100000,
+      newStatus: "refunded",
+    });
+  });
+
+  it("partial refund flips status to partially_refunded", () => {
+    expect(computeRefund(paid, 300)).toEqual({
+      requestedMinor: 30000,
+      newRefundedAmount: 30000,
+      newStatus: "partially_refunded",
+    });
+  });
+
+  it("a second partial that completes the amount becomes refunded", () => {
+    const partial = {
+      amount: 100000,
+      refundedAmount: 30000,
+      status: "partially_refunded",
+    };
+    expect(computeRefund(partial, 700)).toEqual({
+      requestedMinor: 70000,
+      newRefundedAmount: 100000,
+      newStatus: "refunded",
+    });
+  });
+
+  it("rejects refunding more than remains", () => {
+    expect(() =>
+      computeRefund(
+        { amount: 100000, refundedAmount: 80000, status: "partially_refunded" },
+        300
+      )
+    ).toThrow(/exceeds/i);
+  });
+
+  it("rejects an already fully-refunded payment", () => {
+    expect(() =>
+      computeRefund({
+        amount: 100000,
+        refundedAmount: 100000,
+        status: "refunded",
+      })
+    ).toThrow();
+  });
+
+  it("rejects refunding a non-paid payment", () => {
+    expect(() =>
+      computeRefund({ amount: 100000, refundedAmount: 0, status: "pending" })
+    ).toThrow(/paid/i);
   });
 });

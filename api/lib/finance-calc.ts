@@ -78,3 +78,39 @@ export function rollupBudgets(rows: BudgetLite[]) {
   }
   return { allocated, spent, pendingApprovals, remaining: allocated - spent };
 }
+
+/** Validate and compute a refund (full or partial) against a payment record.
+ *  All amounts are minor units (fils). Throws a plain Error with a
+ *  user-safe message on any invalid request; the caller maps it to a 400. */
+export function computeRefund(
+  p: { amount: number; refundedAmount?: number | null; status: string },
+  requestedAed?: number
+): {
+  requestedMinor: number;
+  newRefundedAmount: number;
+  newStatus: "refunded" | "partially_refunded";
+} {
+  if (p.status !== "paid" && p.status !== "partially_refunded")
+    throw new Error("Only a paid payment can be refunded.");
+  const already = p.refundedAmount ?? 0;
+  const remaining = p.amount - already;
+  if (remaining <= 0)
+    throw new Error("This payment is already fully refunded.");
+  const requestedMinor =
+    requestedAed != null ? Math.round(requestedAed * 100) : remaining;
+  if (requestedMinor <= 0)
+    throw new Error("Refund amount must be greater than zero.");
+  if (requestedMinor > remaining)
+    throw new Error(
+      "Refund exceeds the remaining refundable amount (AED " +
+        (remaining / 100).toFixed(2) +
+        ")."
+    );
+  const newRefundedAmount = already + requestedMinor;
+  return {
+    requestedMinor,
+    newRefundedAmount,
+    newStatus:
+      newRefundedAmount >= p.amount ? "refunded" : "partially_refunded",
+  };
+}
