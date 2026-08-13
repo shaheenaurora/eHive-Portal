@@ -12,7 +12,13 @@ import {
   confirmDialog,
 } from "@/components/eh";
 import { fmtDate } from "@/lib/ehf";
-import { AWARD_CATEGORIES, type AwardCycleStatus } from "@contracts/constants";
+import {
+  AWARD_CATEGORIES,
+  AWARD_LEVELS,
+  AWARD_LEVEL_LABEL,
+  awardLevelNeedsUnit,
+  type AwardCycleStatus,
+} from "@contracts/constants";
 
 function CategoryCard({ cat }: { cat: (typeof AWARD_CATEGORIES)[number] }) {
   return (
@@ -78,8 +84,15 @@ export default function AdminAwards() {
   });
 
   const [name, setName] = useState("");
+  const [level, setLevel] = useState<string>("network");
+  const [unitId, setUnitId] = useState<string>("");
   const [openId, setOpenId] = useState<number | null>(null);
   const cycles = q.data ?? [];
+  const needsUnit = awardLevelNeedsUnit(level);
+  const units = trpc.adminEngage.awardsUnits.useQuery(
+    { level: level as "chapter" | "zone" | "region" | "country" },
+    { retry: false, enabled: needsUnit }
+  );
 
   return (
     <EhShell groups={ADMIN_NAV} brandSub="Admin">
@@ -91,23 +104,64 @@ export default function AdminAwards() {
 
       <div className="eh-card eh-mb">
         <Field label="New award cycle">
-          <div className="eh-row" style={{ gap: ".4rem", flexWrap: "wrap" }}>
-            <input
-              className="eh-input"
-              style={{ flex: "1 1 200px" }}
-              placeholder="e.g. 2026 Annual eHive Awards"
-              value={name}
-              onChange={e => setName(e.target.value)}
-            />
-            <button
-              className="eh-btn gold sm"
-              disabled={createCycle.isPending || name.trim().length < 2}
-              onClick={() => createCycle.mutate({ name })}
-            >
-              Create cycle
-            </button>
-          </div>
+          <input
+            className="eh-input"
+            placeholder="e.g. 2026 Annual eHive Awards"
+            value={name}
+            onChange={e => setName(e.target.value)}
+          />
         </Field>
+        <div className="eh-grid g2">
+          <Field label="Level">
+            <select
+              className="eh-select"
+              value={level}
+              onChange={e => {
+                setLevel(e.target.value);
+                setUnitId("");
+              }}
+            >
+              {AWARD_LEVELS.map(l => (
+                <option key={l.key} value={l.key}>
+                  {l.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          {needsUnit && (
+            <Field label={AWARD_LEVEL_LABEL[level]}>
+              <select
+                className="eh-select"
+                value={unitId}
+                onChange={e => setUnitId(e.target.value)}
+              >
+                <option value="">Choose a {level}…</option>
+                {(units.data ?? []).map(u => (
+                  <option key={u.id} value={u.id}>
+                    {u.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
+        </div>
+        <button
+          className="eh-btn gold sm"
+          disabled={
+            createCycle.isPending ||
+            name.trim().length < 2 ||
+            (needsUnit && !unitId)
+          }
+          onClick={() =>
+            createCycle.mutate({
+              name,
+              level: level as never,
+              unitId: needsUnit ? Number(unitId) : undefined,
+            })
+          }
+        >
+          Create cycle
+        </button>
       </div>
 
       <div className="eh-mb">
@@ -144,6 +198,10 @@ export default function AdminAwards() {
               >
                 <b style={{ fontSize: "1.05rem" }}>{c.name}</b>
                 <Pill color={CYCLE_COLOR[c.status]}>{c.status}</Pill>
+                <Pill color="blue">
+                  {AWARD_LEVEL_LABEL[c.level] ?? c.level}
+                  {c.unitName ? ` · ${c.unitName}` : ""}
+                </Pill>
                 <span className="eh-muted eh-sm">
                   {c.nominations} nomination{c.nominations === 1 ? "" : "s"}
                 </span>

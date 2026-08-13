@@ -341,6 +341,8 @@ export async function ensureSchema(): Promise<void> {
         id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
         name varchar(160) NOT NULL,
         status enum('draft','open','judging','announced','closed') NOT NULL DEFAULT 'draft',
+        level enum('network','chapter','zone','region','country') NOT NULL DEFAULT 'network',
+        unitId bigint unsigned NULL,
         opensAt timestamp NULL,
         closesAt timestamp NULL,
         createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -487,6 +489,18 @@ export async function ensureSchema(): Promise<void> {
       if (!cols.has("chapter_budgets.decidedAt"))
         stmts.push(
           "ALTER TABLE chapter_budgets ADD COLUMN decidedAt timestamp NULL"
+        );
+    }
+
+    // --- award_cycles: multi-level awards (chapter/zone/region/country) ---
+    if (tables.has("award_cycles")) {
+      if (!cols.has("award_cycles.level"))
+        stmts.push(
+          "ALTER TABLE award_cycles ADD COLUMN level enum('network','chapter','zone','region','country') NOT NULL DEFAULT 'network'"
+        );
+      if (!cols.has("award_cycles.unitId"))
+        stmts.push(
+          "ALTER TABLE award_cycles ADD COLUMN unitId bigint unsigned NULL"
         );
     }
 

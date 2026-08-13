@@ -32,6 +32,7 @@ import { chaptersOverview, chapterActivity } from "./queries/chapter-admin";
 import {
   listCycles,
   createCycle,
+  awardUnits,
   updateCycleStatus,
   listNominations,
   nominate,
@@ -55,6 +56,7 @@ import {
   EVENT_CHECKIN_CLOSES_AFTER_MS,
   SPEND_APPROVAL_THRESHOLD_AED,
   MEETING_AGENDA_TEMPLATES,
+  AWARD_LEVEL_KEYS,
 } from "@contracts/constants";
 
 function isFullAdmin(user: { adminScopes?: string | null }): boolean {
@@ -2132,20 +2134,42 @@ export const adminEngageRouter = createRouter({
   /* ---- NA-03 Recognition Awards (community scope) ---- */
   awardsCycles: scopedAdmin("community").query(() => listCycles()),
 
+  /* Units selectable for an award level (chapters, or org units by level). */
+  awardsUnits: scopedAdmin("community")
+    .input(
+      z.object({ level: z.enum(["chapter", "zone", "region", "country"]) })
+    )
+    .query(({ input }) => awardUnits(input.level)),
+
   awardsCreateCycle: scopedAdmin("community")
     .input(
-      z.object({
-        name: z.string().min(2).max(160),
-        opensAt: z.coerce.date().optional(),
-        closesAt: z.coerce.date().optional(),
-      })
+      z
+        .object({
+          name: z.string().min(2).max(160),
+          level: z
+            .enum(AWARD_LEVEL_KEYS as [string, ...string[]])
+            .default("network"),
+          unitId: z.number().int().positive().optional(),
+          opensAt: z.coerce.date().optional(),
+          closesAt: z.coerce.date().optional(),
+        })
+        .refine(v => v.level === "network" || v.unitId != null, {
+          message: "Pick a unit for a chapter/zone/region/country award.",
+          path: ["unitId"],
+        })
     )
     .mutation(async ({ ctx, input }) => {
-      const id = await createCycle(input.name, input.opensAt, input.closesAt);
+      const id = await createCycle({
+        name: input.name,
+        level: input.level as never,
+        unitId: input.unitId ?? null,
+        opensAt: input.opensAt,
+        closesAt: input.closesAt,
+      });
       await audit(ctx.user, "awards.cycle.create", {
         type: "awardCycle",
         id,
-        detail: input.name,
+        detail: `${input.level} · ${input.name}`,
       });
       return { ok: true, id };
     }),
