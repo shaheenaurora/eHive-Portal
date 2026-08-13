@@ -12,7 +12,11 @@ import {
   toast,
 } from "@/components/eh";
 import { fmtDate, fmtDateTime } from "@/lib/ehf";
-import { TIER_LABEL } from "@contracts/constants";
+import {
+  TIER_LABEL,
+  EXPENSE_CATEGORIES,
+  EXPENSE_CATEGORY_LABEL,
+} from "@contracts/constants";
 
 /* Payments store minor units (fils); budgets store whole AED. */
 const aed = (fils: number) =>
@@ -23,11 +27,15 @@ const aed = (fils: number) =>
   });
 const aedWhole = (n: number) => "AED " + n.toLocaleString("en-AE");
 
-const PAY_COLOR: Record<string, "grey" | "blue" | "green" | "red" | "gold"> = {
+const PAY_COLOR: Record<
+  string,
+  "grey" | "blue" | "green" | "red" | "gold" | "amber"
+> = {
   paid: "green",
   pending: "gold",
   failed: "red",
   refunded: "red",
+  partially_refunded: "amber",
 };
 type Tab = "payments" | "renewals" | "budgets" | "expenses";
 
@@ -38,9 +46,12 @@ export default function AdminFinance() {
   });
   const [tab, setTab] = useState<Tab>("payments");
   const [receipt, setReceipt] = useState<number | null>(null);
-  const [refund, setRefund] = useState<{ id: number; label: string } | null>(
-    null
-  );
+  const [refund, setRefund] = useState<{
+    id: number;
+    label: string;
+    amount: number;
+    refunded: number;
+  } | null>(null);
   const [manual, setManual] = useState(false);
   const [expense, setExpense] = useState(false);
 
@@ -242,7 +253,12 @@ function PaymentsTab({
   onManual,
 }: {
   onReceipt: (id: number) => void;
-  onRefund: (s: { id: number; label: string }) => void;
+  onRefund: (s: {
+    id: number;
+    label: string;
+    amount: number;
+    refunded: number;
+  }) => void;
   onManual: () => void;
 }) {
   const [status, setStatus] = useState<string>("");
@@ -346,13 +362,16 @@ function PaymentsTab({
                       >
                         Receipt
                       </button>
-                      {p.status === "paid" && (
+                      {(p.status === "paid" ||
+                        p.status === "partially_refunded") && (
                         <button
                           className="eh-btn ghost sm danger"
                           onClick={() =>
                             onRefund({
                               id: p.id,
                               label: `${p.payerName ?? "member"} · ${aed(p.amount)}`,
+                              amount: p.amount,
+                              refunded: p.refundedAmount ?? 0,
                             })
                           }
                         >
@@ -589,14 +608,23 @@ function RefundModal({
   onClose,
   onDone,
 }: {
-  spec: { id: number; label: string };
+  spec: { id: number; label: string; amount: number; refunded: number };
   onClose: () => void;
   onDone: () => void;
 }) {
+  const remaining = spec.amount - spec.refunded; // fils
   const [reason, setReason] = useState("");
+  const [partial, setPartial] = useState(false);
+  const [amount, setAmount] = useState(""); // AED string
+  const amountAed = Number(amount);
+  const amountValid =
+    !partial ||
+    (amount !== "" &&
+      amountAed > 0 &&
+      Math.round(amountAed * 100) <= remaining);
   const m = trpc.admin.refundPayment.useMutation({
     onSuccess: () => {
-      toast("Payment refunded.");
+      toast("Refund processed.");
       onDone();
     },
     onError: e => toast(e.message),
@@ -604,9 +632,42 @@ function RefundModal({
   return (
     <Modal title="Refund payment" onClose={onClose}>
       <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>
-        Marking <b>{spec.label}</b> as refunded. This is logged and the member
-        is notified. Process the actual refund in your payment provider.
+        Refunding <b>{spec.label}</b>. The charge is refunded through the
+        payment gateway, the record is updated and the member is notified.
+        {spec.refunded > 0 && (
+          <>
+            {" "}
+            Already refunded: <b>{aed(spec.refunded)}</b>; remaining refundable:{" "}
+            <b>{aed(remaining)}</b>.
+          </>
+        )}
       </p>
+      <label
+        className="eh-row"
+        style={{ gap: ".5rem", margin: "0 0 .6rem", cursor: "pointer" }}
+      >
+        <input
+          type="checkbox"
+          checked={partial}
+          onChange={e => setPartial(e.target.checked)}
+        />
+        <span className="eh-sm">Partial refund</span>
+      </label>
+      {partial && (
+        <Field
+          label={`Amount to refund (AED, up to ${(remaining / 100).toFixed(2)})`}
+        >
+          <input
+            className="eh-input"
+            type="number"
+            min={0}
+            step="0.01"
+            value={amount}
+            onChange={e => setAmount(e.target.value)}
+            placeholder="e.g. 250"
+          />
+        </Field>
+      )}
       <Field label="Reason (required)">
         <input
           className="eh-input"
@@ -617,10 +678,20 @@ function RefundModal({
       </Field>
       <button
         className="eh-btn danger"
-        disabled={m.isPending || reason.trim().length < 2}
-        onClick={() => m.mutate({ id: spec.id, reason })}
+        disabled={m.isPending || reason.trim().length < 2 || !amountValid}
+        onClick={() =>
+          m.mutate({
+            id: spec.id,
+            reason,
+            amountAed: partial ? amountAed : undefined,
+          })
+        }
       >
-        {m.isPending ? "Working…" : "Confirm refund"}
+        {m.isPending
+          ? "Working…"
+          : partial
+            ? "Refund this amount"
+            : `Refund ${aed(remaining)}`}
       </button>
     </Modal>
   );
@@ -843,6 +914,41 @@ function ExpensesTab({ onRecord }: { onRecord: () => void }) {
           />
         </div>
       )}
+      {rows.length > 0 &&
+        (() => {
+          const byCat = new Map<string, number>();
+          for (const e of rows)
+            byCat.set(
+              e.category ?? "other",
+              (byCat.get(e.category ?? "other") ?? 0) + e.amount
+            );
+          const ordered = EXPENSE_CATEGORIES.map(
+            c => [c.label, byCat.get(c.key) ?? 0] as const
+          ).filter(([, v]) => v > 0);
+          return (
+            <div className="eh-card eh-mb">
+              <div className="eh-eyebrow" style={{ marginBottom: ".5rem" }}>
+                Spend by category
+              </div>
+              <div
+                className="eh-row"
+                style={{ gap: "1.4rem", flexWrap: "wrap" }}
+              >
+                {ordered.map(([label, v]) => (
+                  <div key={label}>
+                    <div
+                      className="eh-num eh-strong"
+                      style={{ fontSize: "1.1rem" }}
+                    >
+                      {aedWhole(v)}
+                    </div>
+                    <div className="eh-muted eh-sm">{label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
       {rows.length > 0 && (
         <div className="eh-card" style={{ padding: ".4rem 1.25rem" }}>
           <table className="eh-table stack">
@@ -850,6 +956,7 @@ function ExpensesTab({ onRecord }: { onRecord: () => void }) {
               <tr>
                 <th>Chapter</th>
                 <th>Item</th>
+                <th>Category</th>
                 <th>Amount</th>
                 <th>Status</th>
                 <th>Date</th>
@@ -866,6 +973,11 @@ function ExpensesTab({ onRecord }: { onRecord: () => void }) {
                     {e.note ? (
                       <div className="eh-sm eh-muted">{e.note}</div>
                     ) : null}
+                  </td>
+                  <td data-label="Category" className="eh-sm">
+                    {e.category
+                      ? (EXPENSE_CATEGORY_LABEL[e.category] ?? e.category)
+                      : "—"}
                   </td>
                   <td data-label="Amount" className="eh-num">
                     {aedWhole(e.amount)}
@@ -898,6 +1010,7 @@ function RecordExpenseModal({
   const [chapterId, setChapterId] = useState<string>("");
   const [label, setLabel] = useState("");
   const [amount, setAmount] = useState("");
+  const [category, setCategory] = useState<string>("other");
   const [note, setNote] = useState("");
   const chapters = trpc.admin.financeChapters.useQuery(undefined, {
     retry: false,
@@ -938,16 +1051,31 @@ function RecordExpenseModal({
           placeholder="e.g. Venue deposit · Q2 offsite"
         />
       </Field>
-      <Field label="Amount (AED)">
-        <input
-          className="eh-input"
-          type="number"
-          min={1}
-          value={amount}
-          onChange={e => setAmount(e.target.value)}
-          placeholder="e.g. 1200"
-        />
-      </Field>
+      <div className="eh-grid g2">
+        <Field label="Amount (AED)">
+          <input
+            className="eh-input"
+            type="number"
+            min={1}
+            value={amount}
+            onChange={e => setAmount(e.target.value)}
+            placeholder="e.g. 1200"
+          />
+        </Field>
+        <Field label="Category">
+          <select
+            className="eh-select"
+            value={category}
+            onChange={e => setCategory(e.target.value)}
+          >
+            {EXPENSE_CATEGORIES.map(c => (
+              <option key={c.key} value={c.key}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
       <Field label="Note (optional)">
         <input
           className="eh-input"
@@ -966,6 +1094,7 @@ function RecordExpenseModal({
             chapterId: Number(chapterId),
             label: label.trim(),
             amountAed: Number(amount),
+            category: category as never,
             note: note || undefined,
           })
         }

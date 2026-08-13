@@ -133,9 +133,16 @@ export async function ensureSchema(): Promise<void> {
         ["refundedByUserId", "bigint unsigned NULL"],
         ["refundReason", "varchar(500) NULL"],
         ["refundedAt", "timestamp NULL"],
+        ["refundedAmount", "int NOT NULL DEFAULT 0"],
       ] as Array<[string, string]>)
         if (!cols.has(`payment_records.${col}`))
           stmts.push(`ALTER TABLE payment_records ADD COLUMN ${col} ${def}`);
+      const payStatus = cols.get("payment_records.status") ?? "";
+      if (payStatus && !payStatus.includes("partially_refunded"))
+        stmts.push(
+          "ALTER TABLE payment_records MODIFY COLUMN status " +
+            "enum('pending','paid','failed','refunded','partially_refunded') NOT NULL DEFAULT 'pending'"
+        );
     }
 
     // New tables added after the initial schema — created here so a deploy that
@@ -473,6 +480,10 @@ export async function ensureSchema(): Promise<void> {
         );
       if (!cols.has("chapter_budgets.note"))
         stmts.push("ALTER TABLE chapter_budgets ADD COLUMN note text NULL");
+      if (!cols.has("chapter_budgets.category"))
+        stmts.push(
+          "ALTER TABLE chapter_budgets ADD COLUMN category varchar(48) NULL"
+        );
       if (!cols.has("chapter_budgets.decidedAt"))
         stmts.push(
           "ALTER TABLE chapter_budgets ADD COLUMN decidedAt timestamp NULL"

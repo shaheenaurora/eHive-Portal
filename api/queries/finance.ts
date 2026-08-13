@@ -10,6 +10,7 @@ import {
   summarizePayments,
   rollupBudgets,
   isRenewalDue,
+  computeRefund,
   type PayLite,
   type BudgetLite,
 } from "../lib/finance-calc";
@@ -83,6 +84,7 @@ export type PaymentRow = {
   status: string;
   note: string | null;
   refundReason: string | null;
+  refundedAmount: number;
   refundedAt: Date | null;
   createdAt: Date;
 };
@@ -120,6 +122,7 @@ export async function listPayments(
       status: schema.paymentRecords.status,
       note: schema.paymentRecords.note,
       refundReason: schema.paymentRecords.refundReason,
+      refundedAmount: schema.paymentRecords.refundedAmount,
       refundedAt: schema.paymentRecords.refundedAt,
       createdAt: schema.paymentRecords.createdAt,
     })
@@ -271,8 +274,15 @@ export async function recordManualPayment(
   return { ok: true };
 }
 
-/** Refund a paid payment: mark refunded, log who/why, and notify the member. */
-export async function refundPayment(actor: Actor, id: number, reason: string) {
+/** Refund a payment — full, or a partial amount (AED). Moves the money back
+ *  through the gateway first, then records it; supports repeated partial refunds
+ *  up to the captured amount. */
+export async function refundPayment(
+  actor: Actor,
+  id: number,
+  reason: string,
+  amountAed?: number
+) {
   const db = getDb();
   const p = (
     await db
@@ -283,15 +293,21 @@ export async function refundPayment(actor: Actor, id: number, reason: string) {
   ).at(0);
   if (!p)
     throw new TRPCError({ code: "NOT_FOUND", message: "Payment not found." });
-  if (p.status !== "paid")
+
+  // Validate + compute the refund (pure, unit-tested).
+  let plan: ReturnType<typeof computeRefund>;
+  try {
+    plan = computeRefund(p, amountAed);
+  } catch (err) {
     throw new TRPCError({
-      code: "CONFLICT",
-      message: "Only a paid payment can be refunded.",
+      code: "BAD_REQUEST",
+      message: err instanceof Error ? err.message : "Invalid refund.",
     });
-  // Actually move the money back through the gateway before marking the record
-  // refunded. If the gateway refund fails we must NOT flip the DB, or the books
-  // would say "refunded" while the charge is still captured. Manual/cash
-  // payments (no providerRef) are recorded-only — refunded outside the app.
+  }
+
+  // Move the money back through the gateway BEFORE flipping the record — if the
+  // gateway refuses, the books must not say "refunded" while the charge stands.
+  // Manual/cash payments (no providerRef) are recorded-only.
   if (p.provider !== "manual" && p.providerRef) {
     if (!paymentsEnabled())
       throw new TRPCError({
@@ -300,7 +316,7 @@ export async function refundPayment(actor: Actor, id: number, reason: string) {
           "The payment gateway isn't configured, so this charge can't be refunded automatically.",
       });
     try {
-      await getPaymentProvider().refund(p.providerRef);
+      await getPaymentProvider().refund(p.providerRef, plan.requestedMinor);
     } catch (err) {
       throw new TRPCError({
         code: "BAD_GATEWAY",
@@ -313,16 +329,20 @@ export async function refundPayment(actor: Actor, id: number, reason: string) {
   await db
     .update(schema.paymentRecords)
     .set({
-      status: "refunded",
+      status: plan.newStatus,
+      refundedAmount: plan.newRefundedAmount,
       refundedByUserId: actor.id,
       refundReason: reason,
       refundedAt: new Date(),
     })
     .where(eq(schema.paymentRecords.id, id));
+  const partial = plan.newStatus === "partially_refunded";
   await audit(actor, "finance.refund", {
     type: "payment",
     id,
-    detail: `${p.amount / 100} ${p.currency} — ${reason}`,
+    detail: `${(plan.requestedMinor / 100).toFixed(2)} ${p.currency}${
+      partial ? " (partial)" : ""
+    } — ${reason}`,
   });
   const m = (
     await db
@@ -444,6 +464,7 @@ export type ExpenseRow = {
   chapterName: string | null;
   label: string;
   amount: number;
+  category: string | null;
   status: string;
   note: string | null;
   createdAt: Date;
@@ -464,6 +485,7 @@ export async function listExpenses(
       chapterName: schema.chapters.name,
       label: schema.chapterBudgets.label,
       amount: schema.chapterBudgets.amount,
+      category: schema.chapterBudgets.category,
       status: schema.chapterBudgets.status,
       note: schema.chapterBudgets.note,
       createdAt: schema.chapterBudgets.createdAt,
@@ -482,7 +504,13 @@ export async function listExpenses(
 /** Record a chapter expense against its operating budget. */
 export async function recordExpense(
   actor: Actor,
-  input: { chapterId: number; label: string; amountAed: number; note?: string }
+  input: {
+    chapterId: number;
+    label: string;
+    amountAed: number;
+    category?: string;
+    note?: string;
+  }
 ) {
   const db = getDb();
   const chapter = (
@@ -510,13 +538,14 @@ export async function recordExpense(
     label: input.label.slice(0, 255),
     kind: "spend",
     amount,
+    category: input.category ?? null,
     status: "approved",
     note: input.note ?? null,
   });
   await audit(actor, "finance.expense", {
     type: "chapterBudget",
     id: Number((res as unknown as { insertId?: number }).insertId ?? 0),
-    detail: `${chapter.name}: AED ${amount} · ${input.label}`,
+    detail: `${chapter.name}: AED ${amount} · ${input.category ?? "uncategorised"} · ${input.label}`,
   });
   return { ok: true };
 }

@@ -313,6 +313,27 @@ export const ROLE_ONBOARDING_STEPS = [
 export type RoleOnboardingStepKey =
   (typeof ROLE_ONBOARDING_STEPS)[number]["key"];
 
+/* Chapter expense categories — so spend can be recorded by type and reported
+   as a spend-by-category breakdown, not just a free-text label. */
+export const EXPENSE_CATEGORIES = [
+  { key: "venue", label: "Venue & facilities" },
+  { key: "catering", label: "Catering & F&B" },
+  { key: "speaker", label: "Speakers & talent" },
+  { key: "marketing", label: "Marketing & content" },
+  { key: "travel", label: "Travel & transport" },
+  { key: "materials", label: "Materials & printing" },
+  { key: "software", label: "Software & tools" },
+  { key: "gifts", label: "Gifts & recognition" },
+  { key: "admin", label: "Administration" },
+  { key: "other", label: "Other" },
+] as const;
+export type ExpenseCategoryKey = (typeof EXPENSE_CATEGORIES)[number]["key"];
+export const EXPENSE_CATEGORY_KEYS = EXPENSE_CATEGORIES.map(
+  c => c.key
+) as ExpenseCategoryKey[];
+export const EXPENSE_CATEGORY_LABEL: Record<string, string> =
+  Object.fromEntries(EXPENSE_CATEGORIES.map(c => [c.key, c.label]));
+
 /* NA-03 — Recognition Awards. Members nominate peers (and chapters) across
    these categories within an award cycle; the National body shortlists and
    names winners. `subject` says what's being recognised. */
