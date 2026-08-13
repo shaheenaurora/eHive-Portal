@@ -6,6 +6,7 @@ import { getDb } from "./queries/connection";
 import { createRouter, authedQuery, scopedAdmin } from "./middleware";
 import { getMemberByUserId, notify } from "./queries/circle";
 import { audit } from "./lib/audit";
+import { applyLifecycleTransition } from "./lib/lifecycle";
 import { CONDUCT_SEVERITIES, CONDUCT_STATUSES } from "@contracts/constants";
 
 const SEVERITY = z.enum(CONDUCT_SEVERITIES);
@@ -194,11 +195,10 @@ export const conductRouter = createRouter({
           : input.action === "reinstate"
             ? "active"
             : "alumni";
-      const status = input.action === "remove" ? "cancelled" : m.status;
-      await db
-        .update(schema.members)
-        .set({ lifecycleState: next, status })
-        .where(eq(schema.members.id, input.memberId));
+      await applyLifecycleTransition(input.memberId, next, {
+        actor: ctx.user,
+        reason: `Conduct case #${input.caseId}: ${input.action}`,
+      });
       // Record on the case + confidential member notice.
       await db
         .update(schema.conductCases)

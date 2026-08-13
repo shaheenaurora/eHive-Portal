@@ -17,6 +17,7 @@ import { computeOnboarding } from "../queries/onboarding";
 import { listCadences } from "../queries/cadence";
 import { computeChapterHealth } from "../queries/health";
 import { renewalStage } from "@contracts/constants";
+import { tryLifecycleTransition } from "./lifecycle";
 
 const DAILY_MARKER = "scheduler:lastDaily";
 
@@ -80,27 +81,35 @@ async function jobRenewal(now = new Date()): Promise<void> {
     const lc = (m as { lifecycleState?: string }).lifecycleState ?? "active";
     const stage = renewalStage(new Date(m.renewalAt), now);
     if (stage === "window" && lc === "active") {
-      await db
-        .update(schema.members)
-        .set({ lifecycleState: "renewal" })
-        .where(eq(schema.members.id, m.id));
-      await notify(
-        m.id,
-        "Your renewal window is open — here's your year in review. Renew to keep your membership and chapter access.",
-        "renewal"
-      );
-      opened++;
+      const r = await tryLifecycleTransition(m.id, "renewal", {
+        reason: "Renewal window opened",
+        audit: false,
+      });
+      if (r.ok) {
+        await notify(
+          m.id,
+          "Your renewal window is open — here's your year in review. Renew to keep your membership and chapter access.",
+          "renewal"
+        );
+        opened++;
+      } else {
+        console.log(`[scheduler] renewal window skipped: ${r.reason}`);
+      }
     } else if (stage === "lapse" && (lc === "renewal" || lc === "active")) {
-      await db
-        .update(schema.members)
-        .set({ lifecycleState: "lapsed" })
-        .where(eq(schema.members.id, m.id));
-      await notify(
-        m.id,
-        "Your membership has lapsed. You can renew any time to rejoin your chapter — your history is preserved.",
-        "renewal"
-      );
-      lapsed++;
+      const r = await tryLifecycleTransition(m.id, "lapsed", {
+        reason: "Renewal window closed without payment",
+        audit: false,
+      });
+      if (r.ok) {
+        await notify(
+          m.id,
+          "Your membership has lapsed. You can renew any time to rejoin your chapter — your history is preserved.",
+          "renewal"
+        );
+        lapsed++;
+      } else {
+        console.log(`[scheduler] lapse skipped: ${r.reason}`);
+      }
     }
   }
   if (opened || lapsed)

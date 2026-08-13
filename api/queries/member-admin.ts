@@ -5,7 +5,12 @@ import * as schema from "@db/schema";
 import { getDb } from "./connection";
 import { audit } from "../lib/audit";
 import { notify } from "./circle";
-import { tierRank, VERIFY_TOKEN_TTL_MS } from "@contracts/constants";
+import { applyLifecycleTransition } from "../lib/lifecycle";
+import {
+  tierRank,
+  VERIFY_TOKEN_TTL_MS,
+  type MemberLifecycle,
+} from "@contracts/constants";
 import {
   type Actor,
   type ChangeCategory,
@@ -167,16 +172,10 @@ async function writeProfile(
 }
 
 const STATUS_ENUM = ["active", "paused", "cancelled"] as const;
-const LIFECYCLE_NOTE: Record<string, string> = {
-  active: "Welcome to Active membership — you're all set.",
-  at_risk: "We've missed you lately — your chapter would love to see you back.",
-  renewal: "Your renewal window is open. Here's your year in review.",
-  suspended: "Your membership is under review.",
-  alumni: "You're now an eHive Alumnus — the door stays open.",
-};
 
 /** Apply an approved/discretionary high-impact change to the member record. */
 async function applyHighImpact(
+  actor: Actor,
   memberId: number,
   category: ChangeCategory,
   changes: FieldChange[],
@@ -226,33 +225,10 @@ async function applyHighImpact(
       });
     }
   } else if (category === "lifecycle" && to && to !== m.lifecycleState) {
-    const patch: Record<string, unknown> = { lifecycleState: to };
-    if (["active", "onboarding", "renewal", "at_risk"].includes(to))
-      patch.status = "active";
-    if (to === "suspended") patch.status = "paused";
-    if (to === "alumni" || to === "lapsed") patch.status = "cancelled";
-    await db
-      .update(schema.members)
-      .set(patch)
-      .where(eq(schema.members.id, memberId));
-    if (to === "at_risk" && m.lifecycleState !== "at_risk") {
-      const { openSaveCase } = await import("./saves");
-      await openSaveCase(
-        memberId,
-        reason || "Flagged at-risk.",
-        m.homeChapterId
-      );
-    } else if (to === "active" && m.lifecycleState === "at_risk") {
-      const { autoCloseSaveOnRecovery } = await import("./saves");
-      await autoCloseSaveOnRecovery(memberId, "Returned to Active.");
-    }
-    if (LIFECYCLE_NOTE[to]) {
-      try {
-        await notify(memberId, LIFECYCLE_NOTE[to], "membership");
-      } catch {
-        /* non-fatal */
-      }
-    }
+    await applyLifecycleTransition(memberId, to as MemberLifecycle, {
+      actor,
+      reason: reason ?? undefined,
+    });
   }
 }
 
@@ -355,6 +331,7 @@ export async function applyChangeNow(
       message: "A reason is required for this change.",
     });
   await applyHighImpact(
+    actor,
     memberId,
     input.category,
     input.changes,
@@ -428,6 +405,7 @@ export async function decideChange(
       await writeProfile(req.memberId, row.userId, row.userName, changes);
     } else {
       await applyHighImpact(
+        actor,
         req.memberId,
         req.category as ChangeCategory,
         changes,

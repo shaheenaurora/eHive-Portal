@@ -3,6 +3,7 @@ import * as schema from "@db/schema";
 import type { Tier } from "@contracts/constants";
 import { getDb } from "./connection";
 import { pushToMember } from "../lib/push";
+import { applyLifecycleTransition } from "../lib/lifecycle";
 
 /** The member record for a user, or null when they only have an application. */
 export async function getMemberByUserId(userId: number) {
@@ -300,8 +301,12 @@ export async function renewMembership(
   base.setFullYear(base.getFullYear() + 1);
   await db
     .update(schema.members)
-    .set({ renewalAt: base, lifecycleState: "active", status: "active" })
+    .set({ renewalAt: base })
     .where(eq(schema.members.id, m.id));
+  await applyLifecycleTransition(m.id, "active", {
+    reason: note,
+    audit: false,
+  });
   await db
     .insert(schema.membershipEvents)
     .values({ memberId: m.id, type: "renew", toTier: m.tier, note });
@@ -517,24 +522,15 @@ export async function evaluateDormancy(): Promise<{
       lc === "active" &&
       (next === "at_risk" || next === "dormant" || next === "non_renewal")
     ) {
-      await db
-        .update(schema.members)
-        .set({ lifecycleState: "at_risk" })
-        .where(eq(schema.members.id, m.id));
-      // ML-04b — open a tracked Save Playbook case so the intervention is owned, not silent.
-      const { openSaveCase } = await import("./saves");
-      await openSaveCase(
-        m.id,
-        reason || "Flagged at-risk by the engagement ladder.",
-        m.homeChapterId
-      );
+      await applyLifecycleTransition(m.id, "at_risk", {
+        reason: reason || "Flagged at-risk by the engagement ladder.",
+        audit: false,
+      });
     } else if (lc === "at_risk" && next === "active") {
-      await db
-        .update(schema.members)
-        .set({ lifecycleState: "active" })
-        .where(eq(schema.members.id, m.id));
-      const { autoCloseSaveOnRecovery } = await import("./saves");
-      await autoCloseSaveOnRecovery(m.id);
+      await applyLifecycleTransition(m.id, "active", {
+        reason: "Re-engaged — engagement ladder recovered",
+        audit: false,
+      });
     }
   }
   return { evaluated: all.length, transitions };

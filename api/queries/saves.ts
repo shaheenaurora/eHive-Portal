@@ -3,6 +3,7 @@ import { alias } from "drizzle-orm/mysql-core";
 import * as schema from "@db/schema";
 import { getDb } from "./connection";
 import { SAVE_PLAYBOOK_STEPS, type SaveCaseStatus } from "@contracts/constants";
+import { applyLifecycleTransition } from "../lib/lifecycle";
 
 const OPEN_STATES: SaveCaseStatus[] = ["open", "working"];
 const ALL_STEPS_MASK = (1 << SAVE_PLAYBOOK_STEPS.length) - 1;
@@ -231,15 +232,13 @@ export async function closeSaveCase(
     .where(eq(schema.memberSaveCases.id, id));
   if (outcome === "saved") {
     // Only clear the at-risk flag — never override a renewal/suspended state.
-    await db
-      .update(schema.members)
-      .set({ lifecycleState: "active" })
-      .where(
-        and(
-          eq(schema.members.id, c.memberId),
-          eq(schema.members.lifecycleState, "at_risk")
-        )
-      );
+    // The lifecycle helper enforces the transition matrix and keeps status coherent.
+    await applyLifecycleTransition(c.memberId, "active", {
+      reason: resolution || "Save case closed as saved",
+      audit: false,
+    }).catch(() => {
+      /* ignore invalid transitions — member may have moved on */
+    });
   }
   return c.memberId;
 }

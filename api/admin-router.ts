@@ -17,10 +17,10 @@ import {
   promoteWaitlist,
   recomputeScore,
   autoPairBuddy,
-  notify,
 } from "./queries/circle";
 import { computePodHealth, suggestPods } from "./queries/pods";
 import { audit, maskEmail } from "./lib/audit";
+import { applyLifecycleTransition } from "./lib/lifecycle";
 import { findUserByEmail } from "./queries/users";
 import {
   applyProfileEdit,
@@ -543,57 +543,9 @@ export const adminRouter = createRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const db = getDb();
-      const m = await mustMember(input.memberId);
-      if (m.lifecycleState === input.state) return { ok: true };
-      const patch: Record<string, unknown> = { lifecycleState: input.state };
-      // Keep access/billing status coherent with the journey state.
-      if (
-        input.state === "active" ||
-        input.state === "onboarding" ||
-        input.state === "renewal" ||
-        input.state === "at_risk"
-      )
-        patch.status = "active";
-      if (input.state === "suspended") patch.status = "paused";
-      if (input.state === "alumni" || input.state === "lapsed")
-        patch.status = "cancelled";
-      await db
-        .update(schema.members)
-        .set(patch)
-        .where(eq(schema.members.id, m.id));
-      // ML-04b — a manual at-risk flag opens a tracked Save case; recovery closes it.
-      if (input.state === "at_risk" && m.lifecycleState !== "at_risk") {
-        const { openSaveCase } = await import("./queries/saves");
-        await openSaveCase(
-          m.id,
-          input.note || "Flagged at-risk by an admin.",
-          m.homeChapterId
-        );
-      } else if (input.state === "active" && m.lifecycleState === "at_risk") {
-        const { autoCloseSaveOnRecovery } = await import("./queries/saves");
-        await autoCloseSaveOnRecovery(m.id, "Returned to Active by an admin.");
-      }
-      // Member-facing notification for the transitions that should reach them.
-      const NOTE: Record<string, string> = {
-        active: "Welcome to Active membership — you're all set.",
-        at_risk:
-          "We've missed you lately — your chapter would love to see you back.",
-        renewal: "Your renewal window is open. Here's your year in review.",
-        suspended: "Your membership is under review.",
-        alumni: "You're now an eHive Alumnus — the door stays open.",
-      };
-      if (NOTE[input.state]) {
-        try {
-          await notify(m.id, NOTE[input.state], "membership");
-        } catch {
-          /* non-fatal */
-        }
-      }
-      await audit(ctx.user, "member.lifecycle", {
-        type: "member",
-        id: m.id,
-        detail: `${m.lifecycleState} → ${input.state}${input.note ? ` (${input.note})` : ""}`,
+      await applyLifecycleTransition(input.memberId, input.state, {
+        actor: ctx.user,
+        reason: input.note,
       });
       return { ok: true };
     }),

@@ -11,7 +11,6 @@ import {
   nextSessionForMember,
   newCheckinCode,
   promoteWaitlist,
-  notify,
   engagementCounts,
 } from "./queries/circle";
 import {
@@ -22,6 +21,7 @@ import {
 import { computeOnboarding } from "./queries/onboarding";
 import { ONBOARDING_MANUAL_KEYS } from "@contracts/constants";
 import { paymentsEnabled, getPaymentProvider } from "./lib/payments";
+import { applyLifecycleTransition } from "./lib/lifecycle";
 import {
   tierRank,
   TIER_PRICE_AED,
@@ -665,19 +665,10 @@ export const circleRouter = createRouter({
       // Confirm Active once every milestone is met (ML-03 day-90 outcome).
       const progress = await computeOnboarding(member);
       if (progress.complete && member.lifecycleState === "onboarding") {
-        await db
-          .update(schema.members)
-          .set({ lifecycleState: "active" })
-          .where(eq(schema.members.id, member.id));
-        try {
-          await notify(
-            member.id,
-            "You've completed onboarding — welcome to full membership.",
-            "membership"
-          );
-        } catch {
-          /* non-fatal */
-        }
+        await applyLifecycleTransition(member.id, "active", {
+          reason: "Completed onboarding milestones",
+          audit: false,
+        });
       }
       return { ok: true, already, complete: progress.complete };
     }),
