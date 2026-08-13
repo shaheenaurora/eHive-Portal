@@ -1185,7 +1185,28 @@ export const adminEngageRouter = createRouter({
         });
       if (req.status !== "pending")
         throw new TRPCError({ code: "CONFLICT", message: "Already decided." });
+      let toChapterName: string | null = null;
       if (input.decision === "approve") {
+        // Validate the destination chapter still exists (and isn't archived)
+        // before moving the member into it.
+        const toChapter = (
+          await db
+            .select({ id: schema.chapters.id, name: schema.chapters.name })
+            .from(schema.chapters)
+            .where(
+              and(
+                eq(schema.chapters.id, req.toChapterId),
+                isNull(schema.chapters.deletedAt)
+              )
+            )
+            .limit(1)
+        ).at(0);
+        if (!toChapter)
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "The destination chapter no longer exists.",
+          });
+        toChapterName = toChapter.name;
         await db
           .update(schema.members)
           .set({ homeChapterId: req.toChapterId })
@@ -1200,6 +1221,18 @@ export const adminEngageRouter = createRouter({
           note: input.note ?? req.note,
         })
         .where(eq(schema.chapterTransfers.id, req.id));
+      // Notify the member of the outcome.
+      try {
+        await notify(
+          req.memberId,
+          input.decision === "approve"
+            ? `Your chapter transfer to ${toChapterName ?? "your new chapter"} has been approved.`
+            : "Your chapter transfer request wasn't approved. Your chapter membership is unchanged.",
+          "membership"
+        );
+      } catch {
+        /* non-fatal */
+      }
       await audit(ctx.user, `chapter.transfer.${input.decision}`, {
         type: "member",
         id: req.memberId,
