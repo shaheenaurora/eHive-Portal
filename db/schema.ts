@@ -346,6 +346,9 @@ export const events = mysqlTable("events", {
     .default("members"),
   audienceTiers: varchar("audienceTiers", { length: 128 }), // CSV of tiers when audience = 'tiers'
   capacity: int("capacity").notNull().default(40),
+  // CPD (Continuing Professional Development) credits a member earns by
+  // attending. 0 = the event carries no formal credits.
+  cpdCredits: int("cpdCredits").notNull().default(0),
   deletedAt: timestamp("deletedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });

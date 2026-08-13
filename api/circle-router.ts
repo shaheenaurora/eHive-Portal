@@ -28,7 +28,13 @@ import {
   SELF_SERVE_TIERS,
   memberCanAccessEvent,
   eventEligibleTiers,
+  TIER_LABEL,
 } from "@contracts/constants";
+import {
+  membershipNo,
+  cpdTotal,
+  membershipValidThrough,
+} from "./lib/member-docs";
 
 async function requireMember(userId: number) {
   const member = await getMemberByUserId(userId);
@@ -177,6 +183,61 @@ export const circleRouter = createRouter({
       application = apps.at(0) ?? null;
     }
     return { user: safeUser(ctx.user), member, application };
+  }),
+
+  /* ---- Member documents: membership + attendance certificates, CPD credits.
+     Everything here is derived from the member's own records. ---- */
+  myDocuments: authedQuery.query(async ({ ctx }) => {
+    const member = await requireMember(ctx.user.id);
+    const db = getDb();
+
+    // Events the member actually attended, newest first, with CPD credits.
+    const attended = await db
+      .select({
+        eventId: schema.events.id,
+        title: schema.events.title,
+        startsAt: schema.events.startsAt,
+        location: schema.events.location,
+        kind: schema.events.kind,
+        cpdCredits: schema.events.cpdCredits,
+      })
+      .from(schema.eventRegs)
+      .innerJoin(schema.events, eq(schema.events.id, schema.eventRegs.eventId))
+      .where(
+        and(
+          eq(schema.eventRegs.memberId, member.id),
+          eq(schema.eventRegs.status, "attended")
+        )
+      )
+      .orderBy(desc(schema.events.startsAt));
+
+    let chapterName: string | null = null;
+    if (member.homeChapterId) {
+      const ch = (
+        await db
+          .select({ name: schema.chapters.name })
+          .from(schema.chapters)
+          .where(eq(schema.chapters.id, member.homeChapterId))
+          .limit(1)
+      ).at(0);
+      chapterName = ch?.name ?? null;
+    }
+
+    return {
+      membership: {
+        memberNo: membershipNo(member.id),
+        name: ctx.user.name ?? "Member",
+        tier: member.tier,
+        tierLabel: TIER_LABEL[member.tier],
+        status: member.status,
+        chapterName,
+        joinedAt: member.joinedAt,
+        validThrough: membershipValidThrough(member.joinedAt),
+        inGoodStanding: member.status === "active",
+      },
+      attended,
+      cpdTotal: cpdTotal(attended),
+    };
   }),
 
   /* ---- application (BRD 9.1: public interest -> screening workflow) ---- */
