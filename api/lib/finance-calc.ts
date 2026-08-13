@@ -126,3 +126,159 @@ export function computeRefund(
 export function expenseNeedsApproval(amountAed: number): boolean {
   return Math.round(amountAed) >= SPEND_APPROVAL_THRESHOLD_AED;
 }
+
+/* ---------------------------------------------------------------------------
+ * Finance reporting — pure aggregation for the admin Finance → Reports view and
+ * CSV export. Payment amounts are minor units (fils); expense amounts are whole
+ * AED. Revenue is recognised on settlement (paidAt, fallback createdAt).
+ * ------------------------------------------------------------------------- */
+
+export type ReportPay = {
+  amount: number; // minor units (fils)
+  status: string;
+  tier: string | null;
+  paidAt?: Date | string | null;
+  createdAt: Date | string;
+  refundedAmount?: number; // minor units
+};
+export type ReportExpense = {
+  amount: number; // whole AED
+  category: string | null;
+  status: string;
+  createdAt: Date | string;
+};
+
+export interface FinanceReport {
+  revenueByMonth: {
+    month: string;
+    grossAed: number;
+    refundsAed: number;
+    netAed: number;
+  }[];
+  byTier: { tier: string; grossAed: number; count: number }[];
+  expenseByCategory: { category: string; aed: number }[];
+  totals: {
+    grossAed: number;
+    refundsAed: number;
+    netRevenueAed: number;
+    pendingAed: number;
+    expensesAed: number;
+    surplusAed: number;
+  };
+}
+
+function ymKey(d: Date | string): string {
+  const dt = new Date(d);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/** Aggregate payments + chapter expenses into a finance report (all AED). */
+export function buildFinanceReport(
+  pays: ReportPay[],
+  expenses: ReportExpense[]
+): FinanceReport {
+  const months = new Map<string, { grossFils: number; refundFils: number }>();
+  const tiers = new Map<string, { grossFils: number; count: number }>();
+  let grossFils = 0,
+    refundFils = 0,
+    pendingFils = 0;
+  for (const p of pays) {
+    if (p.status === "pending") {
+      pendingFils += p.amount;
+      continue;
+    }
+    const settled =
+      p.status === "paid" ||
+      p.status === "partially_refunded" ||
+      p.status === "refunded";
+    if (!settled) continue; // failed / other → not recognised
+    const key = ymKey(p.paidAt ?? p.createdAt);
+    const m = months.get(key) ?? { grossFils: 0, refundFils: 0 };
+    const refund = p.status === "refunded" ? p.amount : (p.refundedAmount ?? 0);
+    m.grossFils += p.amount;
+    m.refundFils += refund;
+    months.set(key, m);
+    grossFils += p.amount;
+    refundFils += refund;
+    const t = p.tier ?? "other";
+    const tt = tiers.get(t) ?? { grossFils: 0, count: 0 };
+    tt.grossFils += p.amount;
+    tt.count++;
+    tiers.set(t, tt);
+  }
+  const cats = new Map<string, number>();
+  let expensesAed = 0;
+  for (const e of expenses) {
+    if (e.status !== "approved" && e.status !== "spent") continue; // live spend only
+    const c = e.category ?? "uncategorised";
+    cats.set(c, (cats.get(c) ?? 0) + e.amount);
+    expensesAed += e.amount;
+  }
+  const revenueByMonth = [...months.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([month, v]) => ({
+      month,
+      grossAed: v.grossFils / 100,
+      refundsAed: v.refundFils / 100,
+      netAed: (v.grossFils - v.refundFils) / 100,
+    }));
+  const byTier = [...tiers.entries()]
+    .sort((a, b) => b[1].grossFils - a[1].grossFils)
+    .map(([tier, v]) => ({
+      tier,
+      grossAed: v.grossFils / 100,
+      count: v.count,
+    }));
+  const expenseByCategory = [...cats.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([category, aed]) => ({ category, aed }));
+  const netRevenueAed = (grossFils - refundFils) / 100;
+  return {
+    revenueByMonth,
+    byTier,
+    expenseByCategory,
+    totals: {
+      grossAed: grossFils / 100,
+      refundsAed: refundFils / 100,
+      netRevenueAed,
+      pendingAed: pendingFils / 100,
+      expensesAed,
+      surplusAed: netRevenueAed - expensesAed,
+    },
+  };
+}
+
+/** Escape a value for CSV (RFC 4180): wrap in quotes when it contains a comma,
+ *  quote or newline, doubling any embedded quotes. */
+function csvCell(v: string | number): string {
+  const s = String(v);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+/** Render a FinanceReport as a multi-section CSV (opens cleanly in Excel). */
+export function financeReportCsv(r: FinanceReport): string {
+  const rows: string[] = [];
+  const line = (...cells: (string | number)[]) =>
+    rows.push(cells.map(csvCell).join(","));
+  line("Revenue by month");
+  line("Month", "Gross (AED)", "Refunds (AED)", "Net (AED)");
+  for (const m of r.revenueByMonth)
+    line(m.month, m.grossAed, m.refundsAed, m.netAed);
+  line("");
+  line("Revenue by tier");
+  line("Tier", "Gross (AED)", "Payments");
+  for (const t of r.byTier) line(t.tier, t.grossAed, t.count);
+  line("");
+  line("Expenses by category");
+  line("Category", "AED");
+  for (const e of r.expenseByCategory) line(e.category, e.aed);
+  line("");
+  line("Totals");
+  line("Gross revenue (AED)", r.totals.grossAed);
+  line("Refunds (AED)", r.totals.refundsAed);
+  line("Net revenue (AED)", r.totals.netRevenueAed);
+  line("Pending (AED)", r.totals.pendingAed);
+  line("Expenses (AED)", r.totals.expensesAed);
+  line("Surplus (AED)", r.totals.surplusAed);
+  return rows.join("\n");
+}

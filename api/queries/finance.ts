@@ -12,8 +12,13 @@ import {
   isRenewalDue,
   computeRefund,
   expenseNeedsApproval,
+  buildFinanceReport,
+  financeReportCsv,
   type PayLite,
   type BudgetLite,
+  type ReportPay,
+  type ReportExpense,
+  type FinanceReport,
 } from "../lib/finance-calc";
 
 type Actor = { id: number; email: string };
@@ -69,6 +74,47 @@ export async function financeSummary() {
     byTier: pay.byTier,
     renewals: { count: renewalsCount, valueAed: renewalsValueAed },
     budgets: budget,
+  };
+}
+
+/** Build the finance report (revenue by month/tier, expenses by category,
+ *  totals) from all payment records and chapter spend lines. */
+export async function financeReport(): Promise<FinanceReport> {
+  const db = getDb();
+  const [pays, expenses] = await Promise.all([
+    db
+      .select({
+        amount: schema.paymentRecords.amount,
+        status: schema.paymentRecords.status,
+        tier: schema.paymentRecords.tier,
+        paidAt: schema.paymentRecords.paidAt,
+        createdAt: schema.paymentRecords.createdAt,
+        refundedAmount: schema.paymentRecords.refundedAmount,
+      })
+      .from(schema.paymentRecords),
+    db
+      .select({
+        amount: schema.chapterBudgets.amount,
+        category: schema.chapterBudgets.category,
+        status: schema.chapterBudgets.status,
+        createdAt: schema.chapterBudgets.createdAt,
+      })
+      .from(schema.chapterBudgets)
+      .where(eq(schema.chapterBudgets.kind, "spend")),
+  ]);
+  return buildFinanceReport(pays as ReportPay[], expenses as ReportExpense[]);
+}
+
+/** The finance report rendered as a downloadable CSV (filename + contents). */
+export async function financeReportCsvString(): Promise<{
+  filename: string;
+  csv: string;
+}> {
+  const report = await financeReport();
+  const stamp = new Date().toISOString().slice(0, 10);
+  return {
+    filename: `ehive-finance-report-${stamp}.csv`,
+    csv: financeReportCsv(report),
   };
 }
 
