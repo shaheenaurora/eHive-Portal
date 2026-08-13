@@ -64,4 +64,12 @@ export const env = {
   // Regional API host: api.zeptomail.com (default), api.zeptomail.eu, etc.
   zeptoApiUrl:
     process.env.ZEPTOMAIL_API_URL ?? "https://api.zeptomail.com/v1.1/email",
+  // API keys for the read-only integration API (/api/integrations/v1/*) that an
+  // external ERP / accounting app polls. Comma-separated; empty = the whole
+  // integration API is disabled (returns 503), so it exposes nothing until a
+  // key is configured. Rotate by listing old+new during a cutover.
+  integrationApiKeys: (process.env.INTEGRATION_API_KEYS ?? "")
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean),
 };

@@ -18,6 +18,7 @@ import { activateMembership } from "./queries/circle";
 import { notifyLead } from "./lib/lead-mail";
 import { rateLimit } from "./lib/rate-limit";
 import { escapeHtml } from "./lib/html";
+import { integrationApp } from "./integrations";
 
 /** Best-effort client IP from proxy headers (Railway sets x-forwarded-for).
  *  Uses the RIGHTMOST address in X-Forwarded-For — the one appended by our own
@@ -112,6 +113,11 @@ app.use("/api/trpc/*", async c => {
     createContext,
   });
 });
+
+/* Read-only integration API for an external ERP / accounting system. Mounted
+   before the static/marketing fallbacks; disabled (503) unless an API key is
+   configured. See api/integrations.ts and docs/INTEGRATIONS.md. */
+app.route("/api/integrations/v1", integrationApp);
 
 /* Marketing-site lead capture (replaces the old Formspree placeholder).
    Accepts the JSON payloads posted by public/app.js submitLead(). */
