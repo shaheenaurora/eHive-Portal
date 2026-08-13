@@ -465,6 +465,10 @@ export async function loadFullDemo(): Promise<{
             currency: "aed",
             status,
             createdAt: new Date(Date.now() - daysAgo * 86_400_000),
+            paidAt:
+              status !== "pending"
+                ? new Date(Date.now() - daysAgo * 86_400_000)
+                : null,
           };
         });
         if (payRows.length)

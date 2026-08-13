@@ -597,6 +597,9 @@ export const paymentRecords = mysqlTable("payment_records", {
   refundedAmount: int("refundedAmount").notNull().default(0),
   refundReason: varchar("refundReason", { length: 500 }),
   refundedAt: timestamp("refundedAt"),
+  // Funds-settlement time. Used for revenue recognition; may differ from createdAt
+  // when a checkout spans a period end or an async payment settles later.
+  paidAt: timestamp("paidAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt")
     .defaultNow()

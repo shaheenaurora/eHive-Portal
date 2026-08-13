@@ -27,6 +27,7 @@ export async function financeSummary() {
         status: schema.paymentRecords.status,
         tier: schema.paymentRecords.tier,
         createdAt: schema.paymentRecords.createdAt,
+        paidAt: schema.paymentRecords.paidAt,
       })
       .from(schema.paymentRecords),
     db
@@ -234,6 +235,7 @@ export async function recordManualPayment(
     amount,
     currency: "aed",
     status: "paid",
+    paidAt: new Date(),
     note: input.note ?? null,
   });
   // Optionally roll the member's renewal forward a year when logging a renewal.

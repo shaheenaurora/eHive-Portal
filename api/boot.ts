@@ -351,7 +351,7 @@ app.post("/api/payments/webhook", async c => {
       }
       await db
         .update(schema.paymentRecords)
-        .set({ status: "paid" })
+        .set({ status: "paid", paidAt: new Date() })
         .where(eq(schema.paymentRecords.id, record.id));
       if (record.purpose === "renewal") {
         const { renewMembership } = await import("./queries/circle");

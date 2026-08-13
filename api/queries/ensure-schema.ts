@@ -134,9 +134,19 @@ export async function ensureSchema(): Promise<void> {
         ["refundReason", "varchar(500) NULL"],
         ["refundedAt", "timestamp NULL"],
         ["refundedAmount", "int NOT NULL DEFAULT 0"],
+        ["paidAt", "timestamp NULL"],
       ] as Array<[string, string]>)
         if (!cols.has(`payment_records.${col}`))
           stmts.push(`ALTER TABLE payment_records ADD COLUMN ${col} ${def}`);
+
+      // Backfill paidAt for records that pre-date the column. Use createdAt as a
+      // conservative fallback so revenue recognition doesn't drop historical paid
+      // rows during the migration window.
+      if (!cols.has("payment_records.paidAt")) {
+        stmts.push(
+          "UPDATE payment_records SET paidAt = createdAt WHERE paidAt IS NULL AND status IN ('paid','refunded','partially_refunded')"
+        );
+      }
       const payStatus = cols.get("payment_records.status") ?? "";
       if (payStatus && !payStatus.includes("partially_refunded"))
         stmts.push(

@@ -36,6 +36,7 @@ export type PayLite = {
   status: string;
   tier: string | null;
   createdAt: Date | string;
+  paidAt?: Date | string | null;
 };
 
 /** Roll a list of payment records into headline finance figures (all in fils). */
@@ -51,7 +52,10 @@ export function summarizePayments(rows: PayLite[], now: Date = new Date()) {
     if (r.status === "paid") {
       paid += r.amount;
       paidCount++;
-      if (new Date(r.createdAt).getTime() >= monthStart) thisMonth += r.amount;
+      // Revenue is recognised on settlement (paidAt), not checkout creation.
+      // Fallback to createdAt for records that pre-date the paidAt column.
+      const recognisedAt = r.paidAt ?? r.createdAt;
+      if (new Date(recognisedAt).getTime() >= monthStart) thisMonth += r.amount;
       const t = r.tier ?? "other";
       byTier[t] ??= { n: 0, amount: 0 };
       byTier[t].n++;
