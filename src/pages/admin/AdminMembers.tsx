@@ -10,6 +10,7 @@ import {
   TierPill,
   Empty,
   Spinner,
+  RefCode,
   toast,
 } from "@/components/eh";
 import { fmtDate, initials } from "@/lib/ehf";
@@ -222,6 +223,12 @@ export default function AdminMembers() {
                       <div>
                         <b>{userName ?? "—"}</b>
                         <div className="eh-muted eh-sm">{userEmail}</div>
+                        <div
+                          style={{ marginTop: ".2rem" }}
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <RefCode type="member" id={member.id} />
+                        </div>
                       </div>
                     </div>
                   </td>

@@ -6,13 +6,13 @@ import {
 } from "./lib/member-docs";
 
 describe("membershipNo", () => {
-  it("zero-pads to a stable EH-XXXXX id", () => {
-    expect(membershipNo(19)).toBe("EH-00019");
-    expect(membershipNo(1)).toBe("EH-00001");
-    expect(membershipNo(123456)).toBe("EH-123456");
+  it("uses the unified member reference code (EH-M-XXXXX)", () => {
+    expect(membershipNo(19)).toBe("EH-M-00019");
+    expect(membershipNo(1)).toBe("EH-M-00001");
+    expect(membershipNo(123456)).toBe("EH-M-123456");
   });
   it("never produces a negative id", () => {
-    expect(membershipNo(-5)).toBe("EH-00000");
+    expect(membershipNo(-5)).toBe("EH-M-00000");
   });
 });
 

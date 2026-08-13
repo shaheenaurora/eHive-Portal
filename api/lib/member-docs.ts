@@ -1,10 +1,12 @@
 /** Pure (DB-free) helpers for member documents — membership number, CPD credit
  *  totals and membership-term dates. Unit-tested in api/member-docs.test.ts. */
+import { refCode } from "@contracts/ids";
 
-/** Stable, human-readable membership number derived from the member id, e.g.
- *  member 19 → "EH-00019". Zero-padded to 5 digits so it reads as an ID. */
+/** The member's public membership number — the same reference code used across
+ *  the platform (EH-M-00019), so a certificate, invoice and admin record all
+ *  show the one identifier. */
 export function membershipNo(id: number): string {
-  return "EH-" + String(Math.max(0, Math.trunc(id))).padStart(5, "0");
+  return refCode("member", id);
 }
 
 /** Total CPD (Continuing Professional Development) credits from attended events. */
