@@ -20,6 +20,9 @@ public/apps.min.css
 *.tsbuildinfo
 coverage/
 
+# Audit / handoff report artifacts (committed as-is, not source to be reformatted)
+AUDIT_REPORT*.md
+
 # Package files
 package-lock.json
 pnpm-lock.yaml
