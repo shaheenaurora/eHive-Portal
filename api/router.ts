@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { eq, desc, sql } from "drizzle-orm";
 import * as schema from "@db/schema";
+import { escapeHtml } from "./lib/html";
 import { authRouter } from "./auth-router";
 import { circleRouter } from "./circle-router";
 import { adminRouter } from "./admin-router";
@@ -49,7 +50,7 @@ export const appRouter = createRouter({
         .limit(1);
       const row = rows.at(0);
       if (!row || !row.publishedAt) return null;
-      return row;
+      return { ...row, body: escapeHtml(row.body) };
     }),
 
   newslettersPublic: publicQuery.query(async () => {

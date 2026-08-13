@@ -17,6 +17,7 @@ import { paymentsEnabled, getPaymentProvider } from "./lib/payments";
 import { activateMembership } from "./queries/circle";
 import { notifyLead } from "./lib/lead-mail";
 import { rateLimit } from "./lib/rate-limit";
+import { escapeHtml } from "./lib/html";
 
 /** Best-effort client IP from proxy headers (Railway sets x-forwarded-for).
  *  Uses the RIGHTMOST address in X-Forwarded-For — the one appended by our own
@@ -95,6 +96,13 @@ app.use("/api/trpc/*", async c => {
         ok = false;
       }
       if (!ok) return c.json({ error: "cross-origin request blocked" }, 403);
+    }
+    // Coarse per-IP flood protection for authenticated mutations. Generous
+    // enough for real interactive use (a tRPC batch counts as one request) but
+    // blunts scripted floods. NOTE: in-process only — a distributed limiter
+    // (Redis) is tracked separately for multi-replica deployments.
+    if (!rateLimit(`trpc:${clientIp(c)}`, 600, 60 * 1000)) {
+      return c.json({ error: "Too many requests. Please slow down." }, 429);
     }
   }
   return fetchRequestHandler({
@@ -184,7 +192,7 @@ app.get("/api/insights/:slug", async c => {
     .limit(1);
   const row = rows.at(0);
   if (!row || !row.publishedAt) return c.json({ error: "Not found" }, 404);
-  return c.json({ post: row });
+  return c.json({ post: { ...row, body: escapeHtml(row.body) } });
 });
 
 /* Server-rendered article page — crawlable HTML with per-article <title>, meta

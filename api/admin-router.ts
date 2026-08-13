@@ -2040,7 +2040,15 @@ export const adminRouter = createRouter({
     .input(
       z
         .object({
-          status: z.enum(["pending", "paid", "failed", "refunded"]).optional(),
+          status: z
+            .enum([
+              "pending",
+              "paid",
+              "failed",
+              "refunded",
+              "partially_refunded",
+            ])
+            .optional(),
           q: z.string().max(120).optional(),
         })
         .optional()
