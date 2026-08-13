@@ -12,7 +12,7 @@ import { createContext } from "./context";
 import { env } from "./lib/env";
 import { getDb } from "./queries/connection";
 import * as schema from "@db/schema";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { paymentsEnabled, getPaymentProvider } from "./lib/payments";
 import { activateMembership } from "./queries/circle";
 import { notifyLead } from "./lib/lead-mail";
@@ -349,10 +349,25 @@ app.post("/api/payments/webhook", async c => {
         );
         return c.json({ ok: false, error: "tier mismatch" }, 400);
       }
-      await db
+      // Compare-and-swap: only the first concurrent webhook flips pending→paid.
+      // The unique index on (provider, providerRef) is the backstop; this WHERE
+      // clause makes the update itself idempotent so double activations can't
+      // happen even in a race.
+      const paidUpdate = await db
         .update(schema.paymentRecords)
         .set({ status: "paid", paidAt: new Date() })
-        .where(eq(schema.paymentRecords.id, record.id));
+        .where(
+          and(
+            eq(schema.paymentRecords.id, record.id),
+            eq(schema.paymentRecords.status, "pending")
+          )
+        );
+      if (
+        (paidUpdate as unknown as [{ affectedRows: number }])[0]
+          .affectedRows === 0
+      ) {
+        return c.json({ ok: true, duplicate: true });
+      }
       if (record.purpose === "renewal") {
         const { renewMembership } = await import("./queries/circle");
         await renewMembership(record.userId, "Renewed via online payment");
@@ -368,10 +383,22 @@ app.post("/api/payments/webhook", async c => {
       record &&
       record.status === "pending"
     ) {
-      await db
+      // Same compare-and-swap guard for the failed transition.
+      const failedUpdate = await db
         .update(schema.paymentRecords)
         .set({ status: "failed" })
-        .where(eq(schema.paymentRecords.id, record.id));
+        .where(
+          and(
+            eq(schema.paymentRecords.id, record.id),
+            eq(schema.paymentRecords.status, "pending")
+          )
+        );
+      if (
+        (failedUpdate as unknown as [{ affectedRows: number }])[0]
+          .affectedRows === 0
+      ) {
+        return c.json({ ok: true, duplicate: true });
+      }
     }
   } catch (err) {
     console.error("webhook handling failed", err);

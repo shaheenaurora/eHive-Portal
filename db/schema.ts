@@ -568,44 +568,55 @@ export const offers = mysqlTable("offers", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-/* Provider-agnostic payment records (SRS INT-02). One row per checkout. */
-export const paymentRecords = mysqlTable("payment_records", {
-  id: serial("id").primaryKey(),
-  userId: bigint("userId", { mode: "number", unsigned: true }).notNull(),
-  provider: varchar("provider", { length: 32 }).notNull().default("stripe"),
-  providerRef: varchar("providerRef", { length: 255 }), // checkout session / intent id
-  purpose: varchar("purpose", { length: 32 }).notNull().default("membership"),
-  tier: mysqlEnum("tier", ["horizon", "ascent", "vanguard", "zenith"]),
-  amount: int("amount").notNull(), // minor units (fils)
-  currency: varchar("currency", { length: 8 }).notNull().default("aed"),
-  status: mysqlEnum("status", [
-    "pending",
-    "paid",
-    "failed",
-    "refunded",
-    "partially_refunded",
-  ])
-    .notNull()
-    .default("pending"),
-  note: varchar("note", { length: 500 }), // manual/offline payment note or reference
-  refundedByUserId: bigint("refundedByUserId", {
-    mode: "number",
-    unsigned: true,
-  }),
-  // Cumulative amount refunded (minor units). Equals `amount` for a full refund,
-  // less for a partial. `status` becomes refunded / partially_refunded to match.
-  refundedAmount: int("refundedAmount").notNull().default(0),
-  refundReason: varchar("refundReason", { length: 500 }),
-  refundedAt: timestamp("refundedAt"),
-  // Funds-settlement time. Used for revenue recognition; may differ from createdAt
-  // when a checkout spans a period end or an async payment settles later.
-  paidAt: timestamp("paidAt"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt")
-    .defaultNow()
-    .notNull()
-    .$onUpdate(() => new Date()),
-});
+/* Provider-agnostic payment records (SRS INT-02). One row per checkout.
+   providerRef is unique per provider so duplicate Stripe webhook deliveries
+   and race conditions can't create double payments or double activations. */
+export const paymentRecords = mysqlTable(
+  "payment_records",
+  {
+    id: serial("id").primaryKey(),
+    userId: bigint("userId", { mode: "number", unsigned: true }).notNull(),
+    provider: varchar("provider", { length: 32 }).notNull().default("stripe"),
+    providerRef: varchar("providerRef", { length: 255 }), // checkout session / intent id
+    purpose: varchar("purpose", { length: 32 }).notNull().default("membership"),
+    tier: mysqlEnum("tier", ["horizon", "ascent", "vanguard", "zenith"]),
+    amount: int("amount").notNull(), // minor units (fils)
+    currency: varchar("currency", { length: 8 }).notNull().default("aed"),
+    status: mysqlEnum("status", [
+      "pending",
+      "paid",
+      "failed",
+      "refunded",
+      "partially_refunded",
+    ])
+      .notNull()
+      .default("pending"),
+    note: varchar("note", { length: 500 }), // manual/offline payment note or reference
+    refundedByUserId: bigint("refundedByUserId", {
+      mode: "number",
+      unsigned: true,
+    }),
+    // Cumulative amount refunded (minor units). Equals `amount` for a full refund,
+    // less for a partial. `status` becomes refunded / partially_refunded to match.
+    refundedAmount: int("refundedAmount").notNull().default(0),
+    refundReason: varchar("refundReason", { length: 500 }),
+    refundedAt: timestamp("refundedAt"),
+    // Funds-settlement time. Used for revenue recognition; may differ from createdAt
+    // when a checkout spans a period end or an async payment settles later.
+    paidAt: timestamp("paidAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  t => [
+    uniqueIndex("payment_records_provider_ref_unique").on(
+      t.provider,
+      t.providerRef
+    ),
+  ]
+);
 
 export const leads = mysqlTable("leads", {
   id: serial("id").primaryKey(),

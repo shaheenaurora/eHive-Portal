@@ -593,6 +593,14 @@ export async function ensureSchema(): Promise<void> {
       ["cadences", "ix_cadences_chapter", "chapterId"],
       ["cadence_log", "ix_cadencelog_cadence_period", "cadenceId, periodKey"],
     ];
+    const uniqueIndexes: Array<[string, string, string]> = [
+      // table, index name, column list
+      [
+        "payment_records",
+        "payment_records_provider_ref_unique",
+        "provider, providerRef",
+      ],
+    ];
     let added = 0;
     for (const [table, name, cols] of indexes) {
       if (!tables.has(table) || haveIdx.has(`${table}.${name}`)) continue;
@@ -603,6 +611,17 @@ export async function ensureSchema(): Promise<void> {
         added++;
       } catch (e) {
         console.error("[ensureSchema] index skipped:", name, e);
+      }
+    }
+    for (const [table, name, cols] of uniqueIndexes) {
+      if (!tables.has(table) || haveIdx.has(`${table}.${name}`)) continue;
+      const ddl = `CREATE UNIQUE INDEX ${name} ON ${table} (${cols})`;
+      try {
+        console.log("[ensureSchema]", ddl);
+        await conn.query(ddl);
+        added++;
+      } catch (e) {
+        console.error("[ensureSchema] unique index skipped:", name, e);
       }
     }
 
