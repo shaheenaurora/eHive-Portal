@@ -10,6 +10,7 @@ import {
   Field,
   Empty,
   toast,
+  confirmDialog,
 } from "@/components/eh";
 import { fmtDate } from "@/lib/ehf";
 
@@ -131,7 +132,17 @@ export default function AdminInsights() {
                 className="eh-btn ghost sm"
                 style={{ color: "var(--eh-red)" }}
                 disabled={del.isPending}
-                onClick={() => del.mutate({ id: p.id })}
+                onClick={async () => {
+                  if (
+                    await confirmDialog({
+                      title: "Delete this insight?",
+                      body: "This permanently removes the article, including if it's published.",
+                      confirmLabel: "Delete insight",
+                      danger: true,
+                    })
+                  )
+                    del.mutate({ id: p.id });
+                }}
               >
                 Delete
               </button>

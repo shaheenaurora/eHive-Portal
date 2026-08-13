@@ -11,6 +11,7 @@ import {
   Field,
   RefCode,
   toast,
+  confirmDialog,
 } from "@/components/eh";
 import { ADMIN_SCOPES } from "@contracts/constants";
 
@@ -362,11 +363,14 @@ function DemoDataCard() {
         <button
           className="eh-btn ghost danger"
           disabled={remove.isPending}
-          onClick={() => {
+          onClick={async () => {
             if (
-              !window.confirm(
-                "Remove all seeded demo data (accounts, chapters, hierarchy, pods, events)? Your real data is kept. This cannot be undone."
-              )
+              !(await confirmDialog({
+                title: "Remove all seeded demo data?",
+                body: "Deletes every seed-tagged account, chapter, hierarchy unit, pod and event. Your real data is kept. This cannot be undone.",
+                confirmLabel: "Remove demo data",
+                danger: true,
+              }))
             )
               return;
             remove.mutate({ confirm: "REMOVE DEMO DATA" });
