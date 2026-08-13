@@ -308,6 +308,8 @@ export async function runDailyJobs(now = new Date()): Promise<boolean> {
 }
 
 let started = false;
+let bootTimer: ReturnType<typeof setTimeout> | null = null;
+let tickTimer: ReturnType<typeof setInterval> | null = null;
 /** Start the hourly tick (idempotent). The daily guard makes the cadence safe
  *  even though we check every hour. */
 export function startScheduler(): void {
@@ -319,7 +321,16 @@ export function startScheduler(): void {
     );
   };
   // Give the server a moment to finish booting, then check hourly.
-  setTimeout(tick, 30_000);
-  setInterval(tick, 60 * 60 * 1000);
+  bootTimer = setTimeout(tick, 30_000);
+  tickTimer = setInterval(tick, 60 * 60 * 1000);
   console.log("[scheduler] started (hourly tick, daily pass)");
+}
+
+/** Stop the scheduler's timers so the process can exit cleanly on shutdown. */
+export function stopScheduler(): void {
+  if (bootTimer) clearTimeout(bootTimer);
+  if (tickTimer) clearInterval(tickTimer);
+  bootTimer = null;
+  tickTimer = null;
+  started = false;
 }

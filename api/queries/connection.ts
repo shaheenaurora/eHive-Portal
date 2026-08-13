@@ -4,6 +4,7 @@ import { env } from "../lib/env";
 import * as schema from "@db/schema";
 
 let instance: ReturnType<typeof drizzle<typeof schema>>;
+let activePool: ReturnType<typeof createPool> | null = null;
 
 export function getDb() {
   if (!instance) {
@@ -20,7 +21,16 @@ export function getDb() {
       queueLimit: 0,
       waitForConnections: true,
     });
+    activePool = pool;
     instance = drizzle(pool, { schema, mode: "default" });
   }
   return instance;
+}
+
+/** Close the connection pool so the process can exit cleanly on shutdown. */
+export async function closePool(): Promise<void> {
+  if (!activePool) return;
+  const pool = activePool;
+  activePool = null;
+  await pool.promise().end();
 }

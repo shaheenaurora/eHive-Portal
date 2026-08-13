@@ -71,7 +71,7 @@ async function user(
   email: string,
   role: "user" | "admin" = "user"
 ) {
-  const passwordHash = hashPassword(DEMO_PASSWORD);
+  const passwordHash = await hashPassword(DEMO_PASSWORD);
   await db
     .insert(schema.users)
     .values({ unionId, name, email, passwordHash, role })

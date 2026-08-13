@@ -1,10 +1,16 @@
-import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
+import { promisify } from "node:util";
 
 /**
  * Password hashing with Node's built-in scrypt — no third-party dependency and
  * no native build step, so it works in any container. Format: "salt:hash" (hex).
+ *
+ * Uses the ASYNC scrypt (via libuv's threadpool) rather than scryptSync so a
+ * login/registration burst can't stall the single Node event loop — each hash
+ * is CPU-heavy by design, and blocking synchronously is a cheap DoS vector.
  */
 const KEYLEN = 64;
+const scryptAsync = promisify(scrypt);
 
 export interface PasswordValidationResult {
   ok: boolean;
@@ -30,20 +36,20 @@ export function validatePassword(password: string): PasswordValidationResult {
   return { ok: true };
 }
 
-export function hashPassword(password: string): string {
+export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16).toString("hex");
-  const hash = scryptSync(password, salt, KEYLEN).toString("hex");
-  return `${salt}:${hash}`;
+  const hash = (await scryptAsync(password, salt, KEYLEN)) as Buffer;
+  return `${salt}:${hash.toString("hex")}`;
 }
 
-export function verifyPassword(
+export async function verifyPassword(
   password: string,
   stored: string | null
-): boolean {
+): Promise<boolean> {
   if (!stored) return false;
   const [salt, hash] = stored.split(":");
   if (!salt || !hash) return false;
   const expected = Buffer.from(hash, "hex");
-  const actual = scryptSync(password, salt, KEYLEN);
+  const actual = (await scryptAsync(password, salt, KEYLEN)) as Buffer;
   return expected.length === actual.length && timingSafeEqual(expected, actual);
 }

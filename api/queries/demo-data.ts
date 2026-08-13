@@ -271,7 +271,7 @@ export async function loadFullDemo(): Promise<{
     return { loaded: false, members: 0, chapters: 0, admins: 0 };
 
   const rand = makeRand(42);
-  const hash = hashPassword(DEMO_PASSWORD);
+  const hash = await hashPassword(DEMO_PASSWORD);
   let uSeq = 0;
   const email = (name: string) =>
     `${name.toLowerCase().replace(/[^a-z]+/g, ".")}.${++uSeq}@demo.ehive.ae`;
