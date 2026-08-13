@@ -12,6 +12,7 @@ import {
   Modal,
   Field,
   Pill,
+  RefCode,
   toast,
 } from "@/components/eh";
 import { fmtDate, fmtDateTime, initials, relDay } from "@/lib/ehf";
@@ -169,6 +170,23 @@ export default function AdminMemberDetail() {
             {member.title && member.company ? " at " : ""}
             {member.company ?? ""}
           </p>
+          <div
+            className="eh-row"
+            style={{ gap: ".4rem", marginTop: ".4rem", flexWrap: "wrap" }}
+          >
+            <RefCode
+              type="member"
+              id={member.id}
+              title="Member ID — click to copy"
+            />
+            {member.homeChapterId && (
+              <RefCode
+                type="chapter"
+                id={member.homeChapterId}
+                title="Home chapter ID"
+              />
+            )}
+          </div>
         </div>
         <div
           className="eh-row"

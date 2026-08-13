@@ -564,6 +564,26 @@ textarea:focus-visible,
   border: 1px solid #e8d5ac;
   white-space: nowrap;
 }
+.eh-refcode {
+  font-family: "Archivo", ui-monospace, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+  color: var(--eh-ink-2);
+  background: #eef0f2;
+  border: 1px solid #dde2e7;
+  border-radius: 6px;
+  padding: 0.12rem 0.42rem;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.eh-refcode:hover {
+  background: var(--eh-blue-soft);
+  border-color: #c2d2e4;
+}
+
 .eh-pill.green {
   background: var(--eh-green-soft);
   color: var(--eh-green);

@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { initials } from "@/lib/ehf";
 import { TIER_LABEL } from "@contracts/constants";
+import { refCode, type EntityType } from "@contracts/ids";
 import { trpc } from "@/providers/trpc";
 
 /* ------------------------------- toasts -------------------------------- */
@@ -147,6 +148,32 @@ function ToastHost() {
 /* -------------------------------- atoms -------------------------------- */
 export function Spinner() {
   return <div className="eh-spin" role="status" aria-label="Loading" />;
+}
+
+/** The public reference code for an entity (EH-M-00019, EH-CH-0003, …), shown as
+ *  a monospace chip that copies to the clipboard on click. One consistent id for
+ *  every member, chapter, event, pod, invoice, etc. across the platform. */
+export function RefCode(props: {
+  type: EntityType;
+  id: number;
+  title?: string;
+}) {
+  const code = refCode(props.type, props.id);
+  return (
+    <button
+      type="button"
+      className="eh-refcode"
+      title={props.title ?? "Click to copy"}
+      onClick={() => {
+        navigator.clipboard?.writeText(code).then(
+          () => toast(`Copied ${code}`),
+          () => {}
+        );
+      }}
+    >
+      {code}
+    </button>
+  );
 }
 
 export function PageHead(props: {
