@@ -6,6 +6,7 @@ import {
   summarizePayments,
   rollupBudgets,
   computeRefund,
+  expenseNeedsApproval,
   type PayLite,
   type BudgetLite,
 } from "./lib/finance-calc";
@@ -145,5 +146,16 @@ describe("computeRefund", () => {
     expect(() =>
       computeRefund({ amount: 100000, refundedAmount: 0, status: "pending" })
     ).toThrow(/paid/i);
+  });
+});
+
+describe("expenseNeedsApproval", () => {
+  it("routes spend at or above the threshold (2000 AED) through approval", () => {
+    expect(expenseNeedsApproval(2000)).toBe(true);
+    expect(expenseNeedsApproval(5000)).toBe(true);
+  });
+  it("posts small spend directly", () => {
+    expect(expenseNeedsApproval(1999)).toBe(false);
+    expect(expenseNeedsApproval(1)).toBe(false);
   });
 });

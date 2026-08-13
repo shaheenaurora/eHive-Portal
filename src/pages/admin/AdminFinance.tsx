@@ -1023,8 +1023,12 @@ function RecordExpenseModal({
     retry: false,
   });
   const m = trpc.admin.recordExpense.useMutation({
-    onSuccess: () => {
-      toast("Expense recorded.");
+    onSuccess: r => {
+      toast(
+        r?.pending
+          ? "Expense submitted for approval (over the spend threshold)."
+          : "Expense recorded."
+      );
       onDone();
     },
     onError: e => toast(e.message),
