@@ -379,6 +379,27 @@ export type AwardCategoryKey = (typeof AWARD_CATEGORIES)[number]["key"];
 export const AWARD_CATEGORY_LABEL: Record<string, string> = Object.fromEntries(
   AWARD_CATEGORIES.map(c => [c.key, c.label])
 );
+
+/* Award levels — a cycle is run at one of these levels. Chapter/zone/region/
+   country cycles are scoped to a specific unit (unitId); network is the whole
+   organisation (no unit). Mirrors the network/chapter/zone/region/country scope
+   taxonomy used elsewhere. */
+export const AWARD_LEVELS = [
+  { key: "network", label: "Network (national)", unit: null },
+  { key: "chapter", label: "Chapter", unit: "chapter" },
+  { key: "zone", label: "Zone", unit: "zone" },
+  { key: "region", label: "Region", unit: "region" },
+  { key: "country", label: "Country", unit: "country" },
+] as const;
+export type AwardLevel = (typeof AWARD_LEVELS)[number]["key"];
+export const AWARD_LEVEL_KEYS = AWARD_LEVELS.map(l => l.key) as AwardLevel[];
+export const AWARD_LEVEL_LABEL: Record<string, string> = Object.fromEntries(
+  AWARD_LEVELS.map(l => [l.key, l.label])
+);
+/** Whether a given award level needs a specific unit selected (everything but network). */
+export function awardLevelNeedsUnit(level: string): boolean {
+  return level !== "network";
+}
 export const AWARD_CYCLE_STATUSES = [
   "draft",
   "open",

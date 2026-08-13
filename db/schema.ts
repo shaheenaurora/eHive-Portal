@@ -957,6 +957,13 @@ export const awardCycles = mysqlTable("award_cycles", {
   ])
     .notNull()
     .default("draft"),
+  // The level this cycle is run at, and the unit it's scoped to. `network` =
+  // whole organisation (unitId null). chapter → chapters.id; zone/region/country
+  // → org_units.id at the matching level.
+  level: mysqlEnum("level", ["network", "chapter", "zone", "region", "country"])
+    .notNull()
+    .default("network"),
+  unitId: bigint("unitId", { mode: "number", unsigned: true }),
   opensAt: timestamp("opensAt"),
   closesAt: timestamp("closesAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
