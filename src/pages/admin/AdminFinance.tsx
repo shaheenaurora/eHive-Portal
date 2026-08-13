@@ -276,13 +276,20 @@ function PaymentsTab({
         style={{ flexWrap: "wrap", gap: ".6rem" }}
       >
         <div className="eh-row" style={{ gap: ".4rem", flexWrap: "wrap" }}>
-          {["", "paid", "pending", "refunded", "failed"].map(s => (
+          {[
+            "",
+            "paid",
+            "pending",
+            "refunded",
+            "partially_refunded",
+            "failed",
+          ].map(s => (
             <button
               key={s || "all"}
               className={`eh-btn sm ${status === s ? "gold" : "ghost"}`}
               onClick={() => setStatus(s)}
             >
-              {s || "All"}
+              {s ? s.replace(/_/g, " ") : "All"}
             </button>
           ))}
         </div>
