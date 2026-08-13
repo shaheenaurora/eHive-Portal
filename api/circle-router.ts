@@ -581,12 +581,14 @@ export const circleRouter = createRouter({
           .set({ status: input.type === "pause" ? "paused" : "cancelled" })
           .where(eq(schema.members.id, member.id));
       } else if (input.type === "renew") {
-        const next = new Date(member.renewalAt ?? new Date());
-        next.setFullYear(next.getFullYear() + 1);
-        await db
-          .update(schema.members)
-          .set({ renewalAt: next, status: "active" })
-          .where(eq(schema.members.id, member.id));
+        // Renewal must be paid for. The only legitimate path is startRenewal
+        // (Stripe checkout) followed by webhook confirmation. Reject the free
+        // extension here to prevent revenue leakage.
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "Renewal requires payment. Please complete the renewal checkout.",
+        });
       }
       return { ok: true, pending: false };
     }),

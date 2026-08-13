@@ -326,6 +326,7 @@ export async function refundPayment(
       });
     }
   }
+
   await db
     .update(schema.paymentRecords)
     .set({
