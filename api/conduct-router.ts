@@ -349,6 +349,20 @@ export const conductRouter = createRouter({
             : {}),
         })
         .where(eq(schema.conductCases.id, input.caseId));
+      // On a reversal, unwind the substantive action: a member the conduct
+      // action had suspended is reinstated to active through the lifecycle
+      // executor (which keeps status coherent and audits the transition).
+      if (input.outcome === "reversed" && c.subjectMemberId) {
+        try {
+          await applyLifecycleTransition(c.subjectMemberId, "active", {
+            actor: ctx.user,
+            reason: `Conduct appeal reversed (case #${input.caseId})`,
+          });
+        } catch {
+          // Not all reversed actions were suspensions; an invalid transition
+          // (e.g. the member was never suspended) is a no-op we can ignore.
+        }
+      }
       if (c.subjectMemberId) {
         const msg =
           input.outcome === "upheld"
