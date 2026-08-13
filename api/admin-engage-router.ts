@@ -57,6 +57,7 @@ import {
   SPEND_APPROVAL_THRESHOLD_AED,
   MEETING_AGENDA_TEMPLATES,
   AWARD_LEVEL_KEYS,
+  AWARD_CATEGORY_LABEL,
 } from "@contracts/constants";
 
 function isFullAdmin(user: { adminScopes?: string | null }): boolean {
@@ -2196,6 +2197,42 @@ export const adminEngageRouter = createRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      if (input.status === "open") {
+        const cycle = (
+          await getDb()
+            .select({
+              opensAt: schema.awardCycles.opensAt,
+              closesAt: schema.awardCycles.closesAt,
+            })
+            .from(schema.awardCycles)
+            .where(eq(schema.awardCycles.id, input.id))
+            .limit(1)
+        ).at(0);
+        const now = Date.now();
+        if (cycle?.opensAt && now < new Date(cycle.opensAt).getTime())
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "This cycle can't open before its nomination start date.",
+          });
+        if (cycle?.closesAt && now > new Date(cycle.closesAt).getTime())
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "This cycle's nomination window has already closed.",
+          });
+        // Keep the single-open-cycle invariant that openCycle() relies on.
+        const otherOpen = (
+          await getDb()
+            .select({ id: schema.awardCycles.id })
+            .from(schema.awardCycles)
+            .where(eq(schema.awardCycles.status, "open"))
+            .limit(1)
+        ).at(0);
+        if (otherOpen && otherOpen.id !== input.id)
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Another cycle is already open for nominations.",
+          });
+      }
       await updateCycleStatus(input.id, input.status);
       await audit(ctx.user, "awards.cycle.status", {
         type: "awardCycle",
@@ -2245,6 +2282,23 @@ export const adminEngageRouter = createRouter({
     )
     .mutation(async ({ ctx, input }) => {
       await setNominationStatus(input.id, input.status);
+      // Notify the nominee when they're shortlisted or announced as a winner.
+      if (input.status === "shortlisted" || input.status === "winner") {
+        const { getNominationNominee } = await import("./queries/awards");
+        const nom = await getNominationNominee(input.id);
+        if (nom?.nomineeMemberId) {
+          const label = AWARD_CATEGORY_LABEL[nom.category] ?? "an award";
+          const msg =
+            input.status === "winner"
+              ? `Congratulations — you've won ${label}! 🏆`
+              : `You've been shortlisted for ${label}.`;
+          try {
+            await notify(nom.nomineeMemberId, msg, "recognition");
+          } catch {
+            /* non-fatal */
+          }
+        }
+      }
       await audit(ctx.user, "awards.nomination.status", {
         type: "awardNomination",
         id: input.id,
