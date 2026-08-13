@@ -28,6 +28,7 @@ COPY --from=builder /app/public ./public
 # migration command (`npm run db:migrate`). They stay out of the runtime bundle.
 COPY --from=builder /app/drizzle.config.ts ./
 COPY --from=builder /app/db ./db
+COPY --from=builder /app/scripts/pre-deploy.ts ./scripts/pre-deploy.ts
 
 # Install only production dependencies. Skip optional native modules where
 # possible to keep the image small and reduce attack surface.

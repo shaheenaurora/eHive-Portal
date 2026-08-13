@@ -6,16 +6,17 @@
  * `drizzle-kit migrate`. If the database already contains tables (a previous
  * `db:push` deploy) but has no `__drizzle_migrations` journal, we baseline it by
  * recording the initial migration as already applied. Fresh databases are left
- * untouched so `db:migrate` creates the schema normally.
+ * untouched so the migration runner creates the schema normally.
  */
 import "dotenv/config";
 import mysql from "mysql2/promise";
+import { drizzle } from "drizzle-orm/mysql2";
+import { migrate } from "drizzle-orm/mysql2/migrator";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { execSync } from "node:child_process";
-import { env } from "../api/lib/env";
 
 const JOURNAL_PATH = "./db/migrations/meta/_journal.json";
+const MIGRATIONS_FOLDER = "./db/migrations";
 
 interface JournalEntry {
   idx: number;
@@ -36,7 +37,11 @@ function sha256(path: string): string {
 }
 
 async function main() {
-  const uri = env.databaseUrl;
+  const uri = process.env.DATABASE_URL;
+  if (!uri) {
+    throw new Error("DATABASE_URL is required");
+  }
+
   const conn = await mysql.createConnection({
     uri,
     ssl:
@@ -69,7 +74,7 @@ async function main() {
       const journal: Journal = JSON.parse(readFileSync(JOURNAL_PATH, "utf-8"));
       const first = journal.entries[0];
       if (!first) throw new Error("No migrations found in journal");
-      const hash = sha256(`./db/migrations/${first.tag}.sql`);
+      const hash = sha256(`${MIGRATIONS_FOLDER}/${first.tag}.sql`);
 
       await conn.query(`
         create table if not exists __drizzle_migrations (
@@ -88,8 +93,22 @@ async function main() {
     await conn.end();
   }
 
-  console.log("[pre-deploy] running drizzle-kit migrate");
-  execSync("npx drizzle-kit migrate", { stdio: "inherit" });
+  console.log("[pre-deploy] running migrations");
+  const migrationConn = await mysql.createConnection({
+    uri,
+    ssl:
+      process.env.DATABASE_SSL === "true"
+        ? { minVersion: "TLSv1.2" }
+        : undefined,
+    multipleStatements: true,
+  });
+  try {
+    const db = drizzle(migrationConn);
+    await migrate(db, { migrationsFolder: MIGRATIONS_FOLDER });
+  } finally {
+    await migrationConn.end();
+  }
+  console.log("[pre-deploy] migrations complete");
 }
 
 main().catch(e => {
