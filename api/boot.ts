@@ -498,15 +498,6 @@ app.get("/sitemap.xml", async c => {
 export default app;
 
 if (env.isProduction) {
-  // Self-healing, additive schema reconciliation so a deploy that adds columns
-  // works without a manual db:push. Never blocks boot if it fails.
-  try {
-    const { ensureSchema } = await import("./queries/ensure-schema");
-    await ensureSchema();
-  } catch (e) {
-    console.error("[ensureSchema] skipped:", e);
-  }
-
   // Seed the editorial article batch (idempotent by slug) so the blog publishes on deploy.
   try {
     const { seedInsights } = await import("./queries/seed-insights");

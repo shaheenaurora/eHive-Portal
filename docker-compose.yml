@@ -2,7 +2,7 @@
 #
 #   1. cp .env.example .env   and fill in every value (see DEPLOY.md)
 #   2. docker compose up -d --build
-#   3. docker compose run --rm app npm run db:push     # one-time: create schema
+#   3. docker compose run --rm app npm run db:migrate  # one-time: create schema
 #   4. (optional) docker compose run --rm app npx tsx db/seed.ts   # demo data
 #
 # The app then serves the marketing site, member/admin portal, and API on :3000.

@@ -511,7 +511,7 @@ export const SCORE_FACTOR_LABEL: Record<ScoreFactor, string> = {
 
 /* Activity master — the full catalogue of eHive Circle activity types. Any of
    these can be scheduled from Calendar management with its own audience. Keep in
-   sync with the `kind` enum in db/schema.ts (and boot.ts ensureSchema). */
+   sync with the `kind` enum in db/schema.ts. */
 export const EVENT_KINDS = [
   "spark",
   "meetup",

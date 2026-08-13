@@ -7,6 +7,7 @@ import {
   timestamp,
   bigint,
   int,
+  index,
   uniqueIndex,
 } from "drizzle-orm/mysql-core";
 
@@ -50,67 +51,76 @@ export type InsertUser = typeof users.$inferInsert;
    eHive Circle — community vertical (BRD §9) + website leads
    ========================================================================== */
 
-export const members = mysqlTable("members", {
-  id: serial("id").primaryKey(),
-  userId: bigint("userId", { mode: "number", unsigned: true })
-    .notNull()
-    .unique(),
-  tier: mysqlEnum("tier", ["horizon", "ascent", "vanguard", "zenith"])
-    .notNull()
-    .default("horizon"),
-  status: mysqlEnum("status", ["active", "paused", "cancelled"])
-    .notNull()
-    .default("active"),
-  /* Member Lifecycle — the CRM state machine (Operations Manual M1 / Figure 2).
+export const members = mysqlTable(
+  "members",
+  {
+    id: serial("id").primaryKey(),
+    userId: bigint("userId", { mode: "number", unsigned: true })
+      .notNull()
+      .unique(),
+    tier: mysqlEnum("tier", ["horizon", "ascent", "vanguard", "zenith"])
+      .notNull()
+      .default("horizon"),
+    status: mysqlEnum("status", ["active", "paused", "cancelled"])
+      .notNull()
+      .default("active"),
+    /* Member Lifecycle — the CRM state machine (Operations Manual M1 / Figure 2).
      Distinct from `status` (access/billing): this is the member's journey. */
-  lifecycleState: mysqlEnum("lifecycleState", [
-    "prospect",
-    "guest",
-    "applicant",
-    "onboarding",
-    "active",
-    "at_risk",
-    "renewal",
-    "lapsed",
-    "alumni",
-    "suspended",
-  ])
-    .notNull()
-    .default("active"),
-  hiveScore: int("hiveScore").notNull().default(0),
-  company: varchar("company", { length: 255 }),
-  title: varchar("title", { length: 255 }),
-  phone: varchar("phone", { length: 64 }),
-  /* POD profile (Operations Manual PD-01) — drives the matching engine. */
-  sector: varchar("sector", { length: 128 }),
-  stage: varchar("stage", { length: 64 }),
-  goals: varchar("goals", { length: 500 }),
-  joinedAt: timestamp("joinedAt").defaultNow().notNull(),
-  renewalAt: timestamp("renewalAt"),
-  /* BRD 6.3 — dormancy ladder + engagement */
-  dormancyStage: mysqlEnum("dormancyStage", [
-    "active",
-    "at_risk",
-    "dormant",
-    "non_renewal",
-  ])
-    .notNull()
-    .default("active"),
-  dormancyNote: varchar("dormancyNote", { length: 500 }),
-  exceptionPause: int("exceptionPause").notNull().default(0), // boolean: member-initiated pause
-  /* BRD 6.2 — member-controlled directory visibility */
-  directoryVisible: int("directoryVisible").notNull().default(1),
-  emailNotify: int("emailNotify").notNull().default(1), // email a copy of in-app notifications
-  /* BRD 6.6 — founding induction number (Zenith admissions) */
-  inductionNo: int("inductionNo"),
-  /* BRD 6.7 — home chapter */
-  homeChapterId: bigint("homeChapterId", { mode: "number", unsigned: true }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt")
-    .defaultNow()
-    .notNull()
-    .$onUpdate(() => new Date()),
-});
+    lifecycleState: mysqlEnum("lifecycleState", [
+      "prospect",
+      "guest",
+      "applicant",
+      "onboarding",
+      "active",
+      "at_risk",
+      "renewal",
+      "lapsed",
+      "alumni",
+      "suspended",
+    ])
+      .notNull()
+      .default("active"),
+    hiveScore: int("hiveScore").notNull().default(0),
+    company: varchar("company", { length: 255 }),
+    title: varchar("title", { length: 255 }),
+    phone: varchar("phone", { length: 64 }),
+    /* POD profile (Operations Manual PD-01) — drives the matching engine. */
+    sector: varchar("sector", { length: 128 }),
+    stage: varchar("stage", { length: 64 }),
+    goals: varchar("goals", { length: 500 }),
+    joinedAt: timestamp("joinedAt").defaultNow().notNull(),
+    renewalAt: timestamp("renewalAt"),
+    /* BRD 6.3 — dormancy ladder + engagement */
+    dormancyStage: mysqlEnum("dormancyStage", [
+      "active",
+      "at_risk",
+      "dormant",
+      "non_renewal",
+    ])
+      .notNull()
+      .default("active"),
+    dormancyNote: varchar("dormancyNote", { length: 500 }),
+    exceptionPause: int("exceptionPause").notNull().default(0), // boolean: member-initiated pause
+    /* BRD 6.2 — member-controlled directory visibility */
+    directoryVisible: int("directoryVisible").notNull().default(1),
+    emailNotify: int("emailNotify").notNull().default(1), // email a copy of in-app notifications
+    /* BRD 6.6 — founding induction number (Zenith admissions) */
+    inductionNo: int("inductionNo"),
+    /* BRD 6.7 — home chapter */
+    homeChapterId: bigint("homeChapterId", { mode: "number", unsigned: true }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  t => [
+    index("ix_members_tier_status").on(t.tier, t.status),
+    index("ix_members_status_score").on(t.status, t.hiveScore),
+    index("ix_members_home_chapter").on(t.homeChapterId),
+    index("ix_members_lifecycle").on(t.lifecycleState),
+  ]
+);
 export type Member = typeof members.$inferSelect;
 
 /* Member KYC (Know Your Customer) — identity verification for compliance. Holds
@@ -166,63 +176,77 @@ export const onboardingMilestones = mysqlTable(
   ]
 );
 
-export const applications = mysqlTable("applications", {
-  id: serial("id").primaryKey(),
-  userId: bigint("userId", { mode: "number", unsigned: true }).notNull(),
-  name: varchar("name", { length: 255 }).notNull(),
-  email: varchar("email", { length: 320 }).notNull(),
-  company: varchar("company", { length: 255 }),
-  stage: varchar("stage", { length: 64 }),
-  revenue: varchar("revenue", { length: 64 }),
-  why: text("why"),
-  proofPoint: text("proofPoint"),
-  consentAt: timestamp("consentAt"),
-  tierRequested: mysqlEnum("tierRequested", [
-    "horizon",
-    "ascent",
-    "vanguard",
-    "zenith",
-  ])
-    .notNull()
-    .default("ascent"),
-  status: mysqlEnum("status", [
-    "received",
-    "screening",
-    "interview",
-    "approved",
-    "rejected",
-  ])
-    .notNull()
-    .default("received"),
-  note: text("note"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  decidedAt: timestamp("decidedAt"),
-});
+export const applications = mysqlTable(
+  "applications",
+  {
+    id: serial("id").primaryKey(),
+    userId: bigint("userId", { mode: "number", unsigned: true }).notNull(),
+    name: varchar("name", { length: 255 }).notNull(),
+    email: varchar("email", { length: 320 }).notNull(),
+    company: varchar("company", { length: 255 }),
+    stage: varchar("stage", { length: 64 }),
+    revenue: varchar("revenue", { length: 64 }),
+    why: text("why"),
+    proofPoint: text("proofPoint"),
+    consentAt: timestamp("consentAt"),
+    tierRequested: mysqlEnum("tierRequested", [
+      "horizon",
+      "ascent",
+      "vanguard",
+      "zenith",
+    ])
+      .notNull()
+      .default("ascent"),
+    status: mysqlEnum("status", [
+      "received",
+      "screening",
+      "interview",
+      "approved",
+      "rejected",
+    ])
+      .notNull()
+      .default("received"),
+    note: text("note"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    decidedAt: timestamp("decidedAt"),
+  },
+  t => [
+    index("ix_applications_user").on(t.userId),
+    index("ix_applications_status").on(t.status),
+  ]
+);
 export type Application = typeof applications.$inferSelect;
 
-export const membershipEvents = mysqlTable("membership_events", {
-  id: serial("id").primaryKey(),
-  memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
-  type: mysqlEnum("type", [
-    "approved",
-    "upgrade",
-    "downgrade",
-    "pause",
-    "cancel",
-    "renew",
-  ]).notNull(),
-  fromTier: varchar("fromTier", { length: 32 }),
-  toTier: varchar("toTier", { length: 32 }),
-  note: text("note"),
-  /* Approval state — tier changes a member requests stay `pending` until
-     management approves/rejects; self-serve actions are `applied`. */
-  status: mysqlEnum("status", ["applied", "pending", "approved", "rejected"])
-    .notNull()
-    .default("applied"),
-  actorEmail: varchar("actorEmail", { length: 320 }), // admin who decided a pending request
-  decidedAt: timestamp("decidedAt"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+export const membershipEvents = mysqlTable(
+  "membership_events",
+  {
+    id: serial("id").primaryKey(),
+    memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+    type: mysqlEnum("type", [
+      "approved",
+      "upgrade",
+      "downgrade",
+      "pause",
+      "cancel",
+      "renew",
+    ]).notNull(),
+    fromTier: varchar("fromTier", { length: 32 }),
+    toTier: varchar("toTier", { length: 32 }),
+    note: text("note"),
+    /* Approval state — tier changes a member requests stay `pending` until
+       management approves/rejects; self-serve actions are `applied`. */
+    status: mysqlEnum("status", ["applied", "pending", "approved", "rejected"])
+      .notNull()
+      .default("applied"),
+    actorEmail: varchar("actorEmail", { length: 320 }), // admin who decided a pending request
+    decidedAt: timestamp("decidedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  t => [
+    index("ix_membevents_member").on(t.memberId),
+    index("ix_membevents_status").on(t.status),
+  ]
+);
 
 /* ERP maker-checker — proposed/applied changes to a member record. High-impact
    changes (tier, status, lifecycle) enter as `pending` and a corporate approver
@@ -293,30 +317,44 @@ export const podMembers = mysqlTable("pod_members", {
   confidentialityAt: timestamp("confidentialityAt"),
 });
 
-export const sessions = mysqlTable("sessions", {
-  id: serial("id").primaryKey(),
-  podId: bigint("podId", { mode: "number", unsigned: true }).notNull(),
-  startsAt: timestamp("startsAt").notNull(),
-  durationMin: int("durationMin").notNull().default(90),
-  topic: varchar("topic", { length: 255 }),
-  videoLink: varchar("videoLink", { length: 512 }),
-  location: varchar("location", { length: 255 }),
-  status: mysqlEnum("status", ["scheduled", "done", "cancelled"])
-    .notNull()
-    .default("scheduled"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+export const sessions = mysqlTable(
+  "sessions",
+  {
+    id: serial("id").primaryKey(),
+    podId: bigint("podId", { mode: "number", unsigned: true }).notNull(),
+    startsAt: timestamp("startsAt").notNull(),
+    durationMin: int("durationMin").notNull().default(90),
+    topic: varchar("topic", { length: 255 }),
+    videoLink: varchar("videoLink", { length: 512 }),
+    location: varchar("location", { length: 255 }),
+    status: mysqlEnum("status", ["scheduled", "done", "cancelled"])
+      .notNull()
+      .default("scheduled"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  t => [index("ix_sessions_pod_starts").on(t.podId, t.startsAt)]
+);
 export type Session = typeof sessions.$inferSelect;
 
-export const attendance = mysqlTable("attendance", {
-  id: serial("id").primaryKey(),
-  sessionId: bigint("sessionId", { mode: "number", unsigned: true }).notNull(),
-  memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
-  status: mysqlEnum("status", ["attended", "absent", "excused"])
-    .notNull()
-    .default("attended"),
-  markedAt: timestamp("markedAt").defaultNow().notNull(),
-});
+export const attendance = mysqlTable(
+  "attendance",
+  {
+    id: serial("id").primaryKey(),
+    sessionId: bigint("sessionId", {
+      mode: "number",
+      unsigned: true,
+    }).notNull(),
+    memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+    status: mysqlEnum("status", ["attended", "absent", "excused"])
+      .notNull()
+      .default("attended"),
+    markedAt: timestamp("markedAt").defaultNow().notNull(),
+  },
+  t => [
+    index("ix_attendance_session").on(t.sessionId),
+    index("ix_attendance_member").on(t.memberId),
+  ]
+);
 
 export const sessionNotes = mysqlTable("session_notes", {
   id: serial("id").primaryKey(),
@@ -346,8 +384,7 @@ export type ActionItem = typeof actionItems.$inferSelect;
 export const events = mysqlTable("events", {
   id: serial("id").primaryKey(),
   title: varchar("title", { length: 255 }).notNull(),
-  /* Activity master — keep in sync with EVENT_KINDS (contracts/constants) and
-     ensureSchema() in api/boot.ts. */
+  /* Activity master — keep in sync with EVENT_KINDS (contracts/constants). */
   kind: mysqlEnum("kind", [
     "spark",
     "meetup",
@@ -387,23 +424,31 @@ export const events = mysqlTable("events", {
 });
 export type CircleEvent = typeof events.$inferSelect;
 
-export const eventRegs = mysqlTable("event_regs", {
-  id: serial("id").primaryKey(),
-  eventId: bigint("eventId", { mode: "number", unsigned: true }).notNull(),
-  memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
-  status: mysqlEnum("status", [
-    "registered",
-    "waitlisted",
-    "attended",
-    "cancelled",
-  ])
-    .notNull()
-    .default("registered"),
-  /* BRD 6.4 — QR check-in code (member shows code at door; check-in writes score real-time) */
-  checkinCode: varchar("checkinCode", { length: 12 }),
-  guestOf: bigint("guestOf", { mode: "number", unsigned: true }), // set when this seat is a member's guest ticket
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+export const eventRegs = mysqlTable(
+  "event_regs",
+  {
+    id: serial("id").primaryKey(),
+    eventId: bigint("eventId", { mode: "number", unsigned: true }).notNull(),
+    memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+    status: mysqlEnum("status", [
+      "registered",
+      "waitlisted",
+      "attended",
+      "cancelled",
+    ])
+      .notNull()
+      .default("registered"),
+    /* BRD 6.4 — QR check-in code (member shows code at door; check-in writes score real-time) */
+    checkinCode: varchar("checkinCode", { length: 12 }),
+    guestOf: bigint("guestOf", { mode: "number", unsigned: true }), // set when this seat is a member's guest ticket
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  t => [
+    index("ix_eventregs_event_status").on(t.eventId, t.status),
+    index("ix_eventregs_member").on(t.memberId),
+    index("ix_eventregs_code").on(t.checkinCode),
+  ]
+);
 
 export const hiveScoreConfig = mysqlTable("hive_score_config", {
   id: serial("id").primaryKey(),
@@ -415,14 +460,18 @@ export const hiveScoreConfig = mysqlTable("hive_score_config", {
     .$onUpdate(() => new Date()),
 });
 
-export const scoreEvents = mysqlTable("score_events", {
-  id: serial("id").primaryKey(),
-  memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
-  factor: varchar("factor", { length: 64 }).notNull(),
-  points: int("points").notNull().default(0),
-  note: varchar("note", { length: 255 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+export const scoreEvents = mysqlTable(
+  "score_events",
+  {
+    id: serial("id").primaryKey(),
+    memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+    factor: varchar("factor", { length: 64 }).notNull(),
+    points: int("points").notNull().default(0),
+    note: varchar("note", { length: 255 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  t => [index("ix_scoreevents_member").on(t.memberId)]
+);
 
 export const hiveScoreHistory = mysqlTable("hive_score_history", {
   id: serial("id").primaryKey(),
@@ -501,14 +550,18 @@ export const govBodies = mysqlTable("gov_bodies", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const govRoles = mysqlTable("gov_roles", {
-  id: serial("id").primaryKey(),
-  bodyId: bigint("bodyId", { mode: "number", unsigned: true }).notNull(),
-  memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
-  seat: varchar("seat", { length: 128 }).notNull(),
-  termStart: timestamp("termStart"),
-  termEnd: timestamp("termEnd"),
-});
+export const govRoles = mysqlTable(
+  "gov_roles",
+  {
+    id: serial("id").primaryKey(),
+    bodyId: bigint("bodyId", { mode: "number", unsigned: true }).notNull(),
+    memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+    seat: varchar("seat", { length: 128 }).notNull(),
+    termStart: timestamp("termStart"),
+    termEnd: timestamp("termEnd"),
+  },
+  t => [index("ix_govroles_body").on(t.bodyId)]
+);
 
 export const govMinutes = mysqlTable("gov_minutes", {
   id: serial("id").primaryKey(),
@@ -618,24 +671,37 @@ export const paymentRecords = mysqlTable(
   ]
 );
 
-export const leads = mysqlTable("leads", {
-  id: serial("id").primaryKey(),
-  form: varchar("form", { length: 64 }).notNull(),
-  email: varchar("email", { length: 320 }),
-  payload: text("payload"),
-  sourcePage: varchar("sourcePage", { length: 255 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  /* Lightweight CRM: pipeline status, owner (admin) and freeform notes. */
-  status: mysqlEnum("status", ["new", "contacted", "qualified", "won", "lost"])
-    .notNull()
-    .default("new"),
-  ownerUserId: bigint("ownerUserId", { mode: "number", unsigned: true }),
-  notes: text("notes"),
-  updatedAt: timestamp("updatedAt")
-    .defaultNow()
-    .notNull()
-    .$onUpdate(() => new Date()),
-});
+export const leads = mysqlTable(
+  "leads",
+  {
+    id: serial("id").primaryKey(),
+    form: varchar("form", { length: 64 }).notNull(),
+    email: varchar("email", { length: 320 }),
+    payload: text("payload"),
+    sourcePage: varchar("sourcePage", { length: 255 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    /* Lightweight CRM: pipeline status, owner (admin) and freeform notes. */
+    status: mysqlEnum("status", [
+      "new",
+      "contacted",
+      "qualified",
+      "won",
+      "lost",
+    ])
+      .notNull()
+      .default("new"),
+    ownerUserId: bigint("ownerUserId", { mode: "number", unsigned: true }),
+    notes: text("notes"),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  t => [
+    index("ix_leads_status").on(t.status),
+    index("ix_leads_created").on(t.createdAt),
+  ]
+);
 export type Lead = typeof leads.$inferSelect;
 
 // TODO: Add your tables here. See docs/Database.md for schema examples and patterns.
@@ -786,30 +852,44 @@ export const pushSubscriptions = mysqlTable("push_subscriptions", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const notifications = mysqlTable("notifications", {
-  id: serial("id").primaryKey(),
-  memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
-  text: varchar("text", { length: 500 }).notNull(),
-  kind: varchar("kind", { length: 32 }).notNull().default("info"), // info | dormancy | event | connect
-  readAt: timestamp("readAt"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+export const notifications = mysqlTable(
+  "notifications",
+  {
+    id: serial("id").primaryKey(),
+    memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+    text: varchar("text", { length: 500 }).notNull(),
+    kind: varchar("kind", { length: 32 }).notNull().default("info"), // info | dormancy | event | connect
+    readAt: timestamp("readAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  t => [index("ix_notifications_member_read").on(t.memberId, t.readAt)]
+);
 
 /* BRD 6.3 — 1-2-1s with counterpart confirmation; kind=mentoring feeds Give-Back */
-export const oneToOnes = mysqlTable("one_to_ones", {
-  id: serial("id").primaryKey(),
-  aMemberId: bigint("aMemberId", { mode: "number", unsigned: true }).notNull(), // logger
-  bMemberId: bigint("bMemberId", { mode: "number", unsigned: true }).notNull(), // counterpart
-  kind: mysqlEnum("kind", ["one_to_one", "mentoring"])
-    .notNull()
-    .default("one_to_one"),
-  note: varchar("note", { length: 500 }),
-  status: mysqlEnum("status", ["pending", "confirmed", "declined"])
-    .notNull()
-    .default("pending"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  confirmedAt: timestamp("confirmedAt"),
-});
+export const oneToOnes = mysqlTable(
+  "one_to_ones",
+  {
+    id: serial("id").primaryKey(),
+    aMemberId: bigint("aMemberId", {
+      mode: "number",
+      unsigned: true,
+    }).notNull(), // logger
+    bMemberId: bigint("bMemberId", {
+      mode: "number",
+      unsigned: true,
+    }).notNull(), // counterpart
+    kind: mysqlEnum("kind", ["one_to_one", "mentoring"])
+      .notNull()
+      .default("one_to_one"),
+    note: varchar("note", { length: 500 }),
+    status: mysqlEnum("status", ["pending", "confirmed", "declined"])
+      .notNull()
+      .default("pending"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    confirmedAt: timestamp("confirmedAt"),
+  },
+  t => [index("ix_o2o_a").on(t.aMemberId), index("ix_o2o_b").on(t.bMemberId)]
+);
 
 /* BRD 6.3 — buddy pairing for new members (paired within 5 days, 30-day check-in) */
 export const buddies = mysqlTable("buddies", {
@@ -828,17 +908,21 @@ export const buddies = mysqlTable("buddies", {
 });
 
 /* BRD 6.3 — member-submitted referrals (give-to-get; converted referrals score higher) */
-export const referrals = mysqlTable("referrals", {
-  id: serial("id").primaryKey(),
-  memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
-  prospectName: varchar("prospectName", { length: 255 }).notNull(),
-  prospectContact: varchar("prospectContact", { length: 255 }),
-  note: varchar("note", { length: 500 }),
-  status: mysqlEnum("status", ["submitted", "converted", "rejected"])
-    .notNull()
-    .default("submitted"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+export const referrals = mysqlTable(
+  "referrals",
+  {
+    id: serial("id").primaryKey(),
+    memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+    prospectName: varchar("prospectName", { length: 255 }).notNull(),
+    prospectContact: varchar("prospectContact", { length: 255 }),
+    note: varchar("note", { length: 500 }),
+    status: mysqlEnum("status", ["submitted", "converted", "rejected"])
+      .notNull()
+      .default("submitted"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  t => [index("ix_referrals_member").on(t.memberId)]
+);
 
 /* BRD 6.3 — Deal Flow board (tier-gated; Ascent requires 1 referral/quarter to post) */
 export const deals = mysqlTable("deals", {
@@ -853,14 +937,18 @@ export const deals = mysqlTable("deals", {
 });
 
 /* BRD 6.4 — post-event feedback */
-export const eventFeedback = mysqlTable("event_feedback", {
-  id: serial("id").primaryKey(),
-  eventId: bigint("eventId", { mode: "number", unsigned: true }).notNull(),
-  memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
-  rating: int("rating").notNull(), // 1-5
-  comment: varchar("comment", { length: 1000 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+export const eventFeedback = mysqlTable(
+  "event_feedback",
+  {
+    id: serial("id").primaryKey(),
+    eventId: bigint("eventId", { mode: "number", unsigned: true }).notNull(),
+    memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+    rating: int("rating").notNull(), // 1-5
+    comment: varchar("comment", { length: 1000 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  t => [index("ix_eventfb_event").on(t.eventId)]
+);
 
 /* BRD 6.1/6.5 — Insights CMS (staff publish; public site renders published posts) */
 export const insights = mysqlTable("insights", {
@@ -909,13 +997,17 @@ export const zenithApps = mysqlTable("zenith_apps", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const endorsements = mysqlTable("endorsements", {
-  id: serial("id").primaryKey(),
-  appId: bigint("appId", { mode: "number", unsigned: true }).notNull(),
-  memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(), // endorser
-  role: mysqlEnum("role", ["qc", "board"]).notNull().default("qc"), // QC member or board member
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+export const endorsements = mysqlTable(
+  "endorsements",
+  {
+    id: serial("id").primaryKey(),
+    appId: bigint("appId", { mode: "number", unsigned: true }).notNull(),
+    memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(), // endorser
+    role: mysqlEnum("role", ["qc", "board"]).notNull().default("qc"), // QC member or board member
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  t => [index("ix_endorsements_app").on(t.appId)]
+);
 
 /* BRD 6.6 — investor relationship tracker (staff-only) with cool-down rules */
 export const investorIntros = mysqlTable("investor_intros", {
@@ -1072,126 +1164,184 @@ export const chapters = mysqlTable("chapters", {
 /* BRD 6.7 — member-requested chapter transfers. A member asks to move to another
    chapter; management approves before the home chapter changes (mirrors the tier
    change approval flow). */
-export const chapterTransfers = mysqlTable("chapter_transfers", {
-  id: serial("id").primaryKey(),
-  memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
-  fromChapterId: bigint("fromChapterId", { mode: "number", unsigned: true }),
-  toChapterId: bigint("toChapterId", {
-    mode: "number",
-    unsigned: true,
-  }).notNull(),
-  note: varchar("note", { length: 500 }),
-  status: mysqlEnum("status", ["pending", "approved", "rejected"])
-    .notNull()
-    .default("pending"),
-  actorEmail: varchar("actorEmail", { length: 320 }),
-  decidedAt: timestamp("decidedAt"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+export const chapterTransfers = mysqlTable(
+  "chapter_transfers",
+  {
+    id: serial("id").primaryKey(),
+    memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+    fromChapterId: bigint("fromChapterId", { mode: "number", unsigned: true }),
+    toChapterId: bigint("toChapterId", {
+      mode: "number",
+      unsigned: true,
+    }).notNull(),
+    note: varchar("note", { length: 500 }),
+    status: mysqlEnum("status", ["pending", "approved", "rejected"])
+      .notNull()
+      .default("pending"),
+    actorEmail: varchar("actorEmail", { length: 320 }),
+    decidedAt: timestamp("decidedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  t => [
+    index("ix_chtransfers_status").on(t.status),
+    index("ix_chtransfers_member").on(t.memberId),
+  ]
+);
 
 /* Operations Manual A2 — the chapter operating rhythm. A recurring obligation
    the platform schedules and rolls up ("cadence is the product"). */
-export const cadences = mysqlTable("cadences", {
-  id: serial("id").primaryKey(),
-  chapterId: bigint("chapterId", { mode: "number", unsigned: true }).notNull(),
-  type: varchar("type", { length: 48 }).notNull(), // CADENCE_TEMPLATES type
-  title: varchar("title", { length: 128 }).notNull(),
-  frequency: varchar("frequency", { length: 16 }).notNull(), // weekly | biweekly | ...
-  ownerRole: varchar("ownerRole", { length: 48 }), // accountable chapter role
-  sop: varchar("sop", { length: 16 }),
-  active: int("active").notNull().default(1),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+export const cadences = mysqlTable(
+  "cadences",
+  {
+    id: serial("id").primaryKey(),
+    chapterId: bigint("chapterId", {
+      mode: "number",
+      unsigned: true,
+    }).notNull(),
+    type: varchar("type", { length: 48 }).notNull(), // CADENCE_TEMPLATES type
+    title: varchar("title", { length: 128 }).notNull(),
+    frequency: varchar("frequency", { length: 16 }).notNull(), // weekly | biweekly | ...
+    ownerRole: varchar("ownerRole", { length: 48 }), // accountable chapter role
+    sop: varchar("sop", { length: 16 }),
+    active: int("active").notNull().default(1),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  t => [index("ix_cadences_chapter").on(t.chapterId)]
+);
 
 /* One row per cadence occurrence a leader records — kept / rescheduled / missed
    (§A2 "the one rule of the calendar"). Keyed by the period it belongs to. */
-export const cadenceLog = mysqlTable("cadence_log", {
-  id: serial("id").primaryKey(),
-  cadenceId: bigint("cadenceId", { mode: "number", unsigned: true }).notNull(),
-  periodKey: varchar("periodKey", { length: 16 }).notNull(),
-  status: mysqlEnum("status", ["kept", "rescheduled", "missed"]).notNull(),
-  note: varchar("note", { length: 500 }),
-  actorMemberId: bigint("actorMemberId", { mode: "number", unsigned: true }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+export const cadenceLog = mysqlTable(
+  "cadence_log",
+  {
+    id: serial("id").primaryKey(),
+    cadenceId: bigint("cadenceId", {
+      mode: "number",
+      unsigned: true,
+    }).notNull(),
+    periodKey: varchar("periodKey", { length: 16 }).notNull(),
+    status: mysqlEnum("status", ["kept", "rescheduled", "missed"]).notNull(),
+    note: varchar("note", { length: 500 }),
+    actorMemberId: bigint("actorMemberId", { mode: "number", unsigned: true }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  t => [index("ix_cadencelog_cadence_period").on(t.cadenceId, t.periodKey)]
+);
 
 /* Operations Manual M7 / CH-06 — chapter health snapshots. Time-stamped index +
    its six components, saved for trend and Zone comparison. */
-export const healthSnapshots = mysqlTable("health_snapshots", {
-  id: serial("id").primaryKey(),
-  chapterId: bigint("chapterId", { mode: "number", unsigned: true }).notNull(),
-  total: int("total").notNull(),
-  retention: int("retention").notNull(),
-  engagement: int("engagement").notNull(),
-  growth: int("growth").notNull(),
-  programme: int("programme").notNull(),
-  leadership: int("leadership").notNull(),
-  governance: int("governance").notNull(),
-  memberCount: int("memberCount").notNull().default(0),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+export const healthSnapshots = mysqlTable(
+  "health_snapshots",
+  {
+    id: serial("id").primaryKey(),
+    chapterId: bigint("chapterId", {
+      mode: "number",
+      unsigned: true,
+    }).notNull(),
+    total: int("total").notNull(),
+    retention: int("retention").notNull(),
+    engagement: int("engagement").notNull(),
+    growth: int("growth").notNull(),
+    programme: int("programme").notNull(),
+    leadership: int("leadership").notNull(),
+    governance: int("governance").notNull(),
+    memberCount: int("memberCount").notNull().default(0),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  t => [index("ix_health_chapter").on(t.chapterId, t.createdAt)]
+);
 
 /* BRD 6.7 — chapter "learnings": notes, resources and playbooks an officer
    shares with their chapter to drive growth. */
-export const chapterPosts = mysqlTable("chapter_posts", {
-  id: serial("id").primaryKey(),
-  chapterId: bigint("chapterId", { mode: "number", unsigned: true }).notNull(),
-  authorMemberId: bigint("authorMemberId", {
-    mode: "number",
-    unsigned: true,
-  }).notNull(),
-  title: varchar("title", { length: 255 }).notNull(),
-  body: text("body"),
-  url: varchar("url", { length: 512 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+export const chapterPosts = mysqlTable(
+  "chapter_posts",
+  {
+    id: serial("id").primaryKey(),
+    chapterId: bigint("chapterId", {
+      mode: "number",
+      unsigned: true,
+    }).notNull(),
+    authorMemberId: bigint("authorMemberId", {
+      mode: "number",
+      unsigned: true,
+    }).notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    body: text("body"),
+    url: varchar("url", { length: 512 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  t => [index("ix_chposts_chapter").on(t.chapterId)]
+);
 
 /* BRD 6.7 — chapter leadership team. A member holds a named office in a chapter
    (President, Treasurer, PODs Lead …), assigned directly or from an election.
    One active holder per role per chapter; superseded rows are marked ended. */
-export const chapterRoles = mysqlTable("chapter_roles", {
-  id: serial("id").primaryKey(),
-  chapterId: bigint("chapterId", { mode: "number", unsigned: true }).notNull(),
-  memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
-  role: varchar("role", { length: 64 }).notNull(), // CHAPTER_ROLES key, or "other"
-  title: varchar("title", { length: 128 }), // custom title when role = "other"
-  responsibilities: text("responsibilities"), // optional override of the default
-  electionId: bigint("electionId", { mode: "number", unsigned: true }), // set when elected
-  termStart: timestamp("termStart"),
-  termEnd: timestamp("termEnd"),
-  onboardingMask: int("onboardingMask").notNull().default(0), // ROLE_ONBOARDING_STEPS progress
-  status: mysqlEnum("status", ["active", "ended"]).notNull().default("active"),
-  appointedBy: varchar("appointedBy", { length: 320 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+export const chapterRoles = mysqlTable(
+  "chapter_roles",
+  {
+    id: serial("id").primaryKey(),
+    chapterId: bigint("chapterId", {
+      mode: "number",
+      unsigned: true,
+    }).notNull(),
+    memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+    role: varchar("role", { length: 64 }).notNull(), // CHAPTER_ROLES key, or "other"
+    title: varchar("title", { length: 128 }), // custom title when role = "other"
+    responsibilities: text("responsibilities"), // optional override of the default
+    electionId: bigint("electionId", { mode: "number", unsigned: true }), // set when elected
+    termStart: timestamp("termStart"),
+    termEnd: timestamp("termEnd"),
+    onboardingMask: int("onboardingMask").notNull().default(0), // ROLE_ONBOARDING_STEPS progress
+    status: mysqlEnum("status", ["active", "ended"])
+      .notNull()
+      .default("active"),
+    appointedBy: varchar("appointedBy", { length: 320 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  t => [
+    index("ix_chroles_chapter_status").on(t.chapterId, t.status),
+    index("ix_chroles_member").on(t.memberId),
+  ]
+);
 
 /* BRD 6.7 — elections: eligibility-checked candidates, secret ballot, quorum, tamper-evident results.
    Secrecy: ballots store NO voter identity; participation is recorded separately in ballotRoll. */
-export const elections = mysqlTable("elections", {
-  id: serial("id").primaryKey(),
-  chapterId: bigint("chapterId", { mode: "number", unsigned: true }).notNull(),
-  title: varchar("title", { length: 255 }).notNull(),
-  seat: varchar("seat", { length: 128 }).notNull(),
-  status: mysqlEnum("status", ["open", "voting", "closed"])
-    .notNull()
-    .default("open"),
-  opensAt: timestamp("opensAt"),
-  closesAt: timestamp("closesAt"),
-  quorumPct: int("quorumPct").notNull().default(50),
-  resultHash: varchar("resultHash", { length: 64 }), // tamper-evident digest published at close
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+export const elections = mysqlTable(
+  "elections",
+  {
+    id: serial("id").primaryKey(),
+    chapterId: bigint("chapterId", {
+      mode: "number",
+      unsigned: true,
+    }).notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    seat: varchar("seat", { length: 128 }).notNull(),
+    status: mysqlEnum("status", ["open", "voting", "closed"])
+      .notNull()
+      .default("open"),
+    opensAt: timestamp("opensAt"),
+    closesAt: timestamp("closesAt"),
+    quorumPct: int("quorumPct").notNull().default(50),
+    resultHash: varchar("resultHash", { length: 64 }), // tamper-evident digest published at close
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  t => [index("ix_elections_chapter").on(t.chapterId)]
+);
 
-export const candidates = mysqlTable("candidates", {
-  id: serial("id").primaryKey(),
-  electionId: bigint("electionId", {
-    mode: "number",
-    unsigned: true,
-  }).notNull(),
-  memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
-  statement: varchar("statement", { length: 1000 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+export const candidates = mysqlTable(
+  "candidates",
+  {
+    id: serial("id").primaryKey(),
+    electionId: bigint("electionId", {
+      mode: "number",
+      unsigned: true,
+    }).notNull(),
+    memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+    statement: varchar("statement", { length: 1000 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  t => [index("ix_candidates_election").on(t.electionId)]
+);
 
 export const ballots = mysqlTable("ballots", {
   id: serial("id").primaryKey(),
@@ -1206,36 +1356,51 @@ export const ballots = mysqlTable("ballots", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const ballotRoll = mysqlTable("ballot_roll", {
-  id: serial("id").primaryKey(),
-  electionId: bigint("electionId", {
-    mode: "number",
-    unsigned: true,
-  }).notNull(),
-  memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(), // voted — not how
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+export const ballotRoll = mysqlTable(
+  "ballot_roll",
+  {
+    id: serial("id").primaryKey(),
+    electionId: bigint("electionId", {
+      mode: "number",
+      unsigned: true,
+    }).notNull(),
+    memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(), // voted — not how
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  t => [index("ix_ballotroll_election_member").on(t.electionId, t.memberId)]
+);
 
 /* BRD 6.7 — motions: one member, one vote */
-export const motions = mysqlTable("motions", {
-  id: serial("id").primaryKey(),
-  chapterId: bigint("chapterId", { mode: "number", unsigned: true }).notNull(),
-  title: varchar("title", { length: 255 }).notNull(),
-  body: text("body"),
-  status: mysqlEnum("status", ["open", "passed", "rejected"])
-    .notNull()
-    .default("open"),
-  closesAt: timestamp("closesAt"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+export const motions = mysqlTable(
+  "motions",
+  {
+    id: serial("id").primaryKey(),
+    chapterId: bigint("chapterId", {
+      mode: "number",
+      unsigned: true,
+    }).notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    body: text("body"),
+    status: mysqlEnum("status", ["open", "passed", "rejected"])
+      .notNull()
+      .default("open"),
+    closesAt: timestamp("closesAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  t => [index("ix_motions_chapter").on(t.chapterId)]
+);
 
-export const motionVotes = mysqlTable("motion_votes", {
-  id: serial("id").primaryKey(),
-  motionId: bigint("motionId", { mode: "number", unsigned: true }).notNull(),
-  memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
-  choice: mysqlEnum("choice", ["yes", "no", "abstain"]).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+export const motionVotes = mysqlTable(
+  "motion_votes",
+  {
+    id: serial("id").primaryKey(),
+    motionId: bigint("motionId", { mode: "number", unsigned: true }).notNull(),
+    memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+    choice: mysqlEnum("choice", ["yes", "no", "abstain"]).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  t => [index("ix_motionvotes_motion_member").on(t.motionId, t.memberId)]
+);
 
 /* BRD 6.7 — chapter budgets: allocations, sponsorships, spend approvals */
 export const chapterBudgets = mysqlTable("chapter_budgets", {
