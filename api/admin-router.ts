@@ -33,6 +33,8 @@ import {
 import { kycQueue, getKyc, reviewKyc } from "./queries/kyc";
 import {
   financeSummary,
+  financeReport,
+  financeReportCsvString,
   listPayments,
   paymentReceipt,
   recordManualPayment,
@@ -2035,6 +2037,10 @@ export const adminRouter = createRouter({
 
   /* ------------------------------- Finance ------------------------------- */
   financeSummary: scopedAdmin("finance").query(() => financeSummary()),
+  financeReport: scopedAdmin("finance").query(() => financeReport()),
+  financeReportCsv: scopedAdmin("finance").query(() =>
+    financeReportCsvString()
+  ),
 
   payments: scopedAdmin("finance")
     .input(
