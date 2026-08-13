@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server";
 import * as schema from "@db/schema";
 import { getDb } from "./connection";
 import { audit } from "../lib/audit";
-import { notify } from "./circle";
+import { notify, renewMembership } from "./circle";
 import { paymentsEnabled, getPaymentProvider } from "../lib/payments";
 import { TIER_PRICE_AED } from "@contracts/constants";
 import {
@@ -239,34 +239,12 @@ export async function recordManualPayment(
     note: input.note ?? null,
   });
   // Optionally roll the member's renewal forward a year when logging a renewal.
+  // Route through renewMembership so the CRM lifecycle transition, save-case
+  // side effects, event log and member notification all run centrally instead
+  // of writing status/lifecycleState directly here (which drifted from the
+  // lifecycle executor).
   if (input.extendRenewal) {
-    const m = (
-      await db
-        .select()
-        .from(schema.members)
-        .where(eq(schema.members.userId, input.userId))
-        .limit(1)
-    ).at(0);
-    if (m) {
-      const base =
-        m.renewalAt && new Date(m.renewalAt) > new Date()
-          ? new Date(m.renewalAt)
-          : new Date();
-      base.setFullYear(base.getFullYear() + 1);
-      await db
-        .update(schema.members)
-        .set({ renewalAt: base, status: "active", lifecycleState: "active" })
-        .where(eq(schema.members.id, m.id));
-      try {
-        await notify(
-          m.id,
-          "Your membership renewal has been recorded — thank you.",
-          "membership"
-        );
-      } catch {
-        /* non-fatal */
-      }
-    }
+    await renewMembership(input.userId, input.note ?? "Membership renewed");
   }
   await audit(actor, "finance.manual_payment", {
     type: "payment",

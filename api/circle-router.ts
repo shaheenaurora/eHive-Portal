@@ -121,19 +121,16 @@ export const circleRouter = createRouter({
         code: "PRECONDITION_FAILED",
         message: "You don't have a membership to renew.",
       });
-    // A cancelled/suspended/alumni membership can't be self-reactivated by paying
-    // — reinstatement is an admin decision (a member may have been removed for
-    // conduct reasons). Otherwise the post-payment webhook would flip them back
-    // to active with no review.
-    if (
-      m.status === "cancelled" ||
-      m.lifecycleState === "alumni" ||
-      m.lifecycleState === "suspended"
-    )
+    // Only a SUSPENDED membership can't be self-reactivated by paying —
+    // reinstatement after a conduct suspension is an admin decision. Lapsed and
+    // alumni members CAN self-renew: paid win-back (lapsed → active, alumni →
+    // active) is an allowed lifecycle transition, so blocking it here would
+    // contradict the lifecycle matrix and lose reactivation revenue.
+    if (m.lifecycleState === "suspended")
       throw new TRPCError({
         code: "FORBIDDEN",
         message:
-          "Your membership isn't eligible for self-service renewal. Please contact the Circle team to reinstate it.",
+          "Your membership is under review and can't be renewed online. Please contact the Circle team to reinstate it.",
       });
     const tier = m.tier;
     const amount = TIER_PRICE_AED[tier] * 100; // AED → fils
@@ -580,10 +577,21 @@ export const circleRouter = createRouter({
         note: input.note,
         status: "applied",
       });
-      if (input.type === "pause" || input.type === "cancel") {
+      if (input.type === "cancel") {
+        // Route a self-cancel through the lifecycle executor (→ lapsed) so the
+        // CRM lifecycle and access status stay coherent (cancelled) instead of
+        // drifting to "cancelled status + active lifecycle", and the member is
+        // notified. Lapsed keeps the win-back door open.
+        await applyLifecycleTransition(member.id, "lapsed", {
+          actor: ctx.user,
+          reason: input.note || "Member cancelled their membership.",
+        });
+      } else if (input.type === "pause") {
+        // A voluntary pause is a temporary access hold, not a CRM lifecycle
+        // move (there is no "paused" lifecycle state), so only status changes.
         await db
           .update(schema.members)
-          .set({ status: input.type === "pause" ? "paused" : "cancelled" })
+          .set({ status: "paused" })
           .where(eq(schema.members.id, member.id));
       } else if (input.type === "renew") {
         // Renewal must be paid for. The only legitimate path is startRenewal

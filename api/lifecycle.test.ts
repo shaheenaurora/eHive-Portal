@@ -1,51 +1,45 @@
 import { describe, it, expect } from "vitest";
 import { canTransitionLifecycle, statusForLifecycle } from "./lib/lifecycle";
-import { MEMBER_LIFECYCLE_TRANSITIONS } from "@contracts/constants";
 
-describe("lifecycle transition matrix", () => {
-  it("allows every admin-defined transition", () => {
-    for (const [from, arrows] of Object.entries(MEMBER_LIFECYCLE_TRANSITIONS)) {
-      for (const { to } of arrows) {
-        expect(canTransitionLifecycle(from, to)).toBe(true);
-      }
-    }
+describe("canTransitionLifecycle", () => {
+  it("allows a member to self-cancel (→ lapsed) from any live state", () => {
+    expect(canTransitionLifecycle("onboarding", "lapsed")).toBe(true);
+    expect(canTransitionLifecycle("active", "lapsed")).toBe(true);
+    expect(canTransitionLifecycle("at_risk", "lapsed")).toBe(true);
+    expect(canTransitionLifecycle("renewal", "lapsed")).toBe(true); // admin arrow
   });
 
-  it("allows auto-only transitions used by schedulers and win-backs", () => {
-    expect(canTransitionLifecycle("active", "lapsed")).toBe(true);
+  it("allows paid win-back for lapsed and alumni (→ active)", () => {
     expect(canTransitionLifecycle("lapsed", "active")).toBe(true);
     expect(canTransitionLifecycle("alumni", "active")).toBe(true);
   });
 
-  it("rejects nonsensical jumps", () => {
-    expect(canTransitionLifecycle("prospect", "active")).toBe(false);
-    expect(canTransitionLifecycle("alumni", "renewal")).toBe(false);
+  it("does not let a suspended member self-reactivate by lapsing/winning back", () => {
+    // Suspended only moves via admin arrows (reinstate / remove-to-alumni).
     expect(canTransitionLifecycle("suspended", "lapsed")).toBe(false);
-    expect(canTransitionLifecycle("lapsed", "suspended")).toBe(false);
-    expect(canTransitionLifecycle("onboarding", "alumni")).toBe(false);
+    expect(canTransitionLifecycle("suspended", "active")).toBe(true); // admin reinstate
+    expect(canTransitionLifecycle("suspended", "alumni")).toBe(true); // admin remove
   });
 
-  it("no-op transitions are always allowed", () => {
+  it("admits an applicant into onboarding", () => {
+    expect(canTransitionLifecycle("applicant", "onboarding")).toBe(true);
+  });
+
+  it("treats a new record (no prior state) and no-ops as valid", () => {
+    expect(canTransitionLifecycle(null, "onboarding")).toBe(true);
     expect(canTransitionLifecycle("active", "active")).toBe(true);
-    expect(canTransitionLifecycle(null, "active")).toBe(true);
-    expect(canTransitionLifecycle(undefined, "active")).toBe(true);
   });
 });
 
-describe("status coherency for lifecycle states", () => {
-  it("maps active journey states to active billing status", () => {
-    expect(statusForLifecycle("active")).toBe("active");
-    expect(statusForLifecycle("onboarding")).toBe("active");
-    expect(statusForLifecycle("renewal")).toBe("active");
-    expect(statusForLifecycle("at_risk")).toBe("active");
+describe("statusForLifecycle", () => {
+  it("keeps access active through the onboarding → renewal journey", () => {
+    for (const s of ["active", "onboarding", "renewal", "at_risk"])
+      expect(statusForLifecycle(s)).toBe("active");
   });
 
-  it("maps suspended to paused", () => {
+  it("pauses a suspended member and cancels lapsed/alumni", () => {
     expect(statusForLifecycle("suspended")).toBe("paused");
-  });
-
-  it("maps terminal/exit states to cancelled", () => {
-    expect(statusForLifecycle("alumni")).toBe("cancelled");
     expect(statusForLifecycle("lapsed")).toBe("cancelled");
+    expect(statusForLifecycle("alumni")).toBe("cancelled");
   });
 });
