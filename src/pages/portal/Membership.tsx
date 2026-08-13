@@ -16,6 +16,7 @@ import {
 } from "@/components/eh";
 import { PushSettings } from "@/components/PushSettings";
 import { TwoFactorSettings } from "@/components/TwoFactorSettings";
+import { KycCard } from "@/components/KycCard";
 import { fmtDate } from "@/lib/ehf";
 import {
   TIERS,
@@ -581,6 +582,8 @@ export default function Membership() {
               Request a correction →
             </button>
           </div>
+
+          <KycCard />
 
           <PushSettings />
 

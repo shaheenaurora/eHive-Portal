@@ -347,6 +347,21 @@ export async function ensureSchema(): Promise<void> {
         closesAt timestamp NULL,
         createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
       )`,
+      `CREATE TABLE IF NOT EXISTS member_kyc (
+        id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        memberId bigint unsigned NOT NULL UNIQUE,
+        idType enum('emirates_id','passport','other') NULL,
+        idNumber varchar(64) NULL,
+        nationality varchar(96) NULL,
+        idExpiry timestamp NULL,
+        status enum('not_submitted','submitted','verified','rejected') NOT NULL DEFAULT 'not_submitted',
+        submittedAt timestamp NULL,
+        reviewedByUserId bigint unsigned NULL,
+        reviewedAt timestamp NULL,
+        reviewNote varchar(500) NULL,
+        createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updatedAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )`,
       `CREATE TABLE IF NOT EXISTS award_nominations (
         id bigint unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY,
         cycleId bigint unsigned NOT NULL,

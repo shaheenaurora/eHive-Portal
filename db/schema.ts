@@ -113,6 +113,39 @@ export const members = mysqlTable("members", {
 });
 export type Member = typeof members.$inferSelect;
 
+/* Member KYC (Know Your Customer) — identity verification for compliance. Holds
+   structured ID details + a maker-checker verification state. Document *images*
+   are out of scope here (they need object storage); this captures the data an
+   admin verifies against a sighted document. One row per member. */
+export const memberKyc = mysqlTable("member_kyc", {
+  id: serial("id").primaryKey(),
+  memberId: bigint("memberId", { mode: "number", unsigned: true })
+    .notNull()
+    .unique(),
+  idType: mysqlEnum("idType", ["emirates_id", "passport", "other"]),
+  idNumber: varchar("idNumber", { length: 64 }),
+  nationality: varchar("nationality", { length: 96 }),
+  idExpiry: timestamp("idExpiry"),
+  status: mysqlEnum("status", [
+    "not_submitted",
+    "submitted",
+    "verified",
+    "rejected",
+  ])
+    .notNull()
+    .default("not_submitted"),
+  submittedAt: timestamp("submittedAt"),
+  reviewedByUserId: bigint("reviewedByUserId", {
+    mode: "number",
+    unsigned: true,
+  }),
+  reviewedAt: timestamp("reviewedAt"),
+  reviewNote: varchar("reviewNote", { length: 500 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type MemberKyc = typeof memberKyc.$inferSelect;
+
 /* Operations Manual ML-03 — completed onboarding milestones a member (or the VP
    Membership) has checked off. Auto milestones are derived from activity and not
    stored here; this holds the manual check-offs. */

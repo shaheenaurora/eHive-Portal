@@ -15,6 +15,7 @@ import {
   RefCode,
   toast,
 } from "@/components/eh";
+import { AdminKycPanel } from "@/components/AdminKycPanel";
 import { fmtDate, fmtDateTime, initials, relDay } from "@/lib/ehf";
 import {
   SCORE_FACTORS,
@@ -288,6 +289,8 @@ export default function AdminMemberDetail() {
               can apply immediately).
             </p>
           </div>
+
+          <AdminKycPanel memberId={member.id} />
 
           <div className="eh-card">
             <h3>Controls</h3>

@@ -313,6 +313,31 @@ export const ROLE_ONBOARDING_STEPS = [
 export type RoleOnboardingStepKey =
   (typeof ROLE_ONBOARDING_STEPS)[number]["key"];
 
+/* Member KYC (Know Your Customer) — identity verification for compliance. */
+export const KYC_ID_TYPES = [
+  { key: "emirates_id", label: "Emirates ID" },
+  { key: "passport", label: "Passport" },
+  { key: "other", label: "Other government ID" },
+] as const;
+export type KycIdType = (typeof KYC_ID_TYPES)[number]["key"];
+export const KYC_ID_TYPE_KEYS = KYC_ID_TYPES.map(t => t.key) as KycIdType[];
+export const KYC_ID_TYPE_LABEL: Record<string, string> = Object.fromEntries(
+  KYC_ID_TYPES.map(t => [t.key, t.label])
+);
+export const KYC_STATUS_LABEL: Record<string, string> = {
+  not_submitted: "Not submitted",
+  submitted: "Awaiting review",
+  verified: "Verified",
+  rejected: "Rejected",
+};
+/** Show only the last 4 characters of an ID number; mask the rest. */
+export function maskIdNumber(id?: string | null): string {
+  const s = (id ?? "").trim();
+  if (!s) return "";
+  if (s.length <= 4) return "•".repeat(s.length);
+  return "•".repeat(Math.max(0, s.length - 4)) + s.slice(-4);
+}
+
 /* Chapter expense categories — so spend can be recorded by type and reported
    as a spend-by-category breakdown, not just a free-text label. */
 export const EXPENSE_CATEGORIES = [

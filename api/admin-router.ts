@@ -30,6 +30,7 @@ import {
   listChangeRequests,
   memberActivity,
 } from "./queries/member-admin";
+import { kycQueue, getKyc, reviewKyc } from "./queries/kyc";
 import {
   financeSummary,
   listPayments,
@@ -742,6 +743,25 @@ export const adminRouter = createRouter({
         includeDecided: input?.includeDecided,
         memberId: input?.memberId,
       })
+    ),
+
+  /* ---- Member KYC (identity verification) review ---- */
+  kycQueue: scopedAdmin("membership").query(() => kycQueue()),
+
+  memberKyc: scopedAdmin("membership")
+    .input(z.object({ memberId: z.number().int().positive() }))
+    .query(({ input }) => getKyc(input.memberId)),
+
+  reviewKyc: scopedAdmin("membership")
+    .input(
+      z.object({
+        memberId: z.number().int().positive(),
+        decision: z.enum(["verified", "rejected"]),
+        note: z.string().max(500).optional(),
+      })
+    )
+    .mutation(({ ctx, input }) =>
+      reviewKyc(ctx.user, input.memberId, input.decision, input.note)
     ),
 
   /** Approve/reject a pending request (four-eyes enforced in the service). */

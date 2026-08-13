@@ -35,6 +35,8 @@ import {
   cpdTotal,
   membershipValidThrough,
 } from "./lib/member-docs";
+import { getKyc, submitKyc } from "./queries/kyc";
+import { KYC_ID_TYPE_KEYS } from "@contracts/constants";
 
 async function requireMember(userId: number) {
   const member = await getMemberByUserId(userId);
@@ -253,6 +255,31 @@ export const circleRouter = createRouter({
       cpdTotal: cpdTotal(attended),
     };
   }),
+
+  /* ---- Member KYC (identity verification) ---- */
+  myKyc: authedQuery.query(async ({ ctx }) => {
+    const m = await requireMember(ctx.user.id);
+    return getKyc(m.id);
+  }),
+
+  submitKyc: authedQuery
+    .input(
+      z.object({
+        idType: z.enum(KYC_ID_TYPE_KEYS as [string, ...string[]]),
+        idNumber: z.string().min(3).max(64),
+        nationality: z.string().max(96).optional(),
+        idExpiry: z.coerce.date().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const m = await requireMember(ctx.user.id);
+      return submitKyc(m.id, {
+        idType: input.idType as never,
+        idNumber: input.idNumber,
+        nationality: input.nationality ?? null,
+        idExpiry: input.idExpiry ?? null,
+      });
+    }),
 
   /* ---- application (BRD 9.1: public interest -> screening workflow) ---- */
   submitApplication: authedQuery
