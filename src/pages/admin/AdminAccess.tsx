@@ -9,6 +9,7 @@ import {
   Empty,
   Spinner,
   Field,
+  RefCode,
   toast,
 } from "@/components/eh";
 import { ADMIN_SCOPES } from "@contracts/constants";
@@ -99,6 +100,9 @@ export default function AdminAccess() {
                 <div>
                   <b>{a.name ?? a.email}</b>
                   <div className="eh-sm eh-muted">{a.email}</div>
+                  <div style={{ marginTop: ".3rem" }}>
+                    <RefCode type="user" id={a.id} title="Account ID" />
+                  </div>
                 </div>
                 {isOwner ? (
                   <Pill color="gold">Owner · full access</Pill>

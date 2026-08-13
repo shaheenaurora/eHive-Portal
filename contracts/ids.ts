@@ -17,6 +17,7 @@
  */
 
 export const ID_PREFIX = {
+  user: "EH-U", // a login account (admin/staff or member's user)
   member: "EH-M",
   chapter: "EH-CH",
   zone: "EH-ZN",
@@ -51,6 +52,26 @@ const DEFAULT_PAD = 5;
 export function refCode(type: EntityType, id: number): string {
   const n = Math.max(0, Math.trunc(id));
   return `${ID_PREFIX[type]}-${String(n).padStart(PAD[type] ?? DEFAULT_PAD, "0")}`;
+}
+
+/** Map an audit-log targetType (as passed to audit()) to an entity type whose
+ *  code shares the same id space, or null when it doesn't cleanly map. Lets the
+ *  audit trail render a real reference code (EH-EV-00021) for the thing acted on. */
+const AUDIT_TYPE_MAP: Record<string, EntityType> = {
+  user: "user",
+  member: "member",
+  chapter: "chapter",
+  event: "event",
+  pod: "pod",
+  payment: "payment",
+  application: "application",
+  awardCycle: "award",
+  offer: "offer",
+  lead: "lead",
+};
+export function auditEntityType(targetType?: string | null): EntityType | null {
+  if (!targetType) return null;
+  return AUDIT_TYPE_MAP[targetType] ?? null;
 }
 
 /** Reverse of refCode: "EH-CH-0003" → { type: "chapter", id: 3 }. Case- and
