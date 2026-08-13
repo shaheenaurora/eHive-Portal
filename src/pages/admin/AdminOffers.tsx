@@ -12,6 +12,7 @@ import {
   Modal,
   Field,
   toast,
+  confirmDialog,
 } from "@/components/eh";
 import { TIERS, TIER_LABEL } from "@contracts/constants";
 
@@ -129,9 +130,17 @@ export default function AdminOffers() {
               <button
                 className="eh-btn ghost sm"
                 style={{ color: "var(--eh-red)" }}
-                onClick={() =>
-                  confirm("Delete this offer?") && del.mutate({ id: o.id })
-                }
+                onClick={async () => {
+                  if (
+                    await confirmDialog({
+                      title: "Delete this offer?",
+                      body: "This removes the offer from the member benefits list.",
+                      confirmLabel: "Delete offer",
+                      danger: true,
+                    })
+                  )
+                    del.mutate({ id: o.id });
+                }}
               >
                 Delete
               </button>
