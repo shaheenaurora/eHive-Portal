@@ -19,7 +19,12 @@ function requiredSecret(name: string, minLength: number): string {
 }
 
 const appSecret = requiredSecret("APP_SECRET", 32);
-const totpSecret = required("TOTP_SECRET") || appSecret;
+// TOTP_SECRET is optional and falls back to APP_SECRET. It must NOT go through
+// required(), which throws in production when unset — that would crash-loop the
+// whole app on boot just because this optional var isn't configured. Setting a
+// distinct TOTP_SECRET is still recommended so rotating the session key doesn't
+// invalidate in-flight 2FA challenges.
+const totpSecret = (process.env.TOTP_SECRET ?? "").trim() || appSecret;
 
 export const env = {
   // Secret used to sign session JWTs. Must be high-entropy and at least 32 chars.
