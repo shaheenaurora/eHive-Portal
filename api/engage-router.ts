@@ -124,6 +124,28 @@ export const engageRouter = createRouter({
       return { ok: true };
     }),
 
+  /* ---- constrained shortlist voting (member-vote awards) ---- */
+  awardsVotingOpen: authedQuery.query(async () => {
+    const { votingCycles } = await import("./queries/awards");
+    return votingCycles();
+  }),
+
+  awardShortlist: authedQuery
+    .input(z.object({ cycleId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const me = await requireMember(ctx.user.id);
+      const { voteShortlist } = await import("./queries/award-voting");
+      return voteShortlist(input.cycleId, me.id);
+    }),
+
+  castAwardVote: authedQuery
+    .input(z.object({ cycleId: z.number(), nominationId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const me = await requireMember(ctx.user.id);
+      const { castVote } = await import("./queries/award-voting");
+      return castVote({ memberId: me.id }, input.cycleId, input.nominationId);
+    }),
+
   /* ---- web push notifications (UX-10) ---- */
   pushKey: authedQuery.query(() => getVapidPublicKey()),
 
