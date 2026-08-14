@@ -124,6 +124,12 @@ export const engageRouter = createRouter({
       return { ok: true };
     }),
 
+  /* ---- Hall of Fame — the public lifetime-honours wall ---- */
+  hallOfFame: authedQuery.query(async () => {
+    const { hallOfFameInductees } = await import("./queries/award-halloffame");
+    return hallOfFameInductees();
+  }),
+
   /* ---- constrained shortlist voting (member-vote awards) ---- */
   awardsVotingOpen: authedQuery.query(async () => {
     const { votingCycles } = await import("./queries/awards");

@@ -218,6 +218,12 @@ export async function recordVoteWinner(
       message:
         "Only the nominee with the most votes can be recorded as winner.",
     });
+  // Integrity gate: no conferral while an open flag stands on this winner.
+  const { assertCleared } = await import("./award-integrity");
+  await assertCleared({
+    nominationId,
+    memberId: top.nomineeMemberId,
+  });
   await getDb()
     .update(schema.awardNominations)
     .set({
