@@ -47,6 +47,7 @@ import {
   judgingBoard,
   ratifyWinner,
 } from "./queries/award-judging";
+import { autoScoreCycle } from "./queries/award-autoscore";
 import { computeChapterHealth } from "./queries/health";
 import {
   ensureCadenceTemplates,
@@ -2412,6 +2413,12 @@ export const adminEngageRouter = createRouter({
     .mutation(({ ctx, input }) =>
       ratifyWinner(ctx.user, input.cycleId, input.nominationId)
     ),
+
+  // Auto-scored judging (default mechanism): rank eligible members from live KPI
+  // data against the auto-score rubric. Read-only computation for review.
+  awardsAutoScore: scopedAdmin("community")
+    .input(z.object({ cycleId: z.number() }))
+    .query(({ input }) => autoScoreCycle(input.cycleId)),
 
   createOrgUnit: scopedAdmin("chapters")
     .input(
