@@ -57,6 +57,35 @@ export async function listCycles() {
   }));
 }
 
+/** Cycles currently open for a member vote — status "judging" with at least one
+ *  shortlisted nominee (the pre-qualified field members vote over). Members only
+ *  ever vote over a shortlist, never an open field. */
+export async function votingCycles(): Promise<
+  { id: number; name: string; level: string }[]
+> {
+  const db = getDb();
+  const rows = await db
+    .selectDistinct({
+      id: schema.awardCycles.id,
+      name: schema.awardCycles.name,
+      level: schema.awardCycles.level,
+    })
+    .from(schema.awardCycles)
+    .innerJoin(
+      schema.awardNominations,
+      eq(schema.awardNominations.cycleId, schema.awardCycles.id)
+    )
+    .where(
+      and(
+        eq(schema.awardCycles.status, "judging"),
+        eq(schema.awardNominations.status, "shortlisted")
+      )
+    )
+    .orderBy(desc(schema.awardCycles.createdAt))
+    .limit(10);
+  return rows;
+}
+
 /** The single cycle currently open for member nominations, if any. */
 export async function openCycle() {
   return (

@@ -91,6 +91,7 @@ export default function AdminAwards() {
   const [openId, setOpenId] = useState<number | null>(null);
   const [judgeId, setJudgeId] = useState<number | null>(null);
   const [autoId, setAutoId] = useState<number | null>(null);
+  const [voteId, setVoteId] = useState<number | null>(null);
   const cycles = q.data ?? [];
   const needsUnit = awardLevelNeedsUnit(level);
   const units = trpc.adminEngage.awardsUnits.useQuery(
@@ -252,11 +253,18 @@ export default function AdminAwards() {
               >
                 {autoId === c.id ? "Hide auto-score" : "Auto-score"}
               </button>
+              <button
+                className="eh-btn ghost sm"
+                onClick={() => setVoteId(voteId === c.id ? null : c.id)}
+              >
+                {voteId === c.id ? "Hide vote tally" : "Vote tally"}
+              </button>
             </div>
           </div>
           {openId === c.id && <Nominations cycleId={c.id} />}
           {judgeId === c.id && <JudgingPanel cycleId={c.id} />}
           {autoId === c.id && <AutoScoreSection cycleId={c.id} />}
+          {voteId === c.id && <VoteSection cycleId={c.id} />}
         </div>
       ))}
     </EhShell>
@@ -752,6 +760,103 @@ function AutoScoreSection({ cycleId }: { cycleId: number }) {
               </tbody>
             </table>
           )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function VoteSection({ cycleId }: { cycleId: number }) {
+  const q = trpc.adminEngage.awardsVoteTally.useQuery(
+    { cycleId },
+    { retry: false }
+  );
+  const record = trpc.adminEngage.awardsRecordVoteWinner.useMutation({
+    onSuccess: () => {
+      toast("Vote winner recorded and recognised.");
+      q.refetch();
+    },
+    onError: e => toast(e.message),
+  });
+  const rows = q.data ?? [];
+  const total = rows.reduce((s, r) => s + r.votes, 0);
+  const winner = rows[0];
+  return (
+    <div
+      style={{
+        marginTop: "1rem",
+        borderTop: "1px solid var(--eh-border)",
+        paddingTop: "1rem",
+      }}
+    >
+      <div
+        className="eh-between"
+        style={{ alignItems: "center", flexWrap: "wrap", gap: ".5rem" }}
+      >
+        <div className="eh-eyebrow">
+          Member vote · one equal vote over the shortlist
+        </div>
+        {winner && winner.votes > 0 && (
+          <button
+            className="eh-btn ghost sm"
+            disabled={record.isPending}
+            onClick={async () => {
+              if (
+                await confirmDialog({
+                  title: "Record the vote winner?",
+                  body: `Confers the award on ${winner.nomineeName ?? winner.nomineeChapterName ?? "the leading nominee"} (${winner.votes} vote${winner.votes === 1 ? "" : "s"}) and awards recognition points.`,
+                  confirmLabel: "Record winner",
+                })
+              )
+                record.mutate({ cycleId, nominationId: winner.nominationId });
+            }}
+          >
+            Record leader as winner
+          </button>
+        )}
+      </div>
+
+      {q.isLoading && <Spinner />}
+      {q.data && rows.length === 0 && (
+        <Empty
+          big="No shortlist to vote on."
+          p="Shortlist nominees and move the cycle to judging to open voting."
+        />
+      )}
+      {rows.length > 0 && (
+        <>
+          <p className="eh-sm eh-muted" style={{ margin: ".5rem 0" }}>
+            {total} vote{total === 1 ? "" : "s"} cast across {rows.length}{" "}
+            shortlisted nominee{rows.length === 1 ? "" : "s"}.
+          </p>
+          <table className="eh-table stack">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Nominee</th>
+                <th>Votes</th>
+                <th>Share</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={r.nominationId}>
+                  <td data-label="#">{i === 0 && total > 0 ? "🏆" : i + 1}</td>
+                  <td data-label="Nominee">
+                    {r.nomineeName ?? r.nomineeChapterName ?? "—"}
+                  </td>
+                  <td data-label="Votes">
+                    <b>{r.votes}</b>
+                  </td>
+                  <td data-label="Share">
+                    {total > 0
+                      ? `${Math.round((r.votes / total) * 100)}%`
+                      : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </>
       )}
     </div>

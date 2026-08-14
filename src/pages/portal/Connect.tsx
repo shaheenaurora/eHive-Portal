@@ -40,6 +40,9 @@ export default function Connect() {
   });
   const deals = trpc.engage.deals.useQuery(undefined, { retry: false });
   const awards = trpc.engage.awardsOpen.useQuery(undefined, { retry: false });
+  const votingOpen = trpc.engage.awardsVotingOpen.useQuery(undefined, {
+    retry: false,
+  });
   const nominate = trpc.engage.submitNomination.useMutation({
     onSuccess: () => {
       toast("Nomination submitted — thank you for recognising a peer.");
@@ -214,6 +217,11 @@ export default function Connect() {
           )}
         </div>
       )}
+
+      {/* NA-03 Recognition — constrained shortlist voting (member-vote) */}
+      {(votingOpen.data ?? []).map(c => (
+        <AwardVoteCard key={c.id} cycleId={c.id} cycleName={c.name} />
+      ))}
 
       <div className="eh-tabs">
         <button
@@ -630,6 +638,94 @@ function DealForm(props: {
         {props.pending ? "Posting…" : "Post to the board →"}
       </button>
     </>
+  );
+}
+
+function AwardVoteCard({
+  cycleId,
+  cycleName,
+}: {
+  cycleId: number;
+  cycleName: string;
+}) {
+  const utils = trpc.useUtils();
+  const shortlist = trpc.engage.awardShortlist.useQuery(
+    { cycleId },
+    { retry: false }
+  );
+  const [choice, setChoice] = useState<number | null>(null);
+  const vote = trpc.engage.castAwardVote.useMutation({
+    onSuccess: () => {
+      toast("Vote cast — thank you. Each member gets one equal vote.");
+      utils.engage.awardShortlist.invalidate({ cycleId });
+    },
+    onError: e => toast(e.message),
+  });
+
+  const data = shortlist.data;
+  if (!data || !data.open || data.options.length === 0) return null;
+  const votedFor = data.myVote;
+
+  return (
+    <div className="eh-card eh-mb">
+      <div
+        className="eh-row"
+        style={{ gap: ".5rem", alignItems: "center", marginBottom: ".6rem" }}
+      >
+        <h3 style={{ margin: 0 }}>Cast your vote</h3>
+        <Pill color="gold">Voting open</Pill>
+      </div>
+      <p className="eh-sm eh-muted" style={{ marginBottom: ".6rem" }}>
+        <b>{cycleName}</b> — one equal vote from a pre-qualified shortlist. Your
+        vote is confidential and tallies aren't shown until results are
+        announced.
+      </p>
+      <div className="eh-list">
+        {data.options.map(o => {
+          const mine = votedFor === o.nominationId;
+          return (
+            <label
+              key={o.nominationId}
+              className="row"
+              style={{
+                cursor: votedFor ? "default" : "pointer",
+                alignItems: "center",
+                gap: ".5rem",
+              }}
+            >
+              {!votedFor && (
+                <input
+                  type="radio"
+                  name={`vote-${cycleId}`}
+                  checked={choice === o.nominationId}
+                  onChange={() => setChoice(o.nominationId)}
+                />
+              )}
+              <span className="t" style={{ flex: 1 }}>
+                {o.nomineeName ?? o.nomineeChapterName ?? "—"}
+                <span className="eh-sm eh-muted">
+                  {" "}
+                  · {AWARD_CATEGORY_LABEL[o.category] ?? o.category}
+                </span>
+              </span>
+              {mine && <Pill color="green">your vote</Pill>}
+            </label>
+          );
+        })}
+      </div>
+      {!votedFor && (
+        <button
+          className="eh-btn gold sm"
+          style={{ marginTop: ".6rem" }}
+          disabled={vote.isPending || choice === null}
+          onClick={() =>
+            choice !== null && vote.mutate({ cycleId, nominationId: choice })
+          }
+        >
+          Cast vote
+        </button>
+      )}
+    </div>
   );
 }
 
