@@ -50,6 +50,11 @@ import {
 import { autoScoreCycle } from "./queries/award-autoscore";
 import { recordAutoWinner, memberAwards } from "./queries/award-records";
 import { voteTally, recordVoteWinner } from "./queries/award-voting";
+import {
+  hallOfFameBoard,
+  inductHallOfFame,
+  hallOfFameInductees,
+} from "./queries/award-halloffame";
 import { computeChapterHealth } from "./queries/health";
 import {
   ensureCadenceTemplates,
@@ -2433,6 +2438,19 @@ export const adminEngageRouter = createRouter({
   awardsMemberAwards: scopedAdmin("membership")
     .input(z.object({ memberId: z.number() }))
     .query(({ input }) => memberAwards(input.memberId)),
+
+  /* ---- Hall of Fame (lifetime honours — multi-year auto-qualification) ---- */
+  awardsHallOfFameBoard: scopedAdmin("community").query(() =>
+    hallOfFameBoard()
+  ),
+
+  awardsInductHallOfFame: scopedAdmin("community")
+    .input(z.object({ memberId: z.number() }))
+    .mutation(({ ctx, input }) => inductHallOfFame(ctx.user, input.memberId)),
+
+  awardsHallOfFameInductees: scopedAdmin("community").query(() =>
+    hallOfFameInductees()
+  ),
 
   /* ---- member-vote awards (admin tally + conferral) ---- */
   awardsVoteTally: scopedAdmin("community")

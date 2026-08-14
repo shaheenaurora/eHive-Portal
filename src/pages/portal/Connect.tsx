@@ -43,6 +43,9 @@ export default function Connect() {
   const votingOpen = trpc.engage.awardsVotingOpen.useQuery(undefined, {
     retry: false,
   });
+  const hallOfFame = trpc.engage.hallOfFame.useQuery(undefined, {
+    retry: false,
+  });
   const nominate = trpc.engage.submitNomination.useMutation({
     onSuccess: () => {
       toast("Nomination submitted — thank you for recognising a peer.");
@@ -222,6 +225,35 @@ export default function Connect() {
       {(votingOpen.data ?? []).map(c => (
         <AwardVoteCard key={c.id} cycleId={c.id} cycleName={c.name} />
       ))}
+
+      {/* Hall of Fame — the lifetime-honours wall */}
+      {(hallOfFame.data?.length ?? 0) > 0 && (
+        <div className="eh-card eh-mb">
+          <div
+            className="eh-row"
+            style={{
+              gap: ".5rem",
+              alignItems: "center",
+              marginBottom: ".6rem",
+            }}
+          >
+            <h3 style={{ margin: 0 }}>Hall of Fame</h3>
+            <Pill color="gold">Lifetime honour</Pill>
+          </div>
+          <p className="eh-sm eh-muted" style={{ marginBottom: ".6rem" }}>
+            Permanent recognition for members of sustained, multi-year
+            excellence.
+          </p>
+          <div className="eh-list">
+            {hallOfFame.data!.map(h => (
+              <div className="row" key={`${h.memberId}-${h.conferredAt}`}>
+                <span className="t">🏛️ {h.name ?? "—"}</span>
+                <span className="eh-sm eh-muted">{fmtDate(h.conferredAt)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="eh-tabs">
         <button

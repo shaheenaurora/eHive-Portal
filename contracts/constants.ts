@@ -433,6 +433,28 @@ export const AWARD_FAIRNESS_WINDOW_DAYS = 45;
 /** Recognition points awarded to a member on a conferred win (feeds the
  *  leadership pipeline / Hall-of-Fame tracker; Open Decision §9 #7). */
 export const AWARD_RECOGNITION_POINTS = 20;
+
+/* --- Honours & lifetime distinctions (Awards spec Part 6, Table 18/19) --- */
+/** The Hive Score at or above which a member counts as "champion band" for a
+ *  year — the top contribution band (see badge thresholds). */
+export const HIVE_CHAMPION_BAND = 80;
+/** Hall of Fame auto-qualification bars (multi-year record). A member must have
+ *  reached champion band in ≥3 years, won ≥3 annual awards, and carry a clean
+ *  standing (no upheld conduct matter, ever) — then a panel ratifies induction. */
+export const HALL_OF_FAME_MIN_CHAMPION_YEARS = 3;
+export const HALL_OF_FAME_MIN_ANNUAL_AWARDS = 3;
+/** Contribution-depth target (converted referrals + confirmed mentoring across
+ *  tenure) that scores full marks on that criterion. */
+export const HALL_OF_FAME_CONTRIBUTION_TARGET = 20;
+/** Structural scarcity: the maximum number of Hall of Fame inductions the portal
+ *  will confer per calendar year (Table 19 / Open Decision §9 #4). */
+export const HALL_OF_FAME_ANNUAL_INTAKE = 3;
+/** Recognition points for a Hall of Fame induction — a lifetime honour weighs
+ *  far more than an annual win. */
+export const HALL_OF_FAME_POINTS = 100;
+/** The award key under which Hall of Fame inductions are recorded (immutable,
+ *  permanent — a member is inducted once). */
+export const HALL_OF_FAME_AWARD_KEY = "hall_of_fame";
 export const AWARD_CYCLE_STATUSES = [
   "draft",
   "open",

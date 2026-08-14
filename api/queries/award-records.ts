@@ -13,6 +13,7 @@ import { isBackToBack } from "../lib/awards-scoring";
 import {
   AWARD_FAIRNESS_WINDOW_DAYS,
   AWARD_RECOGNITION_POINTS,
+  HALL_OF_FAME_AWARD_KEY,
 } from "@contracts/constants";
 import { autoScoreCycle } from "./award-autoscore";
 
@@ -62,9 +63,12 @@ async function confer(
     chapterId?: number | null;
     source: "auto" | "panel" | "vote";
     score?: number | null;
+    /** Recognition points; defaults to the standard win value. */
+    points?: number;
   }
 ) {
   const db = getDb();
+  const points = rec.points ?? AWARD_RECOGNITION_POINTS;
   const res = await db.insert(schema.awardRecords).values({
     cycleId: rec.cycleId ?? null,
     awardKey: rec.awardKey,
@@ -74,7 +78,7 @@ async function confer(
     chapterId: rec.chapterId ?? null,
     source: rec.source,
     score: rec.score ?? null,
-    points: AWARD_RECOGNITION_POINTS,
+    points,
     conferredByUserId: actor.id,
   });
   const recordId = Number(
@@ -82,12 +86,7 @@ async function confer(
   );
   if (rec.memberId) {
     try {
-      await awardPoints(
-        rec.memberId,
-        "recognition",
-        AWARD_RECOGNITION_POINTS,
-        rec.label
-      );
+      await awardPoints(rec.memberId, "recognition", points, rec.label);
       await notify(
         rec.memberId,
         `You've been recognised: ${rec.label}. 🏆`,
@@ -149,6 +148,28 @@ export async function conferVoteWinner(
     chapterId: nominee.chapterId,
     source: "vote",
     score: votes,
+  });
+}
+
+/** Confer a Hall of Fame induction — a permanent, network-level lifetime honour
+ *  carrying its own (larger) recognition-point value. Ratified by a panel/admin;
+ *  eligibility and the annual intake cap are enforced by the caller. */
+export async function conferHallOfFame(
+  actor: Actor,
+  member: { memberId: number },
+  score: number,
+  points: number,
+  label = "Hall of Fame"
+) {
+  return confer(actor, {
+    cycleId: null,
+    awardKey: HALL_OF_FAME_AWARD_KEY,
+    label,
+    level: "network",
+    memberId: member.memberId,
+    source: "panel",
+    score,
+    points,
   });
 }
 
