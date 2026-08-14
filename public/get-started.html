@@ -18,10 +18,10 @@
       href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.min.css" />
+    <link rel="stylesheet" href="home.css" />
     <link rel="stylesheet" href="apps.min.css" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#16264C" />
+    <meta name="theme-color" content="#f8f6f0" />
     <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -30,11 +30,11 @@
   <body>
     <a class="skip" href="#main">Skip to content</a>
 
-    <header class="site-nav" id="siteNav">
+    <header class="h-nav site-nav" id="siteNav">
       <nav aria-label="Primary">
         <a class="brand" href="index.html" aria-label="eHive — home">
           <img
-            src="assets/ehive-wordmark.png"
+            src="assets/ehive-wordmark-dark.png"
             alt="eHive"
             width="146"
             height="26"
@@ -42,7 +42,7 @@
         </a>
         <button
           type="button"
-          class="nav-toggle"
+          class="h-nav-toggle nav-toggle"
           id="navToggle"
           aria-expanded="false"
           aria-controls="navMenu"
@@ -57,7 +57,7 @@
           <li><a href="clarity-scorecard.html">Scorecard</a></li>
           <li><a href="login.html">Login</a></li>
           <li>
-            <a class="btn btn-primary btn-sm" href="get-started.html"
+            <a class="h-btn h-btn-primary h-btn-sm" href="get-started.html"
               >Get Started</a
             >
           </li>
@@ -67,14 +67,14 @@
 
     <main id="main">
       <!-- ================= GET STARTED HERO ================= -->
-      <section class="p-hero" aria-labelledby="page-h">
-        <div class="wrap">
-          <p class="crumbs">
+      <section class="h-page-hero" aria-labelledby="page-h">
+        <div class="h-wrap">
+          <p class="h-crumbs">
             <a href="index.html">Home</a><i>·</i><span>Get Started</span>
           </p>
-          <div class="p-hero-grid">
+          <div class="h-page-hero-grid">
             <div>
-              <p class="p-name">Get Started</p>
+              <p class="h-eyebrow">Get Started</p>
               <h1 id="page-h">
                 Tell us where you are.
                 <em>We&rsquo;ll match you to the right door.</em>
@@ -146,8 +146,8 @@
       </section>
 
       <!-- ================= THE QUALIFYING FLOW ================= -->
-      <section class="light" aria-labelledby="gsTitle">
-        <div class="wrap pad">
+      <section class="h-section alt" aria-labelledby="gsTitle">
+        <div class="h-wrap">
           <div class="gs-wrap">
             <div class="wizard reveal" style="--d: 0.1s">
               <p class="gs-progress" id="gsProg">Step 1 of 4</p>
@@ -474,9 +474,9 @@
 
             <!-- right rail -->
             <aside>
-              <div class="rail-card reveal" style="--d: 0.16s">
+              <div class="h-rail-card reveal" style="--d: 0.16s">
                 <h3>What happens next</h3>
-                <ul class="rail-steps">
+                <ul class="h-rail-steps">
                   <li>
                     <span class="rn">01</span
                     ><span
@@ -500,19 +500,19 @@
                   </li>
                 </ul>
               </div>
-              <div class="rail-card rail-note reveal" style="--d: 0.22s">
+              <div class="h-rail-card reveal" style="--d: 0.22s">
                 <h3>Not sure which door?</h3>
                 <p>
                   Pick &ldquo;I have another question&rdquo; and describe where
                   you&rsquo;re stuck — routing is our job, not yours.
                 </p>
               </div>
-              <div class="rail-card rail-contact reveal" style="--d: 0.28s">
+              <div class="h-rail-card reveal" style="--d: 0.28s">
                 <h3>Prefer to skip the form?</h3>
                 <p>Some questions are faster asked directly.</p>
                 <div class="doors">
-                  <a class="btn btn-ghost" href="book.html"
-                    >Book a time instead <span class="arr">→</span></a
+                  <a class="h-btn h-btn-ghost" href="book.html"
+                    >Book a time instead <span class="h-arr">→</span></a
                   >
                 </div>
               </div>
@@ -522,49 +522,45 @@
       </section>
     </main>
 
-    <footer>
-      <div class="wrap">
-        <div class="foot-grid">
-          <div class="foot-brand">
+    <footer class="h-footer">
+      <div class="h-wrap">
+        <div class="h-footer-grid">
+          <div>
             <img
-              src="assets/ehive-full.png"
+              src="assets/ehive-full-dark.png"
               alt="eHive — Build. Belong. Become."
               width="150"
             />
-            <p>
+            <p style="margin-top: 1rem">
               To advance the human race by enabling individuals and
               organisations to do better — sustainably, relevantly, and
               beneficially.
             </p>
           </div>
-          <div class="foot-col">
+          <div>
             <h4>The Ecosystem</h4>
-            <ul>
-              <li><a href="business-setup.html">Business Setup</a></li>
-              <li><a href="consulting.html">Consulting</a></li>
-              <li><a href="circle.html">eHive Circle</a></li>
-              <li><a href="get-started.html">Get Started</a></li>
-            </ul>
+            <a href="business-setup.html">Business Setup</a>
+            <a href="consulting.html">Consulting</a>
+            <a href="circle.html">eHive Circle</a>
+            <a href="get-started.html">Get Started</a>
           </div>
-          <div class="foot-col">
+          <div>
             <h4>Company</h4>
-            <ul>
-              <li><a href="about.html">About</a></li>
-              <li><a href="insights.html">Insights — The Hive Journal</a></li>
-              <li><a href="about.html#join">Join the Network</a></li>
-              <li><a href="clarity-scorecard.html">Scorecard</a></li>
-              <li><a href="login.html">Login</a></li>
-            </ul>
+            <a href="about.html">About</a>
+            <a href="insights.html">Insights — The Hive Journal</a>
+            <a href="about.html#join">Join the Network</a>
+            <a href="clarity-scorecard.html">Scorecard</a>
+            <a href="login.html">Login</a>
           </div>
-          <div class="foot-col">
+          <div>
             <h4>Connect</h4>
-            <p class="foot-loc">
-              Dubai, UAE<span>Expanding across the region</span>
-            </p>
+            <p>Dubai, UAE</p>
+            <p style="font-size: 0.9rem">Expanding across the region</p>
             <form
-              class="news-form"
+              class="h-lead-form news-form"
               method="post"
               aria-label="Newsletter signup"
+              style="margin-top: 1rem"
             >
               <label class="visually-hidden" for="news-email"
                 >Email address</label
@@ -579,11 +575,11 @@
             </form>
           </div>
         </div>
-        <div class="foot-bottom">
+        <div class="h-footer-bottom">
           <span>© <span id="year">2026</span> eHive. All rights reserved.</span>
-          <div class="foot-legal">
+          <div>
             <a href="privacy.html">Privacy</a>
-            <a href="terms.html">Terms</a>
+            <a href="terms.html" style="margin-left: 1rem">Terms</a>
           </div>
         </div>
       </div>
