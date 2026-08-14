@@ -38,6 +38,15 @@ import {
   nominate,
   setNominationStatus,
 } from "./queries/awards";
+import {
+  setCycleRubric,
+  assignJudge,
+  removeJudge,
+  listJudges,
+  submitScore,
+  judgingBoard,
+  ratifyWinner,
+} from "./queries/award-judging";
 import { computeChapterHealth } from "./queries/health";
 import {
   ensureCadenceTemplates,
@@ -2339,6 +2348,70 @@ export const adminEngageRouter = createRouter({
       });
       return { ok: true };
     }),
+
+  /* ---- Panel judging (Awards spec Part 1 / Part 7) ---- */
+  awardsSetRubric: scopedAdmin("community")
+    .input(
+      z.object({
+        cycleId: z.number(),
+        rubric: z
+          .array(
+            z.object({
+              key: z.string().min(1).max(48),
+              label: z.string().min(1).max(80),
+              weight: z.number().min(0).max(100),
+            })
+          )
+          .min(1)
+          .max(10),
+      })
+    )
+    .mutation(({ ctx, input }) =>
+      setCycleRubric(ctx.user, input.cycleId, input.rubric)
+    ),
+
+  awardsJudges: scopedAdmin("community")
+    .input(z.object({ cycleId: z.number() }))
+    .query(({ input }) => listJudges(input.cycleId)),
+
+  awardsAssignJudge: scopedAdmin("community")
+    .input(z.object({ cycleId: z.number(), userId: z.number() }))
+    .mutation(({ ctx, input }) =>
+      assignJudge(ctx.user, input.cycleId, input.userId)
+    ),
+
+  awardsRemoveJudge: scopedAdmin("community")
+    .input(z.object({ cycleId: z.number(), userId: z.number() }))
+    .mutation(({ ctx, input }) =>
+      removeJudge(ctx.user, input.cycleId, input.userId)
+    ),
+
+  awardsJudgingBoard: scopedAdmin("community")
+    .input(z.object({ cycleId: z.number() }))
+    .query(({ input }) => judgingBoard(input.cycleId)),
+
+  // Score submission is gated to assigned judges inside submitScore(); the
+  // community scope simply ensures the caller is a staff user.
+  awardsSubmitScore: scopedAdmin("community")
+    .input(
+      z.object({
+        cycleId: z.number(),
+        nominationId: z.number(),
+        scores: z
+          .array(
+            z.object({ key: z.string().min(1).max(48), value: z.number() })
+          )
+          .max(10),
+        note: z.string().max(1000).optional(),
+      })
+    )
+    .mutation(({ ctx, input }) => submitScore(ctx.user, input)),
+
+  awardsRatifyWinner: scopedAdmin("community")
+    .input(z.object({ cycleId: z.number(), nominationId: z.number() }))
+    .mutation(({ ctx, input }) =>
+      ratifyWinner(ctx.user, input.cycleId, input.nominationId)
+    ),
 
   createOrgUnit: scopedAdmin("chapters")
     .input(
