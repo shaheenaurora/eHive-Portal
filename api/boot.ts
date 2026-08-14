@@ -17,14 +17,21 @@ import { paymentsEnabled, getPaymentProvider } from "./lib/payments";
 import { activateMembership } from "./queries/circle";
 import { notifyLead } from "./lib/lead-mail";
 import { rateLimit } from "./lib/rate-limit";
+import { escapeHtml } from "./lib/html";
+import { integrationApp } from "./integrations";
 
-/** Best-effort client IP from proxy headers (Railway sets x-forwarded-for). */
+/** Best-effort client IP from proxy headers (Railway sets x-forwarded-for).
+ *  Uses the RIGHTMOST address in X-Forwarded-For — the one appended by our own
+ *  proxy — so a client can't bypass the per-IP rate limit by prepending spoofed
+ *  addresses on the left. Mirrors clientIp() in auth-router.ts. */
 function clientIp(c: {
   req: { header: (n: string) => string | undefined };
 }): string {
-  return (
-    (c.req.header("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown"
-  );
+  const forwarded = (c.req.header("x-forwarded-for") ?? "")
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean);
+  return forwarded.at(-1) ?? c.req.header("x-real-ip") ?? "unknown";
 }
 
 const app = new Hono<{ Bindings: HttpBindings }>();
@@ -91,6 +98,13 @@ app.use("/api/trpc/*", async c => {
       }
       if (!ok) return c.json({ error: "cross-origin request blocked" }, 403);
     }
+    // Coarse per-IP flood protection for authenticated mutations. Generous
+    // enough for real interactive use (a tRPC batch counts as one request) but
+    // blunts scripted floods. NOTE: in-process only — a distributed limiter
+    // (Redis) is tracked separately for multi-replica deployments.
+    if (!rateLimit(`trpc:${clientIp(c)}`, 600, 60 * 1000)) {
+      return c.json({ error: "Too many requests. Please slow down." }, 429);
+    }
   }
   return fetchRequestHandler({
     endpoint: "/api/trpc",
@@ -99,6 +113,11 @@ app.use("/api/trpc/*", async c => {
     createContext,
   });
 });
+
+/* Read-only integration API for an external ERP / accounting system. Mounted
+   before the static/marketing fallbacks; disabled (503) unless an API key is
+   configured. See api/integrations.ts and docs/INTEGRATIONS.md. */
+app.route("/api/integrations/v1", integrationApp);
 
 /* Marketing-site lead capture (replaces the old Formspree placeholder).
    Accepts the JSON payloads posted by public/app.js submitLead(). */
@@ -179,7 +198,7 @@ app.get("/api/insights/:slug", async c => {
     .limit(1);
   const row = rows.at(0);
   if (!row || !row.publishedAt) return c.json({ error: "Not found" }, 404);
-  return c.json({ post: row });
+  return c.json({ post: { ...row, body: escapeHtml(row.body) } });
 });
 
 /* Server-rendered article page — crawlable HTML with per-article <title>, meta
@@ -556,15 +575,47 @@ if (env.isProduction) {
 
   const port = parseInt(process.env.PORT || "3000");
   // Bind 0.0.0.0 so container platforms (Railway, Render, Fly) can route to it.
-  serve({ fetch: app.fetch, port, hostname: "0.0.0.0" }, () => {
+  const server = serve({ fetch: app.fetch, port, hostname: "0.0.0.0" }, () => {
     console.log(`Server running on http://0.0.0.0:${port}/`);
   });
 
   // Timed operations (M8): at-risk detection, renewal windows, … run in-process.
+  let stopScheduler: (() => void) | undefined;
   try {
-    const { startScheduler } = await import("./lib/scheduler");
-    startScheduler();
+    const scheduler = await import("./lib/scheduler");
+    scheduler.startScheduler();
+    stopScheduler = scheduler.stopScheduler;
   } catch (e) {
     console.error("[scheduler] failed to start:", e);
   }
+
+  // Graceful shutdown: on a platform restart/deploy (SIGTERM) or Ctrl-C
+  // (SIGINT), stop the scheduler, stop accepting connections and let in-flight
+  // requests finish, then close the DB pool. A hard timeout guarantees exit if
+  // draining stalls.
+  let shuttingDown = false;
+  const shutdown = (signal: string) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`[shutdown] ${signal} received; draining…`);
+    const hardExit = setTimeout(() => {
+      console.error("[shutdown] drain timed out; forcing exit");
+      process.exit(1);
+    }, 10_000);
+    hardExit.unref();
+    stopScheduler?.();
+    server.close(async () => {
+      try {
+        const { closePool } = await import("./queries/connection");
+        await closePool();
+      } catch (e) {
+        console.error("[shutdown] error closing DB pool:", e);
+      }
+      clearTimeout(hardExit);
+      console.log("[shutdown] complete");
+      process.exit(0);
+    });
+  };
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
 }

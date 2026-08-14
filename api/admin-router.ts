@@ -33,6 +33,8 @@ import {
 import { kycQueue, getKyc, reviewKyc } from "./queries/kyc";
 import {
   financeSummary,
+  financeReport,
+  financeReportCsvString,
   listPayments,
   paymentReceipt,
   recordManualPayment,
@@ -435,7 +437,7 @@ export const adminRouter = createRouter({
             company: app.company,
             renewalAt: renewal,
             homeChapterId: input.chapterId ?? null, // admitted into a chapter
-            lifecycleState: "onboarding", // ML-03: first 30/60/90 days
+            lifecycleState: "applicant", // admitted below via the executor
           });
           const memberId = Number(res[0].insertId);
           await db.insert(schema.membershipEvents).values({
@@ -443,6 +445,13 @@ export const adminRouter = createRouter({
             type: "approved",
             toTier: tier,
             note: input.note ?? "Application approved",
+          });
+          // Admit through the lifecycle executor (applicant → onboarding, ML-03:
+          // first 30/60/90 days) so the applicant gets the onboarding welcome
+          // notification and a lifecycle audit entry, and status stays coherent.
+          await applyLifecycleTransition(memberId, "onboarding", {
+            actor: ctx.user,
+            reason: input.note ?? "Application approved",
           });
           await awardPoints(memberId, "tenure", 5, "Joined eHive Circle");
           // Onboarding automation: auto-pair a buddy (never block approval on it).
@@ -2028,12 +2037,24 @@ export const adminRouter = createRouter({
 
   /* ------------------------------- Finance ------------------------------- */
   financeSummary: scopedAdmin("finance").query(() => financeSummary()),
+  financeReport: scopedAdmin("finance").query(() => financeReport()),
+  financeReportCsv: scopedAdmin("finance").query(() =>
+    financeReportCsvString()
+  ),
 
   payments: scopedAdmin("finance")
     .input(
       z
         .object({
-          status: z.enum(["pending", "paid", "failed", "refunded"]).optional(),
+          status: z
+            .enum([
+              "pending",
+              "paid",
+              "failed",
+              "refunded",
+              "partially_refunded",
+            ])
+            .optional(),
           q: z.string().max(120).optional(),
         })
         .optional()

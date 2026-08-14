@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server";
 import * as schema from "@db/schema";
 import { getDb } from "./connection";
 import { audit } from "../lib/audit";
-import { notify } from "./circle";
+import { notify, renewMembership } from "./circle";
 import { paymentsEnabled, getPaymentProvider } from "../lib/payments";
 import { TIER_PRICE_AED } from "@contracts/constants";
 import {
@@ -11,8 +11,14 @@ import {
   rollupBudgets,
   isRenewalDue,
   computeRefund,
+  expenseNeedsApproval,
+  buildFinanceReport,
+  financeReportCsv,
   type PayLite,
   type BudgetLite,
+  type ReportPay,
+  type ReportExpense,
+  type FinanceReport,
 } from "../lib/finance-calc";
 
 type Actor = { id: number; email: string };
@@ -68,6 +74,47 @@ export async function financeSummary() {
     byTier: pay.byTier,
     renewals: { count: renewalsCount, valueAed: renewalsValueAed },
     budgets: budget,
+  };
+}
+
+/** Build the finance report (revenue by month/tier, expenses by category,
+ *  totals) from all payment records and chapter spend lines. */
+export async function financeReport(): Promise<FinanceReport> {
+  const db = getDb();
+  const [pays, expenses] = await Promise.all([
+    db
+      .select({
+        amount: schema.paymentRecords.amount,
+        status: schema.paymentRecords.status,
+        tier: schema.paymentRecords.tier,
+        paidAt: schema.paymentRecords.paidAt,
+        createdAt: schema.paymentRecords.createdAt,
+        refundedAmount: schema.paymentRecords.refundedAmount,
+      })
+      .from(schema.paymentRecords),
+    db
+      .select({
+        amount: schema.chapterBudgets.amount,
+        category: schema.chapterBudgets.category,
+        status: schema.chapterBudgets.status,
+        createdAt: schema.chapterBudgets.createdAt,
+      })
+      .from(schema.chapterBudgets)
+      .where(eq(schema.chapterBudgets.kind, "spend")),
+  ]);
+  return buildFinanceReport(pays as ReportPay[], expenses as ReportExpense[]);
+}
+
+/** The finance report rendered as a downloadable CSV (filename + contents). */
+export async function financeReportCsvString(): Promise<{
+  filename: string;
+  csv: string;
+}> {
+  const report = await financeReport();
+  const stamp = new Date().toISOString().slice(0, 10);
+  return {
+    filename: `ehive-finance-report-${stamp}.csv`,
+    csv: financeReportCsv(report),
   };
 }
 
@@ -239,34 +286,12 @@ export async function recordManualPayment(
     note: input.note ?? null,
   });
   // Optionally roll the member's renewal forward a year when logging a renewal.
+  // Route through renewMembership so the CRM lifecycle transition, save-case
+  // side effects, event log and member notification all run centrally instead
+  // of writing status/lifecycleState directly here (which drifted from the
+  // lifecycle executor).
   if (input.extendRenewal) {
-    const m = (
-      await db
-        .select()
-        .from(schema.members)
-        .where(eq(schema.members.userId, input.userId))
-        .limit(1)
-    ).at(0);
-    if (m) {
-      const base =
-        m.renewalAt && new Date(m.renewalAt) > new Date()
-          ? new Date(m.renewalAt)
-          : new Date();
-      base.setFullYear(base.getFullYear() + 1);
-      await db
-        .update(schema.members)
-        .set({ renewalAt: base, status: "active", lifecycleState: "active" })
-        .where(eq(schema.members.id, m.id));
-      try {
-        await notify(
-          m.id,
-          "Your membership renewal has been recorded — thank you.",
-          "membership"
-        );
-      } catch {
-        /* non-fatal */
-      }
-    }
+    await renewMembership(input.userId, input.note ?? "Membership renewed");
   }
   await audit(actor, "finance.manual_payment", {
     type: "payment",
@@ -536,19 +561,25 @@ export async function recordExpense(
       code: "BAD_REQUEST",
       message: "Amount must be greater than zero.",
     });
+  // Spend at or above the approval threshold enters the chapter-budget approval
+  // flow as a "proposed" line (decided via decideBudgetLine) rather than being
+  // auto-approved — so a finance-scoped admin can't spend chapter money over the
+  // threshold without a second set of eyes. Smaller amounts post directly.
+  const needsApproval = expenseNeedsApproval(amount);
+  const status = needsApproval ? "proposed" : "approved";
   const res = await db.insert(schema.chapterBudgets).values({
     chapterId: input.chapterId,
     label: input.label.slice(0, 255),
     kind: "spend",
     amount,
     category: input.category ?? null,
-    status: "approved",
+    status,
     note: input.note ?? null,
   });
   await audit(actor, "finance.expense", {
     type: "chapterBudget",
     id: Number((res as unknown as { insertId?: number }).insertId ?? 0),
-    detail: `${chapter.name}: AED ${amount} · ${input.category ?? "uncategorised"} · ${input.label}`,
+    detail: `${chapter.name}: AED ${amount} · ${input.category ?? "uncategorised"} · ${input.label}${needsApproval ? " · pending approval" : ""}`,
   });
-  return { ok: true };
+  return { ok: true, pending: needsApproval };
 }

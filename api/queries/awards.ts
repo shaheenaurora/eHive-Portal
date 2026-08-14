@@ -229,6 +229,78 @@ export async function setNominationStatus(
     .where(eq(schema.awardNominations.id, id));
 }
 
+/** The nominee/category of a nomination — used to notify the nominee on a
+ *  status change (shortlist/winner). */
+export async function getNominationNominee(
+  id: number
+): Promise<{ nomineeMemberId: number | null; category: string } | null> {
+  return (
+    (
+      await getDb()
+        .select({
+          nomineeMemberId: schema.awardNominations.nomineeMemberId,
+          category: schema.awardNominations.category,
+        })
+        .from(schema.awardNominations)
+        .where(eq(schema.awardNominations.id, id))
+        .limit(1)
+    ).at(0) ?? null
+  );
+}
+
+/**
+ * Whether a nominee belongs to a scoped cycle's unit. For chapter-level the unit
+ * is a chapter id; for zone/region/country it's an org_unit id and the nominee's
+ * chapter must roll up to it through the zone→region→country chain. Returns
+ * false when the nominee has no resolvable chapter.
+ */
+export async function nomineeInUnit(
+  level: "chapter" | "zone" | "region" | "country",
+  unitId: number,
+  nominee: {
+    nomineeMemberId?: number | null;
+    nomineeChapterId?: number | null;
+  }
+): Promise<boolean> {
+  const db = getDb();
+  let chapterId: number | null = nominee.nomineeChapterId ?? null;
+  if (!chapterId && nominee.nomineeMemberId) {
+    const m = (
+      await db
+        .select({ c: schema.members.homeChapterId })
+        .from(schema.members)
+        .where(eq(schema.members.id, nominee.nomineeMemberId))
+        .limit(1)
+    ).at(0);
+    chapterId = m?.c ?? null;
+  }
+  if (!chapterId) return false;
+  if (level === "chapter") return chapterId === unitId;
+
+  // Walk the org-unit chain from the chapter's zone upward (zone→region→country)
+  // and check the target unit appears in it.
+  const ch = (
+    await db
+      .select({ zoneId: schema.chapters.zoneId })
+      .from(schema.chapters)
+      .where(eq(schema.chapters.id, chapterId))
+      .limit(1)
+  ).at(0);
+  let ouId: number | null = ch?.zoneId ?? null;
+  for (let i = 0; i < 4 && ouId; i++) {
+    if (ouId === unitId) return true;
+    const ou = (
+      await db
+        .select({ parentId: schema.orgUnits.parentId })
+        .from(schema.orgUnits)
+        .where(eq(schema.orgUnits.id, ouId))
+        .limit(1)
+    ).at(0);
+    ouId = ou?.parentId ?? null;
+  }
+  return false;
+}
+
 /** Winners of announced cycles — the public recognition wall. */
 export async function announcedWinners(): Promise<NominationRow[]> {
   const db = getDb();

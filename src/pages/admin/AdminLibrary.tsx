@@ -12,6 +12,7 @@ import {
   Modal,
   Field,
   toast,
+  confirmDialog,
 } from "@/components/eh";
 import { LIBRARY_KINDS, TIERS, TIER_LABEL } from "@contracts/constants";
 
@@ -119,9 +120,17 @@ export default function AdminLibrary() {
               <button
                 className="eh-btn ghost sm"
                 style={{ color: "var(--eh-red)" }}
-                onClick={() =>
-                  confirm("Delete this item?") && del.mutate({ id: i.id })
-                }
+                onClick={async () => {
+                  if (
+                    await confirmDialog({
+                      title: "Delete this item?",
+                      body: "This removes the resource from the member library.",
+                      confirmLabel: "Delete item",
+                      danger: true,
+                    })
+                  )
+                    del.mutate({ id: i.id });
+                }}
               >
                 Delete
               </button>

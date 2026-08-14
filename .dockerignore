@@ -3,3 +3,13 @@ dist
 .git
 *.swp
 *.log
+
+# Never copy secrets or local credentials into image layers.
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+secrets
+.secrets

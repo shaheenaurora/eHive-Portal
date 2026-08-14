@@ -62,23 +62,51 @@ export const engageRouter = createRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const me = await requireMember(ctx.user.id);
-      const { openCycle, alreadyNominated, nominate } =
+      const { openCycle, alreadyNominated, nominate, nomineeInUnit } =
         await import("./queries/awards");
+      const { nominationWindowState, validateNomineeForCategory } =
+        await import("@contracts/awards");
       const open = await openCycle();
       if (!open || open.id !== input.cycleId)
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
           message: "Nominations aren't open right now.",
         });
-      if (!input.nomineeMemberId && !input.nomineeChapterId)
+      // Enforce the cycle's nomination window even if an admin left status "open".
+      if (nominationWindowState(open.opensAt, open.closesAt) !== "open")
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Nominations for this cycle aren't open right now.",
+        });
+      // The category must exist and its subject (member vs chapter) must match
+      // the nominee type — blocks e.g. nominating a member for Chapter of the Year.
+      const subjectCheck = validateNomineeForCategory(input.category, {
+        nomineeMemberId: input.nomineeMemberId,
+        nomineeChapterId: input.nomineeChapterId,
+      });
+      if (!subjectCheck.ok)
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Choose who you're nominating.",
+          message: subjectCheck.error,
         });
       if (input.nomineeMemberId === me.id)
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "You can't nominate yourself.",
+        });
+      // Scoped cycles (chapter/zone/region/country) only accept nominees that
+      // belong to the cycle's unit.
+      if (
+        open.level !== "network" &&
+        open.unitId &&
+        !(await nomineeInUnit(open.level, open.unitId, {
+          nomineeMemberId: input.nomineeMemberId,
+          nomineeChapterId: input.nomineeChapterId,
+        }))
+      )
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "That nominee isn't part of this award's chapter or region.",
         });
       if (await alreadyNominated(input.cycleId, input.category, me.id))
         throw new TRPCError({

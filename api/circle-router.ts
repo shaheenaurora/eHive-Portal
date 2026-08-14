@@ -4,6 +4,7 @@ import { eq, and, desc, asc, gte, isNull, sql } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "./queries/connection";
 import { createRouter, authedQuery } from "./middleware";
+import { env } from "./lib/env";
 import { safeUser } from "./auth-router";
 import {
   getMemberByUserId,
@@ -78,8 +79,10 @@ export const circleRouter = createRouter({
         });
 
       const amount = TIER_PRICE_AED[input.tier] * 100; // AED → fils
-      const origin =
-        ctx.req.headers.get("origin") ?? new URL(ctx.req.url).origin;
+      // Build redirect URLs from the configured public URL — never the request
+      // Origin header, which an attacker can set to redirect the member to a
+      // phishing domain after checkout.
+      const base = env.publicUrl;
       const provider = getPaymentProvider();
       const { url, providerRef } = await provider.createCheckoutSession({
         tier: input.tier,
@@ -87,8 +90,8 @@ export const circleRouter = createRouter({
         email: ctx.user.email ?? "",
         amount,
         currency: "aed",
-        successUrl: `${origin}/portal?paid=1`,
-        cancelUrl: `${origin}/portal/apply?canceled=1`,
+        successUrl: `${base}/portal?paid=1`,
+        cancelUrl: `${base}/portal/apply?canceled=1`,
       });
       await getDb().insert(schema.paymentRecords).values({
         userId: ctx.user.id,
@@ -118,23 +121,22 @@ export const circleRouter = createRouter({
         code: "PRECONDITION_FAILED",
         message: "You don't have a membership to renew.",
       });
-    // A cancelled/suspended/alumni membership can't be self-reactivated by paying
-    // — reinstatement is an admin decision (a member may have been removed for
-    // conduct reasons). Otherwise the post-payment webhook would flip them back
-    // to active with no review.
-    if (
-      m.status === "cancelled" ||
-      m.lifecycleState === "alumni" ||
-      m.lifecycleState === "suspended"
-    )
+    // Only a SUSPENDED membership can't be self-reactivated by paying —
+    // reinstatement after a conduct suspension is an admin decision. Lapsed and
+    // alumni members CAN self-renew: paid win-back (lapsed → active, alumni →
+    // active) is an allowed lifecycle transition, so blocking it here would
+    // contradict the lifecycle matrix and lose reactivation revenue.
+    if (m.lifecycleState === "suspended")
       throw new TRPCError({
         code: "FORBIDDEN",
         message:
-          "Your membership isn't eligible for self-service renewal. Please contact the Circle team to reinstate it.",
+          "Your membership is under review and can't be renewed online. Please contact the Circle team to reinstate it.",
       });
     const tier = m.tier;
     const amount = TIER_PRICE_AED[tier] * 100; // AED → fils
-    const origin = ctx.req.headers.get("origin") ?? new URL(ctx.req.url).origin;
+    // Redirect URLs come from the configured public URL, not the request Origin
+    // header (which an attacker could point at a phishing domain).
+    const base = env.publicUrl;
     const provider = getPaymentProvider();
     const { url, providerRef } = await provider.createCheckoutSession({
       tier,
@@ -142,8 +144,8 @@ export const circleRouter = createRouter({
       email: ctx.user.email ?? "",
       amount,
       currency: "aed",
-      successUrl: `${origin}/portal/membership?renewed=1`,
-      cancelUrl: `${origin}/portal/membership?canceled=1`,
+      successUrl: `${base}/portal/membership?renewed=1`,
+      cancelUrl: `${base}/portal/membership?canceled=1`,
     });
     await getDb().insert(schema.paymentRecords).values({
       userId: ctx.user.id,
@@ -575,10 +577,21 @@ export const circleRouter = createRouter({
         note: input.note,
         status: "applied",
       });
-      if (input.type === "pause" || input.type === "cancel") {
+      if (input.type === "cancel") {
+        // Route a self-cancel through the lifecycle executor (→ lapsed) so the
+        // CRM lifecycle and access status stay coherent (cancelled) instead of
+        // drifting to "cancelled status + active lifecycle", and the member is
+        // notified. Lapsed keeps the win-back door open.
+        await applyLifecycleTransition(member.id, "lapsed", {
+          actor: ctx.user,
+          reason: input.note || "Member cancelled their membership.",
+        });
+      } else if (input.type === "pause") {
+        // A voluntary pause is a temporary access hold, not a CRM lifecycle
+        // move (there is no "paused" lifecycle state), so only status changes.
         await db
           .update(schema.members)
-          .set({ status: input.type === "pause" ? "paused" : "cancelled" })
+          .set({ status: "paused" })
           .where(eq(schema.members.id, member.id));
       } else if (input.type === "renew") {
         // Renewal must be paid for. The only legitimate path is startRenewal

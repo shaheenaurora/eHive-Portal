@@ -1103,6 +1103,9 @@ export const awardCycles = mysqlTable("award_cycles", {
     .notNull()
     .default("network"),
   unitId: bigint("unitId", { mode: "number", unsigned: true }),
+  // Panel-judging rubric as JSON [{ key, label, weight }] (weights sum to 100).
+  // Null falls back to the default rubric (see api/lib/awards-scoring.ts).
+  rubric: text("rubric"),
   opensAt: timestamp("opensAt"),
   closesAt: timestamp("closesAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -1132,8 +1135,105 @@ export const awardNominations = mysqlTable("award_nominations", {
   ])
     .notNull()
     .default("nominated"),
+  // Independent ratification of a winner (the fourth judging gate). A winner is
+  // only conferred once ratified by an officer who is not a judge of the cycle.
+  ratifiedByUserId: bigint("ratifiedByUserId", {
+    mode: "number",
+    unsigned: true,
+  }),
+  ratifiedAt: timestamp("ratifiedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
+
+/* Panel judging (Awards spec Part 1 / Part 7). A cycle's panel-judged
+   categories are scored by an assigned, independent panel against the cycle's
+   rubric; the weighted average across judges ranks nominees, and an independent
+   officer ratifies the winner before conferral. */
+export const awardJudges = mysqlTable(
+  "award_judges",
+  {
+    id: serial("id").primaryKey(),
+    cycleId: bigint("cycleId", { mode: "number", unsigned: true }).notNull(),
+    userId: bigint("userId", { mode: "number", unsigned: true }).notNull(), // the judge (staff/officer)
+    assignedByUserId: bigint("assignedByUserId", {
+      mode: "number",
+      unsigned: true,
+    }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  t => [uniqueIndex("award_judges_cycle_user_unique").on(t.cycleId, t.userId)]
+);
+
+export const awardScores = mysqlTable(
+  "award_scores",
+  {
+    id: serial("id").primaryKey(),
+    cycleId: bigint("cycleId", { mode: "number", unsigned: true }).notNull(),
+    nominationId: bigint("nominationId", {
+      mode: "number",
+      unsigned: true,
+    }).notNull(),
+    judgeUserId: bigint("judgeUserId", {
+      mode: "number",
+      unsigned: true,
+    }).notNull(),
+    // Per-criterion scores (0–100) as JSON [{ key, value }], and the rubric-
+    // weighted total (0–100) computed at submit time.
+    scores: text("scores").notNull(),
+    total: int("total").notNull(),
+    note: varchar("note", { length: 1000 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  t => [
+    uniqueIndex("award_scores_nomination_judge_unique").on(
+      t.nominationId,
+      t.judgeUserId
+    ),
+    index("ix_awardscores_cycle").on(t.cycleId),
+  ]
+);
+
+/* Conferred awards (Awards spec Part 7 — the AwardRecord object). An immutable
+   record of a member/chapter winning an award in a cycle, feeding profiles, the
+   recognition-point scheme, fairness caps and the Hall-of-Fame tracker. */
+export const awardRecords = mysqlTable(
+  "award_records",
+  {
+    id: serial("id").primaryKey(),
+    cycleId: bigint("cycleId", { mode: "number", unsigned: true }),
+    awardKey: varchar("awardKey", { length: 64 }).notNull(), // stable award identifier
+    label: varchar("label", { length: 160 }).notNull(),
+    level: mysqlEnum("level", [
+      "network",
+      "chapter",
+      "zone",
+      "region",
+      "country",
+    ])
+      .notNull()
+      .default("network"),
+    memberId: bigint("memberId", { mode: "number", unsigned: true }),
+    chapterId: bigint("chapterId", { mode: "number", unsigned: true }),
+    source: mysqlEnum("source", ["auto", "panel", "vote"]).notNull(),
+    score: int("score"), // winning score where applicable
+    points: int("points").notNull().default(0), // recognition points awarded
+    conferredByUserId: bigint("conferredByUserId", {
+      mode: "number",
+      unsigned: true,
+    }),
+    conferredAt: timestamp("conferredAt").defaultNow().notNull(),
+    note: varchar("note", { length: 500 }),
+  },
+  t => [
+    index("ix_awardrecords_member").on(t.memberId),
+    index("ix_awardrecords_award").on(t.awardKey, t.conferredAt),
+  ]
+);
+
 export type UnitRole = typeof unitRoles.$inferSelect;
 
 export const chapters = mysqlTable("chapters", {

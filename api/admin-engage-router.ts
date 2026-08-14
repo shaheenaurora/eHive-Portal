@@ -38,6 +38,17 @@ import {
   nominate,
   setNominationStatus,
 } from "./queries/awards";
+import {
+  setCycleRubric,
+  assignJudge,
+  removeJudge,
+  listJudges,
+  submitScore,
+  judgingBoard,
+  ratifyWinner,
+} from "./queries/award-judging";
+import { autoScoreCycle } from "./queries/award-autoscore";
+import { recordAutoWinner, memberAwards } from "./queries/award-records";
 import { computeChapterHealth } from "./queries/health";
 import {
   ensureCadenceTemplates,
@@ -57,6 +68,7 @@ import {
   SPEND_APPROVAL_THRESHOLD_AED,
   MEETING_AGENDA_TEMPLATES,
   AWARD_LEVEL_KEYS,
+  AWARD_CATEGORY_LABEL,
 } from "@contracts/constants";
 
 function isFullAdmin(user: { adminScopes?: string | null }): boolean {
@@ -776,13 +788,27 @@ export const adminEngageRouter = createRouter({
         } else {
           const renew = new Date();
           renew.setFullYear(renew.getFullYear() + 1);
-          await db.insert(schema.members).values({
+          // A newly inducted Zenith member enters onboarding like any other new
+          // member (status stays active via statusForLifecycle) so they run the
+          // first 30/60/90-day journey and receive the onboarding welcome.
+          const res = await db.insert(schema.members).values({
             userId: user.id,
             tier: "zenith",
             status: "active",
+            lifecycleState: "onboarding",
             renewalAt: renew,
             inductionNo,
           });
+          const memberId = Number(res[0].insertId);
+          try {
+            await notify(
+              memberId,
+              "Welcome to eHive Circle. Your onboarding journey starts now.",
+              "membership"
+            );
+          } catch {
+            /* non-fatal */
+          }
         }
       }
       await db
@@ -1170,7 +1196,28 @@ export const adminEngageRouter = createRouter({
         });
       if (req.status !== "pending")
         throw new TRPCError({ code: "CONFLICT", message: "Already decided." });
+      let toChapterName: string | null = null;
       if (input.decision === "approve") {
+        // Validate the destination chapter still exists (and isn't archived)
+        // before moving the member into it.
+        const toChapter = (
+          await db
+            .select({ id: schema.chapters.id, name: schema.chapters.name })
+            .from(schema.chapters)
+            .where(
+              and(
+                eq(schema.chapters.id, req.toChapterId),
+                isNull(schema.chapters.deletedAt)
+              )
+            )
+            .limit(1)
+        ).at(0);
+        if (!toChapter)
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "The destination chapter no longer exists.",
+          });
+        toChapterName = toChapter.name;
         await db
           .update(schema.members)
           .set({ homeChapterId: req.toChapterId })
@@ -1185,6 +1232,18 @@ export const adminEngageRouter = createRouter({
           note: input.note ?? req.note,
         })
         .where(eq(schema.chapterTransfers.id, req.id));
+      // Notify the member of the outcome.
+      try {
+        await notify(
+          req.memberId,
+          input.decision === "approve"
+            ? `Your chapter transfer to ${toChapterName ?? "your new chapter"} has been approved.`
+            : "Your chapter transfer request wasn't approved. Your chapter membership is unchanged.",
+          "membership"
+        );
+      } catch {
+        /* non-fatal */
+      }
       await audit(ctx.user, `chapter.transfer.${input.decision}`, {
         type: "member",
         id: req.memberId,
@@ -2182,6 +2241,42 @@ export const adminEngageRouter = createRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      if (input.status === "open") {
+        const cycle = (
+          await getDb()
+            .select({
+              opensAt: schema.awardCycles.opensAt,
+              closesAt: schema.awardCycles.closesAt,
+            })
+            .from(schema.awardCycles)
+            .where(eq(schema.awardCycles.id, input.id))
+            .limit(1)
+        ).at(0);
+        const now = Date.now();
+        if (cycle?.opensAt && now < new Date(cycle.opensAt).getTime())
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "This cycle can't open before its nomination start date.",
+          });
+        if (cycle?.closesAt && now > new Date(cycle.closesAt).getTime())
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "This cycle's nomination window has already closed.",
+          });
+        // Keep the single-open-cycle invariant that openCycle() relies on.
+        const otherOpen = (
+          await getDb()
+            .select({ id: schema.awardCycles.id })
+            .from(schema.awardCycles)
+            .where(eq(schema.awardCycles.status, "open"))
+            .limit(1)
+        ).at(0);
+        if (otherOpen && otherOpen.id !== input.id)
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Another cycle is already open for nominations.",
+          });
+      }
       await updateCycleStatus(input.id, input.status);
       await audit(ctx.user, "awards.cycle.status", {
         type: "awardCycle",
@@ -2231,6 +2326,23 @@ export const adminEngageRouter = createRouter({
     )
     .mutation(async ({ ctx, input }) => {
       await setNominationStatus(input.id, input.status);
+      // Notify the nominee when they're shortlisted or announced as a winner.
+      if (input.status === "shortlisted" || input.status === "winner") {
+        const { getNominationNominee } = await import("./queries/awards");
+        const nom = await getNominationNominee(input.id);
+        if (nom?.nomineeMemberId) {
+          const label = AWARD_CATEGORY_LABEL[nom.category] ?? "an award";
+          const msg =
+            input.status === "winner"
+              ? `Congratulations — you've won ${label}! 🏆`
+              : `You've been shortlisted for ${label}.`;
+          try {
+            await notify(nom.nomineeMemberId, msg, "recognition");
+          } catch {
+            /* non-fatal */
+          }
+        }
+      }
       await audit(ctx.user, "awards.nomination.status", {
         type: "awardNomination",
         id: input.id,
@@ -2238,6 +2350,88 @@ export const adminEngageRouter = createRouter({
       });
       return { ok: true };
     }),
+
+  /* ---- Panel judging (Awards spec Part 1 / Part 7) ---- */
+  awardsSetRubric: scopedAdmin("community")
+    .input(
+      z.object({
+        cycleId: z.number(),
+        rubric: z
+          .array(
+            z.object({
+              key: z.string().min(1).max(48),
+              label: z.string().min(1).max(80),
+              weight: z.number().min(0).max(100),
+            })
+          )
+          .min(1)
+          .max(10),
+      })
+    )
+    .mutation(({ ctx, input }) =>
+      setCycleRubric(ctx.user, input.cycleId, input.rubric)
+    ),
+
+  awardsJudges: scopedAdmin("community")
+    .input(z.object({ cycleId: z.number() }))
+    .query(({ input }) => listJudges(input.cycleId)),
+
+  awardsAssignJudge: scopedAdmin("community")
+    .input(z.object({ cycleId: z.number(), userId: z.number() }))
+    .mutation(({ ctx, input }) =>
+      assignJudge(ctx.user, input.cycleId, input.userId)
+    ),
+
+  awardsRemoveJudge: scopedAdmin("community")
+    .input(z.object({ cycleId: z.number(), userId: z.number() }))
+    .mutation(({ ctx, input }) =>
+      removeJudge(ctx.user, input.cycleId, input.userId)
+    ),
+
+  awardsJudgingBoard: scopedAdmin("community")
+    .input(z.object({ cycleId: z.number() }))
+    .query(({ input }) => judgingBoard(input.cycleId)),
+
+  // Score submission is gated to assigned judges inside submitScore(); the
+  // community scope simply ensures the caller is a staff user.
+  awardsSubmitScore: scopedAdmin("community")
+    .input(
+      z.object({
+        cycleId: z.number(),
+        nominationId: z.number(),
+        scores: z
+          .array(
+            z.object({ key: z.string().min(1).max(48), value: z.number() })
+          )
+          .max(10),
+        note: z.string().max(1000).optional(),
+      })
+    )
+    .mutation(({ ctx, input }) => submitScore(ctx.user, input)),
+
+  awardsRatifyWinner: scopedAdmin("community")
+    .input(z.object({ cycleId: z.number(), nominationId: z.number() }))
+    .mutation(({ ctx, input }) =>
+      ratifyWinner(ctx.user, input.cycleId, input.nominationId)
+    ),
+
+  // Auto-scored judging (default mechanism): rank eligible members from live KPI
+  // data against the auto-score rubric. Read-only computation for review.
+  awardsAutoScore: scopedAdmin("community")
+    .input(z.object({ cycleId: z.number() }))
+    .query(({ input }) => autoScoreCycle(input.cycleId)),
+
+  // Conferral (gate 5): record the top auto-scored member as the winner, with
+  // the no-back-to-back fairness cap enforced.
+  awardsRecordAutoWinner: scopedAdmin("community")
+    .input(z.object({ cycleId: z.number(), memberId: z.number() }))
+    .mutation(({ ctx, input }) =>
+      recordAutoWinner(ctx.user, input.cycleId, input.memberId)
+    ),
+
+  awardsMemberAwards: scopedAdmin("membership")
+    .input(z.object({ memberId: z.number() }))
+    .query(({ input }) => memberAwards(input.memberId)),
 
   createOrgUnit: scopedAdmin("chapters")
     .input(

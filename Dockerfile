@@ -34,6 +34,12 @@ COPY --from=builder /app/scripts/pre-deploy.ts ./scripts/pre-deploy.ts
 # possible to keep the image small and reduce attack surface.
 RUN npm ci --omit=dev --no-audit --no-fund && npm cache clean --force
 
+# Drop root: run as the unprivileged `node` user that the base image ships with,
+# so a process compromise doesn't grant root inside the container. Ownership of
+# the app dir is handed to that user for any runtime writes (e.g. temp files).
+RUN chown -R node:node /app
+USER node
+
 # Start the Hono server: serves marketing pages at /, SPA at /portal* & /admin*,
 # tRPC at /api/trpc/*, lead capture, and payment webhooks.
 CMD ["node", "dist/boot.js"]

@@ -10,6 +10,7 @@ import {
   Modal,
   Field,
   toast,
+  LoadError,
 } from "@/components/eh";
 import { fmtDate, fmtDateTime } from "@/lib/ehf";
 import {
@@ -37,7 +38,7 @@ const PAY_COLOR: Record<
   refunded: "red",
   partially_refunded: "amber",
 };
-type Tab = "payments" | "renewals" | "budgets" | "expenses";
+type Tab = "payments" | "renewals" | "budgets" | "expenses" | "reports";
 
 export default function AdminFinance() {
   const utils = trpc.useUtils();
@@ -157,6 +158,12 @@ export default function AdminFinance() {
         >
           Expenses
         </button>
+        <button
+          className={tab === "reports" ? "on" : ""}
+          onClick={() => setTab("reports")}
+        >
+          Reports
+        </button>
       </div>
 
       {tab === "payments" && (
@@ -169,6 +176,7 @@ export default function AdminFinance() {
       {tab === "renewals" && <RenewalsTab />}
       {tab === "budgets" && <BudgetsTab />}
       {tab === "expenses" && <ExpensesTab onRecord={() => setExpense(true)} />}
+      {tab === "reports" && <ReportsTab />}
 
       {receipt != null && (
         <ReceiptModal id={receipt} onClose={() => setReceipt(null)} />
@@ -276,13 +284,20 @@ function PaymentsTab({
         style={{ flexWrap: "wrap", gap: ".6rem" }}
       >
         <div className="eh-row" style={{ gap: ".4rem", flexWrap: "wrap" }}>
-          {["", "paid", "pending", "refunded", "failed"].map(s => (
+          {[
+            "",
+            "paid",
+            "pending",
+            "refunded",
+            "partially_refunded",
+            "failed",
+          ].map(s => (
             <button
               key={s || "all"}
               className={`eh-btn sm ${status === s ? "gold" : "ghost"}`}
               onClick={() => setStatus(s)}
             >
-              {s || "All"}
+              {s ? s.replace(/_/g, " ") : "All"}
             </button>
           ))}
         </div>
@@ -1016,8 +1031,12 @@ function RecordExpenseModal({
     retry: false,
   });
   const m = trpc.admin.recordExpense.useMutation({
-    onSuccess: () => {
-      toast("Expense recorded.");
+    onSuccess: r => {
+      toast(
+        r?.pending
+          ? "Expense submitted for approval (over the spend threshold)."
+          : "Expense recorded."
+      );
       onDone();
     },
     onError: e => toast(e.message),
@@ -1102,5 +1121,168 @@ function RecordExpenseModal({
         {m.isPending ? "Recording…" : "Record expense"}
       </button>
     </Modal>
+  );
+}
+
+/* Finance → Reports: revenue by month/tier, expenses by category, and a CSV
+   export of the whole report. */
+const money = (aedNum: number) =>
+  "AED " +
+  aedNum.toLocaleString("en-AE", {
+    minimumFractionDigits: Number.isInteger(aedNum) ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
+
+function ReportsTab() {
+  const q = trpc.admin.financeReport.useQuery(undefined, { retry: false });
+  const utils = trpc.useUtils();
+  const [downloading, setDownloading] = useState(false);
+
+  const download = async () => {
+    setDownloading(true);
+    try {
+      const { filename, csv } = await utils.admin.financeReportCsv.fetch();
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Export failed.");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  if (q.isLoading) return <Spinner />;
+  if (q.isError) return <LoadError onRetry={() => q.refetch()} />;
+  const r = q.data;
+  if (!r) return null;
+  const t = r.totals;
+
+  return (
+    <>
+      <div className="eh-row eh-mb" style={{ justifyContent: "space-between" }}>
+        <div className="eh-grid g4" style={{ flex: 1 }}>
+          <Metric k="Gross revenue" v={money(t.grossAed)} />
+          <Metric k="Refunds" v={money(t.refundsAed)} />
+          <Metric
+            k="Net revenue"
+            v={money(t.netRevenueAed)}
+            accent="var(--eh-good, #2e7d5b)"
+          />
+          <Metric k="Chapter expenses" v={money(t.expensesAed)} />
+        </div>
+      </div>
+      <div className="eh-row eh-mb" style={{ justifyContent: "flex-end" }}>
+        <button
+          className="eh-btn gold sm"
+          onClick={download}
+          disabled={downloading}
+        >
+          {downloading ? "Preparing…" : "Download CSV"}
+        </button>
+      </div>
+
+      <div className="eh-card eh-mb" style={{ padding: ".4rem 1.25rem" }}>
+        <h3 className="eh-h4" style={{ margin: ".8rem 0 .3rem" }}>
+          Revenue by month
+        </h3>
+        {r.revenueByMonth.length === 0 ? (
+          <Empty
+            big="No settled revenue yet."
+            p="Paid memberships will appear here by month."
+          />
+        ) : (
+          <table className="eh-table stack">
+            <thead>
+              <tr>
+                <th>Month</th>
+                <th>Gross</th>
+                <th>Refunds</th>
+                <th>Net</th>
+              </tr>
+            </thead>
+            <tbody>
+              {r.revenueByMonth.map(m => (
+                <tr key={m.month}>
+                  <td data-label="Month">{m.month}</td>
+                  <td data-label="Gross">{money(m.grossAed)}</td>
+                  <td data-label="Refunds">{money(m.refundsAed)}</td>
+                  <td data-label="Net">
+                    <b>{money(m.netAed)}</b>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <div className="eh-grid g2">
+        <div className="eh-card" style={{ padding: ".4rem 1.25rem" }}>
+          <h3 className="eh-h4" style={{ margin: ".8rem 0 .3rem" }}>
+            Revenue by tier
+          </h3>
+          {r.byTier.length === 0 ? (
+            <Empty big="—" p="No paid memberships yet." />
+          ) : (
+            <table className="eh-table stack">
+              <thead>
+                <tr>
+                  <th>Tier</th>
+                  <th>Gross</th>
+                  <th>Payments</th>
+                </tr>
+              </thead>
+              <tbody>
+                {r.byTier.map(row => (
+                  <tr key={row.tier}>
+                    <td data-label="Tier">
+                      {TIER_LABEL[row.tier as keyof typeof TIER_LABEL] ??
+                        row.tier}
+                    </td>
+                    <td data-label="Gross">{money(row.grossAed)}</td>
+                    <td data-label="Payments">{row.count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        <div className="eh-card" style={{ padding: ".4rem 1.25rem" }}>
+          <h3 className="eh-h4" style={{ margin: ".8rem 0 .3rem" }}>
+            Expenses by category
+          </h3>
+          {r.expenseByCategory.length === 0 ? (
+            <Empty big="—" p="No chapter spend recorded yet." />
+          ) : (
+            <table className="eh-table stack">
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Spend</th>
+                </tr>
+              </thead>
+              <tbody>
+                {r.expenseByCategory.map(row => (
+                  <tr key={row.category}>
+                    <td data-label="Category">
+                      {EXPENSE_CATEGORY_LABEL[row.category] ?? row.category}
+                    </td>
+                    <td data-label="Spend">{money(row.aed)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </>
   );
 }

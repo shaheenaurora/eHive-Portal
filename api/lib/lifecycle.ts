@@ -14,7 +14,11 @@ import type { User } from "@db/schema";
  *  These supplement MEMBER_LIFECYCLE_TRANSITIONS (the UI button list) to form
  *  the complete lifecycle matrix enforced by canTransitionLifecycle(). */
 const AUTO_TRANSITIONS: Record<string, string[]> = {
-  active: ["lapsed"], // scheduler can lapse a member who never entered renewal
+  // A member may self-cancel (→ lapsed) from any live state, and the scheduler
+  // can lapse a member who never entered renewal.
+  onboarding: ["lapsed"],
+  active: ["lapsed"],
+  at_risk: ["lapsed"],
   lapsed: ["active"], // paid win-back renewal
   alumni: ["active"], // paid win-back renewal
 };

@@ -259,14 +259,31 @@ export async function activateMembership(
   }
   const renewal = new Date();
   renewal.setFullYear(renewal.getFullYear() + 1);
-  const res = await db
-    .insert(schema.members)
-    .values({ userId, tier, status: "active", renewalAt: renewal });
+  // New members enter ONBOARDING (the first 30/60/90 days), not straight to
+  // active — a Stripe-paid join must run the same onboarding journey as an
+  // admin-approved one. statusForLifecycle("onboarding") is still "active", so
+  // access is granted immediately.
+  const res = await db.insert(schema.members).values({
+    userId,
+    tier,
+    status: "active",
+    lifecycleState: "onboarding",
+    renewalAt: renewal,
+  });
   const memberId = Number(res[0].insertId);
   await db
     .insert(schema.membershipEvents)
     .values({ memberId, type: "approved", toTier: tier, note });
   await awardPoints(memberId, "tenure", 5, "Joined eHive Circle");
+  try {
+    await notify(
+      memberId,
+      "Welcome to eHive Circle. Your onboarding journey starts now.",
+      "membership"
+    );
+  } catch {
+    /* non-fatal */
+  }
   try {
     await autoPairBuddy(memberId);
   } catch (e) {

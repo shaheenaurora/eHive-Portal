@@ -6,8 +6,13 @@ import {
   summarizePayments,
   rollupBudgets,
   computeRefund,
+  expenseNeedsApproval,
+  buildFinanceReport,
+  financeReportCsv,
   type PayLite,
   type BudgetLite,
+  type ReportPay,
+  type ReportExpense,
 } from "./lib/finance-calc";
 
 describe("finance formatting", () => {
@@ -145,5 +150,120 @@ describe("computeRefund", () => {
     expect(() =>
       computeRefund({ amount: 100000, refundedAmount: 0, status: "pending" })
     ).toThrow(/paid/i);
+  });
+});
+
+describe("expenseNeedsApproval", () => {
+  it("routes spend at or above the threshold (2000 AED) through approval", () => {
+    expect(expenseNeedsApproval(2000)).toBe(true);
+    expect(expenseNeedsApproval(5000)).toBe(true);
+  });
+  it("posts small spend directly", () => {
+    expect(expenseNeedsApproval(1999)).toBe(false);
+    expect(expenseNeedsApproval(1)).toBe(false);
+  });
+});
+
+describe("buildFinanceReport", () => {
+  const pays: ReportPay[] = [
+    // June: two paid, one partially refunded
+    { amount: 100000, status: "paid", tier: "core", paidAt: "2026-06-05" },
+    { amount: 50000, status: "paid", tier: "zenith", paidAt: "2026-06-20" },
+    {
+      amount: 100000,
+      status: "partially_refunded",
+      tier: "core",
+      paidAt: "2026-06-25",
+      refundedAmount: 30000,
+    },
+    // July: one fully refunded, one pending, one failed
+    {
+      amount: 40000,
+      status: "refunded",
+      tier: "core",
+      paidAt: "2026-07-02",
+    },
+    {
+      amount: 60000,
+      status: "pending",
+      tier: "zenith",
+      createdAt: "2026-07-03",
+    },
+    { amount: 99999, status: "failed", tier: "core", createdAt: "2026-07-04" },
+  ].map(p => ({ createdAt: p.paidAt ?? "2026-01-01", ...p }) as ReportPay);
+
+  const expenses: ReportExpense[] = [
+    {
+      amount: 500,
+      status: "approved",
+      category: "venue",
+      createdAt: "2026-06-10",
+    },
+    {
+      amount: 200,
+      status: "spent",
+      category: "catering",
+      createdAt: "2026-06-11",
+    },
+    {
+      amount: 900,
+      status: "proposed",
+      category: "venue",
+      createdAt: "2026-06-12",
+    }, // pending → excluded
+  ];
+
+  const r = buildFinanceReport(pays, expenses);
+
+  it("recognises settled revenue by month and nets refunds", () => {
+    const june = r.revenueByMonth.find(m => m.month === "2026-06")!;
+    expect(june.grossAed).toBe(2500); // 1000 + 500 + 1000
+    expect(june.refundsAed).toBe(300); // partial 300
+    expect(june.netAed).toBe(2200);
+    const july = r.revenueByMonth.find(m => m.month === "2026-07")!;
+    expect(july.grossAed).toBe(400); // fully-refunded counted then reversed
+    expect(july.refundsAed).toBe(400);
+    expect(july.netAed).toBe(0);
+  });
+
+  it("ignores failed payments and tracks pending separately", () => {
+    expect(r.totals.pendingAed).toBe(600);
+    // failed 999.99 never enters gross
+    expect(r.totals.grossAed).toBe(2900);
+  });
+
+  it("only counts live (approved/spent) expenses", () => {
+    expect(r.totals.expensesAed).toBe(700); // 500 + 200, proposed excluded
+    expect(r.expenseByCategory.map(e => e.category)).toContain("venue");
+  });
+
+  it("computes surplus = net revenue − expenses", () => {
+    expect(r.totals.refundsAed).toBe(700); // 300 (June partial) + 400 (July full)
+    expect(r.totals.netRevenueAed).toBe(2200); // 2900 gross − 700 refunds
+    expect(r.totals.surplusAed).toBe(1500); // 2200 − 700 expenses
+  });
+});
+
+describe("financeReportCsv", () => {
+  it("renders sections and escapes cells", () => {
+    const csv = financeReportCsv({
+      revenueByMonth: [
+        { month: "2026-06", grossAed: 1000, refundsAed: 0, netAed: 1000 },
+      ],
+      byTier: [{ tier: "core", grossAed: 1000, count: 1 }],
+      expenseByCategory: [{ category: "venue, hall", aed: 500 }],
+      totals: {
+        grossAed: 1000,
+        refundsAed: 0,
+        netRevenueAed: 1000,
+        pendingAed: 0,
+        expensesAed: 500,
+        surplusAed: 500,
+      },
+    });
+    expect(csv).toContain("Revenue by month");
+    expect(csv).toContain("2026-06,1000,0,1000");
+    expect(csv).toContain('"venue, hall",500'); // comma-containing cell quoted
+    expect(csv).toContain("Surplus (AED),500");
   });
 });

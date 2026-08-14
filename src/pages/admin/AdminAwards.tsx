@@ -8,9 +8,11 @@ import {
   Empty,
   Spinner,
   Field,
+  Modal,
   toast,
   confirmDialog,
 } from "@/components/eh";
+import { useAuth } from "@/hooks/useAuth";
 import { fmtDate } from "@/lib/ehf";
 import {
   AWARD_CATEGORIES,
@@ -87,6 +89,8 @@ export default function AdminAwards() {
   const [level, setLevel] = useState<string>("network");
   const [unitId, setUnitId] = useState<string>("");
   const [openId, setOpenId] = useState<number | null>(null);
+  const [judgeId, setJudgeId] = useState<number | null>(null);
+  const [autoId, setAutoId] = useState<number | null>(null);
   const cycles = q.data ?? [];
   const needsUnit = awardLevelNeedsUnit(level);
   const units = trpc.adminEngage.awardsUnits.useQuery(
@@ -236,9 +240,23 @@ export default function AdminAwards() {
               >
                 {openId === c.id ? "Hide nominations" : "Manage nominations"}
               </button>
+              <button
+                className="eh-btn ghost sm"
+                onClick={() => setJudgeId(judgeId === c.id ? null : c.id)}
+              >
+                {judgeId === c.id ? "Hide judging" : "Judging panel"}
+              </button>
+              <button
+                className="eh-btn ghost sm"
+                onClick={() => setAutoId(autoId === c.id ? null : c.id)}
+              >
+                {autoId === c.id ? "Hide auto-score" : "Auto-score"}
+              </button>
             </div>
           </div>
           {openId === c.id && <Nominations cycleId={c.id} />}
+          {judgeId === c.id && <JudgingPanel cycleId={c.id} />}
+          {autoId === c.id && <AutoScoreSection cycleId={c.id} />}
         </div>
       ))}
     </EhShell>
@@ -340,6 +358,402 @@ function Nominations({ cycleId }: { cycleId: number }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/* Panel judging: assign an independent panel, score shortlisted nominees against
+   the cycle rubric, and ratify a winner (a judge cannot ratify — four eyes). */
+function JudgingPanel({ cycleId }: { cycleId: number }) {
+  const { user } = useAuth();
+  const utils = trpc.useUtils();
+  const judges = trpc.adminEngage.awardsJudges.useQuery(
+    { cycleId },
+    { retry: false }
+  );
+  const board = trpc.adminEngage.awardsJudgingBoard.useQuery(
+    { cycleId },
+    { retry: false }
+  );
+  const [judgeUserId, setJudgeUserId] = useState("");
+  const [scoreFor, setScoreFor] = useState<{
+    nominationId: number;
+    nominee: string;
+  } | null>(null);
+
+  const refresh = () => {
+    utils.adminEngage.awardsJudges.invalidate({ cycleId });
+    utils.adminEngage.awardsJudgingBoard.invalidate({ cycleId });
+  };
+  const assign = trpc.adminEngage.awardsAssignJudge.useMutation({
+    onSuccess: () => {
+      setJudgeUserId("");
+      utils.adminEngage.awardsJudges.invalidate({ cycleId });
+    },
+    onError: e => toast(e.message),
+  });
+  const remove = trpc.adminEngage.awardsRemoveJudge.useMutation({
+    onSuccess: () => utils.adminEngage.awardsJudges.invalidate({ cycleId }),
+    onError: e => toast(e.message),
+  });
+  const ratify = trpc.adminEngage.awardsRatifyWinner.useMutation({
+    onSuccess: () => {
+      toast("Winner ratified.");
+      refresh();
+    },
+    onError: e => toast(e.message),
+  });
+
+  const judgeList = judges.data ?? [];
+  const iAmJudge = judgeList.some(j => j.userId === user?.id);
+  const rows = board.data?.rows ?? [];
+  const rubric = board.data?.rubric ?? [];
+
+  return (
+    <div
+      style={{
+        marginTop: "1rem",
+        borderTop: "1px solid var(--eh-border)",
+        paddingTop: "1rem",
+      }}
+    >
+      <div className="eh-eyebrow" style={{ marginBottom: ".4rem" }}>
+        Judging panel
+      </div>
+
+      {/* Judges */}
+      <div className="eh-row" style={{ gap: ".4rem", flexWrap: "wrap" }}>
+        {judgeList.map(j => (
+          <Pill key={j.userId} color="blue">
+            {j.name ?? j.email ?? `User #${j.userId}`}
+            <button
+              className="eh-linkbtn"
+              style={{ marginLeft: ".4rem" }}
+              title="Remove judge"
+              onClick={() => remove.mutate({ cycleId, userId: j.userId })}
+            >
+              ×
+            </button>
+          </Pill>
+        ))}
+        {judgeList.length === 0 && (
+          <span className="eh-sm eh-muted">No judges assigned yet.</span>
+        )}
+      </div>
+      <div className="eh-row" style={{ gap: ".4rem", marginTop: ".5rem" }}>
+        <input
+          className="eh-input sm"
+          style={{ maxWidth: 160 }}
+          placeholder="Judge user ID"
+          value={judgeUserId}
+          onChange={e => setJudgeUserId(e.target.value)}
+        />
+        <button
+          className="eh-btn ghost sm"
+          disabled={assign.isPending || !judgeUserId}
+          onClick={() => {
+            const id = Number(judgeUserId);
+            if (Number.isInteger(id) && id > 0)
+              assign.mutate({ cycleId, userId: id });
+            else
+              toast("Enter a numeric user ID (see the EH-U code on Access).");
+          }}
+        >
+          Add judge
+        </button>
+      </div>
+
+      {/* Board */}
+      <div style={{ marginTop: "1rem" }}>
+        {board.isLoading && <Spinner />}
+        {rows.length === 0 && !board.isLoading && (
+          <p className="eh-sm eh-muted">
+            No shortlisted nominees yet — shortlist nominees, then judges score
+            them here.
+          </p>
+        )}
+        {rows.length > 0 && (
+          <table className="eh-table stack">
+            <thead>
+              <tr>
+                <th>Nominee</th>
+                <th>Panel avg</th>
+                <th>Judges</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={r.nominationId}>
+                  <td data-label="Nominee">
+                    {i === 0 && r.average > 0 && "🥇 "}
+                    {r.nomineeName ?? r.nomineeChapterName ?? "—"}
+                    {r.ratifiedByUserId ? (
+                      <>
+                        {" "}
+                        <Pill color="green">winner</Pill>
+                      </>
+                    ) : null}
+                  </td>
+                  <td data-label="Panel avg">
+                    <b>{r.average}</b>
+                  </td>
+                  <td data-label="Judges">{r.scoredBy}</td>
+                  <td data-label="Actions">
+                    <div className="eh-row" style={{ gap: ".35rem" }}>
+                      {iAmJudge && (
+                        <button
+                          className="eh-btn ghost sm"
+                          onClick={() =>
+                            setScoreFor({
+                              nominationId: r.nominationId,
+                              nominee:
+                                r.nomineeName ??
+                                r.nomineeChapterName ??
+                                "nominee",
+                            })
+                          }
+                        >
+                          Score
+                        </button>
+                      )}
+                      {!iAmJudge && !r.ratifiedByUserId && (
+                        <button
+                          className="eh-btn gold sm"
+                          disabled={ratify.isPending || r.scoredBy === 0}
+                          onClick={async () => {
+                            if (
+                              await confirmDialog({
+                                title: "Ratify this winner?",
+                                body: "Confirms the award for this nominee. You must not be a judge of this cycle.",
+                                confirmLabel: "Ratify winner",
+                              })
+                            )
+                              ratify.mutate({
+                                cycleId,
+                                nominationId: r.nominationId,
+                              });
+                          }}
+                        >
+                          Ratify winner
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {scoreFor && (
+        <ScoreModal
+          cycleId={cycleId}
+          nominationId={scoreFor.nominationId}
+          nominee={scoreFor.nominee}
+          rubric={rubric}
+          onClose={() => setScoreFor(null)}
+          onDone={() => {
+            refresh();
+            setScoreFor(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function ScoreModal({
+  cycleId,
+  nominationId,
+  nominee,
+  rubric,
+  onClose,
+  onDone,
+}: {
+  cycleId: number;
+  nominationId: number;
+  nominee: string;
+  rubric: { key: string; label: string; weight: number }[];
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [vals, setVals] = useState<Record<string, string>>({});
+  const [note, setNote] = useState("");
+  const submit = trpc.adminEngage.awardsSubmitScore.useMutation({
+    onSuccess: r => {
+      toast(`Score recorded (${r.total}).`);
+      onDone();
+    },
+    onError: e => toast(e.message),
+  });
+  return (
+    <Modal title={`Score — ${nominee}`} onClose={onClose}>
+      <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>
+        Score each criterion 0–100 against the published rubric.
+      </p>
+      {rubric.map(c => (
+        <Field key={c.key} label={`${c.label} (${c.weight}%)`}>
+          <input
+            className="eh-input"
+            type="number"
+            min={0}
+            max={100}
+            value={vals[c.key] ?? ""}
+            onChange={e => setVals(v => ({ ...v, [c.key]: e.target.value }))}
+          />
+        </Field>
+      ))}
+      <Field label="Note (optional)">
+        <input
+          className="eh-input"
+          value={note}
+          onChange={e => setNote(e.target.value)}
+        />
+      </Field>
+      <button
+        className="eh-btn gold"
+        disabled={submit.isPending}
+        onClick={() =>
+          submit.mutate({
+            cycleId,
+            nominationId,
+            scores: rubric.map(c => ({
+              key: c.key,
+              value: Number(vals[c.key] ?? 0),
+            })),
+            note: note || undefined,
+          })
+        }
+      >
+        {submit.isPending ? "Saving…" : "Submit score"}
+      </button>
+    </Modal>
+  );
+}
+
+/* Auto-scored judging (the default mechanism): the portal ranks eligible members
+   from live KPI data against the auto-score rubric — no nomination, no campaign.
+   Read-only preview for review; conferral automation follows in a later phase. */
+function AutoScoreSection({ cycleId }: { cycleId: number }) {
+  const [run, setRun] = useState(false);
+  const q = trpc.adminEngage.awardsAutoScore.useQuery(
+    { cycleId },
+    { retry: false, enabled: run }
+  );
+  const record = trpc.adminEngage.awardsRecordAutoWinner.useMutation({
+    onSuccess: () => {
+      toast("Winner recorded and recognised.");
+      q.refetch();
+    },
+    onError: e => toast(e.message),
+  });
+  const data = q.data;
+  const winner = data?.rows[0];
+  return (
+    <div
+      style={{
+        marginTop: "1rem",
+        borderTop: "1px solid var(--eh-border)",
+        paddingTop: "1rem",
+      }}
+    >
+      <div
+        className="eh-between"
+        style={{ alignItems: "center", flexWrap: "wrap", gap: ".5rem" }}
+      >
+        <div className="eh-eyebrow">Auto-score · the data decides</div>
+        <div className="eh-row" style={{ gap: ".4rem" }}>
+          {winner && (
+            <button
+              className="eh-btn ghost sm"
+              disabled={record.isPending}
+              onClick={async () => {
+                if (
+                  await confirmDialog({
+                    title: "Record the auto-score winner?",
+                    body: `Confers the award on ${winner.name ?? winner.email ?? "the top member"} (score ${winner.total}) and awards recognition points.`,
+                    confirmLabel: "Record winner",
+                  })
+                )
+                  record.mutate({ cycleId, memberId: winner.memberId });
+              }}
+            >
+              Record #1 as winner
+            </button>
+          )}
+          <button
+            className="eh-btn gold sm"
+            disabled={q.isFetching}
+            onClick={() => {
+              if (run) q.refetch();
+              else setRun(true);
+            }}
+          >
+            {q.isFetching
+              ? "Scoring…"
+              : run
+                ? "Re-run auto-score"
+                : "Run auto-score"}
+          </button>
+        </div>
+      </div>
+
+      {!run && (
+        <p className="eh-sm eh-muted" style={{ marginTop: ".5rem" }}>
+          Ranks eligible members (active standing, no open conduct case) on
+          engagement, referrals and attendance over the cycle window.
+        </p>
+      )}
+      {q.isFetching && <Spinner />}
+      {data && (
+        <>
+          <p className="eh-sm eh-muted" style={{ margin: ".5rem 0" }}>
+            {data.eligible} eligible member{data.eligible === 1 ? "" : "s"} ·
+            window {fmtDate(data.window.from)} → {fmtDate(data.window.to)}
+          </p>
+          {data.rows.length === 0 ? (
+            <Empty
+              big="No eligible members scored."
+              p="No active members with activity in this window."
+            />
+          ) : (
+            <table className="eh-table stack">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Member</th>
+                  {data.rubric.map(c => (
+                    <th key={c.key}>{c.label.split(" (")[0]}</th>
+                  ))}
+                  <th>Score</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.rows.map(r => (
+                  <tr key={r.memberId}>
+                    <td data-label="#">{r.rank === 1 ? "🥇" : r.rank}</td>
+                    <td data-label="Member">
+                      {r.name ?? r.email ?? `Member #${r.memberId}`}
+                    </td>
+                    {data.rubric.map(c => (
+                      <td key={c.key} data-label={c.label}>
+                        <span title={`raw ${r.raw[c.key] ?? 0}`}>
+                          {r.normalized[c.key] ?? 0}
+                        </span>
+                      </td>
+                    ))}
+                    <td data-label="Score">
+                      <b>{r.total}</b>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </>
+      )}
     </div>
   );
 }
