@@ -129,6 +129,29 @@ export async function conferPanelWinner(
   });
 }
 
+/** Confer an award from a member vote (no fairness cap — People's Choice etc.). */
+export async function conferVoteWinner(
+  actor: Actor,
+  cycle: {
+    id: number;
+    name: string;
+    level: "network" | "chapter" | "zone" | "region" | "country";
+  },
+  nominee: { memberId?: number | null; chapterId?: number | null },
+  votes: number
+) {
+  return confer(actor, {
+    cycleId: cycle.id,
+    awardKey: awardKeyFromName(cycle.name),
+    label: cycle.name,
+    level: cycle.level,
+    memberId: nominee.memberId,
+    chapterId: nominee.chapterId,
+    source: "vote",
+    score: votes,
+  });
+}
+
 /** Confer the auto-scored winner of a cycle. Verifies the member is the top of
  *  the computed board ("the data decides", not a hand-pick) and enforces the
  *  no-back-to-back fairness cap. */

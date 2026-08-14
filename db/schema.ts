@@ -1234,6 +1234,33 @@ export const awardRecords = mysqlTable(
   ]
 );
 
+/* Constrained shortlist voting (Awards spec Part 1 — the member-vote mechanism).
+   Eligible members cast ONE equal vote over a PRE-QUALIFIED shortlist (never an
+   open field); the unique key enforces one vote per member per cycle. */
+export const awardVotes = mysqlTable(
+  "award_votes",
+  {
+    id: serial("id").primaryKey(),
+    cycleId: bigint("cycleId", { mode: "number", unsigned: true }).notNull(),
+    nominationId: bigint("nominationId", {
+      mode: "number",
+      unsigned: true,
+    }).notNull(),
+    voterMemberId: bigint("voterMemberId", {
+      mode: "number",
+      unsigned: true,
+    }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("award_votes_cycle_voter_unique").on(
+      t.cycleId,
+      t.voterMemberId
+    ),
+    index("ix_awardvotes_nomination").on(t.nominationId),
+  ]
+);
+
 export type UnitRole = typeof unitRoles.$inferSelect;
 
 export const chapters = mysqlTable("chapters", {
