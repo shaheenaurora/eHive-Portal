@@ -86,3 +86,19 @@ describe("averageScore", () => {
     expect(averageScore([])).toBe(0);
   });
 });
+
+import { isBackToBack } from "./lib/awards-scoring";
+
+describe("isBackToBack (fairness cap)", () => {
+  const now = new Date("2026-06-15T00:00:00Z").getTime();
+  const day = 24 * 60 * 60 * 1000;
+  it("is false when there is no prior win", () => {
+    expect(isBackToBack(null, now, 45)).toBe(false);
+  });
+  it("blocks a repeat within the window", () => {
+    expect(isBackToBack(now - 20 * day, now, 45)).toBe(true);
+  });
+  it("allows a win once the window has passed", () => {
+    expect(isBackToBack(now - 60 * day, now, 45)).toBe(false);
+  });
+});
