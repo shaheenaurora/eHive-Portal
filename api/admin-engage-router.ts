@@ -48,6 +48,7 @@ import {
   ratifyWinner,
 } from "./queries/award-judging";
 import { autoScoreCycle } from "./queries/award-autoscore";
+import { recordAutoWinner, memberAwards } from "./queries/award-records";
 import { computeChapterHealth } from "./queries/health";
 import {
   ensureCadenceTemplates,
@@ -2419,6 +2420,18 @@ export const adminEngageRouter = createRouter({
   awardsAutoScore: scopedAdmin("community")
     .input(z.object({ cycleId: z.number() }))
     .query(({ input }) => autoScoreCycle(input.cycleId)),
+
+  // Conferral (gate 5): record the top auto-scored member as the winner, with
+  // the no-back-to-back fairness cap enforced.
+  awardsRecordAutoWinner: scopedAdmin("community")
+    .input(z.object({ cycleId: z.number(), memberId: z.number() }))
+    .mutation(({ ctx, input }) =>
+      recordAutoWinner(ctx.user, input.cycleId, input.memberId)
+    ),
+
+  awardsMemberAwards: scopedAdmin("membership")
+    .input(z.object({ memberId: z.number() }))
+    .query(({ input }) => memberAwards(input.memberId)),
 
   createOrgUnit: scopedAdmin("chapters")
     .input(

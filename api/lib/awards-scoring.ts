@@ -99,3 +99,16 @@ export function averageScore(totals: number[]): number {
   if (totals.length === 0) return 0;
   return Math.round(totals.reduce((a, b) => a + b, 0) / totals.length);
 }
+
+/** Fairness cap (Awards spec §8.2): true when a member already won the same
+ *  award within `windowDays` before `nowMs`, so an auto award can't go to the
+ *  same person back-to-back. `priorConferredAtMs` is the most recent prior win
+ *  for that (award, member), or null when there is none. */
+export function isBackToBack(
+  priorConferredAtMs: number | null,
+  nowMs: number,
+  windowDays: number
+): boolean {
+  if (priorConferredAtMs == null) return false;
+  return nowMs - priorConferredAtMs < windowDays * 24 * 60 * 60 * 1000;
+}

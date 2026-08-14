@@ -642,7 +642,15 @@ function AutoScoreSection({ cycleId }: { cycleId: number }) {
     { cycleId },
     { retry: false, enabled: run }
   );
+  const record = trpc.adminEngage.awardsRecordAutoWinner.useMutation({
+    onSuccess: () => {
+      toast("Winner recorded and recognised.");
+      q.refetch();
+    },
+    onError: e => toast(e.message),
+  });
   const data = q.data;
+  const winner = data?.rows[0];
   return (
     <div
       style={{
@@ -656,20 +664,40 @@ function AutoScoreSection({ cycleId }: { cycleId: number }) {
         style={{ alignItems: "center", flexWrap: "wrap", gap: ".5rem" }}
       >
         <div className="eh-eyebrow">Auto-score · the data decides</div>
-        <button
-          className="eh-btn gold sm"
-          disabled={q.isFetching}
-          onClick={() => {
-            if (run) q.refetch();
-            else setRun(true);
-          }}
-        >
-          {q.isFetching
-            ? "Scoring…"
-            : run
-              ? "Re-run auto-score"
-              : "Run auto-score"}
-        </button>
+        <div className="eh-row" style={{ gap: ".4rem" }}>
+          {winner && (
+            <button
+              className="eh-btn ghost sm"
+              disabled={record.isPending}
+              onClick={async () => {
+                if (
+                  await confirmDialog({
+                    title: "Record the auto-score winner?",
+                    body: `Confers the award on ${winner.name ?? winner.email ?? "the top member"} (score ${winner.total}) and awards recognition points.`,
+                    confirmLabel: "Record winner",
+                  })
+                )
+                  record.mutate({ cycleId, memberId: winner.memberId });
+              }}
+            >
+              Record #1 as winner
+            </button>
+          )}
+          <button
+            className="eh-btn gold sm"
+            disabled={q.isFetching}
+            onClick={() => {
+              if (run) q.refetch();
+              else setRun(true);
+            }}
+          >
+            {q.isFetching
+              ? "Scoring…"
+              : run
+                ? "Re-run auto-score"
+                : "Run auto-score"}
+          </button>
+        </div>
       </div>
 
       {!run && (

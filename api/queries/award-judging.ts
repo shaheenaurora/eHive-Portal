@@ -340,6 +340,7 @@ export async function ratifyWinner(
       code: "NOT_FOUND",
       message: "Nomination not found.",
     });
+  const cycle = await getCycle(cycleId);
   await getDb()
     .update(schema.awardNominations)
     .set({
@@ -348,7 +349,18 @@ export async function ratifyWinner(
       ratifiedAt: new Date(),
     })
     .where(eq(schema.awardNominations.id, nominationId));
-  if (nom.nomineeMemberId) {
+  // Confer the award (gate 5): record it, award recognition points, notify.
+  if (cycle) {
+    const { conferPanelWinner } = await import("./award-records");
+    await conferPanelWinner(
+      actor,
+      { id: cycle.id, name: cycle.name, level: cycle.level },
+      {
+        memberId: nom.nomineeMemberId,
+        chapterId: nom.nomineeChapterId,
+      }
+    );
+  } else if (nom.nomineeMemberId) {
     try {
       await notify(
         nom.nomineeMemberId,

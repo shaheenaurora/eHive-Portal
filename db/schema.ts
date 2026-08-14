@@ -1196,6 +1196,44 @@ export const awardScores = mysqlTable(
     index("ix_awardscores_cycle").on(t.cycleId),
   ]
 );
+
+/* Conferred awards (Awards spec Part 7 — the AwardRecord object). An immutable
+   record of a member/chapter winning an award in a cycle, feeding profiles, the
+   recognition-point scheme, fairness caps and the Hall-of-Fame tracker. */
+export const awardRecords = mysqlTable(
+  "award_records",
+  {
+    id: serial("id").primaryKey(),
+    cycleId: bigint("cycleId", { mode: "number", unsigned: true }),
+    awardKey: varchar("awardKey", { length: 64 }).notNull(), // stable award identifier
+    label: varchar("label", { length: 160 }).notNull(),
+    level: mysqlEnum("level", [
+      "network",
+      "chapter",
+      "zone",
+      "region",
+      "country",
+    ])
+      .notNull()
+      .default("network"),
+    memberId: bigint("memberId", { mode: "number", unsigned: true }),
+    chapterId: bigint("chapterId", { mode: "number", unsigned: true }),
+    source: mysqlEnum("source", ["auto", "panel", "vote"]).notNull(),
+    score: int("score"), // winning score where applicable
+    points: int("points").notNull().default(0), // recognition points awarded
+    conferredByUserId: bigint("conferredByUserId", {
+      mode: "number",
+      unsigned: true,
+    }),
+    conferredAt: timestamp("conferredAt").defaultNow().notNull(),
+    note: varchar("note", { length: 500 }),
+  },
+  t => [
+    index("ix_awardrecords_member").on(t.memberId),
+    index("ix_awardrecords_award").on(t.awardKey, t.conferredAt),
+  ]
+);
+
 export type UnitRole = typeof unitRoles.$inferSelect;
 
 export const chapters = mysqlTable("chapters", {

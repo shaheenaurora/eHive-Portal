@@ -425,6 +425,14 @@ export const AWARD_LEVEL_LABEL: Record<string, string> = Object.fromEntries(
 export function awardLevelNeedsUnit(level: string): boolean {
   return level !== "network";
 }
+/** Fairness cap: an auto-scored award can't go to the same member twice within
+ *  this window, so recognition rotates rather than entrenching one star
+ *  (Awards spec §8.2 — "no back-to-back monthly wins"). ~45 days covers the
+ *  previous monthly cycle. */
+export const AWARD_FAIRNESS_WINDOW_DAYS = 45;
+/** Recognition points awarded to a member on a conferred win (feeds the
+ *  leadership pipeline / Hall-of-Fame tracker; Open Decision §9 #7). */
+export const AWARD_RECOGNITION_POINTS = 20;
 export const AWARD_CYCLE_STATUSES = [
   "draft",
   "open",
