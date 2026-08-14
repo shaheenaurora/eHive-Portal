@@ -90,6 +90,7 @@ export default function AdminAwards() {
   const [unitId, setUnitId] = useState<string>("");
   const [openId, setOpenId] = useState<number | null>(null);
   const [judgeId, setJudgeId] = useState<number | null>(null);
+  const [autoId, setAutoId] = useState<number | null>(null);
   const cycles = q.data ?? [];
   const needsUnit = awardLevelNeedsUnit(level);
   const units = trpc.adminEngage.awardsUnits.useQuery(
@@ -245,10 +246,17 @@ export default function AdminAwards() {
               >
                 {judgeId === c.id ? "Hide judging" : "Judging panel"}
               </button>
+              <button
+                className="eh-btn ghost sm"
+                onClick={() => setAutoId(autoId === c.id ? null : c.id)}
+              >
+                {autoId === c.id ? "Hide auto-score" : "Auto-score"}
+              </button>
             </div>
           </div>
           {openId === c.id && <Nominations cycleId={c.id} />}
           {judgeId === c.id && <JudgingPanel cycleId={c.id} />}
+          {autoId === c.id && <AutoScoreSection cycleId={c.id} />}
         </div>
       ))}
     </EhShell>
@@ -622,5 +630,102 @@ function ScoreModal({
         {submit.isPending ? "Saving…" : "Submit score"}
       </button>
     </Modal>
+  );
+}
+
+/* Auto-scored judging (the default mechanism): the portal ranks eligible members
+   from live KPI data against the auto-score rubric — no nomination, no campaign.
+   Read-only preview for review; conferral automation follows in a later phase. */
+function AutoScoreSection({ cycleId }: { cycleId: number }) {
+  const [run, setRun] = useState(false);
+  const q = trpc.adminEngage.awardsAutoScore.useQuery(
+    { cycleId },
+    { retry: false, enabled: run }
+  );
+  const data = q.data;
+  return (
+    <div
+      style={{
+        marginTop: "1rem",
+        borderTop: "1px solid var(--eh-border)",
+        paddingTop: "1rem",
+      }}
+    >
+      <div
+        className="eh-between"
+        style={{ alignItems: "center", flexWrap: "wrap", gap: ".5rem" }}
+      >
+        <div className="eh-eyebrow">Auto-score · the data decides</div>
+        <button
+          className="eh-btn gold sm"
+          disabled={q.isFetching}
+          onClick={() => {
+            if (run) q.refetch();
+            else setRun(true);
+          }}
+        >
+          {q.isFetching
+            ? "Scoring…"
+            : run
+              ? "Re-run auto-score"
+              : "Run auto-score"}
+        </button>
+      </div>
+
+      {!run && (
+        <p className="eh-sm eh-muted" style={{ marginTop: ".5rem" }}>
+          Ranks eligible members (active standing, no open conduct case) on
+          engagement, referrals and attendance over the cycle window.
+        </p>
+      )}
+      {q.isFetching && <Spinner />}
+      {data && (
+        <>
+          <p className="eh-sm eh-muted" style={{ margin: ".5rem 0" }}>
+            {data.eligible} eligible member{data.eligible === 1 ? "" : "s"} ·
+            window {fmtDate(data.window.from)} → {fmtDate(data.window.to)}
+          </p>
+          {data.rows.length === 0 ? (
+            <Empty
+              big="No eligible members scored."
+              p="No active members with activity in this window."
+            />
+          ) : (
+            <table className="eh-table stack">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Member</th>
+                  {data.rubric.map(c => (
+                    <th key={c.key}>{c.label.split(" (")[0]}</th>
+                  ))}
+                  <th>Score</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.rows.map(r => (
+                  <tr key={r.memberId}>
+                    <td data-label="#">{r.rank === 1 ? "🥇" : r.rank}</td>
+                    <td data-label="Member">
+                      {r.name ?? r.email ?? `Member #${r.memberId}`}
+                    </td>
+                    {data.rubric.map(c => (
+                      <td key={c.key} data-label={c.label}>
+                        <span title={`raw ${r.raw[c.key] ?? 0}`}>
+                          {r.normalized[c.key] ?? 0}
+                        </span>
+                      </td>
+                    ))}
+                    <td data-label="Score">
+                      <b>{r.total}</b>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </>
+      )}
+    </div>
   );
 }
