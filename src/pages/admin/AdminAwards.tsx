@@ -180,6 +180,8 @@ export default function AdminAwards() {
         </div>
       </div>
 
+      <HallOfFameSection />
+
       {q.isLoading && <Spinner />}
       {q.data && cycles.length === 0 && (
         <div className="eh-card">
@@ -858,6 +860,125 @@ function VoteSection({ cycleId }: { cycleId: number }) {
             </tbody>
           </table>
         </>
+      )}
+    </div>
+  );
+}
+
+function HallOfFameSection() {
+  const board = trpc.adminEngage.awardsHallOfFameBoard.useQuery(undefined, {
+    retry: false,
+  });
+  const utils = trpc.useUtils();
+  const induct = trpc.adminEngage.awardsInductHallOfFame.useMutation({
+    onSuccess: () => {
+      toast("Inducted into the Hall of Fame. 🏛️");
+      utils.adminEngage.awardsHallOfFameBoard.invalidate();
+      utils.adminEngage.awardsHallOfFameInductees.invalidate();
+    },
+    onError: e => toast(e.message),
+  });
+  const data = board.data;
+  const rows = data?.rows ?? [];
+
+  return (
+    <div className="eh-card eh-mb">
+      <div
+        className="eh-between"
+        style={{ alignItems: "center", flexWrap: "wrap", gap: ".5rem" }}
+      >
+        <div>
+          <div
+            className="eh-row"
+            style={{ gap: ".5rem", alignItems: "center" }}
+          >
+            <b style={{ fontSize: "1.05rem" }}>Hall of Fame</b>
+            <Pill color="gold">Lifetime honour</Pill>
+          </div>
+          <p className="eh-sm eh-muted" style={{ margin: ".25rem 0 0" }}>
+            Auto-qualified on a member&rsquo;s multi-year record — sustained
+            champion-band engagement, repeat recognition, contribution depth and
+            clean standing. A panel ratifies induction.
+          </p>
+        </div>
+        {data && (
+          <Pill color={data.intake.remaining > 0 ? "green" : "red"}>
+            {data.intake.usedThisYear}/{data.intake.cap} this year
+          </Pill>
+        )}
+      </div>
+
+      {board.isLoading && <Spinner />}
+      {data && rows.length === 0 && (
+        <Empty
+          big="No candidates yet."
+          p="Members build a Hall of Fame record over several years of sustained excellence."
+        />
+      )}
+      {rows.length > 0 && (
+        <table className="eh-table stack" style={{ marginTop: ".75rem" }}>
+          <thead>
+            <tr>
+              <th>Member</th>
+              {(data?.rubric ?? []).map(c => (
+                <th key={c.key}>{c.label.split(" ")[0]}</th>
+              ))}
+              <th>Score</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(r => (
+              <tr key={r.memberId}>
+                <td data-label="Member">
+                  {r.name ?? r.email ?? `Member #${r.memberId}`}
+                </td>
+                {(data?.rubric ?? []).map(c => (
+                  <td key={c.key} data-label={c.label}>
+                    {r.sub[c.key as keyof typeof r.sub]}
+                  </td>
+                ))}
+                <td data-label="Score">
+                  <b>{r.total}</b>
+                </td>
+                <td data-label="Status">
+                  {r.inducted ? (
+                    <Pill color="gold">inducted</Pill>
+                  ) : r.qualified ? (
+                    <Pill color="green">qualified</Pill>
+                  ) : (
+                    <span className="eh-sm eh-muted" title={r.gaps.join("; ")}>
+                      {r.gaps.length} gap{r.gaps.length === 1 ? "" : "s"}
+                    </span>
+                  )}
+                </td>
+                <td data-label="">
+                  {!r.inducted && r.qualified && (
+                    <button
+                      className="eh-btn gold sm"
+                      disabled={
+                        induct.isPending || (data?.intake.remaining ?? 0) <= 0
+                      }
+                      onClick={async () => {
+                        if (
+                          await confirmDialog({
+                            title: "Induct into the Hall of Fame?",
+                            body: `A permanent lifetime honour for ${r.name ?? r.email ?? "this member"} (score ${r.total}). This counts against this year's intake cap.`,
+                            confirmLabel: "Induct",
+                          })
+                        )
+                          induct.mutate({ memberId: r.memberId });
+                      }}
+                    >
+                      Induct
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
     </div>
   );
