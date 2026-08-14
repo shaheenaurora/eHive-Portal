@@ -55,6 +55,12 @@ import {
   inductHallOfFame,
   hallOfFameInductees,
 } from "./queries/award-halloffame";
+import {
+  scanCycleIntegrity,
+  listFlags,
+  raiseFlag,
+  resolveFlag,
+} from "./queries/award-integrity";
 import { computeChapterHealth } from "./queries/health";
 import {
   ensureCadenceTemplates,
@@ -2451,6 +2457,39 @@ export const adminEngageRouter = createRouter({
   awardsHallOfFameInductees: scopedAdmin("community").query(() =>
     hallOfFameInductees()
   ),
+
+  /* ---- integrity layer (anti-gaming, conflict & moderation flags) ---- */
+  awardsIntegrityScan: scopedAdmin("community")
+    .input(z.object({ cycleId: z.number() }))
+    .mutation(({ ctx, input }) => scanCycleIntegrity(ctx.user, input.cycleId)),
+
+  awardsIntegrityFlags: scopedAdmin("community")
+    .input(z.object({ cycleId: z.number() }))
+    .query(({ input }) => listFlags(input.cycleId)),
+
+  awardsRaiseFlag: scopedAdmin("community")
+    .input(
+      z.object({
+        cycleId: z.number(),
+        nominationId: z.number().optional(),
+        memberId: z.number().optional(),
+        detail: z.string().min(3).max(500),
+        severity: z.enum(["info", "warn", "block"]).optional(),
+      })
+    )
+    .mutation(({ ctx, input }) => raiseFlag(ctx.user, input)),
+
+  awardsResolveFlag: scopedAdmin("community")
+    .input(
+      z.object({
+        flagId: z.number(),
+        decision: z.enum(["clear", "uphold"]),
+        note: z.string().max(500).optional(),
+      })
+    )
+    .mutation(({ ctx, input }) =>
+      resolveFlag(ctx.user, input.flagId, input.decision, input.note)
+    ),
 
   /* ---- member-vote awards (admin tally + conferral) ---- */
   awardsVoteTally: scopedAdmin("community")

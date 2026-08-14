@@ -200,6 +200,10 @@ export async function recordAutoWinner(
         "Only the top-ranked member on the auto-score board can be recorded as the winner.",
     });
 
+  // Integrity gate: no conferral while an open flag stands on this member.
+  const { assertCleared } = await import("./award-integrity");
+  await assertCleared({ memberId });
+
   const awardKey = awardKeyFromName(cycle.name);
   const prior = await mostRecentWin(awardKey, memberId);
   if (

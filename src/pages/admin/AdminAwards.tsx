@@ -92,6 +92,7 @@ export default function AdminAwards() {
   const [judgeId, setJudgeId] = useState<number | null>(null);
   const [autoId, setAutoId] = useState<number | null>(null);
   const [voteId, setVoteId] = useState<number | null>(null);
+  const [integrityId, setIntegrityId] = useState<number | null>(null);
   const cycles = q.data ?? [];
   const needsUnit = awardLevelNeedsUnit(level);
   const units = trpc.adminEngage.awardsUnits.useQuery(
@@ -261,12 +262,21 @@ export default function AdminAwards() {
               >
                 {voteId === c.id ? "Hide vote tally" : "Vote tally"}
               </button>
+              <button
+                className="eh-btn ghost sm"
+                onClick={() =>
+                  setIntegrityId(integrityId === c.id ? null : c.id)
+                }
+              >
+                {integrityId === c.id ? "Hide integrity" : "Integrity"}
+              </button>
             </div>
           </div>
           {openId === c.id && <Nominations cycleId={c.id} />}
           {judgeId === c.id && <JudgingPanel cycleId={c.id} />}
           {autoId === c.id && <AutoScoreSection cycleId={c.id} />}
           {voteId === c.id && <VoteSection cycleId={c.id} />}
+          {integrityId === c.id && <IntegritySection cycleId={c.id} />}
         </div>
       ))}
     </EhShell>
@@ -861,6 +871,174 @@ function VoteSection({ cycleId }: { cycleId: number }) {
           </table>
         </>
       )}
+    </div>
+  );
+}
+
+const FLAG_COLOR: Record<string, "grey" | "gold" | "green" | "red"> = {
+  open: "gold",
+  cleared: "green",
+  upheld: "red",
+};
+const FLAG_KIND_LABEL: Record<string, string> = {
+  conflict: "Conflict of interest",
+  reciprocity: "Reciprocity / collusion",
+  vote_velocity: "Vote brigading",
+  conduct: "Open conduct case",
+  manual: "Manual",
+};
+
+function IntegritySection({ cycleId }: { cycleId: number }) {
+  const utils = trpc.useUtils();
+  const flags = trpc.adminEngage.awardsIntegrityFlags.useQuery(
+    { cycleId },
+    { retry: false }
+  );
+  const invalidate = () =>
+    utils.adminEngage.awardsIntegrityFlags.invalidate({ cycleId });
+  const scan = trpc.adminEngage.awardsIntegrityScan.useMutation({
+    onSuccess: r => {
+      toast(
+        r.created > 0
+          ? `Scan complete — ${r.created} new flag${r.created === 1 ? "" : "s"} raised.`
+          : "Scan complete — no new concerns."
+      );
+      invalidate();
+    },
+    onError: e => toast(e.message),
+  });
+  const resolve = trpc.adminEngage.awardsResolveFlag.useMutation({
+    onSuccess: () => {
+      toast("Flag resolved.");
+      invalidate();
+    },
+    onError: e => toast(e.message),
+  });
+  const raise = trpc.adminEngage.awardsRaiseFlag.useMutation({
+    onSuccess: () => {
+      toast("Flag raised.");
+      setDetail("");
+      invalidate();
+    },
+    onError: e => toast(e.message),
+  });
+  const [detail, setDetail] = useState("");
+  const rows = flags.data ?? [];
+  const openCount = rows.filter(f => f.status === "open").length;
+
+  return (
+    <div
+      style={{
+        marginTop: "1rem",
+        borderTop: "1px solid var(--eh-border)",
+        paddingTop: "1rem",
+      }}
+    >
+      <div
+        className="eh-between"
+        style={{ alignItems: "center", flexWrap: "wrap", gap: ".5rem" }}
+      >
+        <div className="eh-eyebrow">
+          Integrity · anti-gaming &amp; conflict checks
+          {openCount > 0 && (
+            <>
+              {" "}
+              <Pill color="gold">{openCount} open</Pill>
+            </>
+          )}
+        </div>
+        <button
+          className="eh-btn gold sm"
+          disabled={scan.isPending}
+          onClick={() => scan.mutate({ cycleId })}
+        >
+          {scan.isPending ? "Scanning…" : "Run integrity scan"}
+        </button>
+      </div>
+
+      <p className="eh-sm eh-muted" style={{ margin: ".5rem 0" }}>
+        Surfaces connected judges, open conduct cases, mutual-crediting and vote
+        bursts. An open flag blocks conferral until it&rsquo;s cleared or
+        upheld.
+      </p>
+
+      {flags.isLoading && <Spinner />}
+      {flags.data && rows.length === 0 && (
+        <p className="eh-sm eh-muted">
+          No flags — run a scan, or raise one by hand below.
+        </p>
+      )}
+      {rows.length > 0 && (
+        <div className="eh-list">
+          {rows.map(f => (
+            <div
+              className="row"
+              key={f.id}
+              style={{ alignItems: "flex-start" }}
+            >
+              <div style={{ flex: 1 }}>
+                <span className="t">
+                  {FLAG_KIND_LABEL[f.kind] ?? f.kind}
+                  {f.nomineeName ? ` · ${f.nomineeName}` : ""}
+                </span>
+                <Pill color={FLAG_COLOR[f.status] ?? "grey"}>{f.status}</Pill>
+                {f.severity === "block" && <Pill color="red">blocks</Pill>}
+                {f.auto ? (
+                  <span className="eh-muted eh-sm"> · auto</span>
+                ) : (
+                  <span className="eh-muted eh-sm"> · manual</span>
+                )}
+                <div className="d">{f.detail}</div>
+                {f.resolutionNote && (
+                  <div className="eh-sm eh-muted">Note: {f.resolutionNote}</div>
+                )}
+              </div>
+              {f.status === "open" && (
+                <span className="eh-row" style={{ gap: ".3rem" }}>
+                  <button
+                    className="eh-btn ghost sm"
+                    disabled={resolve.isPending}
+                    onClick={() =>
+                      resolve.mutate({ flagId: f.id, decision: "clear" })
+                    }
+                  >
+                    Clear
+                  </button>
+                  <button
+                    className="eh-btn ghost sm"
+                    disabled={resolve.isPending}
+                    onClick={() =>
+                      resolve.mutate({ flagId: f.id, decision: "uphold" })
+                    }
+                  >
+                    Uphold
+                  </button>
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div
+        className="eh-row"
+        style={{ gap: ".4rem", marginTop: ".75rem", flexWrap: "wrap" }}
+      >
+        <input
+          className="eh-input"
+          style={{ flex: "1 1 240px" }}
+          placeholder="Raise a concern by hand…"
+          value={detail}
+          onChange={e => setDetail(e.target.value)}
+        />
+        <button
+          className="eh-btn sm"
+          disabled={raise.isPending || detail.trim().length < 3}
+          onClick={() => raise.mutate({ cycleId, detail })}
+        >
+          Raise flag
+        </button>
+      </div>
     </div>
   );
 }
