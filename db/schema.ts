@@ -1261,6 +1261,58 @@ export const awardVotes = mysqlTable(
   ]
 );
 
+/* Integrity flags (Awards spec Part 8 — the IntegrityFlag object). Gaming,
+   conflict and moderation concerns raised (by the automated scan or by hand)
+   against a cycle before a winner is conferred. An OPEN flag blocks conferral;
+   an officer must clear or uphold it first. */
+export const awardIntegrityFlags = mysqlTable(
+  "award_integrity_flags",
+  {
+    id: serial("id").primaryKey(),
+    cycleId: bigint("cycleId", { mode: "number", unsigned: true }).notNull(),
+    // Optional subjects — a nomination and/or a member the flag concerns.
+    nominationId: bigint("nominationId", { mode: "number", unsigned: true }),
+    memberId: bigint("memberId", { mode: "number", unsigned: true }),
+    kind: mysqlEnum("kind", [
+      "conflict", // officer self-dealing / connected judge
+      "reciprocity", // mutual-crediting collusion
+      "vote_velocity", // vote brigading / burst
+      "conduct", // open conduct/moderation case
+      "manual", // raised by hand
+    ]).notNull(),
+    severity: mysqlEnum("severity", ["info", "warn", "block"])
+      .notNull()
+      .default("warn"),
+    detail: varchar("detail", { length: 500 }).notNull(),
+    status: mysqlEnum("status", ["open", "cleared", "upheld"])
+      .notNull()
+      .default("open"),
+    // Null raiser = the automated scan.
+    raisedByUserId: bigint("raisedByUserId", {
+      mode: "number",
+      unsigned: true,
+    }),
+    resolvedByUserId: bigint("resolvedByUserId", {
+      mode: "number",
+      unsigned: true,
+    }),
+    resolutionNote: varchar("resolutionNote", { length: 500 }),
+    resolvedAt: timestamp("resolvedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  t => [
+    index("ix_integrityflags_cycle").on(t.cycleId),
+    index("ix_integrityflags_nomination").on(t.nominationId),
+    // Lets the scan dedupe an existing open auto-flag of the same kind/target.
+    index("ix_integrityflags_dedupe").on(
+      t.cycleId,
+      t.kind,
+      t.nominationId,
+      t.status
+    ),
+  ]
+);
+
 export type UnitRole = typeof unitRoles.$inferSelect;
 
 export const chapters = mysqlTable("chapters", {

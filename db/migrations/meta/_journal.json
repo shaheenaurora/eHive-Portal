@@ -36,6 +36,13 @@
       "when": 1786673921372,
       "tag": "0004_award_votes",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1786701816216,
+      "tag": "0005_award_integrity_flags",
+      "breakpoints": true
     }
   ]
 }

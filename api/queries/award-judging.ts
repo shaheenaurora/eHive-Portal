@@ -340,6 +340,9 @@ export async function ratifyWinner(
       code: "NOT_FOUND",
       message: "Nomination not found.",
     });
+  // Integrity gate: no conferral while an open flag stands on this winner.
+  const { assertCleared } = await import("./award-integrity");
+  await assertCleared({ nominationId, memberId: nom.nomineeMemberId });
   const cycle = await getCycle(cycleId);
   await getDb()
     .update(schema.awardNominations)
