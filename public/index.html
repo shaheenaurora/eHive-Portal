@@ -404,11 +404,11 @@
       .lead-form input::placeholder {
         color: rgba(246, 248, 251, 0.5);
       }
-      .faq details {
+      .home-faq details {
         border-bottom: 1px solid var(--line-d);
         padding: 1.4rem 0;
       }
-      .faq summary {
+      .home-faq summary {
         font-family: var(--font-display);
         font-weight: 800;
         font-size: 1.15rem;
@@ -418,20 +418,21 @@
         justify-content: space-between;
         align-items: center;
         gap: 1rem;
+        color: var(--ivory);
       }
-      .faq summary::-webkit-details-marker {
+      .home-faq summary::-webkit-details-marker {
         display: none;
       }
-      .faq summary::after {
+      .home-faq summary::after {
         content: "+";
         font-size: 1.4rem;
         color: var(--gold-2);
         flex: none;
       }
-      .faq details[open] summary::after {
+      .home-faq details[open] summary::after {
         content: "−";
       }
-      .faq details p {
+      .home-faq details p {
         margin-top: 1rem;
         color: rgba(246, 248, 251, 0.78);
         max-width: 72ch;
@@ -969,7 +970,7 @@
           >
             What founders ask
           </h2>
-          <div class="faq">
+          <div class="home-faq">
             <details class="reveal">
               <summary>Who is eHive for?</summary>
               <p>
