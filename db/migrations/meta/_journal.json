@@ -15,6 +15,13 @@
       "when": 1786620550537,
       "tag": "0001_parched_spectrum",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1786672174497,
+      "tag": "0002_awards_panel_judging",
+      "breakpoints": true
     }
   ]
 }
