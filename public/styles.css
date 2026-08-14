@@ -35,8 +35,7 @@
   --font-display: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-body:
     "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: "Archivo", system-ui, "Segoe UI", sans-serif;
-  --serif: var(--font-display);
+  --font-mono: "SF Mono", "Menlo", "Consolas", "Liberation Mono", monospace;
   --sans: var(--font-body);
   /* ---- shape & motion ---- */
   --radius-sm: 4px;
@@ -55,9 +54,7 @@
   --max: 1220px;
   --narrow: 800px;
 }
-/* eHive design system — defined by this page (Stage 2 embedded).
-   Palette: navy #0A1628, gold #DA3A22. Type: Georgia headings, Calibri body.
-   NOTE: Circle tier names used on this page are working titles, pending trademark clearance. */
+/* eHive design system — 2026 launch tokens. */
 * {
   margin: 0;
   padding: 0;
@@ -166,7 +163,7 @@ section {
   font-weight: 700;
   letter-spacing: 0.32em;
   text-transform: uppercase;
-  color: var(--gold);
+  color: var(--gold-2);
   margin-bottom: 1.4rem;
   display: flex;
   align-items: center;
@@ -196,12 +193,12 @@ section {
    ~2.6s after load in case the observer ever fails to fire. */
 .anim .reveal {
   opacity: 0;
-  transform: translateY(36px);
-  filter: blur(7px);
+  transform: translateY(24px);
+  filter: blur(4px);
   transition:
-    opacity 1.05s var(--ease),
-    transform 1.05s var(--ease),
-    filter 1.05s var(--ease);
+    opacity 0.7s var(--ease),
+    transform 0.7s var(--ease),
+    filter 0.7s var(--ease);
   transition-delay: var(--d, 0s);
 }
 
@@ -263,7 +260,7 @@ section {
 
 .btn-ghost {
   background: transparent;
-  color: var(--gold);
+  color: var(--gold-2);
   border-color: rgba(218, 58, 34, 0.55);
 }
 
@@ -443,7 +440,7 @@ body.nav-solid .site-nav {
 }
 
 .hero h1 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(2.55rem, 6vw, 5.15rem);
   line-height: 1.14;
@@ -504,7 +501,7 @@ body.nav-solid .site-nav {
   font-size: 0.68rem;
   letter-spacing: 0.34em;
   text-transform: uppercase;
-  color: rgba(246, 248, 251, 0.55);
+  color: rgba(246, 248, 251, 0.78);
   transition: color 0.3s;
 }
 
@@ -556,7 +553,7 @@ body.nav-solid .site-nav {
 }
 
 .manifesto p {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-size: clamp(1.42rem, 2.65vw, 2.3rem);
   line-height: 1.58;
   color: rgba(246, 248, 251, 0.92);
@@ -590,7 +587,7 @@ body.nav-solid .site-nav {
 }
 
 .reveal-lead {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-size: clamp(1.65rem, 3.1vw, 2.6rem);
   line-height: 1.42;
   letter-spacing: -0.01em;
@@ -629,7 +626,7 @@ body.nav-solid .site-nav {
 }
 
 .pillars-head h2 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(1.9rem, 3.6vw, 2.9rem);
   line-height: 1.2;
@@ -648,7 +645,7 @@ body.nav-solid .site-nav {
 }
 
 .lifecycle b {
-  color: var(--gold);
+  color: var(--gold-2);
   font-weight: 700;
 }
 
@@ -712,9 +709,9 @@ body.nav-solid .site-nav {
 }
 
 .pillar-num {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-size: 0.95rem;
-  color: var(--gold);
+  color: var(--gold-2);
   letter-spacing: 0.1em;
 }
 
@@ -730,7 +727,7 @@ body.nav-solid .site-nav {
   width: 52px;
   height: 52px;
   margin-bottom: 2rem;
-  color: var(--gold);
+  color: var(--gold-2);
 }
 
 .pillar-icon svg {
@@ -739,7 +736,7 @@ body.nav-solid .site-nav {
 }
 
 .pillar h3 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: 1.62rem;
   letter-spacing: -0.01em;
@@ -748,9 +745,9 @@ body.nav-solid .site-nav {
 }
 
 .pillar-pos {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-style: italic;
-  color: var(--gold);
+  color: var(--gold-2);
   font-size: 1.08rem;
   margin-bottom: 1.2rem;
 }
@@ -775,12 +772,12 @@ body.nav-solid .site-nav {
 }
 
 .pillar-link .arr {
-  color: var(--gold);
+  color: var(--gold-2);
   transition: transform 0.38s var(--ease);
 }
 
 .pillar-link:hover {
-  color: var(--gold);
+  color: var(--gold-2);
 }
 
 .pillar-link:hover .arr {
@@ -790,7 +787,7 @@ body.nav-solid .site-nav {
 .pillars-note {
   margin-top: 3.8rem;
   text-align: center;
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-style: italic;
   font-size: clamp(1.15rem, 2vw, 1.4rem);
   color: var(--ink);
@@ -812,7 +809,7 @@ body.nav-solid .site-nav {
 }
 
 .how h2 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(1.9rem, 3.6vw, 2.9rem);
   letter-spacing: -0.01em;
@@ -877,8 +874,8 @@ body.nav-solid .site-nav {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--serif);
-  color: var(--gold);
+  font-family: var(--font-display);
+  color: var(--gold-2);
   font-size: 1.05rem;
   z-index: 1;
   transition:
@@ -892,7 +889,7 @@ body.nav-solid .site-nav {
 }
 
 .step h3 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: 1.28rem;
   line-height: 1.35;
@@ -926,7 +923,7 @@ body.nav-solid .site-nav {
 }
 
 .proof h2 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(1.9rem, 3.4vw, 2.7rem);
   letter-spacing: -0.01em;
@@ -947,9 +944,9 @@ body.nav-solid .site-nav {
 
 .stat-num {
   display: block;
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-size: clamp(2.4rem, 4vw, 3.3rem);
-  color: rgba(246, 248, 251, 0.34);
+  color: rgba(246, 248, 251, 0.78);
   line-height: 1;
 }
 
@@ -977,7 +974,7 @@ body.nav-solid .site-nav {
 .proof-note {
   margin-top: 2.4rem;
   font-size: 0.86rem;
-  color: rgba(246, 248, 251, 0.5);
+  color: rgba(246, 248, 251, 0.78);
   max-width: 70ch;
 }
 
@@ -987,7 +984,7 @@ body.nav-solid .site-nav {
 }
 
 .voices h2 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(1.9rem, 3.4vw, 2.7rem);
   letter-spacing: -0.01em;
@@ -1004,7 +1001,7 @@ body.nav-solid .site-nav {
 }
 
 .quote-card blockquote {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-size: clamp(1.25rem, 2.2vw, 1.7rem);
   line-height: 1.55;
   color: var(--mut);
@@ -1021,7 +1018,7 @@ body.nav-solid .site-nav {
 }
 
 .quote-card figcaption b {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: 1.05rem;
 }
@@ -1039,7 +1036,7 @@ body.nav-solid .site-nav {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-size: 1rem;
   flex: none;
 }
@@ -1080,7 +1077,7 @@ body.nav-solid .site-nav {
 }
 
 .circle-sec h2 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(2.1rem, 4.4vw, 3.5rem);
   letter-spacing: -0.015em;
@@ -1103,7 +1100,7 @@ body.nav-solid .site-nav {
 }
 
 .tier-names span {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-size: 1.02rem;
   color: var(--gold-2);
   letter-spacing: 0.02em;
@@ -1123,7 +1120,7 @@ body.nav-solid .site-nav {
 
 .tier-note {
   font-size: 0.78rem;
-  color: rgba(246, 248, 251, 0.45);
+  color: rgba(246, 248, 251, 0.78);
   letter-spacing: 0.04em;
 }
 
@@ -1153,12 +1150,12 @@ body.nav-solid .site-nav {
   font-weight: 700;
   letter-spacing: 0.3em;
   text-transform: uppercase;
-  color: rgba(246, 248, 251, 0.6);
+  color: rgba(246, 248, 251, 0.78);
   margin-bottom: 0.9rem;
 }
 
 .count-date {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-size: clamp(1.5rem, 2.6vw, 2rem);
   color: var(--gold-2);
   margin-bottom: 2.2rem;
@@ -1180,7 +1177,7 @@ body.nav-solid .site-nav {
 
 .count-cell b {
   display: block;
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(1.7rem, 3.2vw, 2.5rem);
   line-height: 1;
@@ -1194,7 +1191,7 @@ body.nav-solid .site-nav {
   font-size: 0.64rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: rgba(246, 248, 251, 0.5);
+  color: rgba(246, 248, 251, 0.78);
 }
 
 .count-actions {
@@ -1222,7 +1219,7 @@ body.nav-solid .site-nav {
 }
 
 .cta h2 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(2.1rem, 4.6vw, 3.6rem);
   letter-spacing: -0.015em;
@@ -1240,7 +1237,7 @@ body.nav-solid .site-nav {
 
 footer {
   background: var(--navy-3);
-  color: rgba(246, 248, 251, 0.72);
+  color: rgba(246, 248, 251, 0.78);
   border-top: 1px solid var(--line-d);
 }
 
@@ -1260,7 +1257,7 @@ footer {
 .foot-brand p {
   font-size: 0.95rem;
   line-height: 1.75;
-  color: rgba(246, 248, 251, 0.6);
+  color: rgba(246, 248, 251, 0.78);
   max-width: 34ch;
 }
 
@@ -1282,7 +1279,7 @@ footer {
 
 .foot-col a {
   font-size: 0.95rem;
-  color: rgba(246, 248, 251, 0.72);
+  color: rgba(246, 248, 251, 0.78);
   transition: color 0.3s;
 }
 
@@ -1293,13 +1290,13 @@ footer {
 .foot-loc {
   font-size: 0.95rem;
   line-height: 1.8;
-  color: rgba(246, 248, 251, 0.72);
+  color: rgba(246, 248, 251, 0.78);
 }
 
 .foot-loc span {
   display: block;
   font-size: 0.82rem;
-  color: rgba(246, 248, 251, 0.45);
+  color: rgba(246, 248, 251, 0.78);
   margin-top: 0.3rem;
 }
 
@@ -1323,7 +1320,7 @@ footer {
 }
 
 .news-form input::placeholder {
-  color: rgba(246, 248, 251, 0.4);
+  color: rgba(246, 248, 251, 0.78);
 }
 
 .news-form button {
@@ -1351,7 +1348,7 @@ footer {
   justify-content: space-between;
   gap: 1.2rem;
   font-size: 0.85rem;
-  color: rgba(246, 248, 251, 0.45);
+  color: rgba(246, 248, 251, 0.78);
 }
 
 .foot-legal {
@@ -1380,7 +1377,7 @@ footer {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(246, 248, 251, 0.65);
+  color: rgba(246, 248, 251, 0.78);
   transition: all 0.35s var(--ease);
 }
 
@@ -1445,7 +1442,7 @@ footer {
   }
   .nav-links a {
     font-size: 1.35rem;
-    font-family: var(--serif);
+    font-family: var(--font-display);
   }
   .nav-links .btn {
     font-family: var(--sans);
@@ -1495,6 +1492,7 @@ footer {
     opacity: 1;
     transform: none;
     filter: none;
+    transition: none;
   }
   .anim .hero h1 .line > span {
     transform: none;
@@ -1521,7 +1519,7 @@ summary:focus-visible {
 }
 
 .h2 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(1.9rem, 3.6vw, 2.9rem);
   line-height: 1.2;
@@ -1535,19 +1533,19 @@ summary:focus-visible {
 }
 
 .dark .lede {
-  color: rgba(246, 248, 251, 0.75);
+  color: rgba(246, 248, 251, 0.78);
 }
 
 /* Fail-safe reveal model (same as landing): visible by default;
    hidden state only under body.anim; JS fallback force-reveals. */
 .anim .reveal {
   opacity: 0;
-  transform: translateY(36px);
-  filter: blur(7px);
+  transform: translateY(24px);
+  filter: blur(4px);
   transition:
-    opacity 1.05s var(--ease),
-    transform 1.05s var(--ease),
-    filter 1.05s var(--ease);
+    opacity 0.7s var(--ease),
+    transform 0.7s var(--ease),
+    filter 0.7s var(--ease);
   transition-delay: var(--d, 0s);
 }
 
@@ -1612,7 +1610,7 @@ summary:focus-visible {
   font-size: 0.8rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: rgba(246, 248, 251, 0.5);
+  color: rgba(246, 248, 251, 0.78);
   margin-bottom: 2.4rem;
   display: flex;
   gap: 0.8rem;
@@ -1622,7 +1620,7 @@ summary:focus-visible {
 }
 
 .crumbs a {
-  color: rgba(246, 248, 251, 0.65);
+  color: rgba(246, 248, 251, 0.78);
   transition: color 0.3s;
 }
 
@@ -1632,11 +1630,11 @@ summary:focus-visible {
 
 .crumbs i {
   font-style: normal;
-  color: var(--gold);
+  color: var(--gold-2);
 }
 
 .page-hero h1 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(2.6rem, 5.6vw, 4.6rem);
   line-height: 1.1;
@@ -1691,10 +1689,10 @@ summary:focus-visible {
 
 .tstat b {
   display: block;
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: 2rem;
-  color: rgba(246, 248, 251, 0.35);
+  color: rgba(246, 248, 251, 0.78);
   line-height: 1.1;
 }
 
@@ -1702,7 +1700,7 @@ summary:focus-visible {
   display: block;
   margin-top: 0.5rem;
   font-size: 0.85rem;
-  color: rgba(246, 248, 251, 0.65);
+  color: rgba(246, 248, 251, 0.78);
 }
 
 .tstat i {
@@ -1723,7 +1721,7 @@ summary:focus-visible {
   padding: 0 0 2.6rem;
   text-align: center;
   font-size: 0.82rem;
-  color: rgba(246, 248, 251, 0.45);
+  color: rgba(246, 248, 251, 0.78);
 }
 
 /* ---------- transparency ---------- */
@@ -1821,7 +1819,7 @@ summary:focus-visible {
 }
 
 .path-card h3 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: 1.4rem;
   line-height: 1.3;
@@ -1840,7 +1838,7 @@ summary:focus-visible {
   gap: 0.55rem;
   font-weight: 700;
   font-size: 0.9rem;
-  color: var(--gold);
+  color: var(--gold-2);
   letter-spacing: 0.04em;
 }
 
@@ -1884,7 +1882,7 @@ summary:focus-visible {
 }
 
 .track h3 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: 1.7rem;
   letter-spacing: -0.01em;
@@ -1896,13 +1894,13 @@ summary:focus-visible {
   font-weight: 700;
   letter-spacing: 0.24em;
   text-transform: uppercase;
-  color: var(--gold);
+  color: var(--gold-2);
   margin-bottom: 1.6rem;
   display: block;
 }
 
 .track .tline {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-style: italic;
   color: var(--mut);
   font-size: 1.05rem;
@@ -1942,7 +1940,7 @@ summary:focus-visible {
 
 .track .more {
   font-size: 0.88rem;
-  color: var(--gold);
+  color: var(--gold-2);
   font-weight: 700;
   letter-spacing: 0.04em;
   display: inline-flex;
@@ -1964,7 +1962,7 @@ summary:focus-visible {
 }
 
 .compare h3 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: 1.5rem;
   margin-bottom: 1.6rem;
@@ -1991,7 +1989,7 @@ table.cmp {
 .cmp thead th {
   background: var(--navy);
   color: var(--ivory);
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: 1.02rem;
   letter-spacing: 0.02em;
@@ -2058,7 +2056,7 @@ table.cmp {
   font-weight: 700;
   letter-spacing: 0.24em;
   text-transform: uppercase;
-  color: rgba(246, 248, 251, 0.6);
+  color: rgba(246, 248, 251, 0.78);
   margin-bottom: 0.7rem;
 }
 
@@ -2098,7 +2096,7 @@ table.cmp {
 .seg button {
   background: rgba(246, 248, 251, 0.05);
   border: 1px solid var(--line-d);
-  color: rgba(246, 248, 251, 0.75);
+  color: rgba(246, 248, 251, 0.78);
   font-family: var(--sans);
   font-weight: 700;
   font-size: 0.9rem;
@@ -2153,7 +2151,7 @@ table.cmp {
 }
 
 .visa-count {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-size: 1.6rem;
   color: var(--gold-2);
   min-width: 2.4rem;
@@ -2185,12 +2183,12 @@ table.cmp {
   font-weight: 700;
   letter-spacing: 0.28em;
   text-transform: uppercase;
-  color: rgba(246, 248, 251, 0.55);
+  color: rgba(246, 248, 251, 0.78);
   margin-bottom: 1rem;
 }
 
 .co-amount {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-size: clamp(1.9rem, 3.4vw, 2.7rem);
   color: var(--gold-2);
   line-height: 1.15;
@@ -2200,7 +2198,7 @@ table.cmp {
 
 .co-scope {
   font-size: 0.88rem;
-  color: rgba(246, 248, 251, 0.6);
+  color: rgba(246, 248, 251, 0.78);
   margin-bottom: 1.6rem;
 }
 
@@ -2239,14 +2237,14 @@ table.cmp {
 .co-note {
   margin-top: 1.4rem;
   font-size: 0.78rem;
-  color: rgba(246, 248, 251, 0.45);
+  color: rgba(246, 248, 251, 0.78);
   line-height: 1.6;
 }
 
 .co-alt {
   margin-top: 0.4rem;
   font-size: 0.85rem;
-  color: rgba(246, 248, 251, 0.6);
+  color: rgba(246, 248, 251, 0.78);
 }
 
 .co-alt b {
@@ -2298,7 +2296,7 @@ table.cmp {
   right: 0;
   bottom: clamp(1.8rem, 4vw, 3rem);
   text-align: center;
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-style: italic;
   font-size: clamp(1.25rem, 2.3vw, 1.65rem);
   color: rgba(246, 248, 251, 0.94);
@@ -2310,7 +2308,7 @@ table.cmp {
 .svc-band .band-icon {
   width: 38px;
   height: 38px;
-  color: var(--gold);
+  color: var(--gold-2);
   margin-bottom: 1.3rem;
 }
 
@@ -2333,7 +2331,7 @@ table.cmp {
 }
 
 .svc-band h3 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: 1.32rem;
   margin-bottom: 0.4rem;
@@ -2345,7 +2343,7 @@ table.cmp {
   font-weight: 700;
   letter-spacing: 0.24em;
   text-transform: uppercase;
-  color: var(--gold);
+  color: var(--gold-2);
   display: block;
   margin-bottom: 1.6rem;
 }
@@ -2376,12 +2374,12 @@ table.cmp {
 }
 
 .svc-band a:hover {
-  color: var(--gold);
+  color: var(--gold-2);
   padding-left: 0.4rem;
 }
 
 .svc-band a .arr {
-  color: var(--gold);
+  color: var(--gold-2);
   opacity: 0;
   transition: opacity 0.3s;
 }
@@ -2417,8 +2415,8 @@ table.cmp {
 }
 
 .why-item .n {
-  font-family: var(--serif);
-  color: var(--gold);
+  font-family: var(--font-display);
+  color: var(--gold-2);
   font-size: 1rem;
   flex: none;
   padding-top: 0.2rem;
@@ -2426,7 +2424,7 @@ table.cmp {
 }
 
 .why-item h3 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: 1.22rem;
   margin-bottom: 0.5rem;
@@ -2478,14 +2476,14 @@ table.cmp {
 }
 
 .contact-strip h3 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(1.4rem, 2.6vw, 1.9rem);
   letter-spacing: -0.01em;
 }
 
 .contact-strip p {
-  color: rgba(246, 248, 251, 0.65);
+  color: rgba(246, 248, 251, 0.78);
   font-size: 0.95rem;
   margin-top: 0.3rem;
 }
@@ -2518,7 +2516,7 @@ table.cmp {
   align-items: center;
   gap: 1.5rem;
   padding: 1.6rem 0.2rem;
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-size: 1.2rem;
   letter-spacing: -0.01em;
   transition: color 0.3s;
@@ -2529,7 +2527,7 @@ table.cmp {
 }
 
 .faq summary:hover {
-  color: var(--gold);
+  color: var(--gold-2);
 }
 
 .faq summary .pm {
@@ -2541,7 +2539,7 @@ table.cmp {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--gold);
+  color: var(--gold-2);
   font-family: var(--sans);
   font-size: 1.1rem;
   transition: all 0.35s var(--ease);
@@ -2577,7 +2575,7 @@ table.cmp {
 }
 
 .page-cta h2 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(2rem, 4.2vw, 3.2rem);
   letter-spacing: -0.015em;
@@ -2600,7 +2598,7 @@ table.cmp {
 /* ---------- footer (same as landing) ---------- */
 footer {
   background: var(--navy-3);
-  color: rgba(246, 248, 251, 0.72);
+  color: rgba(246, 248, 251, 0.78);
   border-top: 1px solid var(--line-d);
 }
 
@@ -2658,7 +2656,7 @@ footer {
   }
   .nav-links a {
     font-size: 1.35rem;
-    font-family: var(--serif);
+    font-family: var(--font-display);
   }
   .nav-links .btn {
     font-family: var(--sans);
@@ -2700,6 +2698,7 @@ footer {
     opacity: 1;
     transform: none;
     filter: none;
+    transition: none;
   }
 }
 
@@ -2716,7 +2715,7 @@ button:focus-visible {
   font-weight: 700;
   letter-spacing: 0.32em;
   text-transform: uppercase;
-  color: var(--gold);
+  color: var(--gold-2);
   margin-bottom: 1.4rem;
   display: flex;
   align-items: center;
@@ -2725,12 +2724,12 @@ button:focus-visible {
 
 .anim .reveal {
   opacity: 0;
-  transform: translateY(36px);
-  filter: blur(7px);
+  transform: translateY(24px);
+  filter: blur(4px);
   transition:
-    opacity 1.05s var(--ease),
-    transform 1.05s var(--ease),
-    filter 1.05s var(--ease);
+    opacity 0.7s var(--ease),
+    transform 0.7s var(--ease),
+    filter 0.7s var(--ease);
   transition-delay: var(--d, 0s);
 }
 
@@ -2761,7 +2760,7 @@ button:focus-visible {
 }
 
 .page-hero h1 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(2.4rem, 5.2vw, 4.3rem);
   line-height: 1.12;
@@ -2803,7 +2802,7 @@ button:focus-visible {
 }
 
 .method p {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-size: clamp(1.05rem, 1.8vw, 1.3rem);
   line-height: 1.55;
   color: rgba(246, 248, 251, 0.85);
@@ -2886,8 +2885,8 @@ button:focus-visible {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--serif);
-  color: var(--gold);
+  font-family: var(--font-display);
+  color: var(--gold-2);
   font-size: 1.05rem;
   transition:
     background 0.4s,
@@ -2912,7 +2911,7 @@ button:focus-visible {
 }
 
 .p-body h3 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: 1.65rem;
   letter-spacing: -0.01em;
@@ -2920,9 +2919,9 @@ button:focus-visible {
 }
 
 .p-tag {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-style: italic;
-  color: var(--gold);
+  color: var(--gold-2);
   font-size: 1.05rem;
   margin-bottom: 1.1rem;
 }
@@ -2941,7 +2940,7 @@ button:focus-visible {
 }
 
 .p-best b {
-  color: var(--gold);
+  color: var(--gold-2);
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -2958,7 +2957,7 @@ button:focus-visible {
 }
 
 .p-price {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-size: 1.5rem;
   color: var(--ink);
   letter-spacing: -0.01em;
@@ -2992,12 +2991,12 @@ button:focus-visible {
 }
 
 .p-explore .arr {
-  color: var(--gold);
+  color: var(--gold-2);
   transition: transform 0.38s var(--ease);
 }
 
 .p-explore:hover {
-  color: var(--gold);
+  color: var(--gold-2);
 }
 
 .p-explore:hover .arr {
@@ -3037,14 +3036,14 @@ button:focus-visible {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--serif);
-  color: var(--gold);
+  font-family: var(--font-display);
+  color: var(--gold-2);
   font-size: 1.05rem;
   z-index: 1;
 }
 
 .step h3 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: 1.22rem;
   line-height: 1.35;
@@ -3068,7 +3067,7 @@ button:focus-visible {
 
 .page-cta .lede {
   margin: 0 auto 2.6rem;
-  color: rgba(246, 248, 251, 0.75);
+  color: rgba(246, 248, 251, 0.78);
 }
 
 @media (max-width: 1020px) {
@@ -3133,7 +3132,7 @@ button:focus-visible {
   }
   .nav-links a {
     font-size: 1.35rem;
-    font-family: var(--serif);
+    font-family: var(--font-display);
   }
   .nav-links .btn {
     font-family: var(--sans);
@@ -3168,7 +3167,7 @@ button:focus-visible {
   font-size: 0.8rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: rgba(246, 248, 251, 0.5);
+  color: rgba(246, 248, 251, 0.78);
   margin-bottom: 2.4rem;
   display: flex;
   gap: 0.8rem;
@@ -3199,7 +3198,7 @@ button:focus-visible {
 }
 
 .p-hero h1 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(2.4rem, 5vw, 4.1rem);
   line-height: 1.12;
@@ -3273,12 +3272,12 @@ button:focus-visible {
   font-weight: 700;
   letter-spacing: 0.24em;
   text-transform: uppercase;
-  color: rgba(246, 248, 251, 0.55);
+  color: rgba(246, 248, 251, 0.78);
   margin-bottom: 1rem;
 }
 
 .bc-price {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-size: clamp(2rem, 3.4vw, 2.6rem);
   color: var(--gold-2);
   line-height: 1.1;
@@ -3286,7 +3285,7 @@ button:focus-visible {
 
 .bc-price-note {
   font-size: 0.85rem;
-  color: rgba(246, 248, 251, 0.6);
+  color: rgba(246, 248, 251, 0.78);
   margin-top: 0.5rem;
   margin-bottom: 1.8rem;
 }
@@ -3325,7 +3324,7 @@ button:focus-visible {
 .bc-note {
   margin-top: 1.1rem;
   font-size: 0.78rem;
-  color: rgba(246, 248, 251, 0.45);
+  color: rgba(246, 248, 251, 0.78);
   text-align: center;
 }
 
@@ -3341,7 +3340,7 @@ button:focus-visible {
 }
 
 .promise blockquote {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-style: italic;
   font-size: clamp(1.5rem, 2.8vw, 2.2rem);
   line-height: 1.5;
@@ -3359,7 +3358,7 @@ button:focus-visible {
   font-weight: 700;
   letter-spacing: 0.3em;
   text-transform: uppercase;
-  color: rgba(246, 248, 251, 0.45);
+  color: rgba(246, 248, 251, 0.78);
 }
 
 /* ---------- takeaways ---------- */
@@ -3398,15 +3397,15 @@ button:focus-visible {
 }
 
 .tk-item .n {
-  font-family: var(--serif);
-  color: var(--gold);
+  font-family: var(--font-display);
+  color: var(--gold-2);
   font-size: 1rem;
   flex: none;
   padding-top: 0.15rem;
 }
 
 .tk-item h3 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: 1.18rem;
   margin-bottom: 0.45rem;
@@ -3449,7 +3448,7 @@ button:focus-visible {
 
 .fit-yes h3,
 .fit-no h3 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: 1.3rem;
   margin-bottom: 1.8rem;
@@ -3478,7 +3477,7 @@ button:focus-visible {
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--gold);
+  color: var(--gold-2);
   padding-top: 0.3rem;
 }
 
@@ -3524,12 +3523,12 @@ button:focus-visible {
   font-weight: 700;
   letter-spacing: 0.24em;
   text-transform: uppercase;
-  color: var(--gold);
+  color: var(--gold-2);
   margin-bottom: 1rem;
 }
 
 .format-cell .v {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-size: 1.6rem;
   color: var(--ink);
   letter-spacing: -0.01em;
@@ -3586,20 +3585,20 @@ button:focus-visible {
 }
 
 .next-prod .np-name {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-size: clamp(1.5rem, 3vw, 2.2rem);
   letter-spacing: -0.01em;
 }
 
 .next-prod .np-tag {
-  color: rgba(246, 248, 251, 0.6);
+  color: rgba(246, 248, 251, 0.78);
   font-size: 0.95rem;
   margin-top: 0.3rem;
 }
 
 .next-prod .np-arrow {
   font-size: 2rem;
-  color: var(--gold);
+  color: var(--gold-2);
   flex: none;
   transition: transform 0.45s var(--ease);
 }
@@ -3611,7 +3610,7 @@ button:focus-visible {
 /* ---------- footer (shared) ---------- */
 footer {
   background: var(--navy-3);
-  color: rgba(246, 248, 251, 0.72);
+  color: rgba(246, 248, 251, 0.78);
   border-top: 1px solid var(--line-d);
 }
 
@@ -3663,7 +3662,7 @@ footer {
   }
   .nav-links a {
     font-size: 1.35rem;
-    font-family: var(--serif);
+    font-family: var(--font-display);
   }
   .nav-links .btn {
     font-family: var(--sans);
@@ -3722,12 +3721,12 @@ footer {
   font-weight: 700;
   letter-spacing: 0.24em;
   text-transform: uppercase;
-  color: var(--gold);
+  color: var(--gold-2);
   margin-bottom: 1rem;
 }
 
 .t-price {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-size: 2rem;
   color: var(--ink);
   letter-spacing: -0.01em;
@@ -3762,7 +3761,7 @@ footer {
 
 .t-tag {
   margin-top: 1.4rem;
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-style: italic;
   color: var(--mut);
   font-size: 0.92rem;
@@ -3803,7 +3802,7 @@ footer {
 .chip.ph {
   border-style: dashed;
   border-color: rgba(218, 58, 34, 0.5);
-  color: rgba(246, 248, 251, 0.5);
+  color: rgba(246, 248, 251, 0.78);
 }
 
 .rings {
@@ -3867,7 +3866,7 @@ footer {
 }
 
 .fact-card h3 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: 1.3rem;
   margin-bottom: 1.2rem;
@@ -3912,12 +3911,12 @@ footer {
   font-weight: 700;
   letter-spacing: 0.3em;
   text-transform: uppercase;
-  color: var(--gold);
+  color: var(--gold-2);
   margin-bottom: 1rem;
 }
 
 .t-ident {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-style: italic;
   font-size: 1rem;
   color: var(--ink);
@@ -3949,7 +3948,7 @@ footer {
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--gold);
+  color: var(--gold-2);
   border: 1px solid rgba(218, 58, 34, 0.5);
   border-radius: 8px;
   padding: 0.34rem 0.65rem;
@@ -3995,7 +3994,7 @@ footer {
 }
 
 .hiw .lede {
-  color: rgba(246, 248, 251, 0.7);
+  color: rgba(246, 248, 251, 0.78);
 }
 
 .hiw .steps {
@@ -4014,7 +4013,7 @@ footer {
 
 .step .n {
   display: block;
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-size: 2rem;
   color: var(--gold-2);
   margin-bottom: 0.9rem;
@@ -4022,7 +4021,7 @@ footer {
 }
 
 .step h3 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: 1.3rem;
   margin-bottom: 0.55rem;
@@ -4030,7 +4029,7 @@ footer {
 
 .step p {
   font-size: 0.95rem;
-  color: rgba(246, 248, 251, 0.68);
+  color: rgba(246, 248, 251, 0.78);
 }
 
 .access-strip {
@@ -4040,7 +4039,7 @@ footer {
 }
 
 .access-strip h3 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(1.4rem, 2.6vw, 1.9rem);
   color: var(--ivory);
@@ -4066,7 +4065,7 @@ footer {
 
 .ac b {
   display: block;
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: 1.05rem;
   color: var(--gold-2);
@@ -4075,14 +4074,14 @@ footer {
 
 .ac span {
   font-size: 0.86rem;
-  color: rgba(246, 248, 251, 0.62);
+  color: rgba(246, 248, 251, 0.78);
   line-height: 1.6;
 }
 
 .hscore {
   margin-top: 2.4rem;
   font-size: 0.98rem;
-  color: rgba(246, 248, 251, 0.75);
+  color: rgba(246, 248, 251, 0.78);
   max-width: 74ch;
 }
 
@@ -4100,7 +4099,7 @@ footer {
 }
 
 .honest h4 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: 1.22rem;
   color: var(--gold-2);
@@ -4109,7 +4108,7 @@ footer {
 
 .honest p {
   font-size: 0.93rem;
-  color: rgba(246, 248, 251, 0.72);
+  color: rgba(246, 248, 251, 0.78);
   max-width: 80ch;
 }
 
@@ -4158,7 +4157,7 @@ footer {
 }
 
 .ev h3 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: 1.2rem;
   margin-bottom: 0.55rem;
@@ -4227,7 +4226,7 @@ footer {
 }
 
 .founding .lede {
-  color: rgba(246, 248, 251, 0.75);
+  color: rgba(246, 248, 251, 0.78);
 }
 
 .found-list {
@@ -4270,7 +4269,7 @@ footer {
 }
 
 .voices h2 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(1.9rem, 3.4vw, 2.7rem);
   letter-spacing: -0.01em;
@@ -4291,7 +4290,7 @@ footer {
 }
 
 .quote-card blockquote {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-size: clamp(1.15rem, 2vw, 1.5rem);
   line-height: 1.6;
   color: var(--mut);
@@ -4330,7 +4329,7 @@ footer {
 }
 
 .c-cta h2 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(2rem, 4.4vw, 3.4rem);
   letter-spacing: -0.015em;
@@ -4338,7 +4337,7 @@ footer {
 }
 
 .c-cta .lede {
-  color: rgba(246, 248, 251, 0.7);
+  color: rgba(246, 248, 251, 0.78);
   margin: 1.5rem auto 2.6rem;
   max-width: 56ch;
 }
@@ -4353,7 +4352,7 @@ footer {
 .c-cta .fine {
   margin-top: 2rem;
   font-size: 0.84rem;
-  color: rgba(246, 248, 251, 0.5);
+  color: rgba(246, 248, 251, 0.78);
 }
 
 /* countdown card (shared with homepage) */
@@ -4412,7 +4411,7 @@ footer {
 }
 
 .p-state {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-size: clamp(1.45rem, 2.8vw, 2.25rem);
   line-height: 1.45;
   color: rgba(246, 248, 251, 0.92);
@@ -4461,11 +4460,11 @@ footer {
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.3em;
-  color: var(--gold);
+  color: var(--gold-2);
 }
 
 .val h3 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: 1.26rem;
   margin: 0.85rem 0 0.5rem;
@@ -4502,7 +4501,7 @@ footer {
 }
 
 .vmoment h2 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(2.4rem, 5.4vw, 4.2rem);
   letter-spacing: -0.015em;
@@ -4515,7 +4514,7 @@ footer {
 }
 
 .vmoment p {
-  color: rgba(246, 248, 251, 0.7);
+  color: rgba(246, 248, 251, 0.78);
   max-width: 58ch;
   margin: 1.7rem auto 0;
   font-size: 1.08rem;
@@ -4556,7 +4555,7 @@ footer {
 
 /* leadership & team */
 .sub-head {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(1.4rem, 2.6vw, 1.9rem);
   letter-spacing: -0.01em;
@@ -4591,14 +4590,14 @@ footer {
 }
 
 .person h4 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: 1.3rem;
 }
 
 .person .role {
   font-size: 0.86rem;
-  color: var(--gold);
+  color: var(--gold-2);
   margin: 0.25rem 0 0.7rem;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -4629,7 +4628,7 @@ footer {
 }
 
 .tm h4 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: 1.06rem;
 }
@@ -4663,7 +4662,7 @@ footer {
 }
 
 .advisors h4 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: 1.25rem;
   margin-bottom: 0.55rem;
@@ -4705,7 +4704,7 @@ footer {
 }
 
 .join h2 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(1.9rem, 3.6vw, 2.8rem);
   letter-spacing: -0.01em;
@@ -4714,7 +4713,7 @@ footer {
 }
 
 .join p {
-  color: rgba(246, 248, 251, 0.7);
+  color: rgba(246, 248, 251, 0.78);
   margin-top: 1.2rem;
   max-width: 54ch;
 }
@@ -4728,7 +4727,7 @@ footer {
 .join .fine {
   margin-top: 1.4rem;
   font-size: 0.82rem;
-  color: rgba(246, 248, 251, 0.48);
+  color: rgba(246, 248, 251, 0.78);
 }
 
 @media (max-width: 860px) {
@@ -4822,7 +4821,7 @@ footer {
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--gold);
+  color: var(--gold-2);
   border: 1px solid rgba(218, 58, 34, 0.5);
   border-radius: 8px;
   padding: 0.3rem 0.62rem;
@@ -4843,7 +4842,7 @@ footer {
 }
 
 .feat h3 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(1.5rem, 2.8vw, 2.1rem);
   line-height: 1.3;
@@ -4915,7 +4914,7 @@ footer {
 }
 
 .art h3 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-style: italic;
   font-size: 1.16rem;
@@ -4970,7 +4969,7 @@ footer {
 }
 
 .sub-block h2 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(1.9rem, 3.6vw, 2.9rem);
   letter-spacing: -0.01em;
@@ -4978,7 +4977,7 @@ footer {
 }
 
 .sub-block .lede {
-  color: rgba(246, 248, 251, 0.7);
+  color: rgba(246, 248, 251, 0.78);
   margin: 1.3rem auto 0;
   max-width: 54ch;
 }
@@ -5002,7 +5001,7 @@ footer {
 }
 
 .sub-form input::placeholder {
-  color: rgba(246, 248, 251, 0.4);
+  color: rgba(246, 248, 251, 0.78);
 }
 
 .sub-form input:focus {
@@ -5030,7 +5029,7 @@ footer {
 .cadence {
   margin-top: 1.6rem;
   font-size: 0.83rem;
-  color: rgba(246, 248, 251, 0.48);
+  color: rgba(246, 248, 251, 0.78);
 }
 
 @media (max-width: 560px) {
@@ -5098,7 +5097,7 @@ footer {
 }
 
 .gs-title {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(1.5rem, 2.7vw, 2.05rem);
   margin-bottom: 1.9rem;
@@ -5150,7 +5149,7 @@ footer {
 
 .gs-path .arr {
   margin-left: auto;
-  color: var(--gold);
+  color: var(--gold-2);
   opacity: 0;
   transition: opacity 0.2s;
 }
@@ -5313,13 +5312,13 @@ footer {
 }
 
 .gs-done h3 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(1.5rem, 2.6vw, 2rem);
 }
 
 .gs-done > p {
-  color: rgba(246, 248, 251, 0.7);
+  color: rgba(246, 248, 251, 0.78);
   margin-top: 0.9rem;
   font-size: 0.96rem;
   max-width: 46ch;
@@ -5340,7 +5339,7 @@ footer {
   padding: 0.65rem 0;
   border-bottom: 1px solid var(--line-d);
   font-size: 0.9rem;
-  color: rgba(246, 248, 251, 0.75);
+  color: rgba(246, 248, 251, 0.78);
 }
 
 .gs-sum li:first-child {
@@ -5350,14 +5349,14 @@ footer {
 .gs-sum li b {
   color: var(--gold-2);
   font-weight: 400;
-  font-family: var(--serif);
+  font-family: var(--font-display);
   text-align: right;
 }
 
 .gs-note {
   margin-top: 1.8rem;
   font-size: 0.8rem;
-  color: rgba(246, 248, 251, 0.48);
+  color: rgba(246, 248, 251, 0.78);
 }
 
 /* right rail */
@@ -5373,7 +5372,7 @@ footer {
 }
 
 .rail-card h3 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: 1.28rem;
   margin-bottom: 1.2rem;
@@ -5397,8 +5396,8 @@ footer {
 }
 
 .rail-steps .rn {
-  font-family: var(--serif);
-  color: var(--gold);
+  font-family: var(--font-display);
+  color: var(--gold-2);
   flex: none;
 }
 
@@ -5483,7 +5482,7 @@ footer {
 }
 
 .bk-name {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(1.6rem, 2.8vw, 2.1rem);
   line-height: 1.2;
@@ -5498,7 +5497,7 @@ footer {
 
 .bk-meta span {
   font-size: 0.94rem;
-  color: rgba(246, 248, 251, 0.75);
+  color: rgba(246, 248, 251, 0.78);
 }
 
 .bk-meta b {
@@ -5513,7 +5512,7 @@ footer {
 }
 
 .bk-after h3 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: 1.05rem;
   margin-bottom: 1rem;
@@ -5526,19 +5525,19 @@ footer {
   gap: 0.8rem;
   padding: 0.5rem 0;
   font-size: 0.9rem;
-  color: rgba(246, 248, 251, 0.72);
+  color: rgba(246, 248, 251, 0.78);
 }
 
 .bk-after .rn {
-  font-family: var(--serif);
-  color: var(--gold);
+  font-family: var(--font-display);
+  color: var(--gold-2);
   flex: none;
 }
 
 .bk-free {
   margin-top: 1.6rem;
   font-size: 0.84rem;
-  color: rgba(246, 248, 251, 0.55);
+  color: rgba(246, 248, 251, 0.78);
   font-style: italic;
 }
 
@@ -5556,7 +5555,7 @@ footer {
 }
 
 .bk-step > h3 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: 1.2rem;
   margin-bottom: 1.1rem;
@@ -5569,7 +5568,7 @@ footer {
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.24em;
-  color: var(--gold);
+  color: var(--gold-2);
   font-family: var(--sans);
 }
 
@@ -5608,7 +5607,7 @@ footer {
 
 .day .dn {
   display: block;
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-size: 1.25rem;
   margin-top: 0.2rem;
   color: var(--ink);
@@ -5631,9 +5630,24 @@ footer {
   cursor: not-allowed;
 }
 
+.day-grid .day,
+.slot-grid .slot {
+  min-height: 44px;
+  min-width: 44px;
+}
+
 @media (max-width: 560px) {
   .day-grid {
     grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 380px) {
+  .day-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .day-grid .day {
+    min-height: 44px;
   }
 }
 
@@ -5766,13 +5780,13 @@ footer {
 }
 
 .bk-done h3 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(1.4rem, 2.6vw, 1.9rem);
 }
 
 .bk-done > p {
-  color: rgba(246, 248, 251, 0.72);
+  color: rgba(246, 248, 251, 0.78);
   margin-top: 0.8rem;
   font-size: 0.96rem;
   max-width: 48ch;
@@ -5878,7 +5892,7 @@ footer {
 }
 
 .login-card h1 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(1.7rem, 3.4vw, 2.2rem);
   color: var(--ivory);
@@ -5888,14 +5902,14 @@ footer {
 .login-card .sub {
   margin: 0.8rem 0 2.2rem;
   font-size: 0.95rem;
-  color: rgba(246, 248, 251, 0.65);
+  color: rgba(246, 248, 251, 0.78);
 }
 
 .lg-field {
   display: block;
   margin-bottom: 1.3rem;
   font-size: 0.86rem;
-  color: rgba(246, 248, 251, 0.6);
+  color: rgba(246, 248, 251, 0.78);
 }
 
 .lg-input {
@@ -5963,7 +5977,7 @@ footer {
   border-radius: 8px;
   padding: 1rem 1.2rem;
   font-size: 0.78rem;
-  color: rgba(246, 248, 251, 0.5);
+  color: rgba(246, 248, 251, 0.78);
   line-height: 1.6;
 }
 
@@ -5972,7 +5986,7 @@ footer {
   top: 1.4rem;
   right: 1.6rem;
   font-size: 0.8rem;
-  color: rgba(246, 248, 251, 0.45);
+  color: rgba(246, 248, 251, 0.78);
 }
 
 .lg-back:hover {
@@ -6046,7 +6060,7 @@ body.portal {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-size: 0.82rem;
   font-weight: 700;
 }
@@ -6055,7 +6069,7 @@ body.portal {
   background: none;
   border: 1px solid var(--line-d);
   border-radius: 8px;
-  color: rgba(246, 248, 251, 0.6);
+  color: rgba(246, 248, 251, 0.78);
   font-family: var(--sans);
   font-size: 0.8rem;
   padding: 0.5rem 0.95rem;
@@ -6096,7 +6110,7 @@ body.portal {
 }
 
 .m-hero h1 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(1.8rem, 3.6vw, 2.7rem);
   letter-spacing: -0.01em;
@@ -6131,7 +6145,7 @@ body.portal {
   font-weight: 700;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: rgba(246, 248, 251, 0.6);
+  color: rgba(246, 248, 251, 0.78);
   border: 1px dashed rgba(218, 58, 34, 0.55);
   border-radius: 8px;
   padding: 0.35rem 0.7rem;
@@ -6139,18 +6153,18 @@ body.portal {
 
 .m-hero .note {
   font-size: 0.86rem;
-  color: rgba(246, 248, 251, 0.55);
+  color: rgba(246, 248, 251, 0.78);
   max-width: 44ch;
 }
 
 .m-count {
   font-size: 0.9rem;
-  color: rgba(246, 248, 251, 0.7);
+  color: rgba(246, 248, 251, 0.78);
 }
 
 .m-count b {
   color: var(--gold-2);
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: 1.15rem;
 }
@@ -6175,11 +6189,11 @@ body.portal {
   font-weight: 700;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: rgba(246, 248, 251, 0.5);
+  color: rgba(246, 248, 251, 0.78);
 }
 
 .m-stat .v {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: 2.1rem;
   color: var(--ivory);
@@ -6189,13 +6203,13 @@ body.portal {
 
 .m-stat .v small {
   font-size: 0.9rem;
-  color: rgba(246, 248, 251, 0.45);
+  color: rgba(246, 248, 251, 0.78);
   font-family: var(--sans);
 }
 
 .m-stat .sub2 {
   font-size: 0.76rem;
-  color: rgba(246, 248, 251, 0.5);
+  color: rgba(246, 248, 251, 0.78);
   margin-top: 0.5rem;
 }
 
@@ -6245,7 +6259,7 @@ body.portal {
 }
 
 .m-card > h2 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: 1.32rem;
   margin-bottom: 1.4rem;
@@ -6293,7 +6307,7 @@ body.portal {
 
 .m-row .s {
   font-size: 0.78rem;
-  color: rgba(246, 248, 251, 0.5);
+  color: rgba(246, 248, 251, 0.78);
   margin-top: 0.15rem;
 }
 
@@ -6324,7 +6338,7 @@ body.portal {
 
 .m-mini.done {
   border-color: rgba(246, 248, 251, 0.25);
-  color: rgba(246, 248, 251, 0.5);
+  color: rgba(246, 248, 251, 0.78);
   pointer-events: none;
 }
 
@@ -6339,7 +6353,7 @@ body.portal {
 
 .m-ev-date b {
   display: block;
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 400;
   font-size: 1.15rem;
   color: var(--gold-2);
@@ -6351,7 +6365,7 @@ body.portal {
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: rgba(246, 248, 251, 0.5);
+  color: rgba(246, 248, 251, 0.78);
 }
 
 .m-row .flex {
@@ -6389,7 +6403,7 @@ body.portal {
   margin-left: auto;
   flex: none;
   font-size: 0.74rem;
-  color: rgba(246, 248, 251, 0.5);
+  color: rgba(246, 248, 251, 0.78);
 }
 
 .m-benefit .use b {
@@ -6421,7 +6435,7 @@ body.portal {
 
 .m-member .s {
   font-size: 0.76rem;
-  color: rgba(246, 248, 251, 0.5);
+  color: rgba(246, 248, 251, 0.78);
 }
 
 .m-member .m-tier2 {
@@ -6430,7 +6444,7 @@ body.portal {
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: rgba(246, 248, 251, 0.55);
+  color: rgba(246, 248, 251, 0.78);
   border: 1px solid var(--line-d);
   border-radius: 8px;
   padding: 0.25rem 0.55rem;
@@ -6444,7 +6458,7 @@ body.portal {
 .m-note-line {
   margin-top: 1.2rem;
   font-size: 0.78rem;
-  color: rgba(246, 248, 251, 0.45);
+  color: rgba(246, 248, 251, 0.78);
   font-style: italic;
 }
 
@@ -6481,11 +6495,11 @@ body.portal {
   padding: 2rem 0;
   text-align: center;
   font-size: 0.8rem;
-  color: rgba(246, 248, 251, 0.4);
+  color: rgba(246, 248, 251, 0.78);
 }
 
 .m-foot a {
-  color: rgba(246, 248, 251, 0.55);
+  color: rgba(246, 248, 251, 0.78);
   margin: 0 0.7rem;
   transition: color 0.25s;
 }
@@ -6576,7 +6590,7 @@ section.light .eyebrow,
   background: var(--gold-500);
 }
 .light .pillar-num {
-  color: var(--gold-500);
+  color: var(--gold-2);
 }
 
 /* ---- nav: condense + current page ---- */
@@ -7053,7 +7067,7 @@ body.menu-open {
 .price-why summary::before {
   content: "+";
   font-family: var(--font-mono);
-  color: var(--gold-500);
+  color: var(--gold-2);
   font-size: 0.95rem;
   transition: transform var(--dur-fast);
 }
@@ -7083,7 +7097,7 @@ body.menu-open {
   white-space: nowrap;
 }
 .ladder-viz .lv b {
-  color: var(--gold-500);
+  color: var(--gold-2);
   font-weight: 700;
   margin-left: 0.35rem;
 }
@@ -7285,7 +7299,7 @@ body.menu-open {
   padding-bottom: 0.2rem;
 }
 .legal-nav a[aria-current="page"] {
-  color: var(--gold-500);
+  color: var(--gold-2);
   border-bottom-color: var(--gold-500);
 }
 
@@ -7295,7 +7309,7 @@ body.menu-open {
   font-weight: 700;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--gold-500);
+  color: var(--gold-2);
   margin: 0 0 1.2rem;
 }
 .gs-err-note {
@@ -7364,7 +7378,7 @@ body:not(.anim) .reveal {
   align-self: center;
 }
 .svc-band li a:hover {
-  color: var(--gold-500);
+  color: var(--gold-2);
 }
 #lgFormWrap .lg-note {
   margin-top: 1.2rem;
@@ -7475,7 +7489,7 @@ body:not(.anim) .reveal {
 .compare h2,
 .access-strip h2,
 .feat-head h2 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 800;
   letter-spacing: -0.022em;
   line-height: 1.03;
@@ -7508,7 +7522,7 @@ body:not(.anim) .reveal {
 .next-prod .np-name,
 .gs-title,
 .p-body h3 {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 700;
   letter-spacing: -0.01em;
   line-height: 1.12;
@@ -7533,7 +7547,7 @@ body:not(.anim) .reveal {
 .rung .r-price,
 .lc-big,
 .gs-sum li b {
-  font-family: var(--serif);
+  font-family: var(--font-display);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
@@ -7560,4 +7574,32 @@ body:not(.anim) .reveal {
 /* eyebrows back to the Hanken body font (Ledger), keep uppercase tracking */
 .eyebrow {
   font-family: var(--font-body);
+}
+
+/* Sticky mobile CTA for conversion pages */
+.sticky-cta-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 90;
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  background: rgba(11, 21, 38, 0.96);
+  border-top: 1px solid var(--line-d);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.sticky-cta-bar .btn {
+  flex: 1;
+  justify-content: center;
+}
+body.has-sticky-cta {
+  padding-bottom: 76px;
+}
+@media (min-width: 761px) {
+  .sticky-cta-bar {
+    display: none;
+  }
 }

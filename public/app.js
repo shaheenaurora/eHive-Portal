@@ -58,6 +58,43 @@ function submitLead(payload, onOk, onErr) {
 (function () {
   "use strict";
 
+  function isValidEmail(email) {
+    if (typeof email !== "string") return false;
+    email = email.trim();
+    /* Basic RFC-like check: one @, domain has at least one dot, no spaces, reasonable length */
+    if (!email || email.length > 254) return false;
+    var parts = email.split("@");
+    if (parts.length !== 2) return false;
+    var local = parts[0];
+    var domain = parts[1];
+    if (!local || !domain) return false;
+    if (domain.indexOf(".") === -1) return false;
+    if (domain.startsWith(".") || domain.endsWith(".")) return false;
+    if (/\.\./.test(domain)) return false;
+    if (/\s/.test(email)) return false;
+    return true;
+  }
+  function sanitizePhone(phone) {
+    return (phone || "").replace(/[^\d+\-\s()]/g, "");
+  }
+  function setBtnBusy(btn, label) {
+    if (!btn || btn.classList.contains("busy") || btn.disabled) return false;
+    btn.dataset.originalText = btn.textContent;
+    btn.textContent = label;
+    btn.classList.add("busy");
+    btn.disabled = true;
+    return true;
+  }
+  function restoreBtn(btn) {
+    if (!btn) return;
+    btn.classList.remove("busy");
+    btn.disabled = false;
+    if (btn.dataset.originalText) {
+      btn.textContent = btn.dataset.originalText;
+      delete btn.dataset.originalText;
+    }
+  }
+
   /* Mark the page animation-capable. Until .anim is set, all content
      renders in its final visible state (no-JS safe). */
   document.body.classList.add("anim");
@@ -86,8 +123,10 @@ function submitLead(payload, onOk, onErr) {
 
   /* ---- current-page indicator ---- */
   var here = location.pathname.split("/").pop() || "index.html";
+  if (here === "" || location.pathname === "/") here = "index.html";
   document.querySelectorAll(".nav-links a").forEach(function (a) {
     var href = (a.getAttribute("href") || "").split("#")[0].split("?")[0];
+    if (href === "/") href = "index.html";
     if (href && href === here) a.setAttribute("aria-current", "page");
   });
 
@@ -222,7 +261,7 @@ function submitLead(payload, onOk, onErr) {
     f.addEventListener("submit", function (e) {
       e.preventDefault();
       var inp = f.querySelector('input[type="email"]');
-      if (!inp || !/.+@.+\..+/.test(inp.value.trim())) {
+      if (!inp || !isValidEmail(inp.value.trim())) {
         if (inp) inp.focus();
         return;
       }
@@ -651,7 +690,7 @@ function submitLead(payload, onOk, onErr) {
         var em = document.getElementById("calcEmail");
         var ok = document.querySelector(".cc-ok"),
           err = document.querySelector(".cc-err");
-        if (!em || !/.+@.+\..+/.test(em.value.trim())) {
+        if (!em || !isValidEmail(em.value.trim())) {
           if (em) {
             em.focus();
             em.classList.add("err");
@@ -659,6 +698,7 @@ function submitLead(payload, onOk, onErr) {
           return;
         }
         em.classList.remove("err");
+        if (!setBtnBusy(sendBtn, "Sending\u2026")) return;
         var e = lastEst || estimate(lastMain);
         submitLead(
           {
@@ -679,6 +719,7 @@ function submitLead(payload, onOk, onErr) {
             user_agent: navigator.userAgent,
           },
           function () {
+            restoreBtn(sendBtn);
             if (ok) {
               ok.style.display = "block";
               ok.textContent =
@@ -687,6 +728,7 @@ function submitLead(payload, onOk, onErr) {
             if (err) err.style.display = "none";
           },
           function () {
+            restoreBtn(sendBtn);
             if (err) {
               err.style.display = "block";
               err.textContent =
@@ -846,12 +888,7 @@ function submitLead(payload, onOk, onErr) {
       if (n === "3") {
         var nm = document.getElementById("gsName"),
           em = document.getElementById("gsEmail");
-        return !!(
-          nm &&
-          nm.value.trim() &&
-          em &&
-          /.+@.+\..+/.test(em.value.trim())
-        );
+        return !!(nm && nm.value.trim() && em && isValidEmail(em.value.trim()));
       }
       return true;
     }
@@ -958,13 +995,37 @@ function submitLead(payload, onOk, onErr) {
       if (el) el.addEventListener("input", paint);
     });
 
+    function showGsFailure() {
+      document.querySelectorAll(".gs-step").forEach(function (s) {
+        s.classList.remove("active");
+      });
+      var wrap = document.querySelector(".gs-wrap");
+      if (!wrap) return;
+      var existing = document.getElementById("gsFail");
+      if (existing) existing.parentNode.removeChild(existing);
+      var fail = document.createElement("div");
+      fail.id = "gsFail";
+      fail.className = "gs-step active";
+      fail.innerHTML =
+        '<h3 class="gs-title">We couldn\u2019t send your request.</h3>' +
+        '<p class="gs-summary">Please try again, or email us directly.</p>' +
+        '<button type="button" class="btn primary gs-retry">Try again</button>';
+      fail.querySelector(".gs-retry").addEventListener("click", function () {
+        fail.parentNode.removeChild(fail);
+        go(1);
+      });
+      wrap.appendChild(fail);
+      var card = document.querySelector(".gs-card") || wrap;
+      card.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
     var gsSubmit = document.getElementById("gsSubmit");
     if (gsSubmit) {
       gsSubmit.addEventListener("click", function () {
         var name = document.getElementById("gsName"),
           email = document.getElementById("gsEmail");
         var nameBad = !name.value.trim();
-        var emailBad = !/.+@.+\..+/.test(email.value.trim());
+        var emailBad = !isValidEmail(email.value.trim());
         name.classList.toggle("err", nameBad);
         document.getElementById("errName").classList.toggle("on", nameBad);
         email.classList.toggle("err", emailBad);
@@ -989,7 +1050,7 @@ function submitLead(payload, onOk, onErr) {
           detail = gs.detail || "—";
           productOrTier = gs.detail || "";
         }
-        var phone = document.getElementById("gsPhone").value.trim();
+        var phone = sanitizePhone(document.getElementById("gsPhone").value);
         var rows = [
           ["Door", LBL[gs.door] || "—"],
           ["Detail", detail],
@@ -1011,6 +1072,7 @@ function submitLead(payload, onOk, onErr) {
         });
 
         var errNote = document.getElementById("gsErr");
+        if (!setBtnBusy(gsSubmit, "Sending\u2026")) return;
         submitLead(
           {
             form: "get-started",
@@ -1027,11 +1089,13 @@ function submitLead(payload, onOk, onErr) {
             user_agent: navigator.userAgent,
           },
           function () {
+            restoreBtn(gsSubmit);
             location.href = "/thank-you?src=lead";
           },
           function () {
+            restoreBtn(gsSubmit);
             if (errNote) errNote.classList.add("show");
-            go("done");
+            showGsFailure();
           }
         );
       });
@@ -1231,7 +1295,7 @@ function submitLead(payload, onOk, onErr) {
     }
     renderSlots();
 
-    bkConfirm.addEventListener("click", function () {
+    function submitBooking() {
       if (!selDay || !selSlot) {
         bkHint.textContent = "Choose a day and a time slot to continue.";
         return;
@@ -1239,7 +1303,7 @@ function submitLead(payload, onOk, onErr) {
       var name = document.getElementById("bkNameIn"),
         email = document.getElementById("bkEmail");
       var nameBad = !name.value.trim();
-      var emailBad = !/.+@.+\..+/.test(email.value.trim());
+      var emailBad = !isValidEmail(email.value.trim());
       name.classList.toggle("err", nameBad);
       document.getElementById("bkErrName").classList.toggle("on", nameBad);
       email.classList.toggle("err", emailBad);
@@ -1247,6 +1311,8 @@ function submitLead(payload, onOk, onErr) {
       if (nameBad || emailBad) return;
 
       var when = fmtDay(selDay) + " · " + selSlot + " GST";
+      var phoneIn = document.getElementById("bkPhone");
+      var phone = phoneIn ? sanitizePhone(phoneIn.value) : "";
       var rows = [
         ["Booked", bk.name],
         ["When", when],
@@ -1254,6 +1320,7 @@ function submitLead(payload, onOk, onErr) {
         ["Name", name.value.trim()],
         ["Email", email.value.trim()],
       ];
+      if (phone) rows.push(["Phone", phone]);
       var sum = document.getElementById("bkSummary");
       sum.innerHTML = rows
         .map(function () {
@@ -1268,21 +1335,25 @@ function submitLead(payload, onOk, onErr) {
       });
       document.getElementById("bkDoneEmail").textContent = email.value.trim();
 
+      if (!setBtnBusy(bkConfirm, "Confirming\u2026")) return;
       var errNote = document.getElementById("bkErr");
+      var payload = {
+        form: "booking",
+        product: (pm && pm[1]) || "discovery",
+        when: when,
+        format: bk.fmt,
+        name: name.value.trim(),
+        email: email.value.trim(),
+        source_page: "book.html",
+        referrer: document.referrer || "",
+        timestamp: new Date().toISOString(),
+        user_agent: navigator.userAgent,
+      };
+      if (phone) payload.phone = phone;
       submitLead(
-        {
-          form: "booking",
-          product: (pm && pm[1]) || "discovery",
-          when: when,
-          format: bk.fmt,
-          name: name.value.trim(),
-          email: email.value.trim(),
-          source_page: "book.html",
-          referrer: document.referrer || "",
-          timestamp: new Date().toISOString(),
-          user_agent: navigator.userAgent,
-        },
+        payload,
         function (d) {
+          restoreBtn(bkConfirm);
           if (d && d.emailSent === false) {
             if (errNote) {
               errNote.textContent =
@@ -1301,18 +1372,24 @@ function submitLead(payload, onOk, onErr) {
           location.href = "/thank-you?src=booking";
         },
         function () {
+          restoreBtn(bkConfirm);
           if (errNote) {
             errNote.textContent =
               "We couldn't reach the booking server. Your slot is summarised above; please try again or contact us directly.";
             errNote.classList.add("show");
           }
-          document.getElementById("bkForm").style.display = "none";
-          document.getElementById("bkDone").style.display = "block";
-          var card = document.querySelector(".bk-card");
-          if (card) card.scrollIntoView({ behavior: "smooth", block: "start" });
         }
       );
-    });
+    }
+
+    bkConfirm.addEventListener("click", submitBooking);
+    var bkForm = document.getElementById("bkForm");
+    if (bkForm) {
+      bkForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        submitBooking();
+      });
+    }
     var again = document.getElementById("bkAgain");
     if (again) {
       again.addEventListener("click", function () {
@@ -1337,7 +1414,7 @@ function submitLead(payload, onOk, onErr) {
       if (!PORTAL_LIVE) return;
       var email = document.getElementById("lgEmail"),
         code = document.getElementById("lgCode");
-      var emailBad = !/.+@.+\..+/.test(email.value.trim());
+      var emailBad = !isValidEmail(email.value.trim());
       var codeBad = code.value.trim().length < 4;
       email.classList.toggle("err", emailBad);
       document.getElementById("lgErrEmail").classList.toggle("on", emailBad);
@@ -1679,6 +1756,53 @@ function submitLead(payload, onOk, onErr) {
   if (document.readyState === "loading")
     document.addEventListener("DOMContentLoaded", wire);
   else wire();
+})();
+
+/* Pause infinite decorative animations when off-screen */
+(function () {
+  var reduceMotion = window.matchMedia(
+    "(prefers-reduced-motion: reduce)"
+  ).matches;
+  var animated = document.querySelectorAll(
+    ".rings, .img-banner img, .lattice-bg"
+  );
+  if (!animated.length || reduceMotion) return;
+  var io = new IntersectionObserver(
+    function (entries) {
+      entries.forEach(function (entry) {
+        entry.target.style.animationPlayState = entry.isIntersecting
+          ? "running"
+          : "paused";
+      });
+    },
+    { threshold: 0 }
+  );
+  animated.forEach(function (el) {
+    io.observe(el);
+  });
+})();
+
+/* Sticky mobile CTA for conversion pages */
+(function () {
+  if (window.innerWidth > 760) return;
+  var path = location.pathname.split("/").pop() || "index.html";
+  var pages = [
+    "index.html",
+    "business-setup.html",
+    "consulting.html",
+    "circle.html",
+    "get-started.html",
+  ];
+  if (pages.indexOf(path) === -1) return;
+  var bar = document.createElement("div");
+  bar.className = "sticky-cta-bar";
+  bar.setAttribute("role", "region");
+  bar.setAttribute("aria-label", "Quick actions");
+  bar.innerHTML =
+    "<a class='btn btn-primary' href='get-started.html'>Get Started</a>" +
+    "<a class='btn btn-ghost' href='book.html?type=discovery'>Book a call</a>";
+  document.body.appendChild(bar);
+  document.body.classList.add("has-sticky-cta");
 })();
 
 /* PWA: register the service worker so the site is installable from any page

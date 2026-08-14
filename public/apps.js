@@ -14,6 +14,34 @@
     if (html != null) e.innerHTML = html;
     return e;
   }
+  function trapFocus(container, onClose) {
+    var focusable = Array.prototype.slice
+      .call(
+        container.querySelectorAll(
+          'button, a, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])'
+        )
+      )
+      .filter(function (x) {
+        return x.offsetParent !== null && !x.disabled;
+      });
+    if (focusable.length === 0) return function () {};
+    var first = focusable[0],
+      last = focusable[focusable.length - 1];
+    function handler(e) {
+      if (e.key !== "Tab") return;
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+    container.addEventListener("keydown", handler);
+    return function () {
+      container.removeEventListener("keydown", handler);
+    };
+  }
 
   /* ---- toasts ---- */
   var toastWrap = null;
@@ -156,7 +184,8 @@
       '<svg viewBox="0 0 24 24" fill="none"><path d="M12 2.5 20 7v10l-8 4.5L4 17V7z" stroke="#0F1C3A" stroke-width="1.6"/><circle cx="12" cy="12" r="2.6" fill="#0F1C3A"/></svg>';
     document.body.appendChild(fab);
 
-    var panel = null;
+    var panel = null,
+      removeTrap = null;
     function say(node, asUser) {
       var body = panel.querySelector(".cg-body");
       if (asUser) {
@@ -257,12 +286,16 @@
       panel.querySelector(".cg-close").addEventListener("click", closePanel);
       say("start", false);
       document.addEventListener("keydown", escClose);
+      panel.querySelector(".cg-close").focus();
+      removeTrap = trapFocus(panel);
     }
     function escClose(e) {
       if (e.key === "Escape") closePanel();
     }
     function closePanel() {
       if (!panel) return;
+      if (removeTrap) removeTrap();
+      removeTrap = null;
       panel.remove();
       panel = null;
       fab.classList.remove("off");
@@ -378,9 +411,11 @@
   var pfmOpen = false;
   function openPathfinder() {
     if (pfmOpen) return;
+    var trigger = document.activeElement;
     pfmOpen = true;
     var step = 0,
-      answers = [];
+      answers = [],
+      removeTrap = null;
     var overlay = el("div", "pfm-overlay");
     overlay.setAttribute("role", "dialog");
     overlay.setAttribute("aria-modal", "true");
@@ -394,6 +429,8 @@
     overlay.appendChild(card);
     document.body.appendChild(overlay);
     document.body.style.overflow = "hidden";
+    card.querySelector(".pfm-x").focus();
+    removeTrap = trapFocus(card);
 
     function paint() {
       card.querySelector(".pfm-prog i").style.width =
@@ -431,6 +468,8 @@
             answers = [];
             paint();
           });
+        if (removeTrap) removeTrap();
+        removeTrap = trapFocus(card);
         return;
       }
       var html =
@@ -468,12 +507,17 @@
           step--;
           paint();
         });
+      if (removeTrap) removeTrap();
+      removeTrap = trapFocus(card);
     }
     function close() {
+      if (removeTrap) removeTrap();
+      removeTrap = null;
       overlay.remove();
       document.body.style.overflow = "";
       pfmOpen = false;
       document.removeEventListener("keydown", onKey);
+      if (trigger && trigger.focus) trigger.focus();
     }
     function onKey(e) {
       if (e.key === "Escape") close();
@@ -513,9 +557,12 @@
     var open = false,
       overlay = null,
       sel = 0,
-      filtered = CMDK_ITEMS;
+      filtered = CMDK_ITEMS,
+      removeTrap = null,
+      trigger = null;
     function show() {
       if (open) return;
+      trigger = document.activeElement;
       open = true;
       sel = 0;
       filtered = CMDK_ITEMS;
@@ -527,6 +574,8 @@
       document.body.appendChild(overlay);
       document.body.style.overflow = "hidden";
       var input = overlay.querySelector("input");
+      input.focus();
+      removeTrap = trapFocus(overlay);
       input.addEventListener("input", function () {
         var q = input.value.trim().toLowerCase();
         filtered = CMDK_ITEMS.filter(function (i) {
@@ -554,7 +603,6 @@
       overlay.addEventListener("click", function (e) {
         if (e.target === overlay) hide();
       });
-      input.focus();
       paintList();
     }
     function paintList() {
@@ -562,6 +610,8 @@
       if (!filtered.length) {
         list.innerHTML =
           '<div style="padding:1rem;color:var(--ink-600);font-size:.88rem">Nothing matches — try “setup”, “sprint”, “circle”…</div>';
+        if (removeTrap) removeTrap();
+        removeTrap = trapFocus(overlay);
         return;
       }
       list.innerHTML = "";
@@ -584,6 +634,8 @@
         });
         list.appendChild(b);
       });
+      if (removeTrap) removeTrap();
+      removeTrap = trapFocus(overlay);
     }
     function activate(item) {
       if (!item) return;
@@ -596,10 +648,13 @@
     }
     function hide() {
       if (!open) return;
+      if (removeTrap) removeTrap();
+      removeTrap = null;
       overlay.remove();
       overlay = null;
       open = false;
       document.body.style.overflow = "";
+      if (trigger && trigger.focus) trigger.focus();
     }
     document.addEventListener("keydown", function (e) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
