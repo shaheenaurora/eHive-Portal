@@ -846,6 +846,63 @@ export const CHAPTER_ROLE_LABEL: Record<string, string> = Object.fromEntries(
 export const CHAPTER_ROLE_RESP: Record<string, string> = Object.fromEntries(
   CHAPTER_ROLES.map(r => [r.key, r.responsibilities])
 );
+
+/** Map a free-text election seat (e.g. "President", "VP Membership") to a
+ *  chapter-role key so an election can auto-fill the seat on close. Unrecognised
+ *  seats become the generic "other" role, keeping the seat text as the title.
+ *  Pure — matches on an alias table then exact label/key, never loose substrings
+ *  (so "President-Elect" resolves to Vice President, not President). */
+export function seatToChapterRole(seat: string): {
+  role: ChapterRoleKey;
+  title: string | null;
+} {
+  const norm = (x: string) =>
+    x
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+  const s = norm(seat);
+  const fallback = {
+    role: "other" as ChapterRoleKey,
+    title: seat.trim().slice(0, 128) || "Officer",
+  };
+  if (!s) return fallback;
+  const aliases: Record<string, ChapterRoleKey> = {
+    president: "president",
+    chair: "president",
+    chairperson: "president",
+    "vice president": "vice_president",
+    vp: "vice_president",
+    "president elect": "vice_president",
+    "vice president president elect": "vice_president",
+    secretary: "secretary",
+    "general secretary": "secretary",
+    treasurer: "treasurer",
+    "vp membership": "vp_membership",
+    membership: "vp_membership",
+    "vp programming": "vp_programming",
+    programming: "vp_programming",
+    programmes: "vp_programming",
+    "vp learning": "vp_learning",
+    "vp learning mentorship": "vp_learning",
+    learning: "vp_learning",
+    mentorship: "vp_learning",
+    "vp communications": "vp_communications",
+    communications: "vp_communications",
+    "past president": "past_president",
+    "immediate past president": "past_president",
+    "member experience": "member_experience",
+    "member experience officer": "member_experience",
+  };
+  if (aliases[s]) return { role: aliases[s], title: null };
+  for (const r of CHAPTER_ROLES)
+    if (r.key !== "other" && norm(r.label) === s)
+      return { role: r.key, title: null };
+  for (const r of CHAPTER_ROLES)
+    if (r.key !== "other" && norm(r.key) === s)
+      return { role: r.key, title: null };
+  return fallback;
+}
 export const CHAPTER_ROLE_METRIC: Record<string, string> = Object.fromEntries(
   CHAPTER_ROLES.map(r => [r.key, r.metric])
 );
