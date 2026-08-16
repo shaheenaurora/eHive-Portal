@@ -870,6 +870,130 @@ a {
   max-width: 72ch;
 }
 
+/* ---- legal pages ---- */
+.h-legal-nav {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.h-legal-nav a {
+  color: var(--h-muted);
+  padding-bottom: 0.25rem;
+  border-bottom: 2px solid transparent;
+  transition:
+    color 0.2s,
+    border-color 0.2s;
+}
+
+.h-legal-nav a:hover {
+  color: var(--h-coral);
+}
+
+.h-legal-nav a[aria-current="page"] {
+  color: var(--h-coral);
+  border-bottom-color: var(--h-coral);
+}
+
+.h-legal-body {
+  margin-top: 2.5rem;
+}
+
+.h-legal-body h2 {
+  font-family: "Archivo", system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 1.35rem;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  margin: 2.2rem 0 1rem;
+  color: var(--h-navy);
+}
+
+.h-legal-body h2:first-child {
+  margin-top: 0;
+}
+
+.h-legal-body p,
+.h-legal-body ul,
+.h-legal-body ol {
+  color: var(--h-muted);
+  margin-bottom: 1rem;
+}
+
+.h-legal-body ul,
+.h-legal-body ol {
+  padding-left: 1.4rem;
+}
+
+.h-legal-body li {
+  margin-bottom: 0.5rem;
+}
+
+.h-legal-body a {
+  color: var(--h-coral);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.h-legal-body a:hover {
+  color: var(--h-coral-2);
+}
+
+.h-legal-body .ph-block {
+  background: var(--h-paper);
+  border: 1px solid var(--h-line);
+  border-radius: var(--h-radius-sm);
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+}
+
+.h-legal-body .ph-kicker {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--h-coral);
+  margin-bottom: 0.5rem;
+}
+
+/* ---- error pages ---- */
+.h-error {
+  min-height: 80svh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10rem 0 5rem;
+  text-align: center;
+  background:
+    radial-gradient(
+      120% 100% at 50% 0%,
+      rgba(218, 58, 34, 0.06) 0%,
+      transparent 50%
+    ),
+    var(--h-cream);
+}
+
+.h-error-code {
+  font-family: "Archivo", system-ui, sans-serif;
+  font-weight: 900;
+  font-size: clamp(2.2rem, 5.5vw, 4rem);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--h-coral);
+  margin-bottom: 1rem;
+}
+
+.h-error h1 {
+  font-family: "Archivo", system-ui, sans-serif;
+  font-weight: 900;
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  margin-bottom: 1rem;
+}
+
 /* ---- footer ---- */
 .h-footer {
   background: var(--h-cream-2);
