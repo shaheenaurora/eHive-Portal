@@ -18,10 +18,10 @@
       href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.min.css" />
+    <link rel="stylesheet" href="home.css" />
     <link rel="stylesheet" href="apps.min.css" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#16264C" />
+    <meta name="theme-color" content="#f8f6f0" />
     <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -30,11 +30,11 @@
   <body>
     <a class="skip" href="#main">Skip to content</a>
 
-    <header class="site-nav" id="siteNav">
+    <header class="h-nav site-nav" id="siteNav">
       <nav aria-label="Primary">
         <a class="brand" href="index.html" aria-label="eHive — home">
           <img
-            src="assets/ehive-wordmark.png"
+            src="assets/ehive-wordmark-dark.png"
             alt="eHive"
             width="146"
             height="26"
@@ -42,7 +42,7 @@
         </a>
         <button
           type="button"
-          class="nav-toggle"
+          class="h-nav-toggle nav-toggle"
           id="navToggle"
           aria-expanded="false"
           aria-controls="navMenu"
@@ -57,7 +57,7 @@
           <li><a href="clarity-scorecard.html">Scorecard</a></li>
           <li><a href="login.html">Login</a></li>
           <li>
-            <a class="btn btn-primary btn-sm" href="get-started.html"
+            <a class="h-btn h-btn-primary h-btn-sm" href="get-started.html"
               >Get Started</a
             >
           </li>
@@ -66,8 +66,8 @@
     </header>
 
     <main id="main">
-      <!-- ================= HERO (blueprint 4) ================= -->
-      <section class="page-hero" aria-labelledby="page-h">
+      <!-- ================= HERO ================= -->
+      <section class="h-page-hero" aria-labelledby="page-h">
         <svg
           class="lattice-bg"
           viewBox="0 0 1200 500"
@@ -98,164 +98,72 @@
             <circle cx="1070" cy="310" r="3" />
           </g>
         </svg>
-        <div class="wrap">
-          <p class="crumbs">
+        <div class="h-wrap">
+          <p class="h-crumbs">
             <a href="index.html">Home</a><i>·</i><span>Consulting</span>
           </p>
-          <p class="eyebrow">Pillar 02 — Run · Scale</p>
-          <h1 id="page-h">
+          <p class="h-eyebrow reveal">Pillar 02 — Run · Scale</p>
+          <h1 id="page-h" class="reveal">
             The rigor of strategy consulting.
             <em>The creativity of a design studio.</em>
           </h1>
-          <p class="sub">
+          <p class="sub reveal" style="--d: 0.08s">
             We borrow our discipline from the world&rsquo;s top strategy
             consultancies, and our process from the world&rsquo;s best design
             studios — then build both into six focused products for growing
             businesses.
           </p>
+          <div class="h-hero-actions reveal" style="--d: 0.16s">
+            <a class="h-btn h-btn-primary" href="#products"
+              >See the products <span class="h-arr">→</span></a
+            >
+            <a class="h-btn h-btn-ghost" href="book.html?type=discovery"
+              >Book a discovery call</a
+            >
+          </div>
         </div>
       </section>
 
       <!-- ================= FREE TOOLS: Clarity Scorecard + Brand Check ================= -->
-      <section
-        aria-label="Free business assessments"
-        style="background: #0f1c3a; color: #f3f1ea"
-      >
-        <div
-          class="wrap"
-          style="max-width: 1000px; margin: 0 auto; padding: 36px 20px"
-        >
-          <p
-            style="
-              font-family: &quot;Archivo&quot;, system-ui, sans-serif;
-              font-size: clamp(20px, 2.6vw, 26px);
-              font-weight: 700;
-              margin: 0 0 4px;
-              text-align: center;
-            "
-          >
-            Not sure where to start?
-            <span style="color: #da3a22">Two free ways to find out.</span>
-          </p>
-          <p
-            style="
-              color: #c9c2b4;
-              font-size: 14.5px;
-              margin: 0 auto 24px;
-              max-width: 64ch;
-              text-align: center;
-            "
-          >
+      <section class="h-section alt" aria-label="Free business assessments">
+        <div class="h-wrap">
+          <p class="h-eyebrow reveal">Not sure where to start?</p>
+          <h2 class="h-h2 reveal" style="--d: 0.08s">
+            Two free ways to find out.
+          </h2>
+          <p class="h-lede reveal" style="--d: 0.16s">
             No cost, no obligation — each takes a few minutes and gives you an
             honest read before any conversation.
           </p>
-          <div
-            style="
-              display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-              gap: 18px;
-            "
-          >
-            <div
-              style="
-                border: 1px solid rgba(218, 58, 34, 0.35);
-                border-radius: 10px;
-                padding: 24px;
-                display: flex;
-                flex-direction: column;
-              "
-            >
-              <p
-                style="
-                  font-family: &quot;Archivo&quot;, system-ui, sans-serif;
-                  font-size: clamp(19px, 2.4vw, 23px);
-                  font-weight: 700;
-                  margin: 0 0 6px;
-                "
-              >
-                Clarity Scorecard
-              </p>
-              <p
-                style="
-                  color: #c9c2b4;
-                  font-size: 14.5px;
-                  margin: 0 0 20px;
-                  flex: 1;
-                "
-              >
+          <div class="h-assess-grid reveal" style="--d: 0.24s">
+            <div class="h-assess-card">
+              <h3>Clarity Scorecard</h3>
+              <p>
                 Scores your business across 8 domains in about 3 minutes and
                 points you to the one move that matters most right now.
               </p>
-              <a
-                href="/clarity-scorecard.html"
-                style="
-                  display: inline-block;
-                  background: #da3a22;
-                  color: #fff;
-                  font-weight: 700;
-                  padding: 12px 22px;
-                  border-radius: 4px;
-                  text-decoration: none;
-                  align-self: flex-start;
-                "
+              <a class="h-btn h-btn-primary" href="/clarity-scorecard.html"
+                >Take the Clarity Scorecard <span class="h-arr">→</span></a
               >
-                Take the Clarity Scorecard →
-              </a>
             </div>
-            <div
-              style="
-                border: 1px solid rgba(218, 58, 34, 0.35);
-                border-radius: 10px;
-                padding: 24px;
-                display: flex;
-                flex-direction: column;
-              "
-            >
-              <p
-                style="
-                  font-family: &quot;Archivo&quot;, system-ui, sans-serif;
-                  font-size: clamp(19px, 2.4vw, 23px);
-                  font-weight: 700;
-                  margin: 0 0 6px;
-                "
-              >
-                Brand Check
-              </p>
-              <p
-                style="
-                  color: #c9c2b4;
-                  font-size: 14.5px;
-                  margin: 0 0 20px;
-                  flex: 1;
-                "
-              >
+            <div class="h-assess-card">
+              <h3>Brand Check</h3>
+              <p>
                 A short brand discovery form — nine focused sections on
                 positioning, audience, pricing and growth. No score; we read it
                 and tell you where the opportunity sits.
               </p>
-              <a
-                href="/brand-check.html"
-                style="
-                  display: inline-block;
-                  background: #da3a22;
-                  color: #fff;
-                  font-weight: 700;
-                  padding: 12px 22px;
-                  border-radius: 4px;
-                  text-decoration: none;
-                  align-self: flex-start;
-                "
+              <a class="h-btn h-btn-primary" href="/brand-check.html"
+                >Do the Brand Check <span class="h-arr">→</span></a
               >
-                Do the Brand Check →
-              </a>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- ================= METHODOLOGY STRIP (blueprint 4) ================= -->
-      <section class="method" aria-label="How quality is built in">
-        <div class="wrap">
+      <!-- ================= METHODOLOGY STRIP ================= -->
+      <section class="h-method" aria-label="How quality is built in">
+        <div class="h-wrap">
           <svg
             width="46"
             height="46"
@@ -284,8 +192,8 @@
         </div>
       </section>
 
-      <!-- chapter image: prism — rigor refracted into creativity (AI-generated brand art) -->
-      <figure class="img-banner">
+      <!-- chapter image: prism — rigor refracted into creativity -->
+      <figure class="h-img-banner">
         <img
           src="assets/img/img-consulting.jpg"
           alt="A glass prism refracting a beam of golden light into precise geometric lines"
@@ -298,74 +206,67 @@
         <figcaption>Rigor, then creativity.</figcaption>
       </figure>
 
-      <!-- ================= THE SIX PRODUCTS (blueprint 4) ================= -->
-      <section
-        class="products light"
-        id="products"
-        aria-labelledby="products-h"
-      >
-        <div class="wrap pad">
-          <div class="journey-head">
+      <!-- ================= THE SIX PRODUCTS ================= -->
+      <section class="h-section alt" id="products" aria-labelledby="products-h">
+        <div class="h-wrap">
+          <div class="h-products-head">
             <div>
-              <p class="eyebrow reveal">The products</p>
-              <h2 class="h2 reveal" style="--d: 0.08s" id="products-h">
+              <p class="h-eyebrow reveal">The products</p>
+              <h2 class="h-h2 reveal" style="--d: 0.08s" id="products-h">
                 Six products. One arc.
               </h2>
             </div>
-            <p class="journey-note reveal" style="--d: 0.16s">
+            <p class="h-products-note reveal" style="--d: 0.16s">
               Sequenced by where a founder typically starts. Each stands alone —
               and they compound.
             </p>
           </div>
 
+          <div class="h-ladder-viz reveal" style="--d: 0.04s">
+            <span class="lv">Clarity Sprint <b>2.5–3k</b></span
+            ><span class="lv-arr">→</span>
+            <span class="lv">Strategy Sprint <b>10–15k</b></span
+            ><span class="lv-arr">→</span>
+            <span class="lv">GapNavigator <b>12–18k</b></span
+            ><span class="lv-arr">→</span>
+            <span class="lv">Brand 3D <b>15–25k</b></span
+            ><span class="lv-arr">→</span>
+            <span class="lv">OpsBlueprint <b>40–70k</b></span
+            ><span class="lv-arr">→</span>
+            <span class="lv">Momentum90 <b>75k</b></span>
+          </div>
+
           <div class="plist">
-            <div
-              class="ladder-viz reveal"
-              style="--d: 0.04s"
-              aria-label="The product arc, by investment"
-            >
-              <span class="lv">Clarity Sprint <b>2.5–3k</b></span
-              ><span class="lv-arr">→</span>
-              <span class="lv">Strategy Sprint <b>10–15k</b></span
-              ><span class="lv-arr">→</span>
-              <span class="lv">GapNavigator <b>12–18k</b></span
-              ><span class="lv-arr">→</span>
-              <span class="lv">Brand 3D <b>15–25k</b></span
-              ><span class="lv-arr">→</span>
-              <span class="lv">OpsBlueprint <b>40–70k</b></span
-              ><span class="lv-arr">→</span>
-              <span class="lv">Momentum90 <b>75k</b></span>
-            </div>
             <article
-              class="product reveal"
+              class="h-product reveal"
               style="--d: 0.05s"
               id="clarity-sprint"
             >
-              <div class="p-node">
-                <span class="p-num">01</span>
-                <span class="p-format">2–3 hour session</span>
+              <div class="h-p-node">
+                <span class="h-p-num">01</span>
+                <span class="h-p-format">2–3 hour session</span>
               </div>
-              <div class="p-body">
+              <div class="h-p-body">
                 <h3>Clarity Sprint™</h3>
-                <p class="p-tag">Get unstuck in days, not months.</p>
-                <p class="p-desc">
+                <p class="h-p-tag">Get unstuck in days, not months.</p>
+                <p class="h-p-desc">
                   A perspective-and-focus session, not a planning session. Zoom
                   out to where your industry and value network are heading —
                   then collapse all of it into the one thing you should be best
                   in the world at, and a short Stop / Start / Focus list to get
                   you there.
                 </p>
-                <p class="p-best">
+                <p class="h-p-best">
                   <b>Best for</b> Founders facing a specific decision or blocker
                 </p>
               </div>
-              <div class="p-side">
-                <p class="p-price">
+              <div class="h-p-side">
+                <p class="h-p-price">
                   AED 2,500–3,000<small
                     >Single session · one-page Clarity Memo</small
                   >
                 </p>
-                <details class="price-why">
+                <details class="h-price-why">
                   <summary>Why this price</summary>
                   <p>
                     Why a range: preparation depth. A solo-founder decision
@@ -374,47 +275,46 @@
                   </p>
                 </details>
                 <a
-                  class="btn btn-primary"
+                  class="h-btn h-btn-primary"
                   href="book.html?product=clarity-sprint"
                   >Book this Sprint</a
                 >
-                <a class="p-explore" href="consulting-clarity-sprint.html"
+                <a class="h-p-explore" href="consulting-clarity-sprint.html"
                   >Explore Clarity Sprint <span class="arr">→</span></a
                 >
               </div>
             </article>
 
-            <!-- 02 Strategy Sprint — product page: /consulting/strategy-sprint (follows) -->
             <article
-              class="product reveal"
+              class="h-product reveal"
               style="--d: 0.1s"
               id="strategy-sprint"
             >
-              <div class="p-node">
-                <span class="p-num">02</span>
-                <span class="p-format">1 day · scalable to 2–3 weeks</span>
+              <div class="h-p-node">
+                <span class="h-p-num">02</span>
+                <span class="h-p-format">1 day · scalable to 2–3 weeks</span>
               </div>
-              <div class="p-body">
+              <div class="h-p-body">
                 <h3>Strategy Sprint™</h3>
-                <p class="p-tag">A focused strategic roadmap.</p>
-                <p class="p-desc">
+                <p class="h-p-tag">A focused strategic roadmap.</p>
+                <p class="h-p-desc">
                   Our flagship clarity product. In a single structured day, the
                   founder and leadership team move from scattered priorities to
                   a documented strategy, a re-engineered business model, and a
                   prioritised 90-day action roadmap with owners and metrics.
                 </p>
-                <p class="p-best">
+                <p class="h-p-best">
                   <b>Best for</b> Businesses needing direction before committing
                   resources
                 </p>
               </div>
-              <div class="p-side">
-                <p class="p-price">
+              <div class="h-p-side">
+                <p class="h-p-price">
                   AED 10,000–15,000<small
                     >Founder, Leadership &amp; Deep Sprint formats</small
                   >
                 </p>
-                <details class="price-why">
+                <details class="h-price-why">
                   <summary>Why this price</summary>
                   <p>
                     Why a range: the Founder format (one decision-maker, one
@@ -423,49 +323,48 @@
                   </p>
                 </details>
                 <a
-                  class="btn btn-primary"
+                  class="h-btn h-btn-primary"
                   href="book.html?product=strategy-sprint"
                   >Book this Sprint</a
                 >
-                <a class="p-explore" href="consulting-strategy-sprint.html"
+                <a class="h-p-explore" href="consulting-strategy-sprint.html"
                   >Explore Strategy Sprint <span class="arr">→</span></a
                 >
               </div>
             </article>
 
-            <!-- 03 GapNavigator — product page: /consulting/gapnavigator (follows) -->
             <article
-              class="product reveal"
+              class="h-product reveal"
               style="--d: 0.15s"
               id="gapnavigator"
             >
-              <div class="p-node">
-                <span class="p-num">03</span>
-                <span class="p-format">Diagnostic engagement</span>
+              <div class="h-p-node">
+                <span class="h-p-num">03</span>
+                <span class="h-p-format">Diagnostic engagement</span>
               </div>
-              <div class="p-body">
+              <div class="h-p-body">
                 <h3>GapNavigator™</h3>
-                <p class="p-tag">
+                <p class="h-p-tag">
                   Find what&rsquo;s missing before it costs you.
                 </p>
-                <p class="p-desc">
+                <p class="h-p-desc">
                   A structured diagnostic that scores your business across eight
                   domains — producing a Clarity Score™, a Reality Map of the
                   true current state, a Bottlenecks Report, and an Opportunity
                   Map ranking the 3–7 moves that matter most right now.
                 </p>
-                <p class="p-best">
+                <p class="h-p-best">
                   <b>Best for</b> Teams that suspect a gap but can&rsquo;t name
                   it yet
                 </p>
               </div>
-              <div class="p-side">
-                <p class="p-price">
+              <div class="h-p-side">
+                <p class="h-p-price">
                   AED 12,000–18,000<small
                     >A defensible score — not opinion</small
                   >
                 </p>
-                <details class="price-why">
+                <details class="h-price-why">
                   <summary>Why this price</summary>
                   <p>
                     Why a range: the diagnostic scales with the number of
@@ -473,42 +372,43 @@
                     approve scope — and price — before anything starts.
                   </p>
                 </details>
-                <a class="btn btn-primary" href="book.html?product=gapnavigator"
+                <a
+                  class="h-btn h-btn-primary"
+                  href="book.html?product=gapnavigator"
                   >Book this engagement</a
                 >
-                <a class="p-explore" href="consulting-gapnavigator.html"
+                <a class="h-p-explore" href="consulting-gapnavigator.html"
                   >Explore GapNavigator <span class="arr">→</span></a
                 >
               </div>
             </article>
 
-            <!-- 04 Brand 3D — product page: /consulting/brand-3d (follows) -->
-            <article class="product reveal" style="--d: 0.2s" id="brand-3d">
-              <div class="p-node">
-                <span class="p-num">04</span>
-                <span class="p-format">3–4 weeks</span>
+            <article class="h-product reveal" style="--d: 0.2s" id="brand-3d">
+              <div class="h-p-node">
+                <span class="h-p-num">04</span>
+                <span class="h-p-format">3–4 weeks</span>
               </div>
-              <div class="p-body">
+              <div class="h-p-body">
                 <h3>Brand 3D™</h3>
-                <p class="p-tag">A brand built to be believed.</p>
-                <p class="p-desc">
+                <p class="h-p-tag">A brand built to be believed.</p>
+                <p class="h-p-desc">
                   The full marketing engine, built across three dimensions:
                   sharpened positioning, a complete messaging architecture, a
                   content engine with defined pillars and cadence, and a demand
                   generation system mapped to real channels.
                 </p>
-                <p class="p-best">
+                <p class="h-p-best">
                   <b>Best for</b> Businesses whose brand hasn&rsquo;t caught up
                   to their ambition
                 </p>
               </div>
-              <div class="p-side">
-                <p class="p-price">
+              <div class="h-p-side">
+                <p class="h-p-price">
                   AED 15,000–25,000<small
                     >Positioning · messaging · demand engine</small
                   >
                 </p>
-                <details class="price-why">
+                <details class="h-price-why">
                   <summary>Why this price</summary>
                   <p>
                     Why a range: positioning-only projects sit lower; full
@@ -516,44 +416,43 @@
                     Scoped after a discovery call, fixed before work begins.
                   </p>
                 </details>
-                <a class="btn btn-primary" href="book.html?product=brand-3d"
+                <a class="h-btn h-btn-primary" href="book.html?product=brand-3d"
                   >Book this engagement</a
                 >
-                <a class="p-explore" href="consulting-brand-3d.html"
+                <a class="h-p-explore" href="consulting-brand-3d.html"
                   >Explore Brand 3D <span class="arr">→</span></a
                 >
               </div>
             </article>
 
-            <!-- 05 OpsBlueprint — product page: /consulting/opsblueprint (follows) -->
             <article
-              class="product reveal"
+              class="h-product reveal"
               style="--d: 0.25s"
               id="opsblueprint"
             >
-              <div class="p-node">
-                <span class="p-num">05</span>
-                <span class="p-format">4 weeks</span>
+              <div class="h-p-node">
+                <span class="h-p-num">05</span>
+                <span class="h-p-format">4 weeks</span>
               </div>
-              <div class="p-body">
+              <div class="h-p-body">
                 <h3>OpsBlueprint™</h3>
-                <p class="p-tag">Operations that scale without breaking.</p>
-                <p class="p-desc">
+                <p class="h-p-tag">Operations that scale without breaking.</p>
+                <p class="h-p-desc">
                   Operations engineered like a product: a full capability map of
                   the current state, up to 10 key SOPs documented to the eHive
                   standard, a redesigned org model, KPI dashboards, and a
                   30-60-90 activation plan with named owners.
                 </p>
-                <p class="p-best">
+                <p class="h-p-best">
                   <b>Best for</b> Founders whose growth is outrunning their
                   systems
                 </p>
               </div>
-              <div class="p-side">
-                <p class="p-price">
+              <div class="h-p-side">
+                <p class="h-p-price">
                   AED 40,000–70,000<small>Scoped per engagement</small>
                 </p>
-                <details class="price-why">
+                <details class="h-price-why">
                   <summary>Why this price</summary>
                   <p>
                     Why a range: priced by process complexity and team size —
@@ -561,43 +460,44 @@
                     sixty-person F&amp;B group. Fixed after scoping.
                   </p>
                 </details>
-                <a class="btn btn-ghost" href="book.html?product=opsblueprint"
+                <a
+                  class="h-btn h-btn-ghost"
+                  href="book.html?product=opsblueprint"
                   >Talk to us first</a
                 >
-                <p class="talk">
+                <p class="h-talk">
                   A discovery call precedes booking at this scale.
                 </p>
-                <a class="p-explore" href="consulting-opsblueprint.html"
+                <a class="h-p-explore" href="consulting-opsblueprint.html"
                   >Explore OpsBlueprint <span class="arr">→</span></a
                 >
               </div>
             </article>
 
-            <!-- 06 Momentum90 — product page: /consulting/momentum90 (follows) -->
-            <article class="product reveal" style="--d: 0.3s" id="momentum90">
-              <div class="p-node">
-                <span class="p-num">06</span>
-                <span class="p-format">90 days</span>
+            <article class="h-product reveal" style="--d: 0.3s" id="momentum90">
+              <div class="h-p-node">
+                <span class="h-p-num">06</span>
+                <span class="h-p-format">90 days</span>
               </div>
-              <div class="p-body">
+              <div class="h-p-body">
                 <h3>Momentum90™</h3>
-                <p class="p-tag">A 90-day growth engagement.</p>
-                <p class="p-desc">
+                <p class="h-p-tag">A 90-day growth engagement.</p>
+                <p class="h-p-desc">
                   The execution layer of the ecosystem: a 12-month roadmap with
                   quarterly OKRs, a KPI Tree™ down to leading indicators, a
                   weekly execution rhythm with monthly recalibration — progress
                   whether or not you&rsquo;re in the room.
                 </p>
-                <p class="p-best">
+                <p class="h-p-best">
                   <b>Best for</b> Businesses ready for sustained, hands-on
                   transformation
                 </p>
               </div>
-              <div class="p-side">
-                <p class="p-price">
+              <div class="h-p-side">
+                <p class="h-p-price">
                   AED 75,000<small>or AED 25,000 / month</small>
                 </p>
-                <details class="price-why">
+                <details class="h-price-why">
                   <summary>Why this price</summary>
                   <p>
                     Priced per quarter because it is a quarter of senior
@@ -606,13 +506,13 @@
                     at AED 25,000.
                   </p>
                 </details>
-                <a class="btn btn-ghost" href="book.html?product=momentum90"
+                <a class="h-btn h-btn-ghost" href="book.html?product=momentum90"
                   >Talk to us first</a
                 >
-                <p class="talk">
+                <p class="h-talk">
                   A discovery call precedes booking at this scale.
                 </p>
-                <a class="p-explore" href="consulting-momentum90.html"
+                <a class="h-p-explore" href="consulting-momentum90.html"
                   >Explore Momentum90 <span class="arr">→</span></a
                 >
               </div>
@@ -622,13 +522,13 @@
       </section>
 
       <!-- ================= FIT SELECTOR ================= -->
-      <section class="light" id="fit" aria-labelledby="fit-h">
-        <div class="wrap" style="padding-bottom: var(--pad)">
+      <section class="h-section" id="fit" aria-labelledby="fit-h">
+        <div class="h-wrap" style="padding-bottom: var(--h-pad)">
           <div class="selector reveal" id="fitSelector">
-            <p class="eyebrow" style="margin-bottom: 0.6rem">
+            <p class="h-eyebrow" style="margin-bottom: 0.6rem">
               The two-minute answer
             </p>
-            <h2 class="h2" id="fit-h" style="margin-top: 0">
+            <h2 class="h-h2" id="fit-h" style="margin-top: 0">
               Which product fits me?
             </h2>
             <div class="sel-q">
@@ -720,85 +620,75 @@
             <div class="sel-result" aria-live="polite">
               <div class="sr-kicker">Our recommendation</div>
               <h3 class="sr-name">—</h3>
-              <p
-                class="sr-price"
-                style="
-                  font-family: var(--font-mono);
-                  color: var(--gold-500);
-                  font-size: 0.9rem;
-                  margin: 0 0 0.6rem;
-                "
-              >
-                —
-              </p>
+              <p class="sr-price">—</p>
               <p class="sr-why">—</p>
               <a
-                class="btn btn-primary sr-link"
+                class="h-btn h-btn-primary sr-link"
                 href="get-started.html?door=consulting"
-                >Explore this product <span class="arr">→</span></a
+                >Explore this product <span class="h-arr">→</span></a
               >
             </div>
           </div>
         </div>
       </section>
-      <!-- ================= HOW EVERY ENGAGEMENT RUNS (blueprint 4 — process, not
-     fabricated case studies; real client work joins post-launch) ================= -->
-      <section class="process light" aria-labelledby="process-h">
-        <div class="wrap pad">
-          <p class="eyebrow reveal">How it works</p>
-          <h2 class="h2 reveal" style="--d: 0.08s" id="process-h">
+
+      <!-- ================= HOW EVERY ENGAGEMENT RUNS ================= -->
+      <section class="h-section alt" aria-labelledby="process-h">
+        <div class="h-wrap">
+          <p class="h-eyebrow reveal">How it works</p>
+          <h2 class="h-h2 reveal" style="--d: 0.08s" id="process-h">
             Every engagement, the same discipline.
           </h2>
-          <ol class="steps" id="steps">
-            <li class="step reveal" style="--d: 0.05s">
-              <span class="step-num" aria-hidden="true">1</span>
+          <div class="h-4col h-mt-2" id="steps">
+            <div class="h-step-card reveal" style="--d: 0.05s">
+              <span class="num">1</span>
               <h3>Tell us the problem.</h3>
               <p>
                 A short intake — what&rsquo;s blocked, unclear, or outgrowing
                 its systems.
               </p>
-            </li>
-            <li class="step reveal" style="--d: 0.15s">
-              <span class="step-num" aria-hidden="true">2</span>
+            </div>
+            <div class="h-step-card reveal" style="--d: 0.15s">
+              <span class="num">2</span>
               <h3>Matched with a vetted specialist.</h3>
               <p>
                 The right expert for your product and industry leads the
                 engagement.
               </p>
-            </li>
-            <li class="step reveal" style="--d: 0.25s">
-              <span class="step-num" aria-hidden="true">3</span>
+            </div>
+            <div class="h-step-card reveal" style="--d: 0.25s">
+              <span class="num">3</span>
               <h3>The work happens.</h3>
               <p>
                 Sprint, diagnostic, or build — structured, documented, and on a
                 fixed scope.
               </p>
-            </li>
-            <li class="step reveal" style="--d: 0.35s">
-              <span class="step-num" aria-hidden="true">4</span>
+            </div>
+            <div class="h-step-card reveal" style="--d: 0.35s">
+              <span class="num">4</span>
               <h3>Core-team review, then delivery.</h3>
               <p>
                 Nothing reaches you until eHive&rsquo;s core team has reviewed
                 it.
               </p>
-            </li>
-          </ol>
+            </div>
+          </div>
         </div>
       </section>
 
       <!-- ================= SPRINT DAY EXPLORER (mini-app) ================= -->
       <section
-        class="light"
+        class="h-section"
         id="sprintday"
         aria-labelledby="sx-h"
         style="padding-top: 0"
       >
-        <div class="wrap" style="padding-bottom: var(--pad)">
+        <div class="h-wrap" style="padding-bottom: var(--h-pad)">
           <div class="sx reveal" id="sprintExplorer">
             <div class="sx-head">
               <div>
-                <p class="eyebrow">Inside the room</p>
-                <h2 class="h2" id="sx-h" style="margin-top: 0">
+                <p class="h-eyebrow">Inside the room</p>
+                <h2 class="h-h2" id="sx-h" style="margin-top: 0">
                   A sprint day, hour by hour.
                 </h2>
               </div>
@@ -889,7 +779,7 @@
       </section>
 
       <!-- ================= CTA ================= -->
-      <section class="page-cta" aria-labelledby="c-cta-h">
+      <section class="h-section h-cta-banner" aria-labelledby="c-cta-h">
         <svg
           class="lattice-bg"
           viewBox="0 0 1200 420"
@@ -916,26 +806,32 @@
             <circle cx="890" cy="330" r="3" />
           </g>
         </svg>
-        <div class="wrap pad" style="position: relative; z-index: 1">
-          <h2 class="reveal" id="c-cta-h">Not sure which product fits?</h2>
-          <p class="lede reveal" style="--d: 0.12s">
+        <div class="h-wrap" style="position: relative; z-index: 1">
+          <p class="h-eyebrow reveal">Not sure which product fits?</p>
+          <h2 class="h-h2 reveal" id="c-cta-h">Not sure which product fits?</h2>
+          <p class="h-lede h-mx-auto reveal" style="--d: 0.12s">
             That&rsquo;s exactly what the Clarity Sprint exists for — one
             session, one point of focus. Or tell us the problem and we&rsquo;ll
             point you to the right door.
           </p>
-          <p class="cta-rule on-dark reveal" style="--d: 0.18s">
+          <p class="h-cta-rule reveal" style="--d: 0.18s">
             <b>The short version:</b> one stuck decision → Clarity Sprint ·
             direction for the whole business → Strategy Sprint · stalled growth
             → GapNavigator · a brand that isn&rsquo;t landing → Brand 3D · the
             operation runs on you → OpsBlueprint · a quarter of senior execution
             → Momentum90.
           </p>
-          <div class="cta-row reveal" style="--d: 0.22s">
-            <a class="btn btn-primary" href="book.html?product=clarity-sprint"
+          <div
+            class="h-hero-actions h-mx-auto reveal"
+            style="--d: 0.22s; justify-content: center"
+          >
+            <a
+              class="h-btn h-btn-primary"
+              href="book.html?product=clarity-sprint"
               >Start with a Clarity Sprint</a
             >
             <a
-              class="btn btn-ghost on-dark"
+              class="h-btn h-btn-ghost h-btn-light"
               href="get-started.html?door=consulting"
               >Tell us the problem</a
             >
@@ -943,49 +839,46 @@
         </div>
       </section>
     </main>
-    <footer>
-      <div class="wrap">
-        <div class="foot-grid">
-          <div class="foot-brand">
+
+    <footer class="h-footer">
+      <div class="h-wrap">
+        <div class="h-footer-grid">
+          <div>
             <img
-              src="assets/ehive-full.png"
+              src="assets/ehive-full-dark.png"
               alt="eHive — Build. Belong. Become."
               width="150"
             />
-            <p>
+            <p style="margin-top: 1rem">
               To advance the human race by enabling individuals and
               organisations to do better — sustainably, relevantly, and
               beneficially.
             </p>
           </div>
-          <div class="foot-col">
+          <div>
             <h4>The Ecosystem</h4>
-            <ul>
-              <li><a href="business-setup.html">Business Setup</a></li>
-              <li><a href="consulting.html">Consulting</a></li>
-              <li><a href="circle.html">eHive Circle</a></li>
-              <li><a href="get-started.html">Get Started</a></li>
-            </ul>
+            <a href="business-setup.html">Business Setup</a>
+            <a href="consulting.html">Consulting</a>
+            <a href="circle.html">eHive Circle</a>
+            <a href="get-started.html">Get Started</a>
           </div>
-          <div class="foot-col">
+          <div>
             <h4>Company</h4>
-            <ul>
-              <li><a href="about.html">About</a></li>
-              <li><a href="insights.html">Insights — The Hive Journal</a></li>
-              <li><a href="about.html#join">Join the Network</a></li>
-              <li><a href="clarity-scorecard.html">Scorecard</a></li>
-              <li><a href="login.html">Login</a></li>
-            </ul>
+            <a href="about.html">About</a>
+            <a href="insights.html">Insights — The Hive Journal</a>
+            <a href="about.html#join">Join the Network</a>
+            <a href="clarity-scorecard.html">Scorecard</a>
+            <a href="login.html">Login</a>
           </div>
-          <div class="foot-col">
+          <div>
             <h4>Connect</h4>
-            <p class="foot-loc">
-              Dubai, UAE<span>Expanding across the region</span>
-            </p>
+            <p>Dubai, UAE</p>
+            <p style="font-size: 0.9rem">Expanding across the region</p>
             <form
-              class="news-form"
+              class="h-lead-form news-form"
               method="post"
               aria-label="Newsletter signup"
+              style="margin-top: 1rem"
             >
               <label class="visually-hidden" for="news-email"
                 >Email address</label
@@ -1000,15 +893,22 @@
             </form>
           </div>
         </div>
-        <div class="foot-bottom">
+        <div class="h-footer-bottom">
           <span>© <span id="year">2026</span> eHive. All rights reserved.</span>
-          <div class="foot-legal">
+          <div>
             <a href="privacy.html">Privacy</a>
-            <a href="terms.html">Terms</a>
+            <a href="terms.html" style="margin-left: 1rem">Terms</a>
           </div>
         </div>
       </div>
     </footer>
+
+    <div class="h-sticky-cta" aria-label="Quick actions">
+      <a class="h-btn h-btn-primary" href="get-started.html">Get Started</a>
+      <a class="h-btn h-btn-ghost" href="book.html?type=discovery"
+        >Book a call</a
+      >
+    </div>
 
     <script src="app.min.js" defer></script>
     <script src="apps.min.js" defer></script>
