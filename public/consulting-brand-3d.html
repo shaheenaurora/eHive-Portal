@@ -18,10 +18,10 @@
       href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.min.css" />
+    <link rel="stylesheet" href="home.css" />
     <link rel="stylesheet" href="apps.min.css" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#16264C" />
+    <meta name="theme-color" content="#f8f6f0" />
     <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -30,11 +30,11 @@
   <body>
     <a class="skip" href="#main">Skip to content</a>
 
-    <header class="site-nav" id="siteNav">
+    <header class="h-nav site-nav" id="siteNav">
       <nav aria-label="Primary">
         <a class="brand" href="index.html" aria-label="eHive — home">
           <img
-            src="assets/ehive-wordmark.png"
+            src="assets/ehive-wordmark-dark.png"
             alt="eHive"
             width="146"
             height="26"
@@ -42,7 +42,7 @@
         </a>
         <button
           type="button"
-          class="nav-toggle"
+          class="h-nav-toggle nav-toggle"
           id="navToggle"
           aria-expanded="false"
           aria-controls="navMenu"
@@ -57,7 +57,7 @@
           <li><a href="clarity-scorecard.html">Scorecard</a></li>
           <li><a href="login.html">Login</a></li>
           <li>
-            <a class="btn btn-primary btn-sm" href="get-started.html"
+            <a class="h-btn h-btn-primary h-btn-sm" href="get-started.html"
               >Get Started</a
             >
           </li>
@@ -133,7 +133,7 @@
                 <li>Messaging architecture &amp; brand voice</li>
                 <li>Content engine + demand system</li>
               </ul>
-              <a class="btn btn-primary" href="book.html?product=brand-3d"
+              <a class="h-btn h-btn-primary" href="book.html?product=brand-3d"
                 >Book this engagement</a
               >
               <p class="bc-note">Organic, paid and inbound — one engine.</p>
@@ -143,62 +143,21 @@
       </section>
 
       <!-- ================= BRAND CHECK CTA (free brand discovery form) ================= -->
-      <section
-        aria-label="Free brand discovery"
-        style="background: #0f1c3a; color: #f3f1ea"
-      >
-        <div
-          class="wrap"
-          style="
-            max-width: 960px;
-            margin: 0 auto;
-            padding: 34px 20px;
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: space-between;
-            gap: 18px;
-          "
-        >
-          <div style="flex: 1 1 420px; min-width: 280px">
-            <p
-              style="
-                font-family: &quot;Archivo&quot;, system-ui, sans-serif;
-                font-size: clamp(20px, 2.6vw, 26px);
-                font-weight: 700;
-                margin: 0 0 6px;
-              "
-            >
+      <section class="brand-check-cta" aria-label="Free brand discovery">
+        <div class="wrap">
+          <div class="copy">
+            <p class="headline">
               Not ready to book?
-              <span style="color: #da3a22">Start with a Brand Check.</span>
+              <span>Start with a Brand Check.</span>
             </p>
-            <p
-              style="
-                color: #c9c2b4;
-                font-size: 15px;
-                margin: 0;
-                max-width: 60ch;
-              "
-            >
+            <p>
               A short, free discovery form — nine focused sections on your
               positioning, audience, pricing and growth. There's no score and no
               obligation: we read your answers and tell you where the biggest
               opportunity sits.
             </p>
           </div>
-          <a
-            href="/brand-check.html"
-            style="
-              display: inline-block;
-              background: #da3a22;
-              color: #fff;
-              font-weight: 700;
-              padding: 14px 28px;
-              border-radius: 4px;
-              text-decoration: none;
-              white-space: nowrap;
-            "
-          >
+          <a class="h-btn h-btn-primary" href="/brand-check.html">
             Do the Brand Check →
           </a>
         </div>
@@ -355,7 +314,7 @@
             </div>
           </div>
           <div class="format-cta reveal" style="--d: 0.1s">
-            <a class="btn btn-primary" href="book.html?product=brand-3d"
+            <a class="h-btn h-btn-primary" href="book.html?product=brand-3d"
               >Build the brand your market is waiting for
               <span class="arr">→</span></a
             >
@@ -381,12 +340,12 @@
         </div>
       </section>
     </main>
-    <footer>
+    <footer class="h-footer">
       <div class="wrap">
         <div class="foot-grid">
           <div class="foot-brand">
             <img
-              src="assets/ehive-full.png"
+              src="assets/ehive-full-dark.png"
               alt="eHive — Build. Belong. Become."
               width="150"
             />
@@ -421,7 +380,7 @@
               Dubai, UAE<span>Expanding across the region</span>
             </p>
             <form
-              class="news-form"
+              class="news-form h-lead-form"
               method="post"
               aria-label="Newsletter signup"
             >

@@ -18,10 +18,10 @@
       href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.min.css" />
+    <link rel="stylesheet" href="home.css" />
     <link rel="stylesheet" href="apps.min.css" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#16264C" />
+    <meta name="theme-color" content="#f8f6f0" />
     <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -30,11 +30,11 @@
   <body>
     <a class="skip" href="#main">Skip to content</a>
 
-    <header class="site-nav" id="siteNav">
+    <header class="h-nav site-nav" id="siteNav">
       <nav aria-label="Primary">
         <a class="brand" href="index.html" aria-label="eHive — home">
           <img
-            src="assets/ehive-wordmark.png"
+            src="assets/ehive-wordmark-dark.png"
             alt="eHive"
             width="146"
             height="26"
@@ -42,7 +42,7 @@
         </a>
         <button
           type="button"
-          class="nav-toggle"
+          class="h-nav-toggle nav-toggle"
           id="navToggle"
           aria-expanded="false"
           aria-controls="navMenu"
@@ -57,7 +57,7 @@
           <li><a href="clarity-scorecard.html">Scorecard</a></li>
           <li><a href="login.html">Login</a></li>
           <li>
-            <a class="btn btn-primary btn-sm" href="get-started.html"
+            <a class="h-btn h-btn-primary h-btn-sm" href="get-started.html"
               >Get Started</a
             >
           </li>
@@ -135,7 +135,7 @@
                 <li>KPI Tree™ &amp; execution dashboard</li>
                 <li>Weekly rhythm with monthly recalibration</li>
               </ul>
-              <a class="btn btn-ghost" href="book.html?product=momentum90"
+              <a class="h-btn h-btn-ghost" href="book.html?product=momentum90"
                 >Talk to us first</a
               >
               <p class="bc-note">
@@ -309,7 +309,7 @@
             </div>
           </div>
           <div class="format-cta reveal" style="--d: 0.1s">
-            <a class="btn btn-primary" href="book.html?product=momentum90"
+            <a class="h-btn h-btn-primary" href="book.html?product=momentum90"
               >Make the next 90 days count <span class="arr">→</span></a
             >
             <p class="fine">
@@ -336,12 +336,12 @@
         </div>
       </section>
     </main>
-    <footer>
+    <footer class="h-footer">
       <div class="wrap">
         <div class="foot-grid">
           <div class="foot-brand">
             <img
-              src="assets/ehive-full.png"
+              src="assets/ehive-full-dark.png"
               alt="eHive — Build. Belong. Become."
               width="150"
             />
@@ -376,7 +376,7 @@
               Dubai, UAE<span>Expanding across the region</span>
             </p>
             <form
-              class="news-form"
+              class="news-form h-lead-form"
               method="post"
               aria-label="Newsletter signup"
             >
