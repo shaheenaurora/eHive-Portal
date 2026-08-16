@@ -19,17 +19,22 @@
       href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.min.css" />
+    <link rel="stylesheet" href="home.css" />
     <link rel="stylesheet" href="apps.min.css" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#16264C" />
+    <meta name="theme-color" content="#f8f6f0" />
     <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="eHive" />
     <style>
       .ty-hero {
+        display: block;
+        min-height: auto;
         padding: clamp(3.5rem, 9vw, 7rem) 0 clamp(2.5rem, 6vw, 4.5rem);
+      }
+      .ty-hero h1 {
+        margin: 0.2rem 0 0.8rem;
       }
       .ty-badge {
         width: 74px;
@@ -38,7 +43,7 @@
         display: grid;
         place-items: center;
         margin: 0 0 1.4rem;
-        background: #da3a22;
+        background: var(--h-coral);
         color: #fff;
         box-shadow: 0 10px 30px rgba(218, 58, 34, 0.28);
       }
@@ -46,13 +51,10 @@
         width: 34px;
         height: 34px;
       }
-      .ty-hero h1 {
-        margin: 0.2rem 0 0.8rem;
-      }
       .ty-lede {
         max-width: 60ch;
         font-size: clamp(1.02rem, 2.4vw, 1.18rem);
-        color: #5f5c53;
+        color: var(--h-muted);
         line-height: 1.6;
       }
       .ty-steps {
@@ -62,9 +64,9 @@
         margin: 2.4rem 0 2rem;
       }
       .ty-step {
-        background: #fbfaf6;
-        border: 1px solid #e4decf;
-        border-radius: 14px;
+        background: var(--h-paper);
+        border: 1px solid var(--h-line);
+        border-radius: var(--h-radius);
         padding: 1.15rem 1.25rem;
       }
       .ty-step .n {
@@ -73,8 +75,8 @@
         width: 26px;
         height: 26px;
         border-radius: 50%;
-        background: #16264c;
-        color: #f3f1ea;
+        background: var(--h-navy);
+        color: #fff;
         font-weight: 800;
         font-size: 0.82rem;
         margin-bottom: 0.6rem;
@@ -82,11 +84,11 @@
       .ty-step h3 {
         margin: 0 0 0.3rem;
         font-size: 1.02rem;
-        color: #141312;
+        color: var(--h-ink);
       }
       .ty-step p {
         margin: 0;
-        color: #5f5c53;
+        color: var(--h-muted);
         font-size: 0.92rem;
         line-height: 1.5;
       }
@@ -101,11 +103,11 @@
   <body>
     <a class="skip" href="#main">Skip to content</a>
 
-    <header class="site-nav" id="siteNav">
+    <header class="h-nav site-nav" id="siteNav">
       <nav aria-label="Primary">
         <a class="brand" href="index.html" aria-label="eHive — home">
           <img
-            src="assets/ehive-wordmark.png"
+            src="assets/ehive-wordmark-dark.png"
             alt="eHive"
             width="146"
             height="26"
@@ -113,7 +115,7 @@
         </a>
         <button
           type="button"
-          class="nav-toggle"
+          class="h-nav-toggle nav-toggle"
           id="navToggle"
           aria-expanded="false"
           aria-controls="navMenu"
@@ -128,7 +130,7 @@
           <li><a href="clarity-scorecard.html">Scorecard</a></li>
           <li><a href="login.html">Login</a></li>
           <li>
-            <a class="btn btn-primary btn-sm" href="get-started.html"
+            <a class="h-btn h-btn-primary h-btn-sm" href="get-started.html"
               >Get Started</a
             >
           </li>
@@ -137,9 +139,9 @@
     </header>
 
     <main id="main">
-      <section class="p-hero ty-hero" aria-labelledby="page-h">
-        <div class="wrap">
-          <p class="crumbs">
+      <section class="h-page-hero ty-hero" aria-labelledby="page-h">
+        <div class="h-wrap">
+          <p class="h-crumbs">
             <a href="index.html">Home</a><i>·</i><span>Thank you</span>
           </p>
           <div class="ty-badge" aria-hidden="true">
@@ -153,7 +155,7 @@
               />
             </svg>
           </div>
-          <p class="p-name">Thank you</p>
+          <p class="h-eyebrow">Thank you</p>
           <h1 id="page-h">
             We&rsquo;ve got it. <em>Consider it in motion.</em>
           </h1>
@@ -189,11 +191,11 @@
           </div>
 
           <div class="ty-actions">
-            <a class="btn btn-primary" href="index.html">Back to home</a>
-            <a class="btn btn-ghost" href="circle.html"
+            <a class="h-btn h-btn-primary" href="index.html">Back to home</a>
+            <a class="h-btn h-btn-ghost" href="circle.html"
               >Explore the eHive Circle</a
             >
-            <a class="btn btn-ghost" href="insights.html"
+            <a class="h-btn h-btn-ghost" href="insights.html"
               >Read the Hive Journal</a
             >
           </div>
@@ -201,49 +203,45 @@
       </section>
     </main>
 
-    <footer>
-      <div class="wrap">
-        <div class="foot-grid">
-          <div class="foot-brand">
+    <footer class="h-footer">
+      <div class="h-wrap">
+        <div class="h-footer-grid">
+          <div>
             <img
-              src="assets/ehive-full.png"
+              src="assets/ehive-full-dark.png"
               alt="eHive — Build. Belong. Become."
               width="150"
             />
-            <p>
+            <p style="margin-top: 1rem">
               To advance the human race by enabling individuals and
               organisations to do better — sustainably, relevantly, and
               beneficially.
             </p>
           </div>
-          <div class="foot-col">
+          <div>
             <h4>The Ecosystem</h4>
-            <ul>
-              <li><a href="business-setup.html">Business Setup</a></li>
-              <li><a href="consulting.html">Consulting</a></li>
-              <li><a href="circle.html">eHive Circle</a></li>
-              <li><a href="get-started.html">Get Started</a></li>
-            </ul>
+            <a href="business-setup.html">Business Setup</a>
+            <a href="consulting.html">Consulting</a>
+            <a href="circle.html">eHive Circle</a>
+            <a href="get-started.html">Get Started</a>
           </div>
-          <div class="foot-col">
+          <div>
             <h4>Company</h4>
-            <ul>
-              <li><a href="about.html">About</a></li>
-              <li><a href="insights.html">Insights — The Hive Journal</a></li>
-              <li><a href="about.html#join">Join the Network</a></li>
-              <li><a href="clarity-scorecard.html">Scorecard</a></li>
-              <li><a href="login.html">Login</a></li>
-            </ul>
+            <a href="about.html">About</a>
+            <a href="insights.html">Insights — The Hive Journal</a>
+            <a href="about.html#join">Join the Network</a>
+            <a href="clarity-scorecard.html">Scorecard</a>
+            <a href="login.html">Login</a>
           </div>
-          <div class="foot-col">
+          <div>
             <h4>Connect</h4>
-            <p class="foot-loc">
-              Dubai, UAE<span>Expanding across the region</span>
-            </p>
+            <p>Dubai, UAE</p>
+            <p style="font-size: 0.9rem">Expanding across the region</p>
             <form
-              class="news-form"
+              class="h-lead-form news-form"
               method="post"
               aria-label="Newsletter signup"
+              style="margin-top: 1rem"
             >
               <label class="visually-hidden" for="news-email"
                 >Email address</label
@@ -258,11 +256,11 @@
             </form>
           </div>
         </div>
-        <div class="foot-bottom">
+        <div class="h-footer-bottom">
           <span>© <span id="year">2026</span> eHive. All rights reserved.</span>
-          <div class="foot-legal">
+          <div>
             <a href="privacy.html">Privacy</a>
-            <a href="terms.html">Terms</a>
+            <a href="terms.html" style="margin-left: 1rem">Terms</a>
           </div>
         </div>
       </div>
