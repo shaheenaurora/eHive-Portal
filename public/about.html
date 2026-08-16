@@ -18,10 +18,10 @@
       href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.min.css" />
+    <link rel="stylesheet" href="home.css" />
     <link rel="stylesheet" href="apps.min.css" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#16264C" />
+    <meta name="theme-color" content="#f8f6f0" />
     <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -30,11 +30,11 @@
   <body>
     <a class="skip" href="#main">Skip to content</a>
 
-    <header class="site-nav" id="siteNav">
+    <header class="h-nav site-nav" id="siteNav">
       <nav aria-label="Primary">
         <a class="brand" href="index.html" aria-label="eHive — home">
           <img
-            src="assets/ehive-wordmark.png"
+            src="assets/ehive-wordmark-dark.png"
             alt="eHive"
             width="146"
             height="26"
@@ -42,7 +42,7 @@
         </a>
         <button
           type="button"
-          class="nav-toggle"
+          class="h-nav-toggle nav-toggle"
           id="navToggle"
           aria-expanded="false"
           aria-controls="navMenu"
@@ -57,7 +57,7 @@
           <li><a href="clarity-scorecard.html">Scorecard</a></li>
           <li><a href="login.html">Login</a></li>
           <li>
-            <a class="btn btn-primary btn-sm" href="get-started.html"
+            <a class="h-btn h-btn-primary h-btn-sm" href="get-started.html"
               >Get Started</a
             >
           </li>
@@ -67,24 +67,24 @@
 
     <main id="main">
       <!-- ================= ABOUT HERO ================= -->
-      <section class="p-hero" aria-labelledby="page-h">
-        <div class="wrap">
-          <p class="crumbs">
+      <section class="h-page-hero" aria-labelledby="page-h">
+        <div class="h-wrap">
+          <p class="h-crumbs">
             <a href="index.html">Home</a><i>·</i><span>About</span>
           </p>
-          <div class="p-hero-grid">
+          <div class="h-page-hero-grid">
             <div>
-              <p class="p-name">About eHive</p>
+              <p class="h-eyebrow reveal">About eHive</p>
               <h1 id="page-h">
                 Built by a founder who <em>needed it first.</em>
               </h1>
-              <p class="sub">
+              <p class="sub reveal">
                 eHive is one ecosystem — business formation, consulting, and
                 community — built in Dubai by a founder who kept watching other
                 founders piece it all together alone, and decided that was the
                 problem worth solving.
               </p>
-              <div class="c-chips">
+              <div class="c-chips reveal">
                 <span class="chip">Dubai, UAE</span>
                 <span class="chip">One founder · one ecosystem</span>
                 <span class="chip">Three pillars, one system</span>
@@ -139,16 +139,16 @@
       </section>
 
       <!-- ================= OUR PURPOSE (blueprint 6.1 — verbatim) ================= -->
-      <section class="purpose" aria-labelledby="purpose-h">
-        <div class="narrow">
-          <p class="p-label reveal" id="purpose-h">Our Purpose</p>
-          <p class="p-state reveal" style="--d: 0.1s">
+      <section class="h-purpose" aria-labelledby="purpose-h">
+        <div class="h-narrow">
+          <p class="h-purpose-label reveal" id="purpose-h">Our Purpose</p>
+          <p class="h-purpose-state reveal" style="--d: 0.1s">
             To advance the human race by enabling individuals and organisations
             to do better — <b>sustainably, relevantly, and beneficially</b>.
           </p>
-          <div class="p-div" aria-hidden="true"></div>
-          <p class="p-label reveal">Our Vision</p>
-          <p class="p-state reveal" style="--d: 0.1s">
+          <div class="h-purpose-div" aria-hidden="true"></div>
+          <p class="h-purpose-label reveal">Our Vision</p>
+          <p class="h-purpose-state reveal" style="--d: 0.1s">
             A proud world where people are empowered to
             <b>question the status quo</b>.
           </p>
@@ -156,19 +156,19 @@
       </section>
 
       <!-- ================= SIX VALUES (blueprint 6.1) ================= -->
-      <section class="light" aria-labelledby="val-h">
-        <div class="wrap pad">
-          <p class="eyebrow reveal">Our values</p>
-          <h2 class="h2 reveal" style="--d: 0.08s" id="val-h">
+      <section class="h-section" aria-labelledby="val-h">
+        <div class="h-wrap">
+          <p class="h-eyebrow reveal">Our values</p>
+          <h2 class="h-h2 reveal" style="--d: 0.08s" id="val-h">
             Six beliefs — not a poster on a wall.
           </h2>
-          <p class="lede reveal" style="--d: 0.14s">
+          <p class="h-lede reveal" style="--d: 0.14s">
             These weren&rsquo;t analytically derived in a branding workshop.
             They&rsquo;re how the work actually gets done here — stated as
             beliefs, because that&rsquo;s what they are.
           </p>
-          <div class="val-grid">
-            <div class="val reveal" style="--d: 0.05s">
+          <div class="h-val-grid">
+            <div class="h-val reveal" style="--d: 0.05s">
               <span class="n">01</span>
               <h3>Ownership and Accountability</h3>
               <p>
@@ -176,7 +176,7 @@
                 it&rsquo;s our responsibility — end to end.
               </p>
             </div>
-            <div class="val reveal" style="--d: 0.1s">
+            <div class="h-val reveal" style="--d: 0.1s">
               <span class="n">02</span>
               <h3>Creativity at the Helm</h3>
               <p>
@@ -184,7 +184,7 @@
                 not the safest one.
               </p>
             </div>
-            <div class="val reveal" style="--d: 0.15s">
+            <div class="h-val reveal" style="--d: 0.15s">
               <span class="n">03</span>
               <h3>Simplify to Innovate</h3>
               <p>
@@ -192,7 +192,7 @@
                 that&rsquo;s the innovation.
               </p>
             </div>
-            <div class="val reveal" style="--d: 0.2s">
+            <div class="h-val reveal" style="--d: 0.2s">
               <span class="n">04</span>
               <h3>Integrated and Holistic</h3>
               <p>
@@ -200,7 +200,7 @@
                 not five vendors pointing at each other.
               </p>
             </div>
-            <div class="val reveal" style="--d: 0.25s">
+            <div class="h-val reveal" style="--d: 0.25s">
               <span class="n">05</span>
               <h3>Educate, Mentor, Empower</h3>
               <p>
@@ -208,7 +208,7 @@
                 you forever.
               </p>
             </div>
-            <div class="val reveal" style="--d: 0.3s">
+            <div class="h-val reveal" style="--d: 0.3s">
               <span class="n">06</span>
               <h3>No Founder Builds Alone</h3>
               <p>
@@ -221,28 +221,28 @@
       </section>
 
       <!-- ================= THE SIXTH VALUE — ITS OWN MOMENT ================= -->
-      <section class="vmoment" aria-label="The sixth value">
-        <div class="wrap pad">
+      <section class="h-value-moment" aria-label="The sixth value">
+        <div class="h-wrap">
           <h2 class="reveal">No Founder<br /><em>Builds Alone.</em></h2>
           <p class="reveal" style="--d: 0.12s">
             It opens the homepage. It built the Circle. It sits behind every
             engagement we take. The through-line of the entire brand — said
             once, loudly, where it belongs.
           </p>
-          <a class="vlink reveal" style="--d: 0.2s" href="circle.html"
+          <a class="h-vlink reveal" style="--d: 0.2s" href="circle.html"
             >See how it became the Circle <span aria-hidden="true">→</span></a
           >
         </div>
       </section>
 
       <!-- ================= OUR STORY (blueprint 6.2) ================= -->
-      <section class="light" aria-labelledby="story-h">
-        <div class="wrap pad">
-          <p class="eyebrow reveal">Our story</p>
-          <h2 class="h2 reveal" style="--d: 0.08s" id="story-h">
+      <section class="h-section alt" aria-labelledby="story-h">
+        <div class="h-wrap">
+          <p class="h-eyebrow reveal">Our story</p>
+          <h2 class="h-h2 reveal" style="--d: 0.08s" id="story-h">
             One founder. One missing ecosystem.
           </h2>
-          <div class="story-copy" style="margin-top: 2.6rem">
+          <div class="h-story-copy">
             <p class="reveal" style="--d: 0.12s">
               eHive began with a frustration its founder kept meeting
               first-hand: starting and growing a business in the region meant
@@ -269,9 +269,9 @@
       </section>
 
       <!-- chapter-break banner -->
-      <figure class="img-banner">
+      <figure class="h-img-banner">
         <img
-          src="assets/img/img-about.jpg"
+          src="assets/img/img-about-light.jpg"
           alt="Two streams of golden particles converging into one glowing honeycomb lattice in deep navy space"
           loading="lazy"
           decoding="async"
@@ -283,20 +283,16 @@
       </figure>
 
       <!-- ================= LEADERSHIP & TEAM (blueprint 6.3) ================= -->
-      <section
-        class="light"
-        style="background: var(--ivory-2)"
-        aria-labelledby="team-h"
-      >
-        <div class="wrap pad">
-          <p class="eyebrow reveal">Leadership &amp; team</p>
-          <h2 class="h2 reveal" style="--d: 0.08s" id="team-h">
+      <section class="h-section alt" aria-labelledby="team-h">
+        <div class="h-wrap">
+          <p class="h-eyebrow reveal">Leadership &amp; team</p>
+          <h2 class="h-h2 reveal" style="--d: 0.08s" id="team-h">
             The people in the room.
           </h2>
 
-          <h3 class="sub-head reveal">Founder</h3>
-          <div class="founder-grid">
-            <div class="person reveal" style="--d: 0.06s">
+          <h3 class="h-sub-head reveal">Founder</h3>
+          <div class="h-founder-grid">
+            <div class="h-person reveal" style="--d: 0.06s">
               <span class="avatar">S</span>
               <div>
                 <h4>Shaheen</h4>
@@ -313,29 +309,29 @@
           </div>
 
           <!-- COPY-NEEDED: team-roles -->
-          <h3 class="sub-head reveal">Core team</h3>
-          <div class="team-grid">
-            <div class="tm reveal" style="--d: 0.05s">
+          <h3 class="h-sub-head reveal">Core team</h3>
+          <div class="h-team-grid">
+            <div class="h-tm reveal" style="--d: 0.05s">
               <span class="avatar">S</span>
               <h4>Sabrina</h4>
               <span class="role">eHive core team</span>
             </div>
-            <div class="tm reveal" style="--d: 0.1s">
+            <div class="h-tm reveal" style="--d: 0.1s">
               <span class="avatar">A</span>
               <h4>Afeef</h4>
               <span class="role">eHive core team</span>
             </div>
-            <div class="tm reveal" style="--d: 0.15s">
+            <div class="h-tm reveal" style="--d: 0.15s">
               <span class="avatar">D</span>
               <h4>Divya</h4>
               <span class="role">eHive core team</span>
             </div>
-            <div class="tm reveal" style="--d: 0.2s">
+            <div class="h-tm reveal" style="--d: 0.2s">
               <span class="avatar">S</span>
               <h4>Shahinsha</h4>
               <span class="role">eHive core team</span>
             </div>
-            <div class="tm reveal" style="--d: 0.25s">
+            <div class="h-tm reveal" style="--d: 0.25s">
               <span class="avatar">S</span>
               <h4>Sajeer</h4>
               <span class="role">eHive core team</span>
@@ -343,10 +339,10 @@
           </div>
 
           <!-- COPY-NEEDED: advisors -->
-          <div class="advisors reveal" style="--d: 0.1s">
+          <div class="h-advisors reveal" style="--d: 0.1s">
             <h4>Advisors</h4>
-            <div class="ph-block">
-              <div class="ph-kicker">Being assembled</div>
+            <div class="h-ph-block">
+              <div class="h-ph-kicker">Being assembled</div>
               <p>
                 The advisory board is announced with the founding cohort —
                 names, bios and the areas they sharpen. We publish people, not
@@ -358,12 +354,12 @@
       </section>
 
       <!-- ================= JOIN THE NETWORK (blueprint 6.4) ================= -->
-      <section class="join" aria-labelledby="join-h">
-        <div class="wrap pad">
-          <div class="join-grid">
+      <section class="h-join" id="join" aria-labelledby="join-h">
+        <div class="h-wrap">
+          <div class="h-join-grid">
             <div>
-              <p class="eyebrow reveal">Join the network</p>
-              <h2 class="reveal" style="--d: 0.08s" id="join-h">
+              <p class="h-eyebrow reveal">Join the network</p>
+              <h2 class="h-h2 reveal" style="--d: 0.08s" id="join-h">
                 The bench is vetted.<br />The bar is high.
               </h2>
               <p class="reveal" style="--d: 0.14s">
@@ -376,13 +372,13 @@
             </div>
             <div>
               <div class="doors reveal" style="--d: 0.18s">
-                <a class="btn btn-primary" href="get-started.html?door=other"
+                <a
+                  class="h-btn h-btn-primary"
+                  href="get-started.html?door=other"
                   >Apply to join the network</a
                 >
-                <a
-                  class="btn btn-ghost on-dark"
-                  href="get-started.html?door=other"
-                  >Core-team roles <span class="arr">→</span></a
+                <a class="h-btn h-btn-ghost" href="get-started.html?door=other"
+                  >Core-team roles <span class="h-arr">→</span></a
                 >
               </div>
               <p class="fine reveal" style="--d: 0.24s">
@@ -394,66 +390,64 @@
       </section>
 
       <!-- ================= FINAL CTA ================= -->
-      <section class="c-cta" aria-labelledby="cta-h">
-        <div class="wrap pad">
+      <section class="h-cta-banner" aria-labelledby="cta-h">
+        <div class="h-wrap">
           <h2 class="reveal" id="cta-h">Build. Belong. <em>Become.</em></h2>
-          <p class="lede reveal" style="--d: 0.1s">
+          <p class="h-lede h-mx-auto reveal" style="--d: 0.1s">
             The tagline is the roadmap: set up your business, belong to a
             community, become the founder you&rsquo;re building toward.
           </p>
           <div class="doors reveal" style="--d: 0.18s">
-            <a class="btn btn-primary" href="get-started.html">Get Started</a>
-            <a class="btn btn-ghost on-dark" href="index.html"
-              >Explore the ecosystem <span class="arr">→</span></a
+            <a class="h-btn h-btn-primary" href="get-started.html"
+              >Get Started</a
+            >
+            <a class="h-btn h-btn-ghost h-btn-light" href="index.html"
+              >Explore the ecosystem <span class="h-arr">→</span></a
             >
           </div>
         </div>
       </section>
     </main>
 
-    <footer>
-      <div class="wrap">
-        <div class="foot-grid">
-          <div class="foot-brand">
+    <footer class="h-footer">
+      <div class="h-wrap">
+        <div class="h-footer-grid">
+          <div>
             <img
-              src="assets/ehive-full.png"
+              src="assets/ehive-full-dark.png"
               alt="eHive — Build. Belong. Become."
               width="150"
             />
-            <p>
+            <p style="margin-top: 1rem">
               To advance the human race by enabling individuals and
               organisations to do better — sustainably, relevantly, and
               beneficially.
             </p>
           </div>
-          <div class="foot-col">
+          <div>
             <h4>The Ecosystem</h4>
-            <ul>
-              <li><a href="business-setup.html">Business Setup</a></li>
-              <li><a href="consulting.html">Consulting</a></li>
-              <li><a href="circle.html">eHive Circle</a></li>
-              <li><a href="get-started.html">Get Started</a></li>
-            </ul>
+            <a href="business-setup.html">Business Setup</a>
+            <a href="consulting.html">Consulting</a>
+            <a href="circle.html">eHive Circle</a>
+            <a href="get-started.html">Get Started</a>
           </div>
-          <div class="foot-col">
+          <div>
             <h4>Company</h4>
-            <ul>
-              <li><a href="about.html">About</a></li>
-              <li><a href="insights.html">Insights — The Hive Journal</a></li>
-              <li><a href="about.html#join">Join the Network</a></li>
-              <li><a href="clarity-scorecard.html">Scorecard</a></li>
-              <li><a href="login.html">Login</a></li>
-            </ul>
+            <a href="about.html" aria-current="page">About</a>
+            <a href="insights.html">Insights — The Hive Journal</a>
+            <a href="about.html#join">Join the Network</a>
+            <a href="clarity-scorecard.html">Scorecard</a>
+            <a href="login.html">Login</a>
           </div>
-          <div class="foot-col">
+          <div>
             <h4>Connect</h4>
-            <p class="foot-loc">
-              Dubai, UAE<span>Expanding across the region</span>
-            </p>
+            <p>Dubai, UAE</p>
+            <p style="font-size: 0.9rem">Expanding across the region</p>
             <form
-              class="news-form"
+              class="h-lead-form news-form"
               method="post"
               aria-label="Newsletter signup"
+              style="margin-top: 1rem"
             >
               <label class="visually-hidden" for="news-email"
                 >Email address</label
@@ -468,11 +462,11 @@
             </form>
           </div>
         </div>
-        <div class="foot-bottom">
+        <div class="h-footer-bottom">
           <span>© <span id="year">2026</span> eHive. All rights reserved.</span>
-          <div class="foot-legal">
+          <div>
             <a href="privacy.html">Privacy</a>
-            <a href="terms.html">Terms</a>
+            <a href="terms.html" style="margin-left: 1rem">Terms</a>
           </div>
         </div>
       </div>

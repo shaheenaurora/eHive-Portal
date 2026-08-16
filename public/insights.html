@@ -18,10 +18,10 @@
       href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.min.css" />
+    <link rel="stylesheet" href="home.css" />
     <link rel="stylesheet" href="apps.min.css" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#16264C" />
+    <meta name="theme-color" content="#f8f6f0" />
     <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -30,11 +30,11 @@
   <body>
     <a class="skip" href="#main">Skip to content</a>
 
-    <header class="site-nav" id="siteNav">
+    <header class="h-nav site-nav" id="siteNav">
       <nav aria-label="Primary">
         <a class="brand" href="index.html" aria-label="eHive — home">
           <img
-            src="assets/ehive-wordmark.png"
+            src="assets/ehive-wordmark-dark.png"
             alt="eHive"
             width="146"
             height="26"
@@ -42,7 +42,7 @@
         </a>
         <button
           type="button"
-          class="nav-toggle"
+          class="h-nav-toggle nav-toggle"
           id="navToggle"
           aria-expanded="false"
           aria-controls="navMenu"
@@ -57,7 +57,7 @@
           <li><a href="clarity-scorecard.html">Scorecard</a></li>
           <li><a href="login.html">Login</a></li>
           <li>
-            <a class="btn btn-primary btn-sm" href="get-started.html"
+            <a class="h-btn h-btn-primary h-btn-sm" href="get-started.html"
               >Get Started</a
             >
           </li>
@@ -67,22 +67,24 @@
 
     <main id="main">
       <!-- ================= JOURNAL HERO ================= -->
-      <section class="p-hero" aria-labelledby="page-h">
-        <div class="wrap">
-          <p class="crumbs">
+      <section class="h-page-hero" aria-labelledby="page-h">
+        <div class="h-wrap">
+          <p class="h-crumbs">
             <a href="index.html">Home</a><i>·</i><span>Insights</span>
           </p>
-          <div class="p-hero-grid">
+          <div class="h-page-hero-grid">
             <div>
-              <p class="p-name">Insights — The Hive Journal</p>
-              <h1 id="page-h">Sharp thinking, <em>shared freely.</em></h1>
-              <p class="sub">
+              <p class="h-eyebrow reveal">Insights — The Hive Journal</p>
+              <h1 id="page-h" class="reveal">
+                Sharp thinking, <em>shared freely.</em>
+              </h1>
+              <p class="sub reveal" style="--d: 0.08s">
                 Essays, field notes and founder stories from inside the eHive
                 ecosystem — across strategy, brand, operations and community.
                 The same rigour we charge for, published for anyone building
                 something.
               </p>
-              <div class="c-chips">
+              <div class="c-chips reveal" style="--d: 0.16s">
                 <span class="chip">New pieces regularly</span>
                 <span class="chip">Five topics</span>
                 <span class="chip">Short &amp; long-form</span>
@@ -139,8 +141,8 @@
       </section>
 
       <!-- ================= EDITORIAL VOICE ================= -->
-      <section class="promise" aria-label="Editorial voice">
-        <div class="narrow">
+      <section class="h-promise" aria-label="Editorial voice">
+        <div class="h-narrow">
           <blockquote class="reveal">
             &ldquo;We write the way we consult:
             <b>plainly, specifically, and without filler</b>. If a piece
@@ -154,13 +156,13 @@
       </section>
 
       <!-- ================= THE LAUNCH ISSUE (placeholder shell) ================= -->
-      <section class="light" aria-labelledby="issue-h">
-        <div class="wrap pad">
-          <p class="eyebrow reveal">Latest pieces</p>
-          <h2 class="h2 reveal" style="--d: 0.08s" id="issue-h">
+      <section class="h-section alt" aria-labelledby="issue-h">
+        <div class="h-wrap">
+          <p class="h-eyebrow reveal">Latest pieces</p>
+          <h2 class="h-h2 reveal" style="--d: 0.08s" id="issue-h">
             Sharp thinking, shared freely.
           </h2>
-          <p class="lede reveal" id="insLede" style="--d: 0.14s">
+          <p class="h-lede reveal" id="insLede" style="--d: 0.14s">
             Essays, field notes and founder stories from inside the ecosystem —
             across strategy, business setup, finance and the UAE market. Written
             plainly, built to be useful. No filler published to look busy.
@@ -303,15 +305,7 @@
             Nothing in this topic yet — more pieces are on the way.
           </p>
 
-          <p
-            class="tier-note reveal"
-            style="
-              --d: 0.1s;
-              margin-top: 2.6rem;
-              font-size: 0.82rem;
-              max-width: 82ch;
-            "
-          >
+          <p class="tier-note reveal" style="--d: 0.1s">
             Our publishing cadence is deliberate — a small number of excellent
             pieces, never a content treadmill. Subscribe below and new pieces
             land in your inbox the day they ship.
@@ -320,9 +314,9 @@
       </section>
 
       <!-- chapter-break banner -->
-      <figure class="img-banner">
+      <figure class="h-img-banner">
         <img
-          src="assets/img/img-insights.jpg"
+          src="assets/img/img-insights-light.jpg"
           alt="Golden ink lines rising from an open journal and weaving into a honeycomb lattice"
           loading="lazy"
           decoding="async"
@@ -334,15 +328,15 @@
       </figure>
 
       <!-- ================= SUBSCRIBE ================= -->
-      <section class="sub-block" aria-labelledby="sub-h">
-        <div class="wrap pad">
-          <p class="eyebrow reveal" style="justify-content: center">
+      <section class="h-section h-subscribe" aria-labelledby="sub-h">
+        <div class="h-wrap">
+          <p class="h-eyebrow reveal" style="justify-content: center">
             The Journal, delivered
           </p>
           <h2 class="reveal" style="--d: 0.08s" id="sub-h">
             New pieces, straight to your inbox.
           </h2>
-          <p class="lede reveal" style="--d: 0.14s">
+          <p class="h-lede reveal" style="--d: 0.14s">
             No noise, no round-ups of other people&rsquo;s news — only original
             pieces from the Hive, when they&rsquo;re ready.
           </p>
@@ -371,68 +365,66 @@
       </section>
 
       <!-- ================= FINAL CTA ================= -->
-      <section class="c-cta" aria-labelledby="cta-h">
-        <div class="wrap pad">
+      <section class="h-cta-banner" aria-labelledby="cta-h">
+        <div class="h-wrap">
           <h2 class="reveal" id="cta-h">
             Built to be <em>useful</em>,<br />not just read.
           </h2>
-          <p class="lede reveal" style="--d: 0.1s">
+          <p class="h-lede h-mx-auto reveal" style="--d: 0.1s">
             Every piece ends with something you can act on. When you&rsquo;re
             ready to act on yours —
           </p>
           <div class="doors reveal" style="--d: 0.18s">
-            <a class="btn btn-primary" href="get-started.html">Get Started</a>
-            <a class="btn btn-ghost on-dark" href="index.html"
-              >Explore the ecosystem <span class="arr">→</span></a
+            <a class="h-btn h-btn-primary" href="get-started.html"
+              >Get Started</a
+            >
+            <a class="h-btn h-btn-ghost h-btn-light" href="index.html"
+              >Explore the ecosystem <span class="h-arr">→</span></a
             >
           </div>
         </div>
       </section>
     </main>
 
-    <footer>
-      <div class="wrap">
-        <div class="foot-grid">
-          <div class="foot-brand">
+    <footer class="h-footer">
+      <div class="h-wrap">
+        <div class="h-footer-grid">
+          <div>
             <img
-              src="assets/ehive-full.png"
+              src="assets/ehive-full-dark.png"
               alt="eHive — Build. Belong. Become."
               width="150"
             />
-            <p>
+            <p style="margin-top: 1rem">
               To advance the human race by enabling individuals and
               organisations to do better — sustainably, relevantly, and
               beneficially.
             </p>
           </div>
-          <div class="foot-col">
+          <div>
             <h4>The Ecosystem</h4>
-            <ul>
-              <li><a href="business-setup.html">Business Setup</a></li>
-              <li><a href="consulting.html">Consulting</a></li>
-              <li><a href="circle.html">eHive Circle</a></li>
-              <li><a href="get-started.html">Get Started</a></li>
-            </ul>
+            <a href="business-setup.html">Business Setup</a>
+            <a href="consulting.html">Consulting</a>
+            <a href="circle.html">eHive Circle</a>
+            <a href="get-started.html">Get Started</a>
           </div>
-          <div class="foot-col">
+          <div>
             <h4>Company</h4>
-            <ul>
-              <li><a href="about.html">About</a></li>
-              <li><a href="insights.html">Insights — The Hive Journal</a></li>
-              <li><a href="about.html#join">Join the Network</a></li>
-              <li><a href="clarity-scorecard.html">Scorecard</a></li>
-              <li><a href="login.html">Login</a></li>
-            </ul>
+            <a href="about.html">About</a>
+            <a href="insights.html">Insights — The Hive Journal</a>
+            <a href="about.html#join">Join the Network</a>
+            <a href="clarity-scorecard.html">Scorecard</a>
+            <a href="login.html">Login</a>
           </div>
-          <div class="foot-col">
+          <div>
             <h4>Connect</h4>
-            <p class="foot-loc">
-              Dubai, UAE<span>Expanding across the region</span>
-            </p>
+            <p>Dubai, UAE</p>
+            <p style="font-size: 0.9rem">Expanding across the region</p>
             <form
-              class="news-form"
+              class="h-lead-form news-form"
               method="post"
               aria-label="Newsletter signup"
+              style="margin-top: 1rem"
             >
               <label class="visually-hidden" for="news-email"
                 >Email address</label
@@ -447,11 +439,11 @@
             </form>
           </div>
         </div>
-        <div class="foot-bottom">
+        <div class="h-footer-bottom">
           <span>© <span id="year">2026</span> eHive. All rights reserved.</span>
-          <div class="foot-legal">
+          <div>
             <a href="privacy.html">Privacy</a>
-            <a href="terms.html">Terms</a>
+            <a href="terms.html" style="margin-left: 1rem">Terms</a>
           </div>
         </div>
       </div>
@@ -529,7 +521,7 @@
                   esc(p.slug) +
                   "' data-tag='" +
                   esc((p.tag || "note").toLowerCase()) +
-                  "' style='display:block;text-decoration:none;color:inherit'>" +
+                  "'>" +
                   "<div class='meta'><span class='art-tag'>" +
                   esc(p.tag || "Note") +
                   "</span><span class='art-fmt'>" +
@@ -555,19 +547,19 @@
             var box = document.getElementById("nl-archive");
             if (!issues.length || !box) return;
             box.innerHTML =
-              "<p class='eyebrow' style='justify-content:center'>The archive</p>" +
+              "<p class='h-eyebrow' style='justify-content:center'>The archive</p>" +
               "<div style='display:flex;flex-wrap:wrap;gap:.6rem;justify-content:center'>" +
               issues
                 .map(function (n) {
                   var label =
                     esc(n.title) + (n.issue ? " · №" + esc(n.issue) : "");
                   return n.url
-                    ? "<a class='btn btn-ghost on-dark' style='padding:.5rem 1rem;font-size:.85rem' href='" +
+                    ? "<a class='h-btn h-btn-ghost h-btn-light' style='padding:.5rem 1rem;font-size:.85rem' href='" +
                         esc(n.url) +
                         "' target='_blank' rel='noreferrer'>" +
                         label +
                         " ↗</a>"
-                    : "<span class='btn btn-ghost on-dark' style='padding:.5rem 1rem;font-size:.85rem;opacity:.75'>" +
+                    : "<span class='h-btn h-btn-ghost h-btn-light' style='padding:.5rem 1rem;font-size:.85rem;opacity:.75'>" +
                         label +
                         "</span>";
                 })
