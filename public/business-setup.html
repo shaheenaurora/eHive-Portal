@@ -18,23 +18,23 @@
       href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.min.css" />
+    <link rel="stylesheet" href="home.css" />
     <link rel="stylesheet" href="apps.min.css" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#16264C" />
+    <meta name="theme-color" content="#f8f6f0" />
     <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="eHive" />
   </head>
-  <body>
+  <body class="bs-page">
     <a class="skip" href="#main">Skip to content</a>
 
-    <header class="site-nav" id="siteNav">
+    <header class="h-nav site-nav" id="siteNav">
       <nav aria-label="Primary">
         <a class="brand" href="index.html" aria-label="eHive — home">
           <img
-            src="assets/ehive-wordmark.png"
+            src="assets/ehive-wordmark-dark.png"
             alt="eHive"
             width="146"
             height="26"
@@ -42,7 +42,7 @@
         </a>
         <button
           type="button"
-          class="nav-toggle"
+          class="h-nav-toggle nav-toggle"
           id="navToggle"
           aria-expanded="false"
           aria-controls="navMenu"
@@ -59,7 +59,7 @@
           <li><a href="clarity-scorecard.html">Scorecard</a></li>
           <li><a href="login.html">Login</a></li>
           <li>
-            <a class="btn btn-primary btn-sm" href="get-started.html"
+            <a class="h-btn h-btn-primary h-btn-sm" href="get-started.html"
               >Get Started</a
             >
           </li>
@@ -69,7 +69,7 @@
 
     <main id="main">
       <!-- ================= HERO (blueprint 3.1) ================= -->
-      <section class="page-hero" aria-labelledby="page-h">
+      <section class="h-page-hero" aria-labelledby="page-h">
         <svg
           class="lattice-bg"
           viewBox="0 0 1200 500"
@@ -102,23 +102,23 @@
             <circle cx="1070" cy="310" r="3" />
           </g>
         </svg>
-        <div class="wrap">
-          <p class="crumbs">
+        <div class="h-wrap">
+          <p class="h-crumbs">
             <a href="index.html">Home</a><i>·</i><span>Business Setup</span>
           </p>
-          <p class="eyebrow">Pillar 01 — Start</p>
+          <p class="h-eyebrow reveal">Pillar 01 — Start</p>
           <h1 id="page-h">Start on solid ground.</h1>
-          <p class="sub">
+          <p class="sub reveal">
             Company formation, licensing, visas, and the operational
             infrastructure to get from idea to incorporated — every engagement
             handled by the best experts in the industry, delivered through
             eHive.
           </p>
-          <div class="hero-actions">
-            <a class="btn btn-primary" href="#calculator"
+          <div class="h-hero-actions reveal">
+            <a class="h-btn h-btn-primary" href="#calculator"
               >Estimate your setup cost <span class="arr">→</span></a
             >
-            <a class="btn btn-ghost on-dark" href="book.html?type=setup"
+            <a class="h-btn h-btn-ghost" href="book.html?type=setup"
               >Book a setup consultation</a
             >
           </div>
@@ -128,26 +128,26 @@
       <!-- ================= TRUST STAT BAR (blueprint 3.1) =================
      Operating figures optional (years operating, businesses formed,
      team size, nationalities served) — do not populate with invented numbers. -->
-      <section class="trust-bar" aria-label="Operating partner credentials">
-        <div class="wrap">
-          <div class="trust-grid">
-            <div class="tstat reveal">
+      <section class="h-trust" aria-label="Operating partner credentials">
+        <div class="h-wrap">
+          <div class="h-trust-grid">
+            <div class="h-trust-item reveal">
               <b>Dubai, UAE</b><span>Based where we operate</span>
             </div>
-            <div class="tstat reveal" style="--d: 0.08s">
+            <div class="h-trust-item reveal" style="--d: 0.08s">
               <b>Free zone + mainland</b><span>Every jurisdiction covered</span>
             </div>
-            <div class="tstat reveal" style="--d: 0.16s">
+            <div class="h-trust-item reveal" style="--d: 0.16s">
               <b>Transparent pricing</b
               ><span>Quotes scoped before work begins</span>
             </div>
-            <div class="tstat reveal" style="--d: 0.24s">
+            <div class="h-trust-item reveal" style="--d: 0.24s">
               <b>Expert-led</b
               ><span>Handled by specialists in the industry</span>
             </div>
           </div>
           <!-- COPY-NEEDED: emirates-first-figures -->
-          <p class="trust-note">
+          <p class="bs-trust-note">
             Every filing and licence is handled by specialists who do this daily
             — scoped and quoted before any work begins.
           </p>
@@ -155,10 +155,10 @@
       </section>
 
       <!-- ================= TRANSPARENCY BLOCK (blueprint 3.1) ================= -->
-      <section class="transparency light" aria-labelledby="transp-h">
-        <div class="narrow pad">
-          <p class="eyebrow reveal">The partnership, plainly</p>
-          <h2 class="h2 reveal" style="--d: 0.08s" id="transp-h">
+      <section class="h-section alt" aria-labelledby="transp-h">
+        <div class="h-narrow">
+          <p class="h-eyebrow reveal">The partnership, plainly</p>
+          <h2 class="h-h2 reveal" style="--d: 0.08s" id="transp-h">
             Who does what — no mystery back office.
           </h2>
           <p class="reveal" style="--d: 0.16s">
@@ -172,21 +172,21 @@
             the wider ecosystem around your company. One engagement, one team,
             and nothing for you to piece together on your own.
           </p>
-          <div class="partner-mark reveal" style="--d: 0.32s">
+          <div class="bs-partner-mark reveal" style="--d: 0.32s">
             <span class="dot" aria-hidden="true"></span>
             <span>eHive + industry experts — one roof</span>
           </div>
         </div>
       </section>
       <!-- ================= THREE-PATH SELECTOR (blueprint 3.2) ================= -->
-      <section class="paths light" aria-labelledby="paths-h">
-        <div class="wrap pad">
-          <p class="eyebrow reveal">Where do we start?</p>
-          <h2 class="h2 reveal" style="--d: 0.08s" id="paths-h">
+      <section class="h-section" aria-labelledby="paths-h">
+        <div class="h-wrap">
+          <p class="h-eyebrow reveal">Where do we start?</p>
+          <h2 class="h-h2 reveal" style="--d: 0.08s" id="paths-h">
             What&rsquo;s your business goal?
           </h2>
-          <div class="paths-grid">
-            <a class="path-card reveal" style="--d: 0.05s" href="#decision">
+          <div class="bs-paths-grid">
+            <a class="bs-path-card reveal" style="--d: 0.05s" href="#decision">
               <h3>I want to start a company</h3>
               <p>
                 Free zone or mainland — the one decision everything else hangs
@@ -196,7 +196,7 @@
                 >Compare the paths <span class="arr">→</span></span
               >
             </a>
-            <a class="path-card reveal" style="--d: 0.15s" href="#services">
+            <a class="bs-path-card reveal" style="--d: 0.15s" href="#services">
               <h3>I need ongoing corporate services</h3>
               <p>
                 Banking, tax, compliance, visas, and the operational services
@@ -206,7 +206,11 @@
                 >Browse the catalog <span class="arr">→</span></span
               >
             </a>
-            <a class="path-card reveal" style="--d: 0.25s" href="#calculator">
+            <a
+              class="bs-path-card reveal"
+              style="--d: 0.25s"
+              href="#calculator"
+            >
               <h3>I&rsquo;m not sure yet</h3>
               <p>
                 Get an indicative cost in under a minute, or talk it through
@@ -221,7 +225,7 @@
       </section>
 
       <!-- chapter image: solidity / cornerstone (AI-generated brand art, navy-gold) -->
-      <figure class="img-banner">
+      <figure class="h-img-banner">
         <img
           src="assets/img/img-business-setup.jpg"
           alt="Layered stone platforms rising through fog, a golden cornerstone lit at the base"
@@ -235,24 +239,20 @@
       </figure>
 
       <!-- ================= FREE ZONE vs MAINLAND (blueprint 3.3) ================= -->
-      <section
-        class="decision light"
-        id="decision"
-        aria-labelledby="decision-h"
-      >
-        <div class="wrap pad">
-          <p class="eyebrow reveal">The core decision</p>
-          <h2 class="h2 reveal" style="--d: 0.08s" id="decision-h">
+      <section class="h-section alt" id="decision" aria-labelledby="decision-h">
+        <div class="h-wrap">
+          <p class="h-eyebrow reveal">The core decision</p>
+          <h2 class="h-h2 reveal" style="--d: 0.08s" id="decision-h">
             Free zone or mainland.
           </h2>
-          <p class="lede reveal" style="--d: 0.16s">
+          <p class="h-lede reveal" style="--d: 0.16s">
             The single most important choice a new entrepreneur makes in the
             UAE. Each path gets its own dedicated track — here&rsquo;s the
             honest comparison first.
           </p>
 
-          <div class="decision-grid">
-            <article class="track reveal" style="--d: 0.1s">
+          <div class="bs-decision-grid">
+            <article class="bs-track reveal" style="--d: 0.1s">
               <span class="tag">Track A</span>
               <h3>Free Zone</h3>
               <p class="tline">
@@ -292,7 +292,7 @@
               </p>
             </article>
 
-            <article class="track reveal" style="--d: 0.2s">
+            <article class="bs-track reveal" style="--d: 0.2s">
               <span class="tag">Track B</span>
               <h3>Mainland</h3>
               <p class="tline">
@@ -329,7 +329,7 @@
           <!-- ================= INTERACTIVE COMPARER (mini-app) ================= -->
           <div class="jc reveal" id="jurCompare" style="--d: 0.15s">
             <div class="jc-top">
-              <p class="eyebrow" style="margin: 0">Compare live</p>
+              <p class="h-eyebrow" style="margin: 0">Compare live</p>
               <div class="jc-toggle" role="tablist" aria-label="Jurisdiction">
                 <button
                   type="button"
@@ -395,7 +395,7 @@
             </p>
           </div>
 
-          <div class="compare reveal" style="--d: 0.1s">
+          <div class="bs-compare reveal" style="--d: 0.1s">
             <h3>Free zone vs. mainland at a glance</h3>
             <table class="cmp">
               <thead>
@@ -450,29 +450,29 @@
      PLACEHOLDER PRICING LOGIC: the formula below is illustrative only,
      pending the final rate card.
      It exists to prove the interaction — not to quote real prices. -->
-      <section class="calc" id="calculator" aria-labelledby="calc-h">
-        <div class="wrap pad">
-          <div class="calc-grid">
+      <section class="h-section" id="calculator" aria-labelledby="calc-h">
+        <div class="h-wrap">
+          <div class="bs-calc-grid">
             <div>
-              <p class="eyebrow reveal">The #1 question</p>
-              <h2 class="h2 reveal" style="--d: 0.08s" id="calc-h">
+              <p class="h-eyebrow reveal">The #1 question</p>
+              <h2 class="h-h2 reveal" style="--d: 0.08s" id="calc-h">
                 How much? Get an instant estimate.
               </h2>
-              <p class="lede reveal" style="--d: 0.16s">
+              <p class="h-lede reveal" style="--d: 0.16s">
                 Three answers in, an indicative range out. No email required, no
                 back-and-forth — a real number before you ever have to ask for
                 one.
               </p>
 
               <form
-                class="calc-form reveal"
+                class="bs-calc-form reveal"
                 style="--d: 0.24s"
                 id="calcForm"
                 aria-label="Setup cost estimator"
               >
-                <div class="field">
+                <div class="bs-field">
                   <label for="cf-activity">Business activity</label>
-                  <select id="cf-activity">
+                  <select class="h-select" id="cf-activity">
                     <option value="consulting">
                       Consulting &amp; professional services
                     </option>
@@ -485,7 +485,7 @@
                     <option value="other">Something else</option>
                   </select>
                 </div>
-                <div class="field">
+                <div class="bs-field">
                   <label id="cf-jur-label">Jurisdiction preference</label>
                   <div class="seg" role="group" aria-labelledby="cf-jur-label">
                     <button type="button" class="on" data-jur="fz">
@@ -495,7 +495,7 @@
                     <button type="button" data-jur="both">Not sure</button>
                   </div>
                 </div>
-                <div class="field">
+                <div class="bs-field">
                   <label for="cf-visas">Residence visas needed</label>
                   <div class="visa-row">
                     <input
@@ -510,9 +510,9 @@
                     <span class="visa-count" id="cf-visas-out">2</span>
                   </div>
                 </div>
-                <div class="field">
+                <div class="bs-field">
                   <label for="cf-office">Office arrangement</label>
-                  <select id="cf-office">
+                  <select class="h-select" id="cf-office">
                     <option value="flexi">Flexi-desk</option>
                     <option value="shared">Shared office</option>
                     <option value="private">Private office</option>
@@ -529,11 +529,13 @@
               <ul class="co-break" id="coBreak"></ul>
               <p class="co-alt" id="coAlt" hidden></p>
               <div class="co-actions">
-                <a class="btn btn-primary" href="get-started.html?door=business"
+                <a
+                  class="h-btn h-btn-primary"
+                  href="get-started.html?door=business"
                   >Get the full quote</a
                 >
               </div>
-              <div class="calc-capture">
+              <div class="bs-calc-capture">
                 <h3>Email me the full breakdown</h3>
                 <p>
                   The itemized version of this estimate — license, visas,
@@ -548,7 +550,11 @@
                     aria-label="Email for the breakdown"
                     autocomplete="email"
                   />
-                  <button type="button" class="btn btn-primary" id="calcSend">
+                  <button
+                    type="button"
+                    class="h-btn h-btn-primary"
+                    id="calcSend"
+                  >
                     Send the breakdown
                   </button>
                 </form>
@@ -565,13 +571,13 @@
       </section>
 
       <!-- ================= SETUP JOURNEY WALKTHROUGH (mini-app) ================= -->
-      <section class="light" id="journey" aria-labelledby="journey-h">
-        <div class="wrap" style="padding-bottom: var(--pad)">
+      <section class="h-section alt" id="journey" aria-labelledby="journey-h">
+        <div class="h-wrap" style="padding-bottom: var(--h-pad)">
           <div class="jr reveal" id="setupJourney">
             <div class="jr-head">
               <div>
-                <p class="eyebrow">The walkthrough</p>
-                <h2 class="h2" id="journey-h" style="margin-top: 0">
+                <p class="h-eyebrow">The walkthrough</p>
+                <h2 class="h-h2" id="journey-h" style="margin-top: 0">
                   Your setup, step by step.
                 </h2>
               </div>
@@ -628,19 +634,19 @@
       </section>
 
       <!-- ================= CORPORATE SERVICES (blueprint 3.5) ================= -->
-      <section class="services light" id="services" aria-labelledby="svc-h">
-        <div class="wrap pad">
-          <p class="eyebrow reveal">Beyond formation</p>
-          <h2 class="h2 reveal" style="--d: 0.08s" id="svc-h">
+      <section class="h-section alt" id="services" aria-labelledby="svc-h">
+        <div class="h-wrap">
+          <p class="h-eyebrow reveal">Beyond formation</p>
+          <h2 class="h-h2 reveal" style="--d: 0.08s" id="svc-h">
             Corporate services, in three bands.
           </h2>
-          <p class="lede reveal" style="--d: 0.16s">
+          <p class="h-lede reveal" style="--d: 0.16s">
             What a company needs after it exists — grouped the way a
             founder&rsquo;s needs actually evolve.
           </p>
 
-          <div class="svc-bands">
-            <div class="svc-band reveal" style="--d: 0.05s">
+          <div class="bs-svc-bands">
+            <div class="bs-svc-band reveal" style="--d: 0.05s">
               <span class="band-tag">Essential</span>
               <svg
                 class="band-icon"
@@ -688,7 +694,7 @@
                 </li>
               </ul>
             </div>
-            <div class="svc-band reveal" style="--d: 0.15s">
+            <div class="bs-svc-band reveal" style="--d: 0.15s">
               <span class="band-tag">Operational</span>
               <svg
                 class="band-icon"
@@ -728,7 +734,7 @@
                 </li>
               </ul>
             </div>
-            <div class="svc-band reveal" style="--d: 0.25s">
+            <div class="bs-svc-band reveal" style="--d: 0.25s">
               <span class="band-tag">Support &amp; Growth</span>
               <svg
                 class="band-icon"
@@ -782,7 +788,7 @@
               </ul>
             </div>
           </div>
-          <p class="svc-note reveal">
+          <p class="bs-svc-note reveal">
             Catalog structure shown for review — the final service list,
             inclusions, and pricing are confirmed with our specialist partners
             before launch. Each service gets its own short page: what it is, who
@@ -792,14 +798,14 @@
       </section>
 
       <!-- ================= WHY EHIVE (blueprint 3.6) ================= -->
-      <section class="why light" aria-labelledby="why-h">
-        <div class="wrap pad">
-          <p class="eyebrow reveal">Why eHive</p>
-          <h2 class="h2 reveal" style="--d: 0.08s" id="why-h">
+      <section class="h-section" aria-labelledby="why-h">
+        <div class="h-wrap">
+          <p class="h-eyebrow reveal">Why eHive</p>
+          <h2 class="h-h2 reveal" style="--d: 0.08s" id="why-h">
             Formation is the beginning, not the transaction.
           </h2>
-          <div class="why-grid">
-            <div class="why-item reveal" style="--d: 0.05s">
+          <div class="bs-why-grid">
+            <div class="bs-why-item reveal" style="--d: 0.05s">
               <span class="n">01</span>
               <div>
                 <h3>Backed by an established operator</h3>
@@ -809,7 +815,7 @@
                 </p>
               </div>
             </div>
-            <div class="why-item reveal" style="--d: 0.1s">
+            <div class="bs-why-item reveal" style="--d: 0.1s">
               <span class="n">02</span>
               <div>
                 <h3>End-to-end, not fragmented</h3>
@@ -819,7 +825,7 @@
                 </p>
               </div>
             </div>
-            <div class="why-item reveal" style="--d: 0.15s">
+            <div class="bs-why-item reveal" style="--d: 0.15s">
               <span class="n">03</span>
               <div>
                 <h3>A dedicated expert per client</h3>
@@ -829,7 +835,7 @@
                 </p>
               </div>
             </div>
-            <div class="why-item reveal" style="--d: 0.2s">
+            <div class="bs-why-item reveal" style="--d: 0.2s">
               <span class="n">04</span>
               <div>
                 <h3>Government relationships</h3>
@@ -839,7 +845,7 @@
                 </p>
               </div>
             </div>
-            <div class="why-item peak reveal" style="--d: 0.25s">
+            <div class="bs-why-item peak reveal" style="--d: 0.25s">
               <span class="n">05</span>
               <div>
                 <h3>
@@ -858,42 +864,38 @@
       </section>
 
       <!-- ================= INSTANT CONTACT (blueprint 3.7) ================= -->
-      <section class="contact-strip" aria-label="Talk to a setup expert">
-        <div class="wrap">
-          <div>
-            <h3>
-              Formation questions are often urgent. Get a human answer, fast.
-            </h3>
-            <p>
-              &ldquo;Can I do this activity in a free zone?&rdquo; — ask
-              directly, or book a time that suits you.
-            </p>
-          </div>
-          <div class="strip-actions">
-            <a class="btn btn-ghost on-dark" href="book.html?type=setup"
-              >Book a meeting</a
-            >
+      <section class="h-section alt" aria-label="Talk to a setup expert">
+        <div class="h-wrap">
+          <div class="bs-strip-grid">
+            <div>
+              <h3>
+                Formation questions are often urgent. Get a human answer, fast.
+              </h3>
+              <p>
+                &ldquo;Can I do this activity in a free zone?&rdquo; — ask
+                directly, or book a time that suits you.
+              </p>
+            </div>
+            <div class="bs-strip-actions">
+              <a class="h-btn h-btn-ghost" href="book.html?type=setup"
+                >Book a meeting</a
+              >
+            </div>
           </div>
         </div>
       </section>
 
       <!-- ================= FAQ (blueprint 3.8) ================= -->
-      <section class="faq light" aria-labelledby="faq-h">
-        <div class="narrow pad">
-          <p class="eyebrow reveal">Questions, answered</p>
-          <h2 class="h2 reveal" style="--d: 0.08s" id="faq-h">
+      <section class="h-section alt" aria-labelledby="faq-h">
+        <div class="h-narrow">
+          <p class="h-eyebrow reveal">Questions, answered</p>
+          <h2 class="h-h2 reveal" style="--d: 0.08s" id="faq-h">
             The short version.
           </h2>
-          <div class="faq-list reveal" style="--d: 0.16s">
+          <div class="h-faq reveal" style="--d: 0.16s">
             <details>
-              <summary>
-                Should I choose a free zone or the mainland?<span
-                  class="pm"
-                  aria-hidden="true"
-                  >+</span
-                >
-              </summary>
-              <p class="ans">
+              <summary>Should I choose a free zone or the mainland?</summary>
+              <p>
                 It depends on where your customers are. If you mainly serve
                 international clients or want the fastest, leanest start, a free
                 zone usually wins. If you need to trade directly across the UAE
@@ -903,12 +905,8 @@
               </p>
             </details>
             <details>
-              <summary>
-                How long does setup take?<span class="pm" aria-hidden="true"
-                  >+</span
-                >
-              </summary>
-              <p class="ans">
+              <summary>How long does setup take?</summary>
+              <p>
                 Timelines vary by jurisdiction, activity, and approvals —
                 typically days to a few weeks from documents-in-hand to license
                 issued. Visa processing adds its own window after that. Your
@@ -919,9 +917,9 @@
             <details>
               <summary>
                 What&rsquo;s included in a quote — and what&rsquo;s billed
-                separately?<span class="pm" aria-hidden="true">+</span>
+                separately?
               </summary>
-              <p class="ans">
+              <p>
                 Every quote itemizes the license, registration, visas, and
                 service fees separately, so you can see exactly what each line
                 costs. Government and third-party fees are passed through
@@ -930,12 +928,8 @@
               </p>
             </details>
             <details>
-              <summary>
-                What about corporate tax?<span class="pm" aria-hidden="true"
-                  >+</span
-                >
-              </summary>
-              <p class="ans">
+              <summary>What about corporate tax?</summary>
+              <p>
                 The UAE charges 9% corporate tax on profits above AED 375,000 —
                 that applies in both free zones and the mainland. Qualifying
                 free zone income may access a 0% rate, subject to conditions.
@@ -944,14 +938,8 @@
               </p>
             </details>
             <details>
-              <summary>
-                Do I need to be in the UAE to set up?<span
-                  class="pm"
-                  aria-hidden="true"
-                  >+</span
-                >
-              </summary>
-              <p class="ans">
+              <summary>Do I need to be in the UAE to set up?</summary>
+              <p>
                 Much of the process can be handled remotely — scoping,
                 documentation, and license application. Some visa steps, like
                 medical screening and Emirates ID biometrics, require you to be
@@ -964,7 +952,7 @@
       </section>
 
       <!-- ================= CTA (blueprint 3.9) ================= -->
-      <section class="page-cta" aria-labelledby="bs-cta-h">
+      <section class="h-cta-banner" aria-labelledby="bs-cta-h">
         <svg
           class="lattice-bg"
           viewBox="0 0 1200 420"
@@ -991,66 +979,65 @@
             <circle cx="890" cy="330" r="3" />
           </g>
         </svg>
-        <div class="wrap pad" style="position: relative; z-index: 1">
+        <div class="h-wrap" style="position: relative; z-index: 1">
           <h2 class="reveal" id="bs-cta-h">Start on solid ground.</h2>
-          <p class="lede reveal" style="--d: 0.12s">
+          <p class="h-lede h-mx-auto reveal" style="--d: 0.12s">
             Tell us what you&rsquo;re building — we&rsquo;ll scope it, quote it,
             and get you from idea to incorporated.
           </p>
-          <div class="cta-row reveal" style="--d: 0.22s">
-            <a class="btn btn-primary" href="book.html?type=setup"
+          <div
+            class="h-hero-actions h-mx-auto reveal"
+            style="justify-content: center; --d: 0.22s"
+          >
+            <a class="h-btn h-btn-primary" href="book.html?type=setup"
               >Book a Setup Consultation</a
             >
-            <a class="btn btn-ghost on-dark" href="#calculator"
+            <a class="h-btn h-btn-ghost h-btn-light" href="#calculator"
               >Estimate my cost first</a
             >
           </div>
         </div>
       </section>
     </main>
-    <footer>
-      <div class="wrap">
-        <div class="foot-grid">
-          <div class="foot-brand">
+    <footer class="h-footer">
+      <div class="h-wrap">
+        <div class="h-footer-grid">
+          <div>
             <img
-              src="assets/ehive-full.png"
+              src="assets/ehive-full-dark.png"
               alt="eHive — Build. Belong. Become."
               width="150"
             />
-            <p>
+            <p style="margin-top: 1rem">
               To advance the human race by enabling individuals and
               organisations to do better — sustainably, relevantly, and
               beneficially.
             </p>
           </div>
-          <div class="foot-col">
+          <div>
             <h4>The Ecosystem</h4>
-            <ul>
-              <li><a href="business-setup.html">Business Setup</a></li>
-              <li><a href="consulting.html">Consulting</a></li>
-              <li><a href="circle.html">eHive Circle</a></li>
-              <li><a href="get-started.html">Get Started</a></li>
-            </ul>
+            <a href="business-setup.html">Business Setup</a>
+            <a href="consulting.html">Consulting</a>
+            <a href="circle.html">eHive Circle</a>
+            <a href="get-started.html">Get Started</a>
           </div>
-          <div class="foot-col">
+          <div>
             <h4>Company</h4>
-            <ul>
-              <li><a href="about.html">About</a></li>
-              <li><a href="insights.html">Insights — The Hive Journal</a></li>
-              <li><a href="about.html#join">Join the Network</a></li>
-              <li><a href="clarity-scorecard.html">Scorecard</a></li>
-              <li><a href="login.html">Login</a></li>
-            </ul>
+            <a href="about.html">About</a>
+            <a href="insights.html">Insights — The Hive Journal</a>
+            <a href="about.html#join">Join the Network</a>
+            <a href="clarity-scorecard.html">Scorecard</a>
+            <a href="login.html">Login</a>
           </div>
-          <div class="foot-col">
+          <div>
             <h4>Connect</h4>
-            <p class="foot-loc">
-              Dubai, UAE<span>Expanding across the region</span>
-            </p>
+            <p>Dubai, UAE</p>
+            <p style="font-size: 0.9rem">Expanding across the region</p>
             <form
-              class="news-form"
+              class="h-lead-form news-form"
               method="post"
               aria-label="Newsletter signup"
+              style="margin-top: 1rem"
             >
               <label class="visually-hidden" for="news-email"
                 >Email address</label
@@ -1065,15 +1052,20 @@
             </form>
           </div>
         </div>
-        <div class="foot-bottom">
+        <div class="h-footer-bottom">
           <span>© <span id="year">2026</span> eHive. All rights reserved.</span>
-          <div class="foot-legal">
+          <div>
             <a href="privacy.html">Privacy</a>
-            <a href="terms.html">Terms</a>
+            <a href="terms.html" style="margin-left: 1rem">Terms</a>
           </div>
         </div>
       </div>
     </footer>
+
+    <div class="h-sticky-cta" aria-label="Quick actions">
+      <a class="h-btn h-btn-primary" href="get-started.html">Get Started</a>
+      <a class="h-btn h-btn-ghost" href="book.html?type=setup">Book a call</a>
+    </div>
 
     <script src="app.min.js" defer></script>
     <script src="apps.min.js" defer></script>
