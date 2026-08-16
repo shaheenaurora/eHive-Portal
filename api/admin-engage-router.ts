@@ -81,6 +81,7 @@ import {
   MEETING_AGENDA_TEMPLATES,
   AWARD_LEVEL_KEYS,
   AWARD_CATEGORY_LABEL,
+  seatToChapterRole,
 } from "@contracts/constants";
 
 function isFullAdmin(user: { adminScopes?: string | null }): boolean {
@@ -1590,7 +1591,7 @@ export const adminEngageRouter = createRouter({
     .input(
       z.object({ id: z.number(), status: z.enum(["open", "voting", "closed"]) })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = getDb();
       const e = (
         await db
@@ -1682,6 +1683,47 @@ export const adminEngageRouter = createRouter({
               votes: Number(top.n),
             };
         }
+        // H9 — fill the seat: assign the winner to the chapter's leadership team
+        // (retiring the current holder), record the term, and notify them.
+        let assigned = false;
+        if (winner) {
+          const { role, title } = seatToChapterRole(e.seat);
+          await db
+            .update(schema.chapterRoles)
+            .set({ status: "ended", termEnd: new Date() })
+            .where(
+              and(
+                eq(schema.chapterRoles.chapterId, e.chapterId),
+                eq(schema.chapterRoles.role, role),
+                eq(schema.chapterRoles.status, "active")
+              )
+            );
+          await db.insert(schema.chapterRoles).values({
+            chapterId: e.chapterId,
+            memberId: winner.memberId,
+            role,
+            title,
+            electionId: e.id,
+            termStart: new Date(),
+            status: "active",
+            appointedBy: `Election #${e.id}`,
+          });
+          assigned = true;
+          try {
+            await notify(
+              winner.memberId,
+              `You've been elected ${e.seat} — congratulations. Your term starts now. 🗳️`,
+              "governance"
+            );
+          } catch {
+            /* non-fatal */
+          }
+          await audit(ctx.user, "election.seat.filled", {
+            type: "member",
+            id: winner.memberId,
+            detail: `${e.seat} (${role}) @ chapter #${e.chapterId} · election #${e.id}`,
+          });
+        }
         return {
           ok: true,
           turnout,
@@ -1690,6 +1732,7 @@ export const adminEngageRouter = createRouter({
           resultHash: hash,
           seat: e.seat,
           winner,
+          assigned,
         };
       }
       await db

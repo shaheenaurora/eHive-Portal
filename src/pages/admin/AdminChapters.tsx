@@ -210,7 +210,12 @@ export default function AdminChapters() {
         toast(
           `Election closed — turnout ${r.turnout}/${r.memberCount}, quorum ${r.quorumMet ? "met" : "NOT met"}.`
         );
-        if (r.winner) {
+        if (r.winner && r.assigned) {
+          // The seat is filled automatically on close — no manual appointment.
+          toast(
+            `${r.winner.name} elected (${r.winner.votes} votes) and seated as ${r.seat}. 🗳️`
+          );
+        } else if (r.winner) {
           toast(
             `Winner: ${r.winner.name} (${r.winner.votes} votes) — appoint to a role.`
           );
