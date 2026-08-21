@@ -1812,7 +1812,10 @@ export const scorecardResults = mysqlTable(
       .notNull()
       .default("new"),
     emailedAt: timestamp("emailedAt"),
-    leadId: bigint("leadId", { mode: "number", unsigned: true }),
+    leadId: bigint("leadId", { mode: "number", unsigned: true }).references(
+      () => leads.id,
+      { onDelete: "set null" }
+    ),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt")
       .defaultNow()
@@ -1847,7 +1850,10 @@ export const appointments = mysqlTable(
       .notNull()
       .default("Asia/Dubai"),
     durationMin: int("durationMin").notNull().default(30),
-    leadId: bigint("leadId", { mode: "number", unsigned: true }),
+    leadId: bigint("leadId", { mode: "number", unsigned: true }).references(
+      () => leads.id,
+      { onDelete: "set null" }
+    ),
     confirmedAt: timestamp("confirmedAt"),
     cancelledAt: timestamp("cancelledAt"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),

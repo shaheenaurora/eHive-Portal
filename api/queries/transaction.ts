@@ -10,7 +10,9 @@ type Tx = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
  * Use this whenever a mutation touches more than one table and partial writes
  * would leave the system in an inconsistent state.
  */
-export async function withTransaction<T>(fn: (tx: Tx) => Promise<T>): Promise<T> {
+export async function withTransaction<T>(
+  fn: (tx: Tx) => Promise<T>
+): Promise<T> {
   const db = getDb();
   return db.transaction(fn);
 }

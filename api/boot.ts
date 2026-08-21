@@ -586,9 +586,7 @@ app.post("/api/bookings", async c => {
         durationMin,
         leadId,
       });
-      return Number(
-        (apptRes as unknown as [{ insertId: number }])[0].insertId
-      );
+      return Number((apptRes as unknown as [{ insertId: number }])[0].insertId);
     });
   } catch (err) {
     console.error("booking transaction failed", err);

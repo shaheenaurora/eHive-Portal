@@ -64,6 +64,13 @@
       "when": 1787313639450,
       "tag": "0008_appointments",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1787314322147,
+      "tag": "0009_booking_scorecard_fks",
+      "breakpoints": true
     }
   ]
 }
