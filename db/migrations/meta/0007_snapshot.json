@@ -2,7 +2,7 @@
   "version": "5",
   "dialect": "mysql",
   "id": "fbc213d1-8617-4fd2-941d-6a6423628e46",
-  "prevId": "90fe3414-73f5-4906-9abb-e7ad493f41c3",
+  "prevId": "5c295b25-c668-4364-863f-314304ea1f28",
   "tables": {
     "action_items": {
       "name": "action_items",
@@ -6693,11 +6693,13 @@
       "indexes": {
         "ix_scorecard_email": {
           "name": "ix_scorecard_email",
-          "columns": ["email"]
+          "columns": ["email"],
+          "isUnique": false
         },
         "ix_scorecard_stage": {
           "name": "ix_scorecard_stage",
-          "columns": ["nurtureStage"]
+          "columns": ["nurtureStage"],
+          "isUnique": false
         }
       },
       "foreignKeys": {},
@@ -6708,7 +6710,7 @@
         }
       },
       "uniqueConstraints": {},
-      "checkConstraint": ""
+      "checkConstraint": {}
     }
   },
   "views": {},
@@ -6720,5 +6722,6 @@
   "internal": {
     "tables": {},
     "indexes": {}
-  }
+  },
+  "schemas": {}
 }

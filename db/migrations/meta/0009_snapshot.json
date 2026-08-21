@@ -2,7 +2,7 @@
   "version": "5",
   "dialect": "mysql",
   "id": "0c060d0e-83db-4bb2-ae00-050413aecc20",
-  "prevId": "cb7b72c3-47af-45e5-927e-6f6e9f5d6102",
+  "prevId": "d332ffb8-7301-4193-8e28-5bb982ea7ab0",
   "tables": {
     "action_items": {
       "name": "action_items",
@@ -6671,14 +6671,7 @@
           "type": "bigint unsigned",
           "primaryKey": false,
           "notNull": false,
-          "autoincrement": false,
-          "foreignKeyName": "scorecard_results_leadId_fk",
-          "references": {
-            "table": "leads",
-            "onDelete": "set null",
-            "onUpdate": "no action",
-            "column": "id"
-          }
+          "autoincrement": false
         },
         "createdAt": {
           "name": "createdAt",
@@ -6700,19 +6693,21 @@
       "indexes": {
         "ix_scorecard_email": {
           "name": "ix_scorecard_email",
-          "columns": ["email"]
+          "columns": ["email"],
+          "isUnique": false
         },
         "ix_scorecard_stage": {
           "name": "ix_scorecard_stage",
-          "columns": ["nurtureStage"]
+          "columns": ["nurtureStage"],
+          "isUnique": false
         }
       },
       "foreignKeys": {
         "scorecard_results_leadId_fk": {
           "name": "scorecard_results_leadId_fk",
           "tableFrom": "scorecard_results",
-          "tableTo": "leads",
           "columnsFrom": ["leadId"],
+          "tableTo": "leads",
           "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
@@ -6725,7 +6720,7 @@
         }
       },
       "uniqueConstraints": {},
-      "checkConstraint": ""
+      "checkConstraint": {}
     },
     "appointments": {
       "name": "appointments",
@@ -6808,14 +6803,7 @@
           "type": "bigint unsigned",
           "primaryKey": false,
           "notNull": false,
-          "autoincrement": false,
-          "foreignKeyName": "appointments_leadId_fk",
-          "references": {
-            "table": "leads",
-            "onDelete": "set null",
-            "onUpdate": "no action",
-            "column": "id"
-          }
+          "autoincrement": false
         },
         "confirmedAt": {
           "name": "confirmedAt",
@@ -6851,23 +6839,26 @@
       "indexes": {
         "ix_appointments_status": {
           "name": "ix_appointments_status",
-          "columns": ["status"]
+          "columns": ["status"],
+          "isUnique": false
         },
         "ix_appointments_scheduled": {
           "name": "ix_appointments_scheduled",
-          "columns": ["scheduledAt"]
+          "columns": ["scheduledAt"],
+          "isUnique": false
         },
         "ix_appointments_email": {
           "name": "ix_appointments_email",
-          "columns": ["email"]
+          "columns": ["email"],
+          "isUnique": false
         }
       },
       "foreignKeys": {
         "appointments_leadId_fk": {
           "name": "appointments_leadId_fk",
           "tableFrom": "appointments",
-          "tableTo": "leads",
           "columnsFrom": ["leadId"],
+          "tableTo": "leads",
           "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
@@ -6880,7 +6871,7 @@
         }
       },
       "uniqueConstraints": {},
-      "checkConstraint": ""
+      "checkConstraint": {}
     }
   },
   "views": {},
@@ -6892,5 +6883,6 @@
   "internal": {
     "tables": {},
     "indexes": {}
-  }
+  },
+  "schemas": {}
 }

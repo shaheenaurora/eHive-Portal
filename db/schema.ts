@@ -673,6 +673,110 @@ export const paymentRecords = mysqlTable(
   ]
 );
 
+/* ERP-grade invoice / credit-note ledger. One invoice is issued per settled
+   payment; credit notes are issued on refunds. Numbers are daily sequences
+   generated atomically through invoice_counters so concurrent writes can't
+   collide. */
+export type InvoiceLineItem = {
+  label: string;
+  amount: number; // minor units
+  quantity?: number;
+  description?: string;
+};
+
+export const invoiceCounters = mysqlTable(
+  "invoice_counters",
+  {
+    id: serial("id").primaryKey(),
+    prefix: varchar("prefix", { length: 16 }).notNull(), // "INV" or "CN"
+    date: varchar("date", { length: 8 }).notNull(), // YYYYMMDD
+    sequence: int("sequence").notNull().default(1),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  t => [uniqueIndex("invoice_counters_prefix_date_unique").on(t.prefix, t.date)]
+);
+
+export const invoices = mysqlTable(
+  "invoices",
+  {
+    id: serial("id").primaryKey(),
+    paymentRecordId: bigint("paymentRecordId", {
+      mode: "number",
+      unsigned: true,
+    })
+      .notNull()
+      .references(() => paymentRecords.id, { onDelete: "restrict" }),
+    memberId: bigint("memberId", { mode: "number", unsigned: true }),
+    userId: bigint("userId", { mode: "number", unsigned: true }).notNull(),
+    invoiceNumber: varchar("invoiceNumber", { length: 32 }).notNull().unique(),
+    amount: int("amount").notNull(), // minor units (fils)
+    currency: varchar("currency", { length: 8 }).notNull().default("aed"),
+    status: mysqlEnum("status", ["open", "paid", "void"])
+      .notNull()
+      .default("open"),
+    billedAt: timestamp("billedAt").notNull(),
+    dueAt: timestamp("dueAt"),
+    lineItems: json("lineItems").$type<InvoiceLineItem[]>().notNull(),
+    pdfUrl: varchar("pdfUrl", { length: 512 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  t => [
+    index("ix_invoices_payment_record").on(t.paymentRecordId),
+    index("ix_invoices_user").on(t.userId),
+    index("ix_invoices_member").on(t.memberId),
+    index("ix_invoices_status").on(t.status),
+    index("ix_invoices_billed_at").on(t.billedAt),
+  ]
+);
+export type Invoice = typeof invoices.$inferSelect;
+export type InsertInvoice = typeof invoices.$inferInsert;
+
+export const creditNotes = mysqlTable(
+  "credit_notes",
+  {
+    id: serial("id").primaryKey(),
+    paymentRecordId: bigint("paymentRecordId", {
+      mode: "number",
+      unsigned: true,
+    })
+      .notNull()
+      .references(() => paymentRecords.id, { onDelete: "restrict" }),
+    invoiceId: bigint("invoiceId", {
+      mode: "number",
+      unsigned: true,
+    }).references(() => invoices.id, { onDelete: "set null" }),
+    memberId: bigint("memberId", { mode: "number", unsigned: true }),
+    userId: bigint("userId", { mode: "number", unsigned: true }).notNull(),
+    creditNoteNumber: varchar("creditNoteNumber", { length: 32 })
+      .notNull()
+      .unique(),
+    amount: int("amount").notNull(), // minor units (fils)
+    currency: varchar("currency", { length: 8 }).notNull().default("aed"),
+    reason: varchar("reason", { length: 500 }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  t => [
+    index("ix_credit_notes_payment_record").on(t.paymentRecordId),
+    index("ix_credit_notes_invoice").on(t.invoiceId),
+    index("ix_credit_notes_user").on(t.userId),
+    index("ix_credit_notes_member").on(t.memberId),
+  ]
+);
+export type CreditNote = typeof creditNotes.$inferSelect;
+export type InsertCreditNote = typeof creditNotes.$inferInsert;
+
 export const leads = mysqlTable(
   "leads",
   {

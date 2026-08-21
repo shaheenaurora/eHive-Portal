@@ -2,8 +2,14 @@ import { and, desc, eq, isNull, like, or } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import * as schema from "@db/schema";
 import { getDb } from "./connection";
+import { withTransaction } from "./transaction";
 import { audit } from "../lib/audit";
 import { notify, renewMembership } from "./circle";
+import {
+  createInvoiceFromPayment,
+  createCreditNoteFromRefund,
+} from "./invoicing";
+import { sendInvoiceReady } from "../lib/lead-mail";
 import { applyLifecycleTransition } from "../lib/lifecycle";
 import { paymentsEnabled, getPaymentProvider } from "../lib/payments";
 import { TIER_PRICE_AED } from "@contracts/constants";
@@ -220,7 +226,8 @@ export async function paymentReceipt(id: number) {
   return row as PaymentRow;
 }
 
-/** Record an offline / manual payment (bank transfer, cash) as paid revenue. */
+/** Record an offline / manual payment (bank transfer, cash) as paid revenue.
+ *  Also issues a paid invoice atomically so the books stay in sync. */
 export async function recordManualPayment(
   actor: Actor,
   input: {
@@ -275,18 +282,40 @@ export async function recordManualPayment(
   }
 
   const amount = Math.round(input.amountAed * 100); // AED → fils
-  const res = await db.insert(schema.paymentRecords).values({
-    userId: input.userId,
-    provider: "manual",
-    providerRef: null,
-    purpose,
-    tier: (tier ?? null) as never,
-    amount,
-    currency: "aed",
-    status: "paid",
-    paidAt: new Date(),
-    note: input.note ?? null,
+  const now = new Date();
+  const { paymentId, invoiceNumber } = await withTransaction(async tx => {
+    const res = await tx.insert(schema.paymentRecords).values({
+      userId: input.userId,
+      provider: "manual",
+      providerRef: null,
+      purpose,
+      tier: (tier ?? null) as never,
+      amount,
+      currency: "aed",
+      status: "paid",
+      paidAt: now,
+      note: input.note ?? null,
+    });
+    const paymentId = Number(
+      (res as unknown as { insertId?: number }).insertId ?? 0
+    );
+    const invoice = await createInvoiceFromPayment(
+      tx,
+      {
+        id: paymentId,
+        userId: input.userId,
+        purpose,
+        tier: tier ?? null,
+        amount,
+        currency: "aed",
+        note: input.note ?? null,
+        paidAt: now,
+      },
+      { status: "paid" }
+    );
+    return { paymentId, invoiceNumber: invoice.invoiceNumber };
   });
+
   // Optionally roll the member's renewal forward a year when logging a renewal.
   // Route through renewMembership so the CRM lifecycle transition, save-case
   // side effects, event log and member notification all run centrally instead
@@ -297,10 +326,18 @@ export async function recordManualPayment(
   }
   await audit(actor, "finance.manual_payment", {
     type: "payment",
-    id: Number((res as unknown as { insertId?: number }).insertId ?? 0),
-    detail: `AED ${input.amountAed} · ${input.purpose}`,
+    id: paymentId,
+    detail: `AED ${input.amountAed} · ${input.purpose} · ${invoiceNumber}`,
   });
-  return { ok: true };
+  sendInvoiceReady({
+    email: user.email,
+    name: user.name,
+    invoiceNumber,
+    amountAed: input.amountAed,
+  }).catch(() => {
+    /* non-fatal */
+  });
+  return { ok: true, invoiceNumber };
 }
 
 /** Refund a payment — full, or a partial amount (AED). Moves the money back
@@ -356,23 +393,37 @@ export async function refundPayment(
     }
   }
 
-  await db
-    .update(schema.paymentRecords)
-    .set({
-      status: plan.newStatus,
-      refundedAmount: plan.newRefundedAmount,
-      refundedByUserId: actor.id,
-      refundReason: reason,
-      refundedAt: new Date(),
-    })
-    .where(eq(schema.paymentRecords.id, id));
+  const now = new Date();
+  const creditNote = await withTransaction(async tx => {
+    await tx
+      .update(schema.paymentRecords)
+      .set({
+        status: plan.newStatus,
+        refundedAmount: plan.newRefundedAmount,
+        refundedByUserId: actor.id,
+        refundReason: reason,
+        refundedAt: now,
+      })
+      .where(eq(schema.paymentRecords.id, id));
+    return createCreditNoteFromRefund(
+      tx,
+      {
+        id: p.id,
+        userId: p.userId,
+        amount: p.amount,
+        currency: p.currency,
+      },
+      plan.requestedMinor,
+      reason
+    );
+  });
   const partial = plan.newStatus === "partially_refunded";
   await audit(actor, "finance.refund", {
     type: "payment",
     id,
     detail: `${(plan.requestedMinor / 100).toFixed(2)} ${p.currency}${
       partial ? " (partial)" : ""
-    } — ${reason}`,
+    } · ${creditNote.creditNoteNumber} — ${reason}`,
   });
   const m = (
     await db

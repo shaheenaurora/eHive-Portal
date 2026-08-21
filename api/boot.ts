@@ -24,9 +24,19 @@ import {
   formatGstDate,
   formatGstTime,
 } from "./lib/booking";
-import { sendBookingConfirmation } from "./lib/lead-mail";
+import {
+  sendBookingConfirmation,
+  notifyLead,
+  sendInvoiceReady,
+} from "./lib/lead-mail";
 import { activateMembership } from "./queries/circle";
-import { notifyLead } from "./lib/lead-mail";
+import {
+  createInvoiceFromPayment,
+  getInvoiceById,
+  renderInvoiceHtml,
+} from "./queries/invoicing";
+import { hasScope } from "./middleware";
+import { authenticateRequest } from "./lib/session";
 import { rateLimit } from "./lib/rate-limit";
 import { escapeHtml } from "./lib/html";
 import { integrationApp } from "./integrations";
@@ -674,20 +684,44 @@ app.post("/api/payments/webhook", async c => {
       // Compare-and-swap: only the first concurrent webhook flips pending→paid.
       // The unique index on (provider, providerRef) is the backstop; this WHERE
       // clause makes the update itself idempotent so double activations can't
-      // happen even in a race.
-      const paidUpdate = await db
-        .update(schema.paymentRecords)
-        .set({ status: "paid", paidAt: new Date() })
-        .where(
-          and(
-            eq(schema.paymentRecords.id, record.id),
-            eq(schema.paymentRecords.status, "pending")
-          )
+      // happen even in a race. The invoice is created in the same transaction so
+      // the ledger stays in sync with the payment.
+      const paidAt = new Date();
+      const invoiceResult = await withTransaction(async tx => {
+        const paidUpdate = await tx
+          .update(schema.paymentRecords)
+          .set({ status: "paid", paidAt })
+          .where(
+            and(
+              eq(schema.paymentRecords.id, record.id),
+              eq(schema.paymentRecords.status, "pending")
+            )
+          );
+        if (
+          (paidUpdate as unknown as [{ affectedRows: number }])[0]
+            .affectedRows === 0
+        ) {
+          return { duplicate: true as const };
+        }
+        const invoice = await createInvoiceFromPayment(
+          tx,
+          {
+            id: record.id,
+            userId: record.userId,
+            purpose: record.purpose,
+            tier: record.tier ?? null,
+            amount: record.amount,
+            currency: record.currency,
+            paidAt,
+          },
+          { status: "paid" }
         );
-      if (
-        (paidUpdate as unknown as [{ affectedRows: number }])[0]
-          .affectedRows === 0
-      ) {
+        return {
+          duplicate: false as const,
+          invoiceNumber: invoice.invoiceNumber,
+        };
+      });
+      if (invoiceResult.duplicate) {
         return c.json({ ok: true, duplicate: true });
       }
       if (record.purpose === "renewal") {
@@ -699,6 +733,23 @@ app.post("/api/payments/webhook", async c => {
           record.tier,
           "Membership activated via online payment"
         );
+      }
+      const payer = (
+        await getDb()
+          .select({ name: schema.users.name, email: schema.users.email })
+          .from(schema.users)
+          .where(eq(schema.users.id, record.userId))
+          .limit(1)
+      ).at(0);
+      if (payer?.email && invoiceResult.invoiceNumber) {
+        sendInvoiceReady({
+          email: payer.email,
+          name: payer.name,
+          invoiceNumber: invoiceResult.invoiceNumber,
+          amountAed: record.amount / 100,
+        }).catch(() => {
+          /* non-fatal */
+        });
       }
     } else if (
       result.status === "failed" &&
@@ -727,6 +778,47 @@ app.post("/api/payments/webhook", async c => {
     return c.json({ ok: false, error: "processing failed" }, 500);
   }
   return c.json({ ok: true });
+});
+
+/* Printable invoice HTML for finance admins. Protected by the same session cookie
+   and finance scope used by the admin tRPC router, so the link can be opened in
+   a new tab from AdminFinance. */
+app.get("/api/admin/invoice-html", async c => {
+  let user;
+  try {
+    user = await authenticateRequest(c.req.raw.headers);
+  } catch {
+    return c.json({ error: "Not signed in." }, 401);
+  }
+  if (!hasScope(user, "finance")) {
+    return c.json({ error: "Forbidden." }, 403);
+  }
+  const rawId = c.req.query("id");
+  const id = rawId ? Number(rawId) : NaN;
+  if (!Number.isFinite(id) || id <= 0) {
+    return c.json({ error: "Invalid invoice id." }, 400);
+  }
+  try {
+    const row = await getInvoiceById(id);
+    const html = renderInvoiceHtml({
+      invoiceNumber: row.invoice.invoiceNumber,
+      billedAt: row.invoice.billedAt,
+      dueAt: row.invoice.dueAt,
+      status: row.invoice.status,
+      amount: row.invoice.amount,
+      currency: row.invoice.currency,
+      lineItems: row.invoice.lineItems,
+      payerName: row.payerName,
+      payerEmail: row.payerEmail,
+    });
+    return c.html(html);
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("not found")) {
+      return c.json({ error: "Invoice not found." }, 404);
+    }
+    console.error("invoice-html render failed", err);
+    return c.json({ error: "Unable to render invoice." }, 500);
+  }
 });
 
 /* Liveness probe used by the platform's deploy healthcheck. Returns 200 as soon

@@ -38,7 +38,14 @@ const PAY_COLOR: Record<
   refunded: "red",
   partially_refunded: "amber",
 };
-type Tab = "payments" | "renewals" | "budgets" | "expenses" | "reports";
+type Tab =
+  | "payments"
+  | "invoices"
+  | "creditNotes"
+  | "renewals"
+  | "budgets"
+  | "expenses"
+  | "reports";
 
 export default function AdminFinance() {
   const utils = trpc.useUtils();
@@ -59,6 +66,8 @@ export default function AdminFinance() {
   const refreshAll = () => {
     utils.admin.financeSummary.invalidate();
     utils.admin.payments.invalidate();
+    utils.admin.invoices.invalidate();
+    utils.admin.creditNotes.invalidate();
     utils.admin.renewalsDue.invalidate();
     utils.admin.expenses.invalidate();
     utils.admin.budgetRollup.invalidate();
@@ -141,6 +150,18 @@ export default function AdminFinance() {
           Payments
         </button>
         <button
+          className={tab === "invoices" ? "on" : ""}
+          onClick={() => setTab("invoices")}
+        >
+          Invoices
+        </button>
+        <button
+          className={tab === "creditNotes" ? "on" : ""}
+          onClick={() => setTab("creditNotes")}
+        >
+          Credit notes
+        </button>
+        <button
           className={tab === "renewals" ? "on" : ""}
           onClick={() => setTab("renewals")}
         >
@@ -173,6 +194,8 @@ export default function AdminFinance() {
           onManual={() => setManual(true)}
         />
       )}
+      {tab === "invoices" && <InvoicesTab />}
+      {tab === "creditNotes" && <CreditNotesTab />}
       {tab === "renewals" && <RenewalsTab />}
       {tab === "budgets" && <BudgetsTab />}
       {tab === "expenses" && <ExpensesTab onRecord={() => setExpense(true)} />}
@@ -404,6 +427,163 @@ function PaymentsTab({
     </div>
   );
 }
+
+function InvoicesTab() {
+  const [status, setStatus] = useState<string>("");
+  const list = trpc.admin.invoices.useQuery(
+    { status: (status || undefined) as never },
+    { retry: false }
+  );
+  const rows = list.data ?? [];
+
+  return (
+    <div>
+      <div
+        className="eh-between eh-mb"
+        style={{ flexWrap: "wrap", gap: ".6rem" }}
+      >
+        <div className="eh-row" style={{ gap: ".4rem", flexWrap: "wrap" }}>
+          {["", "open", "paid", "void"].map(s => (
+            <button
+              key={s || "all"}
+              className={`eh-btn sm ${status === s ? "gold" : "ghost"}`}
+              onClick={() => setStatus(s)}
+            >
+              {s ? s : "All"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {list.isLoading && <Spinner />}
+      {list.data && rows.length === 0 && (
+        <div className="eh-card">
+          <Empty
+            big="No invoices yet."
+            p="Invoices are created automatically when a payment is settled."
+          />
+        </div>
+      )}
+
+      {rows.length > 0 && (
+        <div className="eh-card" style={{ padding: ".4rem 1.25rem" }}>
+          <table className="eh-table stack">
+            <thead>
+              <tr>
+                <th>Invoice</th>
+                <th>Member</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Billed</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(inv => (
+                <tr key={inv.id}>
+                  <td data-label="Invoice" className="eh-num">
+                    {inv.invoiceNumber}
+                  </td>
+                  <td data-label="Member">
+                    <b>{inv.payerName ?? "—"}</b>
+                    <div className="eh-sm eh-muted">{inv.payerEmail}</div>
+                  </td>
+                  <td data-label="Amount" className="eh-num">
+                    {aed(inv.amount)}
+                  </td>
+                  <td data-label="Status">
+                    <Pill color={INV_COLOR[inv.status] ?? "grey"}>
+                      {inv.status}
+                    </Pill>
+                  </td>
+                  <td data-label="Billed" className="eh-sm eh-muted">
+                    {fmtDate(inv.billedAt)}
+                  </td>
+                  <td>
+                    <a
+                      className="eh-btn ghost sm"
+                      href={`/api/admin/invoice-html?id=${inv.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      View
+                    </a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CreditNotesTab() {
+  const list = trpc.admin.creditNotes.useQuery(undefined, { retry: false });
+  const rows = list.data ?? [];
+
+  return (
+    <div>
+      {list.isLoading && <Spinner />}
+      {list.data && rows.length === 0 && (
+        <div className="eh-card">
+          <Empty
+            big="No credit notes yet."
+            p="Credit notes are created automatically when a payment is refunded."
+          />
+        </div>
+      )}
+
+      {rows.length > 0 && (
+        <div className="eh-card" style={{ padding: ".4rem 1.25rem" }}>
+          <table className="eh-table stack">
+            <thead>
+              <tr>
+                <th>Credit note</th>
+                <th>Member</th>
+                <th>Amount</th>
+                <th>Reason</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(cn => (
+                <tr key={cn.id}>
+                  <td data-label="Credit note" className="eh-num">
+                    {cn.creditNoteNumber}
+                  </td>
+                  <td data-label="Member">
+                    <b>{cn.payerName ?? "—"}</b>
+                    <div className="eh-sm eh-muted">{cn.payerEmail}</div>
+                  </td>
+                  <td data-label="Amount" className="eh-num">
+                    {aed(cn.amount)}
+                  </td>
+                  <td data-label="Reason" className="eh-sm">
+                    {cn.reason}
+                  </td>
+                  <td data-label="Date" className="eh-sm eh-muted">
+                    {fmtDate(cn.createdAt)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const INV_COLOR: Record<
+  string,
+  "grey" | "blue" | "green" | "red" | "gold" | "amber"
+> = {
+  open: "gold",
+  paid: "green",
+  void: "grey",
+};
 
 function RenewalsTab() {
   const q = trpc.admin.renewalsDue.useQuery(

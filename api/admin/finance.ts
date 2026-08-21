@@ -18,6 +18,12 @@ import {
   listExpenses,
   recordExpense,
 } from "../queries/finance";
+import {
+  listInvoices,
+  listCreditNotes,
+  getInvoiceById,
+  getCreditNoteById,
+} from "../queries/invoicing";
 import { renewalsReport } from "../queries/reports";
 import { audit } from "../lib/audit";
 import { EXPENSE_CATEGORY_KEYS } from "@contracts/constants";
@@ -179,6 +185,26 @@ export const financeRouter = createRouter({
     .mutation(({ ctx, input }) =>
       refundPayment(ctx.user, input.id, input.reason, input.amountAed)
     ),
+
+  invoices: scopedAdmin("finance")
+    .input(
+      z
+        .object({
+          status: z.enum(["open", "paid", "void"]).optional(),
+        })
+        .optional()
+    )
+    .query(({ input }) => listInvoices({ status: input?.status })),
+
+  invoiceById: scopedAdmin("finance")
+    .input(idInput)
+    .query(({ input }) => getInvoiceById(input.id)),
+
+  creditNotes: scopedAdmin("finance").query(() => listCreditNotes()),
+
+  creditNoteById: scopedAdmin("finance")
+    .input(idInput)
+    .query(({ input }) => getCreditNoteById(input.id)),
 
   expenses: scopedAdmin("finance")
     .input(

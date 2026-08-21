@@ -173,6 +173,41 @@ function shell(bodyHtml: string): string {
 }
 
 /**
+ * Notify a member that their invoice is ready. Non-fatal: a missing mail config
+ * or delivery failure is logged but does not block the payment flow.
+ */
+export async function sendInvoiceReady(input: {
+  email: string;
+  name: string | null;
+  invoiceNumber: string;
+  amountAed: number;
+}): Promise<{ ok: boolean; error?: string }> {
+  if (!mailEnabled()) {
+    return { ok: false, error: "Email is not configured." };
+  }
+  const firstName = input.name ? esc(input.name.split(" ")[0]) : "";
+  const amount =
+    "AED " +
+    input.amountAed.toLocaleString("en-AE", {
+      minimumFractionDigits: Number.isInteger(input.amountAed) ? 0 : 2,
+      maximumFractionDigits: 2,
+    });
+  const body = shell(`
+    <h1 style="margin:0 0 12px;font-family:Georgia,serif;font-size:22px;color:#101d2c;font-weight:600">${firstName ? `Hi ${firstName},` : "Hi there,"}</h1>
+    <p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">Thanks for your payment. Your eHive invoice <strong style="color:#101d2c">${esc(input.invoiceNumber)}</strong> is ready.</p>
+    <p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">Amount: <strong style="color:#101d2c">${amount}</strong></p>
+    <p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">You can view and print it from the eHive portal at any time.</p>
+    <p style="margin:20px 0 0;color:#33465e;font-size:14px;line-height:1.55">Warm regards,<br/><strong>The eHive team</strong></p>
+  `);
+  const r = await sendMailDetailed({
+    to: input.email,
+    subject: `Your eHive invoice ${esc(input.invoiceNumber)}`,
+    html: body,
+  });
+  return { ok: r.ok, error: r.error };
+}
+
+/**
  * Fire owner notification + submitter confirmation for a captured lead.
  * Returns the per-side delivery status so the request handler can tell the
  * frontend whether the confirmation email actually went out.
