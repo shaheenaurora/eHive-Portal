@@ -1715,6 +1715,26 @@ export const chapterBudgets = mysqlTable("chapter_budgets", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+/* Multi-currency FX rates (admin-maintained). One row per non-base currency;
+   `rateScaled` is base minor-units per 1 minor-unit of the currency ×
+   FX_RATE_SCALE (see @contracts/constants). Finance reporting converts every
+   payment to the base currency (AED) using these. */
+export const currencyRates = mysqlTable("currency_rates", {
+  code: varchar("code", { length: 8 }).primaryKey(), // e.g. "usd"
+  rateScaled: bigint("rateScaled", {
+    mode: "number",
+    unsigned: true,
+  }).notNull(),
+  updatedByUserId: bigint("updatedByUserId", {
+    mode: "number",
+    unsigned: true,
+  }),
+  updatedAt: timestamp("updatedAt")
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
+});
+
 export type PointRule = typeof pointRules.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type OneToOne = typeof oneToOnes.$inferSelect;

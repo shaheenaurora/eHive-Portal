@@ -34,6 +34,35 @@ export function tierRank(t: string): number {
   const i = TIERS.indexOf(t as Tier);
   return i === -1 ? 0 : i + 1;
 }
+/* ---- Multi-currency (base = AED). Payments may be recorded in any supported
+   currency; finance reporting converts everything to the base using
+   admin-maintained FX rates (currency_rates). ---- */
+export const BASE_CURRENCY = "aed";
+/** Currencies the portal accepts. Base (AED) is always rate 1. */
+export const SUPPORTED_CURRENCIES = [
+  { code: "aed", label: "UAE Dirham (AED)" },
+  { code: "usd", label: "US Dollar (USD)" },
+  { code: "eur", label: "Euro (EUR)" },
+  { code: "gbp", label: "British Pound (GBP)" },
+  { code: "sar", label: "Saudi Riyal (SAR)" },
+  { code: "inr", label: "Indian Rupee (INR)" },
+] as const;
+export const CURRENCY_CODES = SUPPORTED_CURRENCIES.map(c => c.code);
+export const CURRENCY_LABEL: Record<string, string> = Object.fromEntries(
+  SUPPORTED_CURRENCIES.map(c => [c.code, c.label])
+);
+/** FX rate scale: stored rate = (base minor units per 1 minor unit of the
+ *  currency) × RATE_SCALE, so integer maths stays exact. Base currency = scale. */
+export const FX_RATE_SCALE = 1_000_000;
+/** Convert an amount in a currency's minor units to base (AED) minor units,
+ *  given that currency's stored rate. Pure and integer-exact. */
+export function convertToBaseMinor(
+  amountMinor: number,
+  rateScaled: number
+): number {
+  return Math.round((amountMinor * rateScaled) / FX_RATE_SCALE);
+}
+
 /** Annual price per tier in whole AED (used to build a checkout amount). */
 export const TIER_PRICE_AED: Record<Tier, number> = {
   horizon: 999,
