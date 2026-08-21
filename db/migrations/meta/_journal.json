@@ -43,6 +43,13 @@
       "when": 1786701816216,
       "tag": "0005_award_integrity_flags",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1787312586691,
+      "tag": "0006_totp_secret_storage",
+      "breakpoints": true
     }
   ]
 }

@@ -24,7 +24,13 @@ import { env } from "./lib/env";
 import { createAuthToken, consumeAuthToken } from "./lib/tokens";
 import { sendVerifyEmail, sendResetEmail } from "./lib/auth-mail";
 import { rateLimit, rateLimitReset } from "./lib/rate-limit";
-import { generateTotpSecret, totpKeyUri, verifyTotp } from "./lib/totp";
+import {
+  generateTotpSecret,
+  totpKeyUri,
+  verifyTotp,
+  sealTotpSecret,
+  unsealTotpSecret,
+} from "./lib/totp";
 import { mailEnabled } from "./lib/mailer";
 import type { User } from "@db/schema";
 
@@ -173,11 +179,14 @@ export const authRouter = createRouter({
         });
       }
       const user = await findUserById(userId);
+      const rawSecret = user?.totpSecret
+        ? unsealTotpSecret(user.totpSecret)
+        : "";
       if (
         !user ||
         !user.totpEnabled ||
-        !user.totpSecret ||
-        !verifyTotp(input.code, user.totpSecret)
+        !rawSecret ||
+        !verifyTotp(input.code, rawSecret)
       ) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
@@ -290,7 +299,7 @@ export const authRouter = createRouter({
      Not active until confirmed with a valid code via twoFactorEnable. */
   twoFactorSetup: authedQuery.mutation(async ({ ctx }) => {
     const secret = generateTotpSecret();
-    await setTotpSecret(ctx.user.id, secret);
+    await setTotpSecret(ctx.user.id, sealTotpSecret(secret));
     return {
       secret,
       otpauthUri: totpKeyUri(secret, ctx.user.email ?? "member"),
@@ -306,7 +315,8 @@ export const authRouter = createRouter({
           code: "PRECONDITION_FAILED",
           message: "Start setup first.",
         });
-      if (!verifyTotp(input.code, user.totpSecret)) {
+      const rawSecret = unsealTotpSecret(user.totpSecret);
+      if (!verifyTotp(input.code, rawSecret)) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
           message:
@@ -321,7 +331,10 @@ export const authRouter = createRouter({
     .input(z.object({ code: z.string().min(6).max(10) }))
     .mutation(async ({ ctx, input }) => {
       const user = await findUserById(ctx.user.id);
-      if (!user?.totpSecret || !verifyTotp(input.code, user.totpSecret)) {
+      const rawSecret = user?.totpSecret
+        ? unsealTotpSecret(user.totpSecret)
+        : "";
+      if (!rawSecret || !verifyTotp(input.code, rawSecret)) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
           message: "Enter a current code to turn off two-factor.",

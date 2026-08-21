@@ -14,6 +14,7 @@ import {
   reopenCadence,
 } from "./queries/cadence";
 import { audit } from "./lib/audit";
+import { safeUrl } from "./lib/url";
 import {
   applyProfileEdit,
   proposeChange,
@@ -335,7 +336,7 @@ export const officerRouter = createRouter({
       z.object({
         title: z.string().min(3).max(255),
         body: z.string().max(8000).optional(),
-        url: z.string().max(512).optional(),
+        url: safeUrl,
       })
     )
     .mutation(async ({ ctx, input }) => {

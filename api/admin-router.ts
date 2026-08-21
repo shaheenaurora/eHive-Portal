@@ -22,6 +22,7 @@ import { computePodHealth, suggestPods } from "./queries/pods";
 import { audit, maskEmail } from "./lib/audit";
 import { applyLifecycleTransition } from "./lib/lifecycle";
 import { findUserByEmail } from "./queries/users";
+import { safeUrl } from "./lib/url";
 import {
   applyProfileEdit,
   proposeChange,
@@ -1172,7 +1173,7 @@ export const adminRouter = createRouter({
         startsAt: z.coerce.date(),
         durationMin: z.number().int().min(15).max(480).default(90),
         topic: z.string().max(255).optional(),
-        videoLink: z.string().max(512).optional(),
+        videoLink: safeUrl,
         location: z.string().max(255).optional(),
       })
     )
@@ -1889,7 +1890,7 @@ export const adminRouter = createRouter({
           .enum(["playbook", "template", "recording", "note"])
           .default("playbook"),
         tierGate: TIER.default("horizon"),
-        url: z.string().max(512).optional(),
+        url: safeUrl,
         description: z.string().max(4000).optional(),
       })
     )
@@ -1932,7 +1933,7 @@ export const adminRouter = createRouter({
         vertical: z.enum(["setup", "consulting"]),
         title: z.string().min(2).max(255),
         description: z.string().max(4000).optional(),
-        ctaUrl: z.string().max(512).optional(),
+        ctaUrl: safeUrl,
         tierGate: TIER.default("horizon"),
       })
     )

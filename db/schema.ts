@@ -30,8 +30,9 @@ export const users = mysqlTable("users", {
   adminScopes: varchar("adminScopes", { length: 512 }).notNull().default(""),
   // Email verification (null until the address is confirmed via emailed link).
   emailVerifiedAt: timestamp("emailVerifiedAt"),
-  // TOTP two-factor (base32 secret; enabled only once confirmed).
-  totpSecret: varchar("totpSecret", { length: 64 }),
+  // TOTP two-factor (AES-256-GCM encrypted base32 secret; enabled only once
+  // confirmed). Column widened to 255 to hold the encrypted ciphertext.
+  totpSecret: varchar("totpSecret", { length: 255 }),
   totpEnabled: int("totpEnabled").notNull().default(0),
   // Session invalidation counter: JWTs embed this value; incrementing it
   // invalidates all existing sessions (e.g. password change, logout, admin action).

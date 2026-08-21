@@ -7,6 +7,7 @@ import * as schema from "@db/schema";
 import { getDb } from "./queries/connection";
 import { createRouter, scopedAdmin } from "./middleware";
 import { audit } from "./lib/audit";
+import { safeUrl } from "./lib/url";
 import {
   awardRulePoints,
   notify,
@@ -2732,7 +2733,7 @@ export const adminEngageRouter = createRouter({
         id: z.number().optional(),
         title: z.string().min(3).max(255),
         issue: z.string().max(64).optional(),
-        url: z.string().max(512).optional(),
+        url: safeUrl,
       })
     )
     .mutation(async ({ input }) => {
