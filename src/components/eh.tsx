@@ -656,6 +656,7 @@ export function EhShell(props: {
 /* ------------------------- notifications bell --------------------------- */
 function NotifBell() {
   const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
   const q = trpc.engage.myNotifications.useQuery(undefined, {
     retry: false,
     refetchInterval: 30000,
@@ -665,8 +666,26 @@ function NotifBell() {
   });
   const rows = q.data?.rows ?? [];
   const unread = q.data?.unread ?? 0;
+  // Dismiss the dropdown on Escape or an outside click (only while open).
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    const onDown = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node))
+        setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onDown);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onDown);
+    };
+  }, [open]);
   return (
     <div
+      ref={wrapRef}
       style={{ position: "fixed", top: "1rem", right: "1.25rem", zIndex: 60 }}
     >
       <button
