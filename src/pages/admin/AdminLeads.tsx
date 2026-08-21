@@ -130,7 +130,20 @@ export default function AdminLeads() {
               {(q.data as LeadRow[]).map(l => {
                 const nm = leadName(l);
                 return (
-                  <tr key={l.id} className="click" onClick={() => setSel(l)}>
+                  <tr
+                    key={l.id}
+                    className="click"
+                    tabIndex={0}
+                    role="button"
+                    aria-label="Open lead"
+                    onClick={() => setSel(l)}
+                    onKeyDown={e => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setSel(l);
+                      }
+                    }}
+                  >
                     <td>
                       <b>{nm ?? l.email ?? "—"}</b>
                       {nm && l.email ? (

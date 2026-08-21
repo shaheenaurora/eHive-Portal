@@ -221,7 +221,20 @@ export default function AdminConduct() {
             </thead>
             <tbody>
               {(q.data as CaseRow[]).map(c => (
-                <tr key={c.id} className="click" onClick={() => setSel(c)}>
+                <tr
+                  key={c.id}
+                  className="click"
+                  tabIndex={0}
+                  role="button"
+                  aria-label="Open case"
+                  onClick={() => setSel(c)}
+                  onKeyDown={e => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setSel(c);
+                    }
+                  }}
+                >
                   <td>
                     <b>{c.summary}</b>
                   </td>

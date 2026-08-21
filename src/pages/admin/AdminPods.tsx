@@ -10,6 +10,7 @@ import {
   Empty,
   TierPill,
   Spinner,
+  LoadError,
   Modal,
   Field,
   toast,
@@ -59,6 +60,7 @@ export default function AdminPods() {
       />
 
       {q.isLoading && <Spinner />}
+      {q.isError && <LoadError onRetry={() => q.refetch()} />}
       {q.data && q.data.length === 0 && (
         <div className="eh-card">
           <Empty

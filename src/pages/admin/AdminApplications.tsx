@@ -8,6 +8,7 @@ import {
   TierPill,
   Empty,
   Spinner,
+  LoadError,
   Modal,
   Field,
   Pill,
@@ -83,6 +84,7 @@ export default function AdminApplications() {
       </div>
 
       {q.isLoading && <Spinner />}
+      {q.isError && <LoadError onRetry={() => q.refetch()} />}
       {q.data && rows.length === 0 && (
         <div className="eh-card">
           <Empty big="Nothing in this stage." />

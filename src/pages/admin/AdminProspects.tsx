@@ -7,6 +7,7 @@ import {
   Pill,
   Empty,
   Spinner,
+  LoadError,
   Modal,
   Field,
   toast,
@@ -154,6 +155,7 @@ export default function AdminProspects() {
       </div>
 
       {q.isLoading && <Spinner />}
+      {q.isError && <LoadError onRetry={() => q.refetch()} />}
       {q.data && q.data.length === 0 && (
         <div className="eh-card">
           <Empty
@@ -179,7 +181,20 @@ export default function AdminProspects() {
             </thead>
             <tbody>
               {(q.data as Row[]).map(p => (
-                <tr key={p.id} className="click" onClick={() => setSel(p)}>
+                <tr
+                  key={p.id}
+                  className="click"
+                  tabIndex={0}
+                  role="button"
+                  aria-label="Open prospect"
+                  onClick={() => setSel(p)}
+                  onKeyDown={e => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setSel(p);
+                    }
+                  }}
+                >
                   <td>
                     <b>{p.name}</b>
                   </td>
