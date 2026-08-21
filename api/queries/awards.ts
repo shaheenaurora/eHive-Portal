@@ -248,6 +248,49 @@ export async function alreadyNominated(
   return rows.length > 0;
 }
 
+/** Whether a given nominee (member OR chapter) already has a nomination in this
+ *  category+cycle — regardless of who nominated them. Prevents the same nominee
+ *  being entered twice in a category (which would split votes / distort scores). */
+export async function nomineeAlreadyNominated(
+  cycleId: number,
+  category: string,
+  nominee: { nomineeMemberId?: number | null; nomineeChapterId?: number | null }
+): Promise<boolean> {
+  const subject =
+    nominee.nomineeMemberId != null
+      ? eq(schema.awardNominations.nomineeMemberId, nominee.nomineeMemberId)
+      : nominee.nomineeChapterId != null
+        ? eq(schema.awardNominations.nomineeChapterId, nominee.nomineeChapterId)
+        : null;
+  if (!subject) return false;
+  const rows = await getDb()
+    .select({ id: schema.awardNominations.id })
+    .from(schema.awardNominations)
+    .where(
+      and(
+        eq(schema.awardNominations.cycleId, cycleId),
+        eq(schema.awardNominations.category, category),
+        subject
+      )
+    )
+    .limit(1);
+  return rows.length > 0;
+}
+
+/** The current status of a nomination — used to enforce the shortlist gate. */
+export async function nominationStatus(
+  id: number
+): Promise<AwardNominationStatus | null> {
+  const row = (
+    await getDb()
+      .select({ status: schema.awardNominations.status })
+      .from(schema.awardNominations)
+      .where(eq(schema.awardNominations.id, id))
+      .limit(1)
+  ).at(0);
+  return (row?.status as AwardNominationStatus) ?? null;
+}
+
 export async function setNominationStatus(
   id: number,
   status: AwardNominationStatus
