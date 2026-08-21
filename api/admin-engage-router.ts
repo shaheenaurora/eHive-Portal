@@ -61,6 +61,7 @@ import {
   raiseFlag,
   resolveFlag,
 } from "./queries/award-integrity";
+import { chapterRemainingBudget } from "./queries/finance";
 import { computeChapterHealth } from "./queries/health";
 import {
   ensureCadenceTemplates,
@@ -2625,6 +2626,17 @@ export const adminEngageRouter = createRouter({
           code: "FORBIDDEN",
           message: `Spends over AED ${SPEND_APPROVAL_THRESHOLD_AED.toLocaleString()} need a full administrator (President / Director) to approve.`,
         });
+      }
+      // Budget invariant: approving a spend can never drive the chapter over its
+      // allocation. `remaining` excludes this still-proposed line, so compare
+      // directly. Reject with the shortfall so the officer can add an allocation.
+      if (input.decision === "approve" && line.kind === "spend") {
+        const { remaining } = await chapterRemainingBudget(line.chapterId);
+        if (line.amount > remaining)
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: `Approving this would overspend the chapter budget — AED ${line.amount.toLocaleString()} requested, only AED ${Math.max(0, remaining).toLocaleString()} remaining. Add an allocation or reject the line.`,
+          });
       }
       await db
         .update(schema.chapterBudgets)

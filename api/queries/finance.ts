@@ -1,11 +1,11 @@
-import { and, desc, eq, isNull, like, or } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, like, lte, or, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import * as schema from "@db/schema";
 import { getDb } from "./connection";
 import { audit } from "../lib/audit";
 import { notify, renewMembership } from "./circle";
 import { paymentsEnabled, getPaymentProvider } from "../lib/payments";
-import { TIER_PRICE_AED } from "@contracts/constants";
+import { TIER_PRICE_AED, REFUND_WINDOW_DAYS } from "@contracts/constants";
 import {
   summarizePayments,
   rollupBudgets,
@@ -77,10 +77,25 @@ export async function financeSummary() {
   };
 }
 
+export type FinanceReportRange = { from?: Date | null; to?: Date | null };
+
 /** Build the finance report (revenue by month/tier, expenses by category,
- *  totals) from all payment records and chapter spend lines. */
-export async function financeReport(): Promise<FinanceReport> {
+ *  totals) from payment records and chapter spend lines, optionally restricted
+ *  to a date range. Payments are dated by settlement (paidAt, falling back to
+ *  createdAt); expenses by createdAt. */
+export async function financeReport(
+  range?: FinanceReportRange
+): Promise<FinanceReport> {
   const db = getDb();
+  // Payments: coalesce(paidAt, createdAt) within the range.
+  const payDate = sql`coalesce(${schema.paymentRecords.paidAt}, ${schema.paymentRecords.createdAt})`;
+  const payConds = [];
+  if (range?.from) payConds.push(gte(payDate, range.from));
+  if (range?.to) payConds.push(lte(payDate, range.to));
+  const expConds = [eq(schema.chapterBudgets.kind, "spend")];
+  if (range?.from)
+    expConds.push(gte(schema.chapterBudgets.createdAt, range.from));
+  if (range?.to) expConds.push(lte(schema.chapterBudgets.createdAt, range.to));
   const [pays, expenses] = await Promise.all([
     db
       .select({
@@ -91,7 +106,8 @@ export async function financeReport(): Promise<FinanceReport> {
         createdAt: schema.paymentRecords.createdAt,
         refundedAmount: schema.paymentRecords.refundedAmount,
       })
-      .from(schema.paymentRecords),
+      .from(schema.paymentRecords)
+      .where(payConds.length ? and(...payConds) : undefined),
     db
       .select({
         amount: schema.chapterBudgets.amount,
@@ -100,17 +116,19 @@ export async function financeReport(): Promise<FinanceReport> {
         createdAt: schema.chapterBudgets.createdAt,
       })
       .from(schema.chapterBudgets)
-      .where(eq(schema.chapterBudgets.kind, "spend")),
+      .where(and(...expConds)),
   ]);
   return buildFinanceReport(pays as ReportPay[], expenses as ReportExpense[]);
 }
 
 /** The finance report rendered as a downloadable CSV (filename + contents). */
-export async function financeReportCsvString(): Promise<{
+export async function financeReportCsvString(
+  range?: FinanceReportRange
+): Promise<{
   filename: string;
   csv: string;
 }> {
-  const report = await financeReport();
+  const report = await financeReport(range);
   const stamp = new Date().toISOString().slice(0, 10);
   return {
     filename: `ehive-finance-report-${stamp}.csv`,
@@ -308,7 +326,9 @@ export async function refundPayment(
   actor: Actor,
   id: number,
   reason: string,
-  amountAed?: number
+  amountAed?: number,
+  /** Set by the router when a full administrator refunds outside the window. */
+  overrideWindow = false
 ) {
   const db = getDb();
   const p = (
@@ -320,6 +340,17 @@ export async function refundPayment(
   ).at(0);
   if (!p)
     throw new TRPCError({ code: "NOT_FOUND", message: "Payment not found." });
+
+  // Refund window: a finance admin can self-serve a refund within
+  // REFUND_WINDOW_DAYS of the charge; an older charge needs a full administrator
+  // to override, so stale memberships aren't casually reversed.
+  const charged = new Date(p.paidAt ?? p.createdAt).getTime();
+  const ageDays = (Date.now() - charged) / (24 * 60 * 60 * 1000);
+  if (ageDays > REFUND_WINDOW_DAYS && !overrideWindow)
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: `This charge is ${Math.floor(ageDays)} days old — past the ${REFUND_WINDOW_DAYS}-day refund window. A full administrator can override.`,
+    });
 
   // Validate + compute the refund (pure, unit-tested).
   let plan: ReturnType<typeof computeRefund>;
@@ -374,12 +405,39 @@ export async function refundPayment(
   });
   const m = (
     await db
-      .select({ id: schema.members.id })
+      .select({
+        id: schema.members.id,
+        lifecycleState: schema.members.lifecycleState,
+      })
       .from(schema.members)
       .where(eq(schema.members.userId, p.userId))
       .limit(1)
   ).at(0);
-  if (m) {
+  // A FULL refund of a membership/renewal payment revokes the entitlement it
+  // bought — otherwise a refunded member keeps live access. Route through the
+  // lifecycle executor (→ lapsed, which coerces billing status to cancelled and
+  // notifies). A partial refund, or a refund of a non-membership charge, only
+  // notifies. Only revert from a live/paid state; leave suspended/alumni alone.
+  const fullRefund = plan.newStatus === "refunded";
+  const membershipCharge =
+    p.purpose === "membership" || p.purpose === "renewal";
+  const liveState = ["onboarding", "active", "at_risk", "renewal"];
+  if (
+    m &&
+    fullRefund &&
+    membershipCharge &&
+    liveState.includes(m.lifecycleState ?? "")
+  ) {
+    try {
+      const { applyLifecycleTransition } = await import("../lib/lifecycle");
+      await applyLifecycleTransition(m.id, "lapsed", {
+        actor,
+        reason: `Membership payment refunded — ${reason}`,
+      });
+    } catch {
+      /* non-fatal: the refund still stands even if the transition fails */
+    }
+  } else if (m) {
     try {
       await notify(
         m.id,
@@ -461,6 +519,26 @@ export async function budgetRollup() {
       ...rollupBudgets(g.lines),
     }))
     .sort((a, b) => b.allocated - a.allocated);
+}
+
+/** A chapter's live budget position — allocated, spent and remaining (approved +
+ *  spent lines only; proposed lines don't count until approved). Used to keep
+ *  spend from driving a chapter negative. */
+export async function chapterRemainingBudget(chapterId: number): Promise<{
+  allocated: number;
+  spent: number;
+  remaining: number;
+}> {
+  const rows = await getDb()
+    .select({
+      kind: schema.chapterBudgets.kind,
+      amount: schema.chapterBudgets.amount,
+      status: schema.chapterBudgets.status,
+    })
+    .from(schema.chapterBudgets)
+    .where(eq(schema.chapterBudgets.chapterId, chapterId));
+  const r = rollupBudgets(rows);
+  return { allocated: r.allocated, spent: r.spent, remaining: r.remaining };
 }
 
 /** Members (id + label) for the manual-payment picker. */
@@ -564,8 +642,12 @@ export async function recordExpense(
   // Spend at or above the approval threshold enters the chapter-budget approval
   // flow as a "proposed" line (decided via decideBudgetLine) rather than being
   // auto-approved — so a finance-scoped admin can't spend chapter money over the
-  // threshold without a second set of eyes. Smaller amounts post directly.
-  const needsApproval = expenseNeedsApproval(amount);
+  // threshold without a second set of eyes. Smaller amounts post directly —
+  // UNLESS they'd drive the chapter over its allocation, in which case they also
+  // need approval, so an approved spend line can never exceed the budget.
+  const { remaining } = await chapterRemainingBudget(input.chapterId);
+  const overBudget = amount > remaining;
+  const needsApproval = expenseNeedsApproval(amount) || overBudget;
   const status = needsApproval ? "proposed" : "approved";
   const res = await db.insert(schema.chapterBudgets).values({
     chapterId: input.chapterId,
@@ -579,7 +661,7 @@ export async function recordExpense(
   await audit(actor, "finance.expense", {
     type: "chapterBudget",
     id: Number((res as unknown as { insertId?: number }).insertId ?? 0),
-    detail: `${chapter.name}: AED ${amount} · ${input.category ?? "uncategorised"} · ${input.label}${needsApproval ? " · pending approval" : ""}`,
+    detail: `${chapter.name}: AED ${amount} · ${input.category ?? "uncategorised"} · ${input.label}${needsApproval ? " · pending approval" : ""}${overBudget ? " · OVER BUDGET" : ""}`,
   });
-  return { ok: true, pending: needsApproval };
+  return { ok: true, pending: needsApproval, overBudget, remaining };
 }

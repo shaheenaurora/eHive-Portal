@@ -85,6 +85,15 @@ function isFullAdmin(user: { adminScopes?: string | null }): boolean {
   return s === "" || s === "*";
 }
 
+/** Turn a {from,to} of ISO dates into a Date range; `to` is made inclusive by
+ *  snapping it to the end of that day. */
+function parseReportRange(input?: { from?: string; to?: string }) {
+  if (!input) return undefined;
+  const from = input.from ? new Date(input.from + "T00:00:00.000Z") : null;
+  const to = input.to ? new Date(input.to + "T23:59:59.999Z") : null;
+  return { from, to };
+}
+
 const TIER = z.enum(["horizon", "ascent", "vanguard", "zenith"]);
 const idInput = z.object({ id: z.number().int().positive() });
 
@@ -2037,10 +2046,26 @@ export const adminRouter = createRouter({
 
   /* ------------------------------- Finance ------------------------------- */
   financeSummary: scopedAdmin("finance").query(() => financeSummary()),
-  financeReport: scopedAdmin("finance").query(() => financeReport()),
-  financeReportCsv: scopedAdmin("finance").query(() =>
-    financeReportCsvString()
-  ),
+  financeReport: scopedAdmin("finance")
+    .input(
+      z
+        .object({
+          from: z.string().date().optional(),
+          to: z.string().date().optional(),
+        })
+        .optional()
+    )
+    .query(({ input }) => financeReport(parseReportRange(input))),
+  financeReportCsv: scopedAdmin("finance")
+    .input(
+      z
+        .object({
+          from: z.string().date().optional(),
+          to: z.string().date().optional(),
+        })
+        .optional()
+    )
+    .query(({ input }) => financeReportCsvString(parseReportRange(input))),
 
   payments: scopedAdmin("finance")
     .input(
@@ -2108,10 +2133,18 @@ export const adminRouter = createRouter({
         reason: z.string().min(2).max(500),
         // Omit for a full refund; provide a smaller AED amount for a partial one.
         amountAed: z.number().positive().max(1_000_000).optional(),
+        // Full administrators may refund a charge past the refund window.
+        overrideWindow: z.boolean().optional(),
       })
     )
     .mutation(({ ctx, input }) =>
-      refundPayment(ctx.user, input.id, input.reason, input.amountAed)
+      refundPayment(
+        ctx.user,
+        input.id,
+        input.reason,
+        input.amountAed,
+        input.overrideWindow === true && isFullAdmin(ctx.user as never)
+      )
     ),
 
   expenses: scopedAdmin("finance")

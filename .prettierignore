@@ -21,7 +21,7 @@ public/apps.min.css
 coverage/
 
 # Audit / handoff report artifacts (committed as-is, not source to be reformatted)
-AUDIT_REPORT*.md
+AUDIT_*.md
 
 # Package files
 package-lock.json
