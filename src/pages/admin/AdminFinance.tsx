@@ -1075,7 +1075,25 @@ function ExpensesTab({ onRecord }: { onRecord: () => void }) {
   const chapters = trpc.admin.financeChapters.useQuery(undefined, {
     retry: false,
   });
+  const utils = trpc.useUtils();
   const rows = list.data ?? [];
+
+  const openReceipt = async (id: number) => {
+    try {
+      const r = await utils.admin.expenseReceipt.fetch({ id });
+      if (!r) {
+        toast("No receipt on file.");
+        return;
+      }
+      const win = window.open();
+      if (win)
+        win.document.write(
+          `<title>${r.name}</title><iframe src="${r.data}" style="border:0;width:100vw;height:100vh"></iframe>`
+        );
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Couldn't open the receipt.");
+    }
+  };
 
   return (
     <div>
@@ -1154,6 +1172,7 @@ function ExpensesTab({ onRecord }: { onRecord: () => void }) {
                 <th>Category</th>
                 <th>Amount</th>
                 <th>Status</th>
+                <th>Receipt</th>
                 <th>Date</th>
               </tr>
             </thead>
@@ -1182,6 +1201,18 @@ function ExpensesTab({ onRecord }: { onRecord: () => void }) {
                       {e.status}
                     </Pill>
                   </td>
+                  <td data-label="Receipt" className="eh-sm">
+                    {e.receiptName ? (
+                      <button
+                        className="eh-btn ghost sm"
+                        onClick={() => openReceipt(e.id)}
+                      >
+                        View
+                      </button>
+                    ) : (
+                      <span className="eh-muted">—</span>
+                    )}
+                  </td>
                   <td data-label="Date" className="eh-sm eh-muted">
                     {fmtDate(e.createdAt)}
                   </td>
@@ -1207,6 +1238,9 @@ function RecordExpenseModal({
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState<string>("other");
   const [note, setNote] = useState("");
+  const [receipt, setReceipt] = useState<{ data: string; name: string } | null>(
+    null
+  );
   const chapters = trpc.admin.financeChapters.useQuery(undefined, {
     retry: false,
   });
@@ -1283,6 +1317,33 @@ function RecordExpenseModal({
           placeholder="Receipt ref / budget line"
         />
       </Field>
+      <Field label="Receipt (optional — image or PDF, max ~4 MB)">
+        <input
+          type="file"
+          accept="image/*,application/pdf"
+          className="eh-input"
+          onChange={e => {
+            const file = e.target.files?.[0];
+            if (!file) {
+              setReceipt(null);
+              return;
+            }
+            if (file.size > 4 * 1024 * 1024) {
+              toast("Receipt is too large — keep it under 4 MB.");
+              e.target.value = "";
+              return;
+            }
+            const reader = new FileReader();
+            reader.onload = () =>
+              setReceipt({ data: String(reader.result), name: file.name });
+            reader.onerror = () => toast("Couldn't read that file.");
+            reader.readAsDataURL(file);
+          }}
+        />
+        {receipt && (
+          <span className="eh-sm eh-muted">Attached: {receipt.name}</span>
+        )}
+      </Field>
       <button
         className="eh-btn gold"
         disabled={
@@ -1295,6 +1356,8 @@ function RecordExpenseModal({
             amountAed: Number(amount),
             category: category as never,
             note: note || undefined,
+            receiptData: receipt?.data,
+            receiptName: receipt?.name,
           })
         }
       >

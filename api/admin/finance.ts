@@ -17,6 +17,7 @@ import {
   payableMembers,
   listExpenses,
   recordExpense,
+  expenseReceipt,
 } from "../queries/finance";
 import {
   listInvoices,
@@ -249,9 +250,15 @@ export const financeRouter = createRouter({
           .enum(EXPENSE_CATEGORY_KEYS as [string, ...string[]])
           .optional(),
         note: z.string().max(500).optional(),
+        receiptData: z.string().max(6_000_000).optional(),
+        receiptName: z.string().max(255).optional(),
       })
     )
     .mutation(({ ctx, input }) => recordExpense(ctx.user, input)),
+
+  expenseReceipt: scopedAdmin("finance")
+    .input(idInput)
+    .query(({ input }) => expenseReceipt(input.id)),
 
   financeChapters: scopedAdmin("finance").query(async () => {
     return getDb()

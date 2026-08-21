@@ -596,6 +596,7 @@ export type ExpenseRow = {
   category: string | null;
   status: string;
   note: string | null;
+  receiptName: string | null;
   createdAt: Date;
 };
 
@@ -617,6 +618,7 @@ export async function listExpenses(
       category: schema.chapterBudgets.category,
       status: schema.chapterBudgets.status,
       note: schema.chapterBudgets.note,
+      receiptName: schema.chapterBudgets.receiptName,
       createdAt: schema.chapterBudgets.createdAt,
     })
     .from(schema.chapterBudgets)
@@ -630,6 +632,24 @@ export async function listExpenses(
   return rows as ExpenseRow[];
 }
 
+/** Fetch a spend line's receipt (the data URL + filename), or null if none. */
+export async function expenseReceipt(
+  id: number
+): Promise<{ name: string; data: string } | null> {
+  const row = (
+    await getDb()
+      .select({
+        data: schema.chapterBudgets.receiptData,
+        name: schema.chapterBudgets.receiptName,
+      })
+      .from(schema.chapterBudgets)
+      .where(eq(schema.chapterBudgets.id, id))
+      .limit(1)
+  ).at(0);
+  if (!row?.data) return null;
+  return { name: row.name ?? "receipt", data: row.data };
+}
+
 /** Record a chapter expense against its operating budget. */
 export async function recordExpense(
   actor: Actor,
@@ -639,6 +659,9 @@ export async function recordExpense(
     amountAed: number;
     category?: string;
     note?: string;
+    /** Optional receipt as a base64 data URL, plus its original filename. */
+    receiptData?: string;
+    receiptName?: string;
   }
 ) {
   const db = getDb();
@@ -689,6 +712,22 @@ export async function recordExpense(
     });
   }
 
+  // Receipt is stored in-row as a data URL; cap the size so the DB row stays
+  // sane (base64 of ~4 MB ≈ 5.5 MB of text).
+  const receiptData = input.receiptData?.trim() || null;
+  if (receiptData) {
+    if (!/^data:[\w./+-]+;base64,/.test(receiptData))
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Receipt must be a base64 data URL.",
+      });
+    if (receiptData.length > 6_000_000)
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Receipt is too large — keep it under about 4 MB.",
+      });
+  }
+
   const res = await db.insert(schema.chapterBudgets).values({
     chapterId: input.chapterId,
     label: input.label.slice(0, 255),
@@ -697,6 +736,10 @@ export async function recordExpense(
     category: input.category ?? null,
     status,
     note: input.note ?? null,
+    receiptData,
+    receiptName: receiptData
+      ? (input.receiptName?.slice(0, 255) ?? "receipt")
+      : null,
   });
   await audit(actor, "finance.expense", {
     type: "chapterBudget",
