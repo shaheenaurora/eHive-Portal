@@ -59,7 +59,8 @@ export const members = mysqlTable(
     id: serial("id").primaryKey(),
     userId: bigint("userId", { mode: "number", unsigned: true })
       .notNull()
-      .unique(),
+      .unique()
+      .references(() => users.id, { onDelete: "cascade" }),
     tier: mysqlEnum("tier", ["horizon", "ascent", "vanguard", "zenith"])
       .notNull()
       .default("horizon"),
@@ -165,7 +166,9 @@ export const onboardingMilestones = mysqlTable(
   "onboarding_milestones",
   {
     id: serial("id").primaryKey(),
-    memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+    memberId: bigint("memberId", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => members.id, { onDelete: "cascade" }),
     milestone: varchar("milestone", { length: 48 }).notNull(),
     note: varchar("note", { length: 500 }),
     completedAt: timestamp("completedAt").defaultNow().notNull(),
@@ -223,7 +226,9 @@ export const membershipEvents = mysqlTable(
   "membership_events",
   {
     id: serial("id").primaryKey(),
-    memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+    memberId: bigint("memberId", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => members.id, { onDelete: "cascade" }),
     type: mysqlEnum("type", [
       "approved",
       "upgrade",
@@ -257,7 +262,9 @@ export const membershipEvents = mysqlTable(
    activity ledger captures every change to the record. */
 export const memberChangeRequests = mysqlTable("member_change_requests", {
   id: serial("id").primaryKey(),
-  memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+  memberId: bigint("memberId", { mode: "number", unsigned: true })
+    .notNull()
+    .references(() => members.id, { onDelete: "cascade" }),
   category: mysqlEnum("category", [
     "profile",
     "tier",
@@ -311,8 +318,12 @@ export type Pod = typeof pods.$inferSelect;
 
 export const podMembers = mysqlTable("pod_members", {
   id: serial("id").primaryKey(),
-  podId: bigint("podId", { mode: "number", unsigned: true }).notNull(),
-  memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+  podId: bigint("podId", { mode: "number", unsigned: true })
+    .notNull()
+    .references(() => pods.id, { onDelete: "cascade" }),
+  memberId: bigint("memberId", { mode: "number", unsigned: true })
+    .notNull()
+    .references(() => members.id, { onDelete: "cascade" }),
   role: varchar("role", { length: 32 }).notNull().default("member"),
   joinedAt: timestamp("joinedAt").defaultNow().notNull(),
   /* PD-03 — POD content is gated until the member accepts confidentiality. */
@@ -323,7 +334,9 @@ export const sessions = mysqlTable(
   "sessions",
   {
     id: serial("id").primaryKey(),
-    podId: bigint("podId", { mode: "number", unsigned: true }).notNull(),
+    podId: bigint("podId", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => pods.id, { onDelete: "cascade" }),
     startsAt: timestamp("startsAt").notNull(),
     durationMin: int("durationMin").notNull().default(90),
     topic: varchar("topic", { length: 255 }),
@@ -345,8 +358,12 @@ export const attendance = mysqlTable(
     sessionId: bigint("sessionId", {
       mode: "number",
       unsigned: true,
-    }).notNull(),
-    memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+    })
+      .notNull()
+      .references(() => sessions.id, { onDelete: "cascade" }),
+    memberId: bigint("memberId", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => members.id, { onDelete: "cascade" }),
     status: mysqlEnum("status", ["attended", "absent", "excused"])
       .notNull()
       .default("attended"),
@@ -430,8 +447,12 @@ export const eventRegs = mysqlTable(
   "event_regs",
   {
     id: serial("id").primaryKey(),
-    eventId: bigint("eventId", { mode: "number", unsigned: true }).notNull(),
-    memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+    eventId: bigint("eventId", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => events.id, { onDelete: "cascade" }),
+    memberId: bigint("memberId", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => members.id, { onDelete: "cascade" }),
     status: mysqlEnum("status", [
       "registered",
       "waitlisted",
@@ -477,7 +498,9 @@ export const scoreEvents = mysqlTable(
 
 export const hiveScoreHistory = mysqlTable("hive_score_history", {
   id: serial("id").primaryKey(),
-  memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+  memberId: bigint("memberId", { mode: "number", unsigned: true })
+    .notNull()
+    .references(() => members.id, { onDelete: "cascade" }),
   score: int("score").notNull(),
   breakdown: text("breakdown"),
   computedAt: timestamp("computedAt").defaultNow().notNull(),

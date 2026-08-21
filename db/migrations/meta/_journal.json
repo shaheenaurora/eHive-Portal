@@ -99,6 +99,13 @@
       "when": 1787343149957,
       "tag": "0013_currency_rates",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "5",
+      "when": 1787344000673,
+      "tag": "0014_member_graph_fks",
+      "breakpoints": true
     }
   ]
 }
