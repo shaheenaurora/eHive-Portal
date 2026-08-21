@@ -84,7 +84,7 @@ integrationApp.use("*", async (c, next) => {
       .at(-1) ??
     c.req.header("x-real-ip") ??
     "unknown";
-  if (!rateLimit(`integration:${ip}`, 600, 60 * 1000))
+  if (!(await rateLimit(`integration:${ip}`, 600, 60 * 1000)))
     return c.json({ error: "Too many requests. Please slow down." }, 429);
   await next();
 });

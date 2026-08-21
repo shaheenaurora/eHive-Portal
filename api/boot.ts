@@ -176,7 +176,7 @@ app.use("/api/trpc/*", async c => {
     // enough for real interactive use (a tRPC batch counts as one request) but
     // blunts scripted floods. NOTE: in-process only — a distributed limiter
     // (Redis) is tracked separately for multi-replica deployments.
-    if (!rateLimit(`trpc:${clientIp(c)}`, 600, 60 * 1000)) {
+    if (!(await rateLimit(`trpc:${clientIp(c)}`, 600, 60 * 1000))) {
       return c.json({ error: "Too many requests. Please slow down." }, 429);
     }
   }
@@ -198,7 +198,7 @@ app.route("/api/integrations/v1", integrationApp);
 app.post("/api/lead", async c => {
   // Public endpoint — rate-limit per IP to blunt spam/abuse (20 submissions per
   // 10 minutes is generous for a real person filling out website forms).
-  if (!rateLimit(`lead:${clientIp(c)}`, 20, 10 * 60 * 1000)) {
+  if (!(await rateLimit(`lead:${clientIp(c)}`, 20, 10 * 60 * 1000))) {
     return c.json(
       { ok: false, error: "Too many submissions. Please try again shortly." },
       429
@@ -499,7 +499,7 @@ app.get("/api/availability", async c => {
 
 /** Create a booking request. Body: { product, date, time, name, email, phone?, notes? } */
 app.post("/api/bookings", async c => {
-  if (!rateLimit(`booking:${clientIp(c)}`, 10, 10 * 60 * 1000)) {
+  if (!(await rateLimit(`booking:${clientIp(c)}`, 10, 10 * 60 * 1000))) {
     return c.json(
       {
         ok: false,

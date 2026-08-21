@@ -71,6 +71,13 @@
       "when": 1787314322147,
       "tag": "0009_booking_scorecard_fks",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1787314471709,
+      "tag": "0010_rate_limits",
+      "breakpoints": true
     }
   ]
 }

@@ -84,7 +84,7 @@ export const authRouter = createRouter({
     .input(credentials.extend({ name: z.string().min(1).max(255) }))
     .mutation(async ({ ctx, input }) => {
       const ip = clientIp(ctx.req.headers);
-      if (!rateLimit(`register:${ip}`, 5, 60 * 60 * 1000)) {
+      if (!(await rateLimit(`register:${ip}`, 5, 60 * 60 * 1000))) {
         throw new TRPCError({
           code: "TOO_MANY_REQUESTS",
           message: "Too many sign-up attempts. Please try again later.",
@@ -124,10 +124,9 @@ export const authRouter = createRouter({
     const ip = clientIp(ctx.req.headers);
     const email = input.email.toLowerCase();
     // Two windows: broad per-IP, tighter per-account, to slow brute force.
-    if (
-      !rateLimit(`login:ip:${ip}`, 20, 15 * 60 * 1000) ||
-      !rateLimit(`login:acct:${email}`, 8, 15 * 60 * 1000)
-    ) {
+    const ipOk = await rateLimit(`login:ip:${ip}`, 20, 15 * 60 * 1000);
+    const acctOk = await rateLimit(`login:acct:${email}`, 8, 15 * 60 * 1000);
+    if (!ipOk || !acctOk) {
       throw new TRPCError({
         code: "TOO_MANY_REQUESTS",
         message: "Too many attempts. Please wait a few minutes and try again.",
@@ -140,7 +139,7 @@ export const authRouter = createRouter({
         message: "Incorrect email or password.",
       });
     }
-    rateLimitReset(`login:acct:${email}`);
+    await rateLimitReset(`login:acct:${email}`);
     // Password OK. If 2FA is on, defer the session until a valid code — hand
     // back a short-lived challenge instead of signing in.
     if (user.totpEnabled) {
@@ -172,7 +171,7 @@ export const authRouter = createRouter({
           code: "UNAUTHORIZED",
           message: "Your login session expired — please sign in again.",
         });
-      if (!rateLimit(`2fa:${userId}`, 6, 15 * 60 * 1000)) {
+      if (!(await rateLimit(`2fa:${userId}`, 6, 15 * 60 * 1000))) {
         throw new TRPCError({
           code: "TOO_MANY_REQUESTS",
           message: "Too many codes. Please wait a few minutes.",
@@ -211,7 +210,7 @@ export const authRouter = createRouter({
   /* ---- email verification ---- */
   resendVerification: authedQuery.mutation(async ({ ctx }) => {
     if (ctx.user.emailVerifiedAt) return { ok: true, alreadyVerified: true };
-    if (!rateLimit(`verify:${ctx.user.id}`, 3, 60 * 60 * 1000)) {
+    if (!(await rateLimit(`verify:${ctx.user.id}`, 3, 60 * 60 * 1000))) {
       throw new TRPCError({
         code: "TOO_MANY_REQUESTS",
         message: "Please wait before requesting another verification email.",
@@ -241,8 +240,12 @@ export const authRouter = createRouter({
       const ip = clientIp(ctx.req.headers);
       // Rate-limited, and always returns ok so we don't leak which emails exist.
       if (
-        rateLimit(`reset:${ip}`, 5, 60 * 60 * 1000) &&
-        rateLimit(`reset:acct:${input.email.toLowerCase()}`, 3, 60 * 60 * 1000)
+        (await rateLimit(`reset:${ip}`, 5, 60 * 60 * 1000)) &&
+        (await rateLimit(
+          `reset:acct:${input.email.toLowerCase()}`,
+          3,
+          60 * 60 * 1000
+        ))
       ) {
         const user = await findUserByEmail(input.email);
         if (user) {

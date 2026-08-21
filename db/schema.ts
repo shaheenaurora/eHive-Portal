@@ -1870,3 +1870,11 @@ export const appointments = mysqlTable(
 );
 export type Appointment = typeof appointments.$inferSelect;
 export type InsertAppointment = typeof appointments.$inferInsert;
+
+/* Shared rate-limit counters — stored in MySQL so per-IP/account limits apply
+   across multiple app replicas (Railway can scale horizontally). */
+export const rateLimits = mysqlTable("rate_limits", {
+  key: varchar("key", { length: 255 }).primaryKey(),
+  count: int("count").notNull(),
+  resetAt: bigint("resetAt", { mode: "number" }).notNull(),
+});
