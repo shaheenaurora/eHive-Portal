@@ -17,9 +17,17 @@ export function getDb() {
         process.env.DATABASE_SSL === "true"
           ? { minVersion: "TLSv1.2" }
           : undefined,
-      connectionLimit: 20,
+      connectionLimit: Number(process.env.DB_POOL_SIZE) || 20,
       queueLimit: 0,
       waitForConnections: true,
+      // Fail fast rather than hang forever when the DB is unreachable or the
+      // pool is exhausted, and recycle idle sockets so a silently-dropped
+      // connection (proxy/idle timeout) can't wedge the pool.
+      connectTimeout: 10_000,
+      idleTimeout: 60_000,
+      maxIdle: 10,
+      enableKeepAlive: true,
+      keepAliveInitialDelay: 10_000,
     });
     activePool = pool;
     instance = drizzle(pool, { schema, mode: "default" });

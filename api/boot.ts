@@ -223,6 +223,12 @@ app.post("/api/lead", async c => {
   if (!body || typeof body.form !== "string" || !body.form) {
     return c.json({ ok: false, error: "form field required" }, 400);
   }
+  // Honeypot: a hidden field real users never see. A bot that fills it gets a
+  // success response but nothing is persisted — quietly dropped, no signal back.
+  const hp = body.company_website ?? body._hp ?? body.website2;
+  if (typeof hp === "string" && hp.trim() !== "") {
+    return c.json({ ok: true });
+  }
   const email =
     typeof body.email === "string" ? body.email.slice(0, 320) : null;
   const sourcePage =
@@ -836,6 +842,56 @@ app.get("/api/health", async c => {
     console.error("health check: DB ping failed", err);
   }
   return c.json({ status: "ok", db, timestamp: new Date().toISOString() });
+});
+
+/* Readiness probe (distinct from the liveness /api/health above): 200 only when
+   the DB is reachable, so an orchestrator can pull an unhealthy replica out of
+   rotation without killing the container. */
+app.get("/api/ready", async c => {
+  try {
+    await getDb().execute(sql`select 1`);
+    return c.json({ ready: true });
+  } catch {
+    return c.json({ ready: false }, 503);
+  }
+});
+
+/* Prometheus-style metrics (text exposition, no external dependency). Enough for
+   an ops dashboard: process uptime/memory, resident event-loop info, and a DB-up
+   gauge. Guard with METRICS_TOKEN when set (Bearer) so it isn't world-readable. */
+app.get("/metrics", async c => {
+  const token = process.env.METRICS_TOKEN;
+  if (token) {
+    const auth = c.req.header("authorization") ?? "";
+    if (auth !== `Bearer ${token}`) return c.text("unauthorized", 401);
+  }
+  let dbUp = 1;
+  try {
+    await getDb().execute(sql`select 1`);
+  } catch {
+    dbUp = 0;
+  }
+  const mem = process.memoryUsage();
+  const lines = [
+    "# HELP ehive_up 1 if the process is serving.",
+    "# TYPE ehive_up gauge",
+    "ehive_up 1",
+    "# HELP ehive_db_up 1 if the database is reachable.",
+    "# TYPE ehive_db_up gauge",
+    `ehive_db_up ${dbUp}`,
+    "# HELP ehive_process_uptime_seconds Process uptime.",
+    "# TYPE ehive_process_uptime_seconds gauge",
+    `ehive_process_uptime_seconds ${Math.round(process.uptime())}`,
+    "# HELP ehive_process_resident_memory_bytes Resident set size.",
+    "# TYPE ehive_process_resident_memory_bytes gauge",
+    `ehive_process_resident_memory_bytes ${mem.rss}`,
+    "# HELP ehive_process_heap_used_bytes V8 heap in use.",
+    "# TYPE ehive_process_heap_used_bytes gauge",
+    `ehive_process_heap_used_bytes ${mem.heapUsed}`,
+  ];
+  return c.text(lines.join("\n") + "\n", 200, {
+    "content-type": "text/plain; version=0.0.4; charset=utf-8",
+  });
 });
 
 app.all("/api/*", c => c.json({ error: "Not Found" }, 404));
