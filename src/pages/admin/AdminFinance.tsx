@@ -1314,14 +1314,18 @@ const money = (aedNum: number) =>
   });
 
 function ReportsTab() {
-  const q = trpc.admin.financeReport.useQuery(undefined, { retry: false });
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const range =
+    from || to ? { from: from || undefined, to: to || undefined } : undefined;
+  const q = trpc.admin.financeReport.useQuery(range, { retry: false });
   const utils = trpc.useUtils();
   const [downloading, setDownloading] = useState(false);
 
   const download = async () => {
     setDownloading(true);
     try {
-      const { filename, csv } = await utils.admin.financeReportCsv.fetch();
+      const { filename, csv } = await utils.admin.financeReportCsv.fetch(range);
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -1358,7 +1362,52 @@ function ReportsTab() {
           <Metric k="Chapter expenses" v={money(t.expensesAed)} />
         </div>
       </div>
-      <div className="eh-row eh-mb" style={{ justifyContent: "flex-end" }}>
+      <div
+        className="eh-row eh-mb"
+        style={{
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: ".5rem",
+        }}
+      >
+        <div
+          className="eh-row"
+          style={{ gap: ".5rem", alignItems: "center", flexWrap: "wrap" }}
+        >
+          <label className="eh-sm eh-muted" htmlFor="fin-from">
+            From
+          </label>
+          <input
+            id="fin-from"
+            type="date"
+            className="eh-input sm"
+            value={from}
+            max={to || undefined}
+            onChange={e => setFrom(e.target.value)}
+          />
+          <label className="eh-sm eh-muted" htmlFor="fin-to">
+            To
+          </label>
+          <input
+            id="fin-to"
+            type="date"
+            className="eh-input sm"
+            value={to}
+            min={from || undefined}
+            onChange={e => setTo(e.target.value)}
+          />
+          {(from || to) && (
+            <button
+              className="eh-btn ghost sm"
+              onClick={() => {
+                setFrom("");
+                setTo("");
+              }}
+            >
+              Clear
+            </button>
+          )}
+        </div>
         <button
           className="eh-btn gold sm"
           onClick={download}

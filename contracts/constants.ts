@@ -1127,6 +1127,9 @@ export const MEETING_AGENDA_TEMPLATES: Record<string, string> = {
    approved by any chapter admin; above it needs a full administrator
    (President / Director sign-off). Amount is in AED. */
 export const SPEND_APPROVAL_THRESHOLD_AED = 2000;
+/** Refunds are self-serve for finance admins within this window of the payment;
+ *  older charges need a full administrator to override. */
+export const REFUND_WINDOW_DAYS = 30;
 
 /* XC-04 — Conduct & incident handling. */
 export const CONDUCT_CATEGORIES = [

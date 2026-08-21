@@ -27,7 +27,24 @@ import {
 import { renewalsReport } from "../queries/reports";
 import { audit } from "../lib/audit";
 import { EXPENSE_CATEGORY_KEYS } from "@contracts/constants";
-import { idInput } from "./shared";
+import { idInput, isFullAdmin } from "./shared";
+
+/** Optional {from,to} ISO-date range for the finance report. */
+const reportRangeInput = z
+  .object({
+    from: z.string().date().optional(),
+    to: z.string().date().optional(),
+  })
+  .optional();
+
+/** Turn {from,to} ISO dates into a Date range; `to` is inclusive (end of day). */
+function parseReportRange(input?: { from?: string; to?: string }) {
+  if (!input) return undefined;
+  return {
+    from: input.from ? new Date(input.from + "T00:00:00.000Z") : null,
+    to: input.to ? new Date(input.to + "T23:59:59.999Z") : null,
+  };
+}
 
 export const financeRouter = createRouter({
   leads: scopedAdmin("finance")
@@ -109,10 +126,12 @@ export const financeRouter = createRouter({
 
   /* ------------------------------- Finance ------------------------------- */
   financeSummary: scopedAdmin("finance").query(() => financeSummary()),
-  financeReport: scopedAdmin("finance").query(() => financeReport()),
-  financeReportCsv: scopedAdmin("finance").query(() =>
-    financeReportCsvString()
-  ),
+  financeReport: scopedAdmin("finance")
+    .input(reportRangeInput)
+    .query(({ input }) => financeReport(parseReportRange(input))),
+  financeReportCsv: scopedAdmin("finance")
+    .input(reportRangeInput)
+    .query(({ input }) => financeReportCsvString(parseReportRange(input))),
 
   payments: scopedAdmin("finance")
     .input(
@@ -180,10 +199,18 @@ export const financeRouter = createRouter({
         reason: z.string().min(2).max(500),
         // Omit for a full refund; provide a smaller AED amount for a partial one.
         amountAed: z.number().positive().max(1_000_000).optional(),
+        // Full administrators may refund a charge past the refund window.
+        overrideWindow: z.boolean().optional(),
       })
     )
     .mutation(({ ctx, input }) =>
-      refundPayment(ctx.user, input.id, input.reason, input.amountAed)
+      refundPayment(
+        ctx.user,
+        input.id,
+        input.reason,
+        input.amountAed,
+        input.overrideWindow === true && isFullAdmin(ctx.user as never)
+      )
     ),
 
   invoices: scopedAdmin("finance")
