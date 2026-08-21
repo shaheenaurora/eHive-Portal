@@ -62,8 +62,13 @@ export const engageRouter = createRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const me = await requireMember(ctx.user.id);
-      const { openCycle, alreadyNominated, nominate, nomineeInUnit } =
-        await import("./queries/awards");
+      const {
+        openCycle,
+        alreadyNominated,
+        nominate,
+        nomineeInUnit,
+        nomineeAlreadyNominated,
+      } = await import("./queries/awards");
       const { nominationWindowState, validateNomineeForCategory } =
         await import("@contracts/awards");
       const open = await openCycle();
@@ -112,6 +117,17 @@ export const engageRouter = createRouter({
         throw new TRPCError({
           code: "CONFLICT",
           message: "You've already nominated in this category.",
+        });
+      // One entry per nominee per category, whoever proposes them.
+      if (
+        await nomineeAlreadyNominated(input.cycleId, input.category, {
+          nomineeMemberId: input.nomineeMemberId,
+          nomineeChapterId: input.nomineeChapterId,
+        })
+      )
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "That nominee is already nominated in this category.",
         });
       await nominate({
         cycleId: input.cycleId,

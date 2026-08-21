@@ -38,7 +38,11 @@ import {
   listNominations,
   nominate,
   setNominationStatus,
+  nomineeAlreadyNominated,
+  nominationStatus,
+  nomineeInUnit,
 } from "./queries/awards";
+import { validateNomineeForCategory } from "@contracts/awards";
 import {
   setCycleRubric,
   assignJudge,
@@ -2362,6 +2366,53 @@ export const adminEngageRouter = createRouter({
           code: "BAD_REQUEST",
           message: "Pick a member or chapter to nominate.",
         });
+      // Same integrity rules the member-facing path enforces, applied to the
+      // admin path too: the category's subject must match the nominee type; a
+      // scoped cycle only accepts nominees from its unit; and a nominee may not
+      // be entered twice in one category.
+      const subjectCheck = validateNomineeForCategory(input.category, {
+        nomineeMemberId: input.nomineeMemberId,
+        nomineeChapterId: input.nomineeChapterId,
+      });
+      if (!subjectCheck.ok)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: subjectCheck.error,
+        });
+      const cycle = (
+        await getDb()
+          .select({
+            level: schema.awardCycles.level,
+            unitId: schema.awardCycles.unitId,
+          })
+          .from(schema.awardCycles)
+          .where(eq(schema.awardCycles.id, input.cycleId))
+          .limit(1)
+      ).at(0);
+      if (!cycle)
+        throw new TRPCError({ code: "NOT_FOUND", message: "Cycle not found." });
+      if (
+        cycle.level !== "network" &&
+        cycle.unitId &&
+        !(await nomineeInUnit(cycle.level, cycle.unitId, {
+          nomineeMemberId: input.nomineeMemberId,
+          nomineeChapterId: input.nomineeChapterId,
+        }))
+      )
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "That nominee isn't part of this award's chapter or region.",
+        });
+      if (
+        await nomineeAlreadyNominated(input.cycleId, input.category, {
+          nomineeMemberId: input.nomineeMemberId,
+          nomineeChapterId: input.nomineeChapterId,
+        })
+      )
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "That nominee is already nominated in this category.",
+        });
       const id = await nominate({
         cycleId: input.cycleId,
         category: input.category,
@@ -2381,6 +2432,18 @@ export const adminEngageRouter = createRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Shortlist gate: a winner must have passed through the shortlist first —
+      // you can't jump a raw nomination straight to winner, which would bypass
+      // scoring/judging/ratification.
+      if (input.status === "winner") {
+        const cur = await nominationStatus(input.id);
+        if (cur !== "shortlisted")
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message:
+              "Only a shortlisted nominee can be marked winner — shortlist them first.",
+          });
+      }
       await setNominationStatus(input.id, input.status);
       // Notify the nominee when they're shortlisted or announced as a winner.
       if (input.status === "shortlisted" || input.status === "winner") {
