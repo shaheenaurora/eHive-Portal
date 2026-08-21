@@ -1707,6 +1707,10 @@ export const chapterBudgets = mysqlTable("chapter_budgets", {
     unsigned: true,
   }), // who approved/rejected
   note: text("note"), // decision note / justification
+  // Optional receipt for a spend line — the file as a base64 data URL plus its
+  // original name. Stored in-row (small receipts only); no external storage.
+  receiptData: text("receiptData"),
+  receiptName: varchar("receiptName", { length: 255 }),
   decidedAt: timestamp("decidedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
