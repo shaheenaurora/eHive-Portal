@@ -12,7 +12,10 @@ import { env } from "../lib/env";
  */
 export async function ensureOwnerRole(user: User): Promise<User> {
   const owner = env.ownerEmail.trim().toLowerCase();
-  const isOwner = !!owner && (user.email ?? "").toLowerCase() === owner;
+  const isOwner =
+    !!owner &&
+    !!user.emailVerifiedAt &&
+    (user.email ?? "").toLowerCase() === owner;
   if (user.role === "admin") {
     // Owner always holds the full "*" scope even if promoted before scopes existed.
     if (isOwner && user.adminScopes !== "*") {
@@ -63,19 +66,16 @@ export async function createUser(input: {
 }) {
   const email = input.email.toLowerCase();
   const unionId = nanoid();
-  const isOwner = !!env.ownerEmail && email === env.ownerEmail.toLowerCase();
-  await getDb()
-    .insert(schema.users)
-    .values({
-      unionId,
-      email,
-      name: input.name,
-      passwordHash: input.passwordHash,
-      role: isOwner ? "admin" : "user",
-      adminScopes: isOwner ? "*" : "",
-      consentAt: new Date(),
-      lastSignInAt: new Date(),
-    });
+  await getDb().insert(schema.users).values({
+    unionId,
+    email,
+    name: input.name,
+    passwordHash: input.passwordHash,
+    role: "user",
+    adminScopes: "",
+    consentAt: new Date(),
+    lastSignInAt: new Date(),
+  });
   return findUserByUnionId(unionId);
 }
 

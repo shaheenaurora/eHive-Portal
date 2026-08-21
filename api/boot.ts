@@ -240,7 +240,7 @@ app.get("/insights/:slug", async c => {
     publisher: { "@type": "Organization", name: "eHive" },
     mainEntityOfPage: url,
     articleSection: row.tag ?? "Insights",
-  });
+  }).replace(/</g, "\\u003c");
   const html = `<!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${title} — eHive</title>

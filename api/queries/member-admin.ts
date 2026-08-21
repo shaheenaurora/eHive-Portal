@@ -143,6 +143,14 @@ async function writeProfile(
     if (c.field === "email") emailChanged = true;
   }
   if (emailChanged) {
+    const newEmail = (userSet.email as string).toLowerCase();
+    const ownerEmail = env.ownerEmail.trim().toLowerCase();
+    if (ownerEmail && newEmail === ownerEmail) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "That email address is reserved and cannot be assigned.",
+      });
+    }
     userSet.emailVerifiedAt = null;
   }
   if (Object.keys(userSet).length)
