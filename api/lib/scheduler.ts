@@ -9,7 +9,7 @@
  * pass so a container restart can't double-run it, and each job only acts on
  * rows that still need acting on.
  */
-import { and, eq, isNotNull, isNull, ne } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, lte, ne } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "../queries/connection";
 import { evaluateDormancy, notify } from "../queries/circle";
@@ -284,6 +284,59 @@ async function jobHealthThreshold(): Promise<void> {
     console.log(`[scheduler] health threshold: ${alerted} chapter(s) alerted`);
 }
 
+/**
+ * Dunning — nudge members with a still-pending membership payment. A payment
+ * that's sat "pending" for 3+ days gets a reminder, then a follow-up every 7
+ * days, up to 3 nudges total (a per-payment marker counts them) so we recover
+ * revenue without hounding anyone.
+ */
+async function jobDunning(now = new Date()): Promise<void> {
+  const db = getDb();
+  const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+  const pending = await db
+    .select({
+      id: schema.paymentRecords.id,
+      userId: schema.paymentRecords.userId,
+      createdAt: schema.paymentRecords.createdAt,
+    })
+    .from(schema.paymentRecords)
+    .where(
+      and(
+        eq(schema.paymentRecords.status, "pending"),
+        lte(schema.paymentRecords.createdAt, threeDaysAgo)
+      )
+    );
+  let nudged = 0;
+  for (const p of pending) {
+    const markerKey = `dunning:${p.id}`;
+    const marker = await getMarker(markerKey); // "count:lastIso" or null
+    const [countStr, lastIso] = (marker ?? "").split("|");
+    const count = Number(countStr) || 0;
+    if (count >= 3) continue; // enough reminders sent
+    if (lastIso) {
+      const daysSince =
+        (now.getTime() - new Date(lastIso).getTime()) / (24 * 60 * 60 * 1000);
+      if (daysSince < 7) continue; // not due for the next nudge yet
+    }
+    const member = (
+      await db
+        .select({ id: schema.members.id })
+        .from(schema.members)
+        .where(eq(schema.members.userId, p.userId))
+        .limit(1)
+    ).at(0);
+    if (!member) continue;
+    await notify(
+      member.id,
+      "You have a membership payment still pending. Complete it from your Membership page to keep your access active.",
+      "membership"
+    );
+    await setMarker(markerKey, `${count + 1}|${now.toISOString()}`);
+    nudged++;
+  }
+  if (nudged) console.log(`[scheduler] dunning: ${nudged} reminder(s) sent`);
+}
+
 /** Run all daily jobs at most once per UTC day. */
 /**
  * Atomically claim today's daily pass for THIS process. A single conditional
@@ -321,6 +374,7 @@ export async function runDailyJobs(now = new Date()): Promise<boolean> {
   if (!(await claimDailyPass(today))) return false;
   await safe("dormancy", () => jobDormancy());
   await safe("renewal", () => jobRenewal(now));
+  await safe("dunning", () => jobDunning(now));
   await safe("onboarding-slip", () => jobOnboardingSlip());
   await safe("cadence-reminders", () => jobCadenceReminders(now));
   await safe("role-terms", () => jobRoleTerms(now));
