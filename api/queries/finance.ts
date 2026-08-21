@@ -12,7 +12,14 @@ import {
 import { sendInvoiceReady } from "../lib/lead-mail";
 import { applyLifecycleTransition } from "../lib/lifecycle";
 import { paymentsEnabled, getPaymentProvider } from "../lib/payments";
-import { TIER_PRICE_AED, REFUND_WINDOW_DAYS } from "@contracts/constants";
+import {
+  TIER_PRICE_AED,
+  REFUND_WINDOW_DAYS,
+  BASE_CURRENCY,
+  FX_RATE_SCALE,
+  convertToBaseMinor,
+} from "@contracts/constants";
+import { ratesMap } from "./fx";
 import {
   summarizePayments,
   rollupBudgets,
@@ -103,10 +110,11 @@ export async function financeReport(
   if (range?.from)
     expConds.push(gte(schema.chapterBudgets.createdAt, range.from));
   if (range?.to) expConds.push(lte(schema.chapterBudgets.createdAt, range.to));
-  const [pays, expenses] = await Promise.all([
+  const [rawPays, expenses, rates] = await Promise.all([
     db
       .select({
         amount: schema.paymentRecords.amount,
+        currency: schema.paymentRecords.currency,
         status: schema.paymentRecords.status,
         tier: schema.paymentRecords.tier,
         paidAt: schema.paymentRecords.paidAt,
@@ -124,7 +132,19 @@ export async function financeReport(
       })
       .from(schema.chapterBudgets)
       .where(and(...expConds)),
+    ratesMap(),
   ]);
+  // FX-normalise every payment to the base currency before aggregating, so a
+  // mixed-currency ledger reports in one number (chapter expenses are AED-only).
+  const pays = rawPays.map(p => {
+    const rate = rates.get((p.currency ?? BASE_CURRENCY).toLowerCase());
+    if (rate == null || rate === FX_RATE_SCALE) return p;
+    return {
+      ...p,
+      amount: convertToBaseMinor(p.amount, rate),
+      refundedAmount: convertToBaseMinor(p.refundedAmount ?? 0, rate),
+    };
+  });
   return buildFinanceReport(pays as ReportPay[], expenses as ReportExpense[]);
 }
 
@@ -254,8 +274,11 @@ export async function recordManualPayment(
     amountAed: number;
     note?: string;
     extendRenewal?: boolean;
+    /** Currency the amount is denominated in (default base/AED). */
+    currency?: string;
   }
 ) {
+  const currency = (input.currency ?? BASE_CURRENCY).toLowerCase();
   const db = getDb();
   const user = (
     await db
@@ -288,7 +311,13 @@ export async function recordManualPayment(
 
   const purpose = input.purpose;
   const tier = input.tier;
-  if ((purpose === "membership" || purpose === "renewal") && tier) {
+  // The tier-price check only makes sense in the base currency; a foreign-
+  // currency payment is recorded at face value and normalised in reporting.
+  if (
+    currency === BASE_CURRENCY &&
+    (purpose === "membership" || purpose === "renewal") &&
+    tier
+  ) {
     const expected = TIER_PRICE_AED[tier as keyof typeof TIER_PRICE_AED];
     if (expected != null && Math.abs(input.amountAed - expected) > 0.01) {
       throw new TRPCError({
@@ -308,7 +337,7 @@ export async function recordManualPayment(
       purpose,
       tier: (tier ?? null) as never,
       amount,
-      currency: "aed",
+      currency,
       status: "paid",
       paidAt: now,
       note: input.note ?? null,
@@ -324,7 +353,7 @@ export async function recordManualPayment(
         purpose,
         tier: tier ?? null,
         amount,
-        currency: "aed",
+        currency,
         note: input.note ?? null,
         paidAt: now,
       },

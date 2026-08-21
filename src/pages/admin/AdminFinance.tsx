@@ -17,6 +17,9 @@ import {
   TIER_LABEL,
   EXPENSE_CATEGORIES,
   EXPENSE_CATEGORY_LABEL,
+  SUPPORTED_CURRENCIES,
+  CURRENCY_LABEL,
+  FX_RATE_SCALE,
 } from "@contracts/constants";
 
 /* Payments store minor units (fils); budgets store whole AED. */
@@ -45,7 +48,8 @@ type Tab =
   | "renewals"
   | "budgets"
   | "expenses"
-  | "reports";
+  | "reports"
+  | "fx";
 
 export default function AdminFinance() {
   const utils = trpc.useUtils();
@@ -185,6 +189,12 @@ export default function AdminFinance() {
         >
           Reports
         </button>
+        <button
+          className={tab === "fx" ? "on" : ""}
+          onClick={() => setTab("fx")}
+        >
+          FX rates
+        </button>
       </div>
 
       {tab === "payments" && (
@@ -200,6 +210,7 @@ export default function AdminFinance() {
       {tab === "budgets" && <BudgetsTab />}
       {tab === "expenses" && <ExpensesTab onRecord={() => setExpense(true)} />}
       {tab === "reports" && <ReportsTab />}
+      {tab === "fx" && <FxRatesTab />}
 
       {receipt != null && (
         <ReceiptModal id={receipt} onClose={() => setReceipt(null)} />
@@ -906,6 +917,7 @@ function ManualPaymentModal({
   >("renewal");
   const [tier, setTier] = useState<string>("");
   const [amount, setAmount] = useState("");
+  const [currency, setCurrency] = useState("aed");
   const [note, setNote] = useState("");
   const [extend, setExtend] = useState(true);
   const members = trpc.admin.payableMembers.useQuery(
@@ -990,7 +1002,7 @@ function ManualPaymentModal({
             ))}
           </select>
         </Field>
-        <Field label="Amount (AED)">
+        <Field label={`Amount (${currency.toUpperCase()})`}>
           <input
             className="eh-input"
             type="number"
@@ -999,6 +1011,19 @@ function ManualPaymentModal({
             onChange={e => setAmount(e.target.value)}
             placeholder="e.g. 5999"
           />
+        </Field>
+        <Field label="Currency">
+          <select
+            className="eh-select"
+            value={currency}
+            onChange={e => setCurrency(e.target.value)}
+          >
+            {SUPPORTED_CURRENCIES.map(c => (
+              <option key={c.code} value={c.code}>
+                {c.code.toUpperCase()}
+              </option>
+            ))}
+          </select>
         </Field>
       </div>
       {(purpose === "membership" || purpose === "renewal") && (
@@ -1055,6 +1080,7 @@ function ManualPaymentModal({
             purpose,
             tier: (tier || null) as never,
             amountAed: Number(amount),
+            currency: currency as never,
             note: note || undefined,
             extendRenewal: purpose === "renewal" ? extend : false,
           })
@@ -1574,6 +1600,118 @@ function ReportsTab() {
             </table>
           )}
         </div>
+      </div>
+    </>
+  );
+}
+
+/* Finance → FX rates: admin-maintained exchange rates (base = AED). Reporting
+   converts every payment to the base using these. */
+function FxRatesTab() {
+  const q = trpc.admin.currencyRates.useQuery(undefined, { retry: false });
+  const utils = trpc.useUtils();
+  const refresh = () => utils.admin.currencyRates.invalidate();
+  const setRate = trpc.admin.setCurrencyRate.useMutation({
+    onSuccess: () => {
+      toast("Rate updated.");
+      refresh();
+    },
+    onError: e => toast(e.message),
+  });
+  const clearRate = trpc.admin.clearCurrencyRate.useMutation({
+    onSuccess: () => {
+      toast("Rate reset to base.");
+      refresh();
+    },
+    onError: e => toast(e.message),
+  });
+  const [draft, setDraft] = useState<Record<string, string>>({});
+
+  if (q.isLoading) return <Spinner />;
+  if (q.isError) return <LoadError onRetry={() => q.refetch()} />;
+  const rows = q.data ?? [];
+
+  return (
+    <>
+      <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>
+        Exchange rates to the base currency (AED). A rate is how many AED one
+        unit of the currency is worth (e.g. 1 USD = 3.67 AED). Finance reports
+        convert every payment to AED using these.
+      </p>
+      <div className="eh-card" style={{ padding: ".4rem 1.25rem" }}>
+        <table className="eh-table stack">
+          <thead>
+            <tr>
+              <th>Currency</th>
+              <th>Rate → AED</th>
+              <th>Updated</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(r => {
+              const rate = r.rateScaled / FX_RATE_SCALE;
+              return (
+                <tr key={r.code}>
+                  <td data-label="Currency">
+                    <b>{r.code.toUpperCase()}</b>
+                    <span className="eh-sm eh-muted">
+                      {" "}
+                      · {CURRENCY_LABEL[r.code] ?? r.code}
+                    </span>
+                  </td>
+                  <td data-label="Rate → AED">
+                    {r.isBase ? (
+                      <span className="eh-muted">1 (base)</span>
+                    ) : (
+                      <input
+                        className="eh-input sm"
+                        type="number"
+                        step="0.0001"
+                        min="0"
+                        style={{ maxWidth: 140 }}
+                        value={draft[r.code] ?? String(rate)}
+                        onChange={e =>
+                          setDraft(d => ({ ...d, [r.code]: e.target.value }))
+                        }
+                      />
+                    )}
+                  </td>
+                  <td data-label="Updated" className="eh-sm eh-muted">
+                    {r.updatedAt ? fmtDate(r.updatedAt) : "—"}
+                  </td>
+                  <td>
+                    {!r.isBase && (
+                      <span className="eh-row" style={{ gap: ".3rem" }}>
+                        <button
+                          className="eh-btn gold sm"
+                          disabled={setRate.isPending}
+                          onClick={() => {
+                            const v = Number(draft[r.code] ?? rate);
+                            if (!(v > 0)) {
+                              toast("Enter a positive rate.");
+                              return;
+                            }
+                            setRate.mutate({ code: r.code, rate: v });
+                          }}
+                        >
+                          Save
+                        </button>
+                        <button
+                          className="eh-btn ghost sm"
+                          disabled={clearRate.isPending}
+                          onClick={() => clearRate.mutate({ code: r.code })}
+                        >
+                          Reset
+                        </button>
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </>
   );

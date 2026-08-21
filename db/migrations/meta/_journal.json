@@ -92,6 +92,13 @@
       "when": 1787341311643,
       "tag": "0012_expense_receipts",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "5",
+      "when": 1787343149957,
+      "tag": "0013_currency_rates",
+      "breakpoints": true
     }
   ]
 }

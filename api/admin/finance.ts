@@ -25,9 +25,11 @@ import {
   getInvoiceById,
   getCreditNoteById,
 } from "../queries/invoicing";
+import { TRPCError } from "@trpc/server";
 import { renewalsReport } from "../queries/reports";
+import { listRates, setRate, clearRate } from "../queries/fx";
 import { audit } from "../lib/audit";
-import { EXPENSE_CATEGORY_KEYS } from "@contracts/constants";
+import { EXPENSE_CATEGORY_KEYS, CURRENCY_CODES } from "@contracts/constants";
 import { idInput, isFullAdmin } from "./shared";
 
 /** Optional {from,to} ISO-date range for the finance report. */
@@ -189,9 +191,30 @@ export const financeRouter = createRouter({
         amountAed: z.number().positive().max(1_000_000),
         note: z.string().max(500).optional(),
         extendRenewal: z.boolean().optional(),
+        currency: z.enum(CURRENCY_CODES as [string, ...string[]]).optional(),
       })
     )
     .mutation(({ ctx, input }) => recordManualPayment(ctx.user, input)),
+
+  /* ---- multi-currency FX rates (admin-maintained) ---- */
+  currencyRates: scopedAdmin("finance").query(() => listRates()),
+  setCurrencyRate: scopedAdmin("finance")
+    .input(z.object({ code: z.string().min(2).max(8), rate: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await setRate(ctx.user, input.code.toLowerCase(), input.rate);
+      } catch (e) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: e instanceof Error ? e.message : "Invalid rate.",
+        });
+      }
+    }),
+  clearCurrencyRate: scopedAdmin("finance")
+    .input(z.object({ code: z.string().min(2).max(8) }))
+    .mutation(({ ctx, input }) =>
+      clearRate(ctx.user, input.code.toLowerCase())
+    ),
 
   refundPayment: scopedAdmin("finance")
     .input(
