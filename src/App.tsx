@@ -48,6 +48,7 @@ const AdminGovernance = lazy(() => import("./pages/admin/AdminGovernance"));
 const AdminLibrary = lazy(() => import("./pages/admin/AdminLibrary"));
 const AdminOffers = lazy(() => import("./pages/admin/AdminOffers"));
 const AdminLeads = lazy(() => import("./pages/admin/AdminLeads"));
+const AdminAppointments = lazy(() => import("./pages/admin/AdminAppointments"));
 const AdminEngagement = lazy(() => import("./pages/admin/AdminEngagement"));
 const AdminConnect = lazy(() => import("./pages/admin/AdminConnect"));
 const AdminAdmissions = lazy(() => import("./pages/admin/AdminAdmissions"));
@@ -117,6 +118,7 @@ export default function App() {
           <Route path="/admin/library" element={<AdminLibrary />} />
           <Route path="/admin/offers" element={<AdminOffers />} />
           <Route path="/admin/leads" element={<AdminLeads />} />
+          <Route path="/admin/appointments" element={<AdminAppointments />} />
           <Route path="/admin/finance" element={<AdminFinance />} />
           <Route path="/admin/reports" element={<AdminReports />} />
           <Route path="/admin/ops" element={<AdminOps />} />

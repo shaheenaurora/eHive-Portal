@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, and, gte, lte } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { escapeHtml } from "./lib/html";
 import { authRouter } from "./auth-router";
@@ -15,7 +15,13 @@ import {
   sendScorecardFollowUp,
   sendBookingConfirmation,
 } from "./lib/lead-mail";
-import { formatGstDate, formatGstTime } from "./lib/booking";
+import {
+  formatGstDate,
+  formatGstTime,
+  isSlotAvailable,
+  toGstTimestamp,
+  BOOKING_SLOTS,
+} from "./lib/booking";
 
 export const appRouter = createRouter({
   ping: publicQuery.query(() => ({ ok: true, ts: Date.now() })),
@@ -181,6 +187,78 @@ export const appRouter = createRouter({
       await getDb()
         .update(schema.appointments)
         .set({ status: "cancelled", cancelledAt: new Date() })
+        .where(eq(schema.appointments.id, input.id));
+      return { ok: true };
+    }),
+
+  rescheduleAppointment: scopedAdmin("leads")
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        time: z.enum(BOOKING_SLOTS),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const row = (
+        await getDb()
+          .select()
+          .from(schema.appointments)
+          .where(eq(schema.appointments.id, input.id))
+          .limit(1)
+      ).at(0);
+      if (!row) throw new Error("Appointment not found");
+
+      const scheduledAt = toGstTimestamp(input.date, input.time);
+      const windowStart = new Date(scheduledAt.getTime() - 24 * 60 * 60 * 1000);
+      const windowEnd = new Date(scheduledAt.getTime() + 24 * 60 * 60 * 1000);
+      const existing = await getDb()
+        .select({
+          scheduledAt: schema.appointments.scheduledAt,
+          durationMin: schema.appointments.durationMin,
+          status: schema.appointments.status,
+        })
+        .from(schema.appointments)
+        .where(
+          and(
+            gte(schema.appointments.scheduledAt, windowStart),
+            lte(schema.appointments.scheduledAt, windowEnd),
+            sql`${schema.appointments.id} <> ${input.id}`
+          )
+        );
+      if (!isSlotAvailable(existing, input.date, input.time, row.durationMin)) {
+        throw new Error("That slot is no longer available.");
+      }
+
+      const when = `${formatGstDate(scheduledAt)} · ${formatGstTime(scheduledAt)} GST`;
+      const emailResult = await sendBookingConfirmation({
+        name: row.name,
+        email: row.email,
+        product: row.product,
+        when,
+        format: `${row.durationMin}-minute session`,
+        phone: row.phone,
+        notes: row.notes,
+        confirmed: true,
+      });
+
+      await getDb()
+        .update(schema.appointments)
+        .set({
+          scheduledAt,
+          status: "confirmed",
+          confirmedAt: row.confirmedAt ?? new Date(),
+        })
+        .where(eq(schema.appointments.id, input.id));
+      return { ok: true, emailSent: emailResult.confirmSent };
+    }),
+
+  markNoShow: scopedAdmin("leads")
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      await getDb()
+        .update(schema.appointments)
+        .set({ status: "no_show" })
         .where(eq(schema.appointments.id, input.id));
       return { ok: true };
     }),

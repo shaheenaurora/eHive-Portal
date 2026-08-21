@@ -1838,7 +1838,12 @@ export const appointments = mysqlTable(
   {
     id: serial("id").primaryKey(),
     product: varchar("product", { length: 64 }).notNull(),
-    status: mysqlEnum("status", ["requested", "confirmed", "cancelled"])
+    status: mysqlEnum("status", [
+      "requested",
+      "confirmed",
+      "cancelled",
+      "no_show",
+    ])
       .notNull()
       .default("requested"),
     name: varchar("name", { length: 255 }).notNull(),

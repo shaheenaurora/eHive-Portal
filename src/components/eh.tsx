@@ -263,6 +263,7 @@ export function StatusPill(props: { status: string }) {
     cancelled: "red",
     rejected: "red",
     absent: "red",
+    no_show: "amber",
     closed: "grey",
   };
   return (
@@ -824,6 +825,12 @@ export const ADMIN_NAV: NavGroup[] = [
         label: "Website Leads",
         icon: "✉",
         scope: "finance",
+      },
+      {
+        to: "/admin/appointments",
+        label: "Appointments",
+        icon: "◷",
+        scope: "leads",
       },
       { to: "/admin/finance", label: "Finance", icon: "▦", scope: "finance" },
     ],
