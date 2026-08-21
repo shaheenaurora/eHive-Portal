@@ -9,7 +9,7 @@
  * pass so a container restart can't double-run it, and each job only acts on
  * rows that still need acting on.
  */
-import { and, eq, isNotNull, isNull } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, ne } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "../queries/connection";
 import { evaluateDormancy, notify } from "../queries/circle";
@@ -285,9 +285,40 @@ async function jobHealthThreshold(): Promise<void> {
 }
 
 /** Run all daily jobs at most once per UTC day. */
+/**
+ * Atomically claim today's daily pass for THIS process. A single conditional
+ * UPDATE (a per-row lock in MySQL) means exactly one replica wins even if
+ * several tick at the same instant — a distributed guard that works with a
+ * pooled connection, unlike a connection-scoped GET_LOCK. Returns true only for
+ * the winner; everyone else (and re-ticks the same day) gets false.
+ */
+async function claimDailyPass(today: string): Promise<boolean> {
+  const db = getDb();
+  // Ensure the marker row exists without disturbing an existing value.
+  await db
+    .insert(schema.appConfig)
+    .values({ key: DAILY_MARKER, value: "" })
+    .onDuplicateKeyUpdate({ set: { key: DAILY_MARKER } });
+  const res = await db
+    .update(schema.appConfig)
+    .set({ value: today })
+    .where(
+      and(
+        eq(schema.appConfig.key, DAILY_MARKER),
+        ne(schema.appConfig.value, today)
+      )
+    );
+  const affected =
+    (res as unknown as { affectedRows?: number }).affectedRows ??
+    (res as unknown as [{ affectedRows?: number }])[0]?.affectedRows ??
+    0;
+  return affected === 1;
+}
+
 export async function runDailyJobs(now = new Date()): Promise<boolean> {
   const today = todayKey(now);
-  if ((await getMarker(DAILY_MARKER)) === today) return false; // already ran today
+  // Distributed guard: only the replica that atomically claims today runs.
+  if (!(await claimDailyPass(today))) return false;
   await safe("dormancy", () => jobDormancy());
   await safe("renewal", () => jobRenewal(now));
   await safe("onboarding-slip", () => jobOnboardingSlip());
@@ -302,7 +333,8 @@ export async function runDailyJobs(now = new Date()): Promise<boolean> {
     const { evaluateKpiAlerts } = await import("../queries/kpi-alerts");
     await evaluateKpiAlerts();
   });
-  await setMarker(DAILY_MARKER, today);
+  // The marker was already set to `today` by claimDailyPass (the claim IS the
+  // guard), so there's nothing more to write here.
   console.log(`[scheduler] daily pass complete for ${today}`);
   return true;
 }
