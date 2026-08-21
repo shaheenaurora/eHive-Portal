@@ -19,6 +19,67 @@ import { notifyLead } from "./lib/lead-mail";
 import { rateLimit } from "./lib/rate-limit";
 import { escapeHtml } from "./lib/html";
 import { integrationApp } from "./integrations";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { createHash, randomUUID } from "node:crypto";
+
+/** CSP hashes for the inline <script> blocks in the static marketing HTML files.
+ *  Computed once at startup so we can drop 'unsafe-inline' from script-src. */
+function loadInlineScriptHashes(): string[] {
+  const dir = join(process.cwd(), "public");
+  const hashes = new Set<string>();
+  try {
+    for (const file of readdirSync(dir)) {
+      if (!file.endsWith(".html")) continue;
+      const html = readFileSync(join(dir, file), "utf-8");
+      const re = /<script\b(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(html)) !== null) {
+        const content = m[1];
+        if (!content.trim()) continue;
+        const hash = createHash("sha256")
+          .update(content)
+          .digest("base64");
+        hashes.add(`'sha256-${hash}'`);
+      }
+    }
+  } catch (err) {
+    console.warn("[csp] could not compute inline script hashes:", err);
+  }
+  return Array.from(hashes);
+}
+
+const inlineScriptHashes = loadInlineScriptHashes();
+
+/** Build a CSP script-src directive that allows self, the static inline hashes,
+ *  and an optional per-response nonce (used for SSR insight JSON-LD). */
+function scriptSrc(nonce?: string): string[] {
+  const src = ["'self'", ...inlineScriptHashes];
+  if (nonce) src.push(`'nonce-${nonce}'`);
+  return src;
+}
+
+/** Build the full CSP header value used by the global middleware, optionally
+ *  including a per-response nonce for server-rendered inline scripts. */
+function buildCsp(nonce?: string): string {
+  const directives: Record<string, string | undefined> = {
+    "default-src": "'self'",
+    "script-src": scriptSrc(nonce).join(" "),
+    "style-src": "'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src": "'self' https://fonts.gstatic.com",
+    "img-src": "'self' data: blob: https:",
+    "connect-src": "'self'",
+    "frame-ancestors": "'self'",
+    "object-src": "'none'",
+    "base-uri": "'self'",
+    "form-action": "'self'",
+  };
+  if (env.isProduction) directives["upgrade-insecure-requests"] = "";
+  return Object.entries(directives)
+    .filter(([, v]) => v !== undefined)
+    .map(([k, v]) => (v ? `${k} ${v}` : k))
+    .join("; ");
+}
 
 /** Best-effort client IP from proxy headers (Railway sets x-forwarded-for).
  *  Uses the RIGHTMOST address in X-Forwarded-For — the one appended by our own
@@ -36,23 +97,26 @@ function clientIp(c: {
 
 const app = new Hono<{ Bindings: HttpBindings }>();
 
-/* Baseline security headers on every response. CSP allows Google Fonts and a
-   transitional 'unsafe-inline' for scripts/styles while the marketing site is
-   migrated to nonced/hashed inline assets. Frame options are SAMEORIGIN so the
-   scorecard popup (a same-origin iframe) keeps working. */
+/* Baseline security headers on every response. CSP uses hashes for the static
+   inline scripts in public/*.html and drops 'unsafe-inline' from script-src.
+   Styles still allow 'unsafe-inline' because Tailwind/React inject inline
+   styles at runtime. Frame options are SAMEORIGIN so the scorecard popup (a
+   same-origin iframe) keeps working. */
 app.use(
   "*",
   secureHeaders({
     contentSecurityPolicy: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: scriptSrc(),
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "blob:", "https:"],
       connectSrc: ["'self'"],
       frameAncestors: ["'self'"],
+      objectSrc: ["'none'"],
       baseUri: ["'self'"],
       formAction: ["'self'"],
+      upgradeInsecureRequests: env.isProduction ? [] : undefined,
     },
     strictTransportSecurity: "max-age=31536000; includeSubDomains; preload",
     xFrameOptions: "SAMEORIGIN",
@@ -241,6 +305,7 @@ app.get("/insights/:slug", async c => {
     mainEntityOfPage: url,
     articleSection: row.tag ?? "Insights",
   }).replace(/</g, "\\u003c");
+  const nonce = randomUUID();
   const html = `<!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${title} — eHive</title>
@@ -253,7 +318,7 @@ app.get("/insights/:slug", async c => {
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/styles.min.css"><link rel="stylesheet" href="/apps.min.css">
-<script type="application/ld+json">${jsonLd}</script>
+<script type="application/ld+json" nonce="${nonce}">${jsonLd}</script>
 <style>
   .art-page{background:#F3F1EA;color:#141312;min-height:100vh}
   .art-wrap{max-width:720px;margin:0 auto;padding:calc(72px + clamp(2rem,5vw,3.5rem)) 1.25rem 4.5rem}
@@ -298,6 +363,7 @@ app.get("/insights/:slug", async c => {
 </div></section></main>
 <script src="/app.min.js" defer></script><script src="/apps.min.js" defer></script>
 </body></html>`;
+  c.header("Content-Security-Policy", buildCsp(nonce));
   return c.html(html);
 });
 
