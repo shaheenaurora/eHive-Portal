@@ -186,6 +186,35 @@ export default function AdminMembers() {
             </option>
           ))}
         </select>
+        <button
+          className="eh-btn ghost sm"
+          style={{ marginLeft: "auto" }}
+          disabled={!q.data || q.data.length === 0}
+          onClick={async () => {
+            try {
+              const { filename, csv } = await utils.admin.membersCsv.fetch({
+                q: q2 || undefined,
+                tier: (tier || undefined) as never,
+                status: (status || undefined) as never,
+                lifecycle: lifecycle || undefined,
+              });
+              const url = URL.createObjectURL(
+                new Blob([csv], { type: "text/csv;charset=utf-8" })
+              );
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = filename;
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              URL.revokeObjectURL(url);
+            } catch (e) {
+              toast(e instanceof Error ? e.message : "Export failed.");
+            }
+          }}
+        >
+          Export CSV
+        </button>
       </div>
 
       {q.isLoading && <Spinner />}

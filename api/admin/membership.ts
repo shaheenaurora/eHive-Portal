@@ -187,6 +187,103 @@ export const membershipRouter = createRouter({
         .limit(300);
     }),
 
+  /* Member directory as a CSV for analysis / compliance. Same filters as the
+     members list; capped higher than the on-screen view. */
+  membersCsv: scopedAdmin("membership")
+    .input(
+      z
+        .object({
+          q: z.string().max(120).optional(),
+          tier: TIER.optional(),
+          status: z.enum(["active", "paused", "cancelled"]).optional(),
+          lifecycle: z.string().max(24).optional(),
+        })
+        .optional()
+    )
+    .query(async ({ input }) => {
+      const db = getDb();
+      const conds = [];
+      if (input?.tier) conds.push(eq(schema.members.tier, input.tier));
+      if (input?.status) conds.push(eq(schema.members.status, input.status));
+      if (input?.lifecycle)
+        conds.push(eq(schema.members.lifecycleState, input.lifecycle as never));
+      if (input?.q) {
+        const term = `%${input.q}%`;
+        conds.push(
+          or(
+            like(schema.users.name, term),
+            like(schema.users.email, term),
+            like(schema.members.company, term)
+          )
+        );
+      }
+      const rows = await db
+        .select({
+          id: schema.members.id,
+          name: schema.users.name,
+          email: schema.users.email,
+          company: schema.members.company,
+          tier: schema.members.tier,
+          status: schema.members.status,
+          lifecycle: schema.members.lifecycleState,
+          hiveScore: schema.members.hiveScore,
+          homeChapterId: schema.members.homeChapterId,
+          joinedAt: schema.members.joinedAt,
+          renewalAt: schema.members.renewalAt,
+        })
+        .from(schema.members)
+        .leftJoin(schema.users, eq(schema.users.id, schema.members.userId))
+        .where(conds.length ? and(...conds) : undefined)
+        .orderBy(desc(schema.members.hiveScore))
+        .limit(5000);
+      const cell = (v: unknown) => {
+        const s =
+          v == null
+            ? ""
+            : v instanceof Date
+              ? v.toISOString().slice(0, 10)
+              : String(v);
+        return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const headers = [
+        "id",
+        "name",
+        "email",
+        "company",
+        "tier",
+        "status",
+        "lifecycle",
+        "hiveScore",
+        "homeChapterId",
+        "joinedAt",
+        "renewalAt",
+      ];
+      const lines = [
+        headers.join(","),
+        ...rows.map(r =>
+          [
+            r.id,
+            r.name,
+            r.email,
+            r.company,
+            r.tier,
+            r.status,
+            r.lifecycle,
+            r.hiveScore,
+            r.homeChapterId,
+            r.joinedAt,
+            r.renewalAt,
+          ]
+            .map(cell)
+            .join(",")
+        ),
+      ];
+      return {
+        filename: `ehive-members-${new Date().toISOString().slice(0, 10)}.csv`,
+        csv: lines.join("\n") + "\n",
+      };
+    }),
+
   /* Member Lifecycle CRM board — count of members in each state (M1 / Figure 2). */
   lifecycleCounts: scopedAdmin("membership").query(async () => {
     const rows = await getDb()
