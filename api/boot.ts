@@ -19,6 +19,7 @@ import { notifyLead } from "./lib/lead-mail";
 import { rateLimit } from "./lib/rate-limit";
 import { escapeHtml } from "./lib/html";
 import { integrationApp } from "./integrations";
+import { buildScorecardReport } from "../src/lib/scorecard";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
@@ -207,8 +208,9 @@ app.post("/api/lead", async c => {
     typeof body.source_page === "string"
       ? body.source_page.slice(0, 255)
       : null;
+  let leadId: number | undefined;
   try {
-    await getDb()
+    const leadRes = await getDb()
       .insert(schema.leads)
       .values({
         form: body.form.slice(0, 64),
@@ -216,6 +218,7 @@ app.post("/api/lead", async c => {
         payload: JSON.stringify(body).slice(0, 60000),
         sourcePage,
       });
+    leadId = Number((leadRes as unknown as [{ insertId: number }])[0].insertId);
   } catch (err) {
     console.error("lead insert failed", err);
     return c.json({ ok: false, error: "storage failed" }, 500);
@@ -228,6 +231,47 @@ app.post("/api/lead", async c => {
     payload: body,
     sourcePage,
   });
+
+  // Persist Clarity Scorecard results so the team can follow up and the
+  // prospect has a saved record of their recommendation.
+  if (body.form === "clarity-scorecard") {
+    const report = buildScorecardReport(body);
+    if (report) {
+      try {
+        await getDb()
+          .insert(schema.scorecardResults)
+          .values({
+            email: email ?? "",
+            name:
+              typeof body.name === "string" ? body.name.slice(0, 255) : null,
+            phone:
+              typeof body.phone === "string" ? body.phone.slice(0, 64) : null,
+            company:
+              typeof body.company === "string"
+                ? body.company.slice(0, 255)
+                : null,
+            location:
+              typeof body.location === "string"
+                ? body.location.slice(0, 255)
+                : null,
+            industry:
+              typeof body.industry === "string"
+                ? body.industry.slice(0, 128)
+                : null,
+            total: report.total,
+            domains: report.domains as unknown as string,
+            recommendationProduct: report.recommendation.product,
+            recommendationWhy: report.recommendation.why,
+            nurtureStage: emailResult.confirmSent ? "emailed" : "new",
+            emailedAt: emailResult.confirmSent ? new Date() : null,
+            leadId,
+          });
+      } catch (err) {
+        console.error("scorecard result insert failed", err);
+      }
+    }
+  }
+
   return c.json({
     ok: true,
     emailSent: emailResult.confirmSent,

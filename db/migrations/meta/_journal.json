@@ -50,6 +50,13 @@
       "when": 1787312586691,
       "tag": "0006_totp_secret_storage",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1787313365343,
+      "tag": "0007_scorecard_results",
+      "breakpoints": true
     }
   ]
 }

@@ -9,6 +9,7 @@ import {
   int,
   index,
   uniqueIndex,
+  json,
 } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
@@ -1782,3 +1783,46 @@ export const followUps = mysqlTable("follow_ups", {
   doneAt: timestamp("doneAt"),
 });
 export type FollowUp = typeof followUps.$inferSelect;
+
+/* Clarity Scorecard submissions — persisted so the team can follow up and the
+   visitor can receive a saved copy of their results. */
+export const scorecardResults = mysqlTable(
+  "scorecard_results",
+  {
+    id: serial("id").primaryKey(),
+    email: varchar("email", { length: 320 }).notNull(),
+    name: varchar("name", { length: 255 }),
+    phone: varchar("phone", { length: 64 }),
+    company: varchar("company", { length: 255 }),
+    location: varchar("location", { length: 255 }),
+    industry: varchar("industry", { length: 128 }),
+    total: int("total").notNull(),
+    domains: json("domains"),
+    recommendationProduct: varchar("recommendationProduct", { length: 128 }),
+    recommendationWhy: text("recommendationWhy"),
+    nurtureStage: mysqlEnum("nurtureStage", [
+      "new",
+      "emailed",
+      "follow_up_1",
+      "follow_up_2",
+      "replied",
+      "booked",
+      "disqualified",
+    ])
+      .notNull()
+      .default("new"),
+    emailedAt: timestamp("emailedAt"),
+    leadId: bigint("leadId", { mode: "number", unsigned: true }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  t => [
+    index("ix_scorecard_email").on(t.email),
+    index("ix_scorecard_stage").on(t.nurtureStage),
+  ]
+);
+export type ScorecardResult = typeof scorecardResults.$inferSelect;
+export type InsertScorecardResult = typeof scorecardResults.$inferInsert;

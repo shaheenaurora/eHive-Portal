@@ -9,8 +9,9 @@ import { engageRouter } from "./engage-router";
 import { adminEngageRouter } from "./admin-engage-router";
 import { officerRouter } from "./officer-router";
 import { conductRouter } from "./conduct-router";
-import { createRouter, publicQuery } from "./middleware";
+import { createRouter, publicQuery, scopedAdmin } from "./middleware";
 import { getDb } from "./queries/connection";
+import { sendScorecardFollowUp } from "./lib/lead-mail";
 
 export const appRouter = createRouter({
   ping: publicQuery.query(() => ({ ok: true, ts: Date.now() })),
@@ -60,6 +61,71 @@ export const appRouter = createRouter({
       .orderBy(desc(schema.newsletters.publishedAt))
       .limit(24);
   }),
+
+  /* ---- scorecard results admin (leads scope) ---- */
+  scorecardsAdmin: scopedAdmin("leads").query(async () => {
+    const rows = await getDb()
+      .select()
+      .from(schema.scorecardResults)
+      .orderBy(desc(schema.scorecardResults.createdAt))
+      .limit(200);
+    return rows;
+  }),
+
+  updateScorecardStage: scopedAdmin("leads")
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        stage: z.enum([
+          "new",
+          "emailed",
+          "follow_up_1",
+          "follow_up_2",
+          "replied",
+          "booked",
+          "disqualified",
+        ]),
+      })
+    )
+    .mutation(async ({ input }) => {
+      await getDb()
+        .update(schema.scorecardResults)
+        .set({ nurtureStage: input.stage })
+        .where(eq(schema.scorecardResults.id, input.id));
+      return { ok: true };
+    }),
+
+  sendScorecardFollowUp: scopedAdmin("leads")
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      const row = (
+        await getDb()
+          .select()
+          .from(schema.scorecardResults)
+          .where(eq(schema.scorecardResults.id, input.id))
+          .limit(1)
+      ).at(0);
+      if (!row) throw new Error("Scorecard result not found");
+      const nextStage: typeof row.nurtureStage =
+        row.nurtureStage === "new" || row.nurtureStage === "emailed"
+          ? "follow_up_1"
+          : "follow_up_2";
+      const emailResult = await sendScorecardFollowUp({
+        email: row.email,
+        name: row.name,
+        total: row.total,
+        recommendationProduct: row.recommendationProduct,
+        recommendationWhy: row.recommendationWhy,
+        stage: nextStage,
+      });
+      if (emailResult.ok) {
+        await getDb()
+          .update(schema.scorecardResults)
+          .set({ nurtureStage: nextStage, emailedAt: new Date() })
+          .where(eq(schema.scorecardResults.id, input.id));
+      }
+      return emailResult;
+    }),
 });
 
 export type AppRouter = typeof appRouter;

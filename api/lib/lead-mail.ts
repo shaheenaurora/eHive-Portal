@@ -257,3 +257,51 @@ export async function notifyLead(input: {
     error: errors.length ? errors.join("; ") : undefined,
   };
 }
+
+/** Send a personalised follow-up to a scorecard submission based on its stored
+ *  recommendation. Updates the caller with delivery status so the admin UI can
+ *  reflect whether the nurture email actually left the server. */
+export async function sendScorecardFollowUp(input: {
+  email: string;
+  name: string | null;
+  total: number;
+  recommendationProduct: string | null;
+  recommendationWhy: string | null;
+  stage: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  if (!mailEnabled()) {
+    return { ok: false, error: "Email is not configured." };
+  }
+  const notifyTo = env.leadNotifyEmail;
+  const name = input.name ? esc(input.name.split(" ")[0]) : "";
+  const product = esc(
+    input.recommendationProduct ?? "the right eHive engagement"
+  );
+  const why = esc(
+    input.recommendationWhy ??
+      "Based on your scorecard, we'd recommend a short conversation to confirm the best next step."
+  );
+  const cta =
+    input.stage === "follow_up_1"
+      ? "Book a 20-minute call →"
+      : "Reply and let us know the best time to talk →";
+  const subject =
+    input.stage === "follow_up_1"
+      ? "A quick follow-up on your Clarity Scorecard — eHive"
+      : "Still thinking it over? — eHive";
+  const body = shell(`
+    <h1 style="margin:0 0 12px;font-family:Georgia,serif;font-size:22px;color:#101d2c;font-weight:600">${name ? `Hi ${name},` : "Hi there,"}</h1>
+    <p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">A little while ago you completed the eHive Clarity Scorecard and scored <strong style="color:#101d2c">${input.total}/100</strong>.</p>
+    <p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">The recommendation that came out of your answers was <strong style="color:#101d2c">${product}</strong>. ${why}</p>
+    <p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">If that still resonates, the next step is a short conversation — no pitch, just a read of what's actually going on.</p>
+    <p style="margin:20px 0 0"><a href="https://ehiveglobal.com/book.html?product=clarity-scorecard" style="display:inline-block;background:#101d2c;color:#f5efe2;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:600">${cta}</a></p>
+    <p style="margin:20px 0 0;color:#33465e;font-size:14px;line-height:1.55">Warm regards,<br/><strong>The eHive team</strong></p>
+  `);
+  const r = await sendMailDetailed({
+    to: input.email,
+    subject,
+    html: body,
+    replyTo: notifyTo || undefined,
+  });
+  return { ok: r.ok, error: r.error };
+}
