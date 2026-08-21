@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, like, lte, or, sql } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "../queries/connection";
 import { createRouter, adminQuery, fullAdmin, hasScope } from "../middleware";
@@ -19,6 +19,40 @@ import {
 import { networkKpis } from "../queries/reports";
 import { findUserByEmail } from "../queries/users";
 import { SCOPE_ENUM, isFullAdmin } from "./shared";
+
+/* Shared filter for the audit trail: actor-email + action substrings and a date
+   range, reused by the on-screen view and the CSV export. */
+const auditFilterInput = z
+  .object({
+    limit: z.number().min(1).max(1000).optional(),
+    actor: z.string().max(320).optional(),
+    action: z.string().max(64).optional(),
+    from: z.string().date().optional(),
+    to: z.string().date().optional(),
+  })
+  .optional();
+
+function auditWhere(input?: {
+  actor?: string;
+  action?: string;
+  from?: string;
+  to?: string;
+}) {
+  const conds = [];
+  if (input?.actor)
+    conds.push(like(schema.adminAuditLog.actorEmail, `%${input.actor}%`));
+  if (input?.action)
+    conds.push(like(schema.adminAuditLog.action, `%${input.action}%`));
+  if (input?.from)
+    conds.push(
+      gte(schema.adminAuditLog.createdAt, new Date(input.from + "T00:00:00Z"))
+    );
+  if (input?.to)
+    conds.push(
+      lte(schema.adminAuditLog.createdAt, new Date(input.to + "T23:59:59Z"))
+    );
+  return conds.length ? and(...conds) : undefined;
+}
 
 export const systemRouter = createRouter({
   stats: adminQuery.query(async ({ ctx }) => {
@@ -246,17 +280,55 @@ export const systemRouter = createRouter({
      The network/board scorecard stays full-admin; each domain report is gated to
      the capability that owns it, so a department head sees their own scorecard. */
   reportsNetworkKpis: fullAdmin.query(() => networkKpis()),
-  auditTrail: fullAdmin
-    .input(
-      z.object({ limit: z.number().min(1).max(500).default(200) }).optional()
-    )
-    .query(async ({ input }) => {
-      return getDb()
-        .select()
-        .from(schema.adminAuditLog)
-        .orderBy(desc(schema.adminAuditLog.createdAt))
-        .limit(input?.limit ?? 200);
-    }),
+  auditTrail: fullAdmin.input(auditFilterInput).query(({ input }) =>
+    getDb()
+      .select()
+      .from(schema.adminAuditLog)
+      .where(auditWhere(input))
+      .orderBy(desc(schema.adminAuditLog.createdAt))
+      .limit(input?.limit ?? 300)
+  ),
+
+  auditTrailCsv: fullAdmin.input(auditFilterInput).query(async ({ input }) => {
+    const rows = await getDb()
+      .select()
+      .from(schema.adminAuditLog)
+      .where(auditWhere(input))
+      .orderBy(desc(schema.adminAuditLog.createdAt))
+      .limit(10000);
+    const cell = (v: unknown) => {
+      const s =
+        v == null ? "" : v instanceof Date ? v.toISOString() : String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const headers = [
+      "when",
+      "actorEmail",
+      "action",
+      "targetType",
+      "targetId",
+      "detail",
+    ];
+    const lines = [
+      headers.join(","),
+      ...rows.map(r =>
+        [
+          r.createdAt,
+          r.actorEmail,
+          r.action,
+          r.targetType,
+          r.targetId,
+          r.detail,
+        ]
+          .map(cell)
+          .join(",")
+      ),
+    ];
+    return {
+      filename: `ehive-audit-${new Date().toISOString().slice(0, 10)}.csv`,
+      csv: lines.join("\n") + "\n",
+    };
+  }),
 
   /* List admins + their capability scopes (management view). */
   adminRoster: adminQuery.query(async () => {
