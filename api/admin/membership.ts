@@ -4,7 +4,12 @@ import { and, desc, eq, like, or, sql } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "../queries/connection";
 import { createRouter, scopedAdmin, fullAdmin } from "../middleware";
-import { awardPoints, recomputeScore, autoPairBuddy } from "../queries/circle";
+import {
+  awardPoints,
+  recomputeScore,
+  autoPairBuddy,
+  notify,
+} from "../queries/circle";
 import { applyLifecycleTransition } from "../lib/lifecycle";
 import {
   applyProfileEdit,
@@ -323,6 +328,65 @@ export const membershipRouter = createRouter({
         reason: input.note,
       });
       return { ok: true };
+    }),
+
+  /* Bulk lifecycle transition over a selected set. Each transition is validated
+     individually (invalid ones are skipped, not fatal) so one bad member can't
+     abort the batch; returns how many actually changed. */
+  bulkSetLifecycle: scopedAdmin("membership")
+    .input(
+      z.object({
+        memberIds: z.array(z.number().int().positive()).min(1).max(500),
+        state: z.enum([
+          "onboarding",
+          "active",
+          "at_risk",
+          "renewal",
+          "lapsed",
+          "alumni",
+          "suspended",
+        ]),
+        note: z.string().max(500).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      let changed = 0;
+      for (const id of input.memberIds) {
+        try {
+          const r = await applyLifecycleTransition(id, input.state, {
+            actor: ctx.user,
+            reason: input.note,
+          });
+          if (r.changed) changed++;
+        } catch {
+          /* skip invalid transition for this member */
+        }
+      }
+      return { ok: true, changed, total: input.memberIds.length };
+    }),
+
+  /* Bulk in-app notification to a selected set of members. */
+  bulkNotifyMembers: scopedAdmin("membership")
+    .input(
+      z.object({
+        memberIds: z.array(z.number().int().positive()).min(1).max(500),
+        text: z.string().min(3).max(500),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      let sent = 0;
+      for (const id of input.memberIds) {
+        try {
+          await notify(id, input.text, "admin");
+          sent++;
+        } catch {
+          /* non-fatal */
+        }
+      }
+      await audit(ctx.user, "member.bulk.notify", {
+        detail: `${sent}/${input.memberIds.length} notified`,
+      });
+      return { ok: true, sent };
     }),
 
   memberDetail: scopedAdmin("membership")

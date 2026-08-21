@@ -13,6 +13,7 @@ import {
   LoadError,
   RefCode,
   toast,
+  confirmDialog,
 } from "@/components/eh";
 import { fmtDate, initials } from "@/lib/ehf";
 import {
@@ -53,6 +54,41 @@ export default function AdminMembers() {
       );
       utils.admin.pendingTierRequests.invalidate();
       utils.admin.members.invalidate();
+    },
+    onError: e => toast(e.message),
+  });
+
+  const [sel, setSel] = useState<Set<number>>(new Set());
+  const [bulkText, setBulkText] = useState("");
+  const [bulkState, setBulkState] = useState("");
+  const rows = q.data ?? [];
+  const allSelected = rows.length > 0 && rows.every(r => sel.has(r.member.id));
+  const toggle = (id: number) =>
+    setSel(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const clearSel = () => setSel(new Set());
+  const afterBulk = () => {
+    clearSel();
+    setBulkText("");
+    setBulkState("");
+    utils.admin.members.invalidate();
+    utils.admin.lifecycleCounts.invalidate();
+  };
+  const bulkNotify = trpc.admin.bulkNotifyMembers.useMutation({
+    onSuccess: r => {
+      toast(`Notified ${r.sent} member${r.sent === 1 ? "" : "s"}.`);
+      afterBulk();
+    },
+    onError: e => toast(e.message),
+  });
+  const bulkLifecycle = trpc.admin.bulkSetLifecycle.useMutation({
+    onSuccess: r => {
+      toast(`Updated ${r.changed} of ${r.total} member(s).`);
+      afterBulk();
     },
     onError: e => toast(e.message),
   });
@@ -225,11 +261,100 @@ export default function AdminMembers() {
         </div>
       )}
 
+      {sel.size > 0 && (
+        <div
+          className="eh-card eh-mb"
+          style={{
+            display: "flex",
+            gap: ".5rem",
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
+          <b>{sel.size} selected</b>
+          <input
+            className="eh-input sm"
+            style={{ flex: "1 1 220px" }}
+            placeholder="Message to notify selected…"
+            value={bulkText}
+            onChange={e => setBulkText(e.target.value)}
+          />
+          <button
+            className="eh-btn sm"
+            disabled={bulkNotify.isPending || bulkText.trim().length < 3}
+            onClick={() =>
+              bulkNotify.mutate({
+                memberIds: [...sel],
+                text: bulkText.trim(),
+              })
+            }
+          >
+            Notify
+          </button>
+          <select
+            className="eh-select sm"
+            value={bulkState}
+            onChange={e => setBulkState(e.target.value)}
+          >
+            <option value="">Set lifecycle…</option>
+            {[
+              "onboarding",
+              "active",
+              "at_risk",
+              "renewal",
+              "lapsed",
+              "alumni",
+              "suspended",
+            ].map(s => (
+              <option key={s} value={s}>
+                {MEMBER_LIFECYCLE_LABEL[s] ?? s}
+              </option>
+            ))}
+          </select>
+          <button
+            className="eh-btn sm"
+            disabled={bulkLifecycle.isPending || !bulkState}
+            onClick={async () => {
+              if (
+                await confirmDialog({
+                  title: `Set ${sel.size} member(s) to "${MEMBER_LIFECYCLE_LABEL[bulkState] ?? bulkState}"?`,
+                  body: "Invalid transitions for individual members are skipped.",
+                  confirmLabel: "Apply",
+                })
+              )
+                bulkLifecycle.mutate({
+                  memberIds: [...sel],
+                  state: bulkState as never,
+                });
+            }}
+          >
+            Apply
+          </button>
+          <button className="eh-btn ghost sm" onClick={clearSel}>
+            Clear
+          </button>
+        </div>
+      )}
+
       {q.data && q.data.length > 0 && (
         <div className="eh-card" style={{ padding: ".4rem 1.25rem" }}>
           <table className="eh-table stack">
             <thead>
               <tr>
+                <th style={{ width: "1%" }}>
+                  <input
+                    type="checkbox"
+                    aria-label="Select all"
+                    checked={allSelected}
+                    onChange={() =>
+                      setSel(
+                        allSelected
+                          ? new Set()
+                          : new Set(rows.map(r => r.member.id))
+                      )
+                    }
+                  />
+                </th>
                 <th>Member</th>
                 <th>Company</th>
                 <th>Tier</th>
@@ -248,6 +373,14 @@ export default function AdminMembers() {
                     (window.location.href = `/admin/members/${member.id}`)
                   }
                 >
+                  <td onClick={e => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${userName ?? "member"}`}
+                      checked={sel.has(member.id)}
+                      onChange={() => toggle(member.id)}
+                    />
+                  </td>
                   <td>
                     <div className="eh-row" style={{ flexWrap: "nowrap" }}>
                       <span className="eh-avatar">{initials(userName)}</span>
