@@ -65,11 +65,46 @@ export const env = {
   zeptoApiUrl:
     process.env.ZEPTOMAIL_API_URL ?? "https://api.zeptomail.com/v1.1/email",
   // API keys for the read-only integration API (/api/integrations/v1/*) that an
-  // external ERP / accounting app polls. Comma-separated; empty = the whole
-  // integration API is disabled (returns 503), so it exposes nothing until a
-  // key is configured. Rotate by listing old+new during a cutover.
-  integrationApiKeys: (process.env.INTEGRATION_API_KEYS ?? "")
+  // external ERP / accounting app polls. Empty = the whole integration API is
+  // disabled (returns 503).
+  //
+  // Format supports two styles:
+  //   - Plain: <random-key>  (legacy, full access)
+  //   - Scoped: <name>:<scopes>:<random-key>
+  //     scopes = "*" or comma-separated resource names (payments, expenses, members)
+  // Multiple keys can be configured at once to allow rotation/cutover.
+  integrationApiKeys: parseIntegrationKeys(process.env.INTEGRATION_API_KEYS ?? ""),
+};
+
+export type IntegrationApiKey = {
+  name: string;
+  scopes: string[];
+  value: string;
+};
+
+function parseIntegrationKeys(raw: string): IntegrationApiKey[] {
+  return raw
     .split(",")
     .map(s => s.trim())
-    .filter(Boolean),
-};
+    .filter(Boolean)
+    .map((entry, idx) => {
+      const parts = entry.split(":");
+      if (parts.length >= 3) {
+        const [name, scopeStr, ...rest] = parts;
+        const value = rest.join(":");
+        const scopes =
+          scopeStr === "*"
+            ? ["*"]
+            : scopeStr
+                .split(",")
+                .map(s => s.trim())
+                .filter(Boolean);
+        return {
+          name: name || `key-${idx + 1}`,
+          scopes: scopes.length ? scopes : ["*"],
+          value,
+        };
+      }
+      return { name: `legacy-${idx + 1}`, scopes: ["*"], value: entry };
+    });
+}

@@ -6,6 +6,10 @@
  *
  * Conventions:
  *  - Auth: `Authorization: Bearer <key>` or `X-API-Key: <key>`.
+ *  - Scoping: keys can be restricted to `payments`, `expenses`, `members` or `*`
+ *    (full). Plain keys are backward-compatible and grant full access.
+ *  - Rotation: configure multiple scoped keys during a cutover; remove the old
+ *    key once the external system is switched over.
  *  - Pagination: `?limit=` (default 100, max 500) + `?cursor=<id>` (keyset by
  *    ascending id). The response's `nextCursor` is null when the last page is
  *    reached.
@@ -13,16 +17,18 @@
  *    or after that instant (payments/members use updatedAt, expenses createdAt).
  *  - Money: major units (AED), with an explicit `currency`.
  */
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import {
   integrationEnabled,
   authorizeIntegration,
+  hasScope,
   clampLimit,
   toPaymentDto,
   toExpenseDto,
   toMemberDto,
 } from "./lib/integration";
 import { rateLimit } from "./lib/rate-limit";
+import type { IntegrationApiKey } from "./lib/env";
 import {
   fetchPayments,
   fetchExpenses,
@@ -30,16 +36,9 @@ import {
   type PageOpts,
 } from "./queries/integrations";
 
-type Ctx = {
-  req: {
-    header: (n: string) => string | undefined;
-    query: (n: string) => string | undefined;
-    raw: { headers: Headers };
-  };
-  json: (body: unknown, status?: number) => Response;
-};
+const INTEGRATION_KEY = "integrationKey";
 
-function parseOpts(c: Ctx): PageOpts {
+function parseOpts(c: Context): PageOpts {
   const cursorRaw = Number(c.req.query("cursor"));
   const sinceRaw = c.req.query("updatedSince");
   const since = sinceRaw ? new Date(sinceRaw) : undefined;
@@ -53,20 +52,31 @@ function parseOpts(c: Ctx): PageOpts {
   };
 }
 
-function list(c: Ctx, rows: { id: number }[], data: unknown[], limit: number) {
+function list(
+  c: Context,
+  rows: { id: number }[],
+  data: unknown[],
+  limit: number
+) {
   const last = rows[rows.length - 1];
   const nextCursor = rows.length === limit && last ? last.id : null;
   return c.json({ object: "list", data, nextCursor, count: data.length });
 }
 
-export const integrationApp = new Hono();
+type Variables = {
+  integrationKey: IntegrationApiKey;
+};
+
+export const integrationApp = new Hono<{ Variables: Variables }>();
 
 // Gate: enabled + authenticated + rate-limited (per IP; keys are never logged).
 integrationApp.use("*", async (c, next) => {
   if (!integrationEnabled())
     return c.json({ error: "Integration API is not enabled." }, 503);
-  if (!authorizeIntegration(c.req.raw.headers))
+  const key = authorizeIntegration(c.req.raw.headers);
+  if (!key)
     return c.json({ error: "Invalid or missing API key." }, 401);
+  c.set(INTEGRATION_KEY, key);
   const ip =
     (c.req.header("x-forwarded-for") ?? "")
       .split(",")
@@ -80,6 +90,20 @@ integrationApp.use("*", async (c, next) => {
   await next();
 });
 
+function requireScope(
+  c: Context,
+  resource: string
+): IntegrationApiKey | Response {
+  const key = c.get(INTEGRATION_KEY) as IntegrationApiKey | undefined;
+  if (!key || !hasScope(key.scopes, resource)) {
+    return c.json(
+      { error: `This key does not have access to ${resource}.` },
+      403
+    );
+  }
+  return key;
+}
+
 integrationApp.get("/", c =>
   c.json({
     object: "index",
@@ -90,18 +114,24 @@ integrationApp.get("/", c =>
 );
 
 integrationApp.get("/payments", async c => {
+  const denied = requireScope(c, "payments");
+  if (denied instanceof Response) return denied;
   const opts = parseOpts(c);
   const rows = await fetchPayments(opts);
   return list(c, rows, rows.map(toPaymentDto), opts.limit);
 });
 
 integrationApp.get("/expenses", async c => {
+  const denied = requireScope(c, "expenses");
+  if (denied instanceof Response) return denied;
   const opts = parseOpts(c);
   const rows = await fetchExpenses(opts);
   return list(c, rows, rows.map(toExpenseDto), opts.limit);
 });
 
 integrationApp.get("/members", async c => {
+  const denied = requireScope(c, "members");
+  if (denied instanceof Response) return denied;
   const opts = parseOpts(c);
   const rows = await fetchMembers(opts);
   return list(c, rows, rows.map(toMemberDto), opts.limit);

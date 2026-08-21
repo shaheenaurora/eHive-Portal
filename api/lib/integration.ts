@@ -9,6 +9,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { env } from "./env";
 import { refCode } from "@contracts/ids";
+import type { IntegrationApiKey } from "./env";
 
 /** Whether the integration API is enabled (at least one key configured). */
 export function integrationEnabled(): boolean {
@@ -33,21 +34,39 @@ export function presentedKey(headers: Headers): string | null {
   return x?.trim() || null;
 }
 
-/** Whether a presented key matches any configured key (constant-time). Pure so
- *  it can be unit-tested without the environment. */
-export function matchesKey(configured: string[], presented: string): boolean {
-  if (!presented) return false;
-  // Evaluate every key so timing doesn't reveal which (if any) matched.
-  return configured.reduce(
-    (ok, k) => (safeEqual(k, presented) ? true : ok),
-    false
-  );
+/**
+ * Check whether a set of configured scopes allows a requested resource.
+ * A scope of "*" grants all resources.
+ */
+export function hasScope(scopes: readonly string[], resource: string): boolean {
+  return scopes.includes("*") || scopes.includes(resource);
 }
 
-/** Authorize an incoming integration request against the configured keys. */
-export function authorizeIntegration(headers: Headers): boolean {
+/**
+ * Match a presented key against the configured keys. Returns the matched key
+ * metadata (including its scopes) or null. Constant-time over the key list.
+ */
+export function matchesKey(
+  configured: readonly IntegrationApiKey[],
+  presented: string
+): IntegrationApiKey | null {
+  if (!presented) return null;
+  // Evaluate every key so timing doesn't reveal which (if any) matched.
+  return configured.reduce<IntegrationApiKey | null>((match, k) => {
+    if (safeEqual(k.value, presented)) return k;
+    return match;
+  }, null);
+}
+
+/**
+ * Authorize an incoming integration request. Returns the matched key metadata
+ * so callers can enforce per-resource scopes and audit which key was used.
+ */
+export function authorizeIntegration(
+  headers: Headers
+): IntegrationApiKey | null {
   const key = presentedKey(headers);
-  if (!key) return false;
+  if (!key) return null;
   return matchesKey(env.integrationApiKeys, key);
 }
 

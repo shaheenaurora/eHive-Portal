@@ -2,14 +2,22 @@ import { describe, it, expect } from "vitest";
 import {
   matchesKey,
   presentedKey,
+  hasScope,
   clampLimit,
   toPaymentDto,
   toExpenseDto,
   toMemberDto,
   type IntegrationPaymentRow,
 } from "./lib/integration";
+import type { IntegrationApiKey } from "./lib/env";
 
 const headers = (h: Record<string, string>) => new Headers(h);
+
+const key = (value: string, scopes: string[] = ["*"]): IntegrationApiKey => ({
+  name: "test",
+  scopes,
+  value,
+});
 
 describe("presentedKey", () => {
   it("reads a Bearer token", () => {
@@ -25,14 +33,24 @@ describe("presentedKey", () => {
   });
 });
 
+describe("hasScope", () => {
+  it("allows wildcard or matching resource", () => {
+    expect(hasScope(["*"], "payments")).toBe(true);
+    expect(hasScope(["payments", "members"], "payments")).toBe(true);
+    expect(hasScope(["payments"], "expenses")).toBe(false);
+  });
+});
+
 describe("matchesKey", () => {
-  it("matches a configured key, constant-time", () => {
-    expect(matchesKey(["k1", "k2"], "k2")).toBe(true);
+  it("matches a configured key and returns its metadata", () => {
+    const matched = matchesKey([key("k1"), key("k2")], "k2");
+    expect(matched?.value).toBe("k2");
+    expect(matched?.scopes).toEqual(["*"]);
   });
   it("rejects an unknown or empty key", () => {
-    expect(matchesKey(["k1"], "nope")).toBe(false);
-    expect(matchesKey(["k1"], "")).toBe(false);
-    expect(matchesKey([], "k1")).toBe(false);
+    expect(matchesKey([key("k1")], "nope")).toBeNull();
+    expect(matchesKey([key("k1")], "")).toBeNull();
+    expect(matchesKey([], "k1")).toBeNull();
   });
 });
 
