@@ -11,6 +11,7 @@ import { appRouter } from "./router";
 import { createContext } from "./context";
 import { env } from "./lib/env";
 import { getDb } from "./queries/connection";
+import { withTransaction } from "./queries/transaction";
 import * as schema from "@db/schema";
 import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
 import { paymentsEnabled, getPaymentProvider } from "./lib/payments";
@@ -219,38 +220,23 @@ app.post("/api/lead", async c => {
       ? body.source_page.slice(0, 255)
       : null;
   let leadId: number | undefined;
-  try {
-    const leadRes = await getDb()
-      .insert(schema.leads)
-      .values({
-        form: body.form.slice(0, 64),
-        email,
-        payload: JSON.stringify(body).slice(0, 60000),
-        sourcePage,
-      });
-    leadId = Number((leadRes as unknown as [{ insertId: number }])[0].insertId);
-  } catch (err) {
-    console.error("lead insert failed", err);
-    return c.json({ ok: false, error: "storage failed" }, 500);
-  }
-  // Send notification + confirmation emails and surface the result to the
-  // caller so the UI can warn when the confirmation could not be delivered.
-  const emailResult = await notifyLead({
-    form: body.form,
-    email,
-    payload: body,
-    sourcePage,
-  });
-
-  // Persist Clarity Scorecard results so the team can follow up and the
-  // prospect has a saved record of their recommendation.
+  // Persist Clarity Scorecard results in the same transaction as the lead so
+  // the two records are always consistent.
   if (body.form === "clarity-scorecard") {
     const report = buildScorecardReport(body);
-    if (report) {
-      try {
-        await getDb()
-          .insert(schema.scorecardResults)
-          .values({
+    try {
+      const ids = await withTransaction(async tx => {
+        const leadRes = await tx.insert(schema.leads).values({
+          form: String(body.form).slice(0, 64),
+          email,
+          payload: JSON.stringify(body).slice(0, 60000),
+          sourcePage,
+        });
+        const leadId = Number(
+          (leadRes as unknown as [{ insertId: number }])[0].insertId
+        );
+        if (report) {
+          await tx.insert(schema.scorecardResults).values({
             email: email ?? "",
             name:
               typeof body.name === "string" ? body.name.slice(0, 255) : null,
@@ -272,13 +258,56 @@ app.post("/api/lead", async c => {
             domains: report.domains as unknown as string,
             recommendationProduct: report.recommendation.product,
             recommendationWhy: report.recommendation.why,
-            nurtureStage: emailResult.confirmSent ? "emailed" : "new",
-            emailedAt: emailResult.confirmSent ? new Date() : null,
             leadId,
           });
-      } catch (err) {
-        console.error("scorecard result insert failed", err);
-      }
+        }
+        return { leadId };
+      });
+      leadId = ids.leadId;
+    } catch (err) {
+      console.error("lead/scorecard transaction failed", err);
+      return c.json({ ok: false, error: "storage failed" }, 500);
+    }
+  } else {
+    try {
+      const leadRes = await getDb()
+        .insert(schema.leads)
+        .values({
+          form: body.form.slice(0, 64),
+          email,
+          payload: JSON.stringify(body).slice(0, 60000),
+          sourcePage,
+        });
+      leadId = Number(
+        (leadRes as unknown as [{ insertId: number }])[0].insertId
+      );
+    } catch (err) {
+      console.error("lead insert failed", err);
+      return c.json({ ok: false, error: "storage failed" }, 500);
+    }
+  }
+
+  // Send notification + confirmation emails and surface the result to the
+  // caller so the UI can warn when the confirmation could not be delivered.
+  const emailResult = await notifyLead({
+    form: body.form,
+    email,
+    payload: body,
+    sourcePage,
+  });
+
+  // Update the scorecard nurture stage once we know whether the email went out.
+  if (body.form === "clarity-scorecard" && leadId) {
+    try {
+      await getDb()
+        .update(schema.scorecardResults)
+        .set({
+          nurtureStage: emailResult.confirmSent ? "emailed" : "new",
+          emailedAt: emailResult.confirmSent ? new Date() : null,
+        })
+        .where(eq(schema.scorecardResults.leadId, leadId));
+    } catch (err) {
+      console.error("scorecard emailedAt update failed", err);
     }
   }
 
@@ -535,34 +564,36 @@ app.post("/api/bookings", async c => {
 
   const when = `${formatGstDate(scheduledAt)} · ${formatGstTime(scheduledAt)} GST`;
 
-  let leadId: number | undefined;
+  let appointmentId: number;
   try {
-    const leadRes = await getDb()
-      .insert(schema.leads)
-      .values({
+    appointmentId = await withTransaction(async tx => {
+      const leadRes = await tx.insert(schema.leads).values({
         form: "booking",
         email,
         payload: JSON.stringify({ ...body, when }),
         sourcePage: "book.html",
       });
-    leadId = Number((leadRes as unknown as [{ insertId: number }])[0].insertId);
+      const leadId = Number(
+        (leadRes as unknown as [{ insertId: number }])[0].insertId
+      );
+      const apptRes = await tx.insert(schema.appointments).values({
+        product,
+        name,
+        email,
+        phone,
+        notes,
+        scheduledAt,
+        durationMin,
+        leadId,
+      });
+      return Number(
+        (apptRes as unknown as [{ insertId: number }])[0].insertId
+      );
+    });
   } catch (err) {
-    console.error("booking lead insert failed", err);
+    console.error("booking transaction failed", err);
+    return c.json({ ok: false, error: "Unable to save your booking." }, 500);
   }
-
-  const apptRes = await getDb().insert(schema.appointments).values({
-    product,
-    name,
-    email,
-    phone,
-    notes,
-    scheduledAt,
-    durationMin,
-    leadId,
-  });
-  const appointmentId = Number(
-    (apptRes as unknown as [{ insertId: number }])[0].insertId
-  );
 
   const emailResult = await sendBookingConfirmation({
     name,
