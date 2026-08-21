@@ -87,6 +87,8 @@ import {
   AWARD_LEVEL_KEYS,
   AWARD_CATEGORY_LABEL,
   seatToChapterRole,
+  CHAPTER_TERM_LIMIT_CONSECUTIVE,
+  CHAPTER_ROLE_LABEL,
 } from "@contracts/constants";
 
 function isFullAdmin(user: { adminScopes?: string | null }): boolean {
@@ -1106,6 +1108,23 @@ export const adminEngageRouter = createRouter({
     .input(z.object({ memberId: z.number(), chapterId: z.number().nullable() }))
     .mutation(async ({ ctx, input }) => {
       const db = getDb();
+      // Resolve the target chapter name for the notification, and validate it.
+      let chapterName: string | null = null;
+      if (input.chapterId != null) {
+        const ch = (
+          await db
+            .select({ name: schema.chapters.name })
+            .from(schema.chapters)
+            .where(eq(schema.chapters.id, input.chapterId))
+            .limit(1)
+        ).at(0);
+        if (!ch)
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Target chapter not found.",
+          });
+        chapterName = ch.name;
+      }
       await db
         .update(schema.members)
         .set({ homeChapterId: input.chapterId })
@@ -1117,6 +1136,17 @@ export const adminEngageRouter = createRouter({
           ? `→ chapter #${input.chapterId}`
           : "unassigned",
       });
+      try {
+        await notify(
+          input.memberId,
+          chapterName
+            ? `Your home chapter has been set to ${chapterName}.`
+            : "Your home chapter has been cleared. Reach out to membership if this is unexpected.",
+          "membership"
+        );
+      } catch {
+        /* non-fatal */
+      }
       return { ok: true };
     }),
 
@@ -1515,6 +1545,32 @@ export const adminEngageRouter = createRouter({
           code: "BAD_REQUEST",
           message: "A role can only go to a member of this chapter.",
         });
+      // Term limit (XC-04): a member may hold the same seat at most
+      // CHAPTER_TERM_LIMIT_CONSECUTIVE terms. Count their prior terms in this
+      // seat+chapter (any status) and block a further one so leadership rotates.
+      const priorTerms =
+        Number(
+          (
+            await db
+              .select({ n: sql<number>`count(*)` })
+              .from(schema.chapterRoles)
+              .where(
+                and(
+                  eq(schema.chapterRoles.chapterId, input.chapterId),
+                  eq(schema.chapterRoles.role, input.role),
+                  eq(schema.chapterRoles.memberId, input.memberId)
+                )
+              )
+          ).at(0)?.n
+        ) || 0;
+      if (
+        input.role !== "other" &&
+        priorTerms >= CHAPTER_TERM_LIMIT_CONSECUTIVE
+      )
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: `This member has already served ${CHAPTER_TERM_LIMIT_CONSECUTIVE} terms as ${CHAPTER_ROLE_LABEL[input.role] ?? input.role} — the seat must rotate to someone else.`,
+        });
       // Retire the current holder of this role in this chapter.
       await db
         .update(schema.chapterRoles)
@@ -1543,6 +1599,15 @@ export const adminEngageRouter = createRouter({
         id: input.memberId,
         detail: `${input.role} @ chapter #${input.chapterId}`,
       });
+      try {
+        await notify(
+          input.memberId,
+          `You've been appointed ${CHAPTER_ROLE_LABEL[input.role] ?? input.title ?? "an officer"} for your chapter. Welcome to the board.`,
+          "governance"
+        );
+      } catch {
+        /* non-fatal */
+      }
       return { ok: true };
     }),
 
@@ -1567,6 +1632,15 @@ export const adminEngageRouter = createRouter({
         id: row.memberId,
         detail: `${row.role} ended`,
       });
+      try {
+        await notify(
+          row.memberId,
+          `Your term as ${CHAPTER_ROLE_LABEL[row.role] ?? row.title ?? "an officer"} has ended. Thank you for your service — please complete the handover checklist.`,
+          "governance"
+        );
+      } catch {
+        /* non-fatal */
+      }
       return { ok: true };
     }),
 
@@ -1796,6 +1870,24 @@ export const adminEngageRouter = createRouter({
         .update(schema.motions)
         .set({ status, closesAt: new Date() })
         .where(eq(schema.motions.id, mo.id));
+      // Tell the chapter's active members the outcome (governance transparency).
+      try {
+        const members = await db
+          .select({ id: schema.members.id })
+          .from(schema.members)
+          .where(
+            and(
+              eq(schema.members.homeChapterId, mo.chapterId),
+              eq(schema.members.status, "active")
+            )
+          );
+        const msg = `Chapter motion "${mo.title}" was ${status} (${yes} for, ${no} against).`;
+        await Promise.all(
+          members.map(m => notify(m.id, msg, "governance").catch(() => {}))
+        );
+      } catch {
+        /* non-fatal */
+      }
       return { ok: true, status, yes, no };
     }),
 
