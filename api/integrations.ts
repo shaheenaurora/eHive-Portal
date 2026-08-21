@@ -74,8 +74,7 @@ integrationApp.use("*", async (c, next) => {
   if (!integrationEnabled())
     return c.json({ error: "Integration API is not enabled." }, 503);
   const key = authorizeIntegration(c.req.raw.headers);
-  if (!key)
-    return c.json({ error: "Invalid or missing API key." }, 401);
+  if (!key) return c.json({ error: "Invalid or missing API key." }, 401);
   c.set(INTEGRATION_KEY, key);
   const ip =
     (c.req.header("x-forwarded-for") ?? "")

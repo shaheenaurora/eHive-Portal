@@ -37,9 +37,7 @@ function loadInlineScriptHashes(): string[] {
       while ((m = re.exec(html)) !== null) {
         const content = m[1];
         if (!content.trim()) continue;
-        const hash = createHash("sha256")
-          .update(content)
-          .digest("base64");
+        const hash = createHash("sha256").update(content).digest("base64");
         hashes.add(`'sha256-${hash}'`);
       }
     }

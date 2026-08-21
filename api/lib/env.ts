@@ -73,7 +73,9 @@ export const env = {
   //   - Scoped: <name>:<scopes>:<random-key>
   //     scopes = "*" or comma-separated resource names (payments, expenses, members)
   // Multiple keys can be configured at once to allow rotation/cutover.
-  integrationApiKeys: parseIntegrationKeys(process.env.INTEGRATION_API_KEYS ?? ""),
+  integrationApiKeys: parseIntegrationKeys(
+    process.env.INTEGRATION_API_KEYS ?? ""
+  ),
 };
 
 export type IntegrationApiKey = {
