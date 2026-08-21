@@ -4,6 +4,7 @@ import * as schema from "@db/schema";
 import { getDb } from "./connection";
 import { audit } from "../lib/audit";
 import { notify, renewMembership } from "./circle";
+import { applyLifecycleTransition } from "../lib/lifecycle";
 import { paymentsEnabled, getPaymentProvider } from "../lib/payments";
 import { TIER_PRICE_AED } from "@contracts/constants";
 import {
@@ -14,6 +15,7 @@ import {
   expenseNeedsApproval,
   buildFinanceReport,
   financeReportCsv,
+  fmtAedWhole,
   type PayLite,
   type BudgetLite,
   type ReportPay,
@@ -389,6 +391,24 @@ export async function refundPayment(
     } catch {
       /* non-fatal */
     }
+
+    // A full refund of a membership or renewal payment reverts the member's
+    // entitlement: they lapse immediately so they cannot retain access for a
+    // year they did not pay for. Partial refunds leave membership intact but
+    // are recorded on the ledger.
+    if (
+      plan.newStatus === "refunded" &&
+      (p.purpose === "membership" || p.purpose === "renewal")
+    ) {
+      try {
+        await applyLifecycleTransition(m.id, "lapsed", {
+          actor,
+          reason: `Payment #${id} refunded: ${reason}`,
+        });
+      } catch (e) {
+        console.error("refund lifecycle transition failed", e);
+      }
+    }
   }
   return { ok: true };
 }
@@ -567,6 +587,27 @@ export async function recordExpense(
   // threshold without a second set of eyes. Smaller amounts post directly.
   const needsApproval = expenseNeedsApproval(amount);
   const status = needsApproval ? "proposed" : "approved";
+
+  // Enforce budget balance: an approved spend cannot exceed the chapter's
+  // remaining operating budget. Proposed spends are allowed because they still
+  // require a second approval step, but they too are capped so a finance admin
+  // cannot propose an impossible amount.
+  const budgetRows = await db
+    .select({
+      kind: schema.chapterBudgets.kind,
+      amount: schema.chapterBudgets.amount,
+      status: schema.chapterBudgets.status,
+    })
+    .from(schema.chapterBudgets)
+    .where(eq(schema.chapterBudgets.chapterId, input.chapterId));
+  const { remaining } = rollupBudgets(budgetRows as BudgetLite[]);
+  if (remaining - amount < 0) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: `This spend exceeds the chapter's remaining operating budget (${fmtAedWhole(remaining)} AED). Request an allocation first.`,
+    });
+  }
+
   const res = await db.insert(schema.chapterBudgets).values({
     chapterId: input.chapterId,
     label: input.label.slice(0, 255),

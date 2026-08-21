@@ -139,6 +139,13 @@ export const authRouter = createRouter({
         message: "Incorrect email or password.",
       });
     }
+    if (!user.emailVerifiedAt) {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message:
+          "Please verify your email before signing in. Check your inbox for the verification link.",
+      });
+    }
     await rateLimitReset(`login:acct:${email}`);
     // Password OK. If 2FA is on, defer the session until a valid code — hand
     // back a short-lived challenge instead of signing in.

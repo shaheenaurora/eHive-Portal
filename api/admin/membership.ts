@@ -17,7 +17,7 @@ import {
 import { kycQueue, getKyc, reviewKyc } from "../queries/kyc";
 import { pipelineReport } from "../queries/reports";
 import { audit } from "../lib/audit";
-import { tierRank } from "@contracts/constants";
+import { tierRank, type MemberLifecycle } from "@contracts/constants";
 import {
   TIER,
   idInput,
@@ -537,10 +537,33 @@ export const membershipRouter = createRouter({
     .mutation(async ({ ctx, input }) => {
       const db = getDb();
       const m = await mustMember(input.memberId);
-      await db
-        .update(schema.members)
-        .set({ status: input.status })
-        .where(eq(schema.members.id, m.id));
+
+      // Map the billing/access status to the canonical lifecycle state so the
+      // two cannot drift. Prefer the lifecycle executor (notifications, save
+      // cases, audit) when the transition is valid; fall back to a direct
+      // coherent update for edge states the executor doesn't allow.
+      const lifecycleForStatus: Record<string, MemberLifecycle> = {
+        active: "active",
+        paused: "suspended",
+        cancelled: "lapsed",
+      };
+      const targetLifecycle = lifecycleForStatus[input.status];
+
+      try {
+        await applyLifecycleTransition(input.memberId, targetLifecycle, {
+          actor: ctx.user,
+          reason: input.note ?? `Admin set status → ${input.status}`,
+        });
+      } catch {
+        // If the lifecycle executor rejects the transition (e.g. alumni →
+        // suspended), still keep status/lifecycle coherent with a direct update
+        // and log an explicit status event.
+        await db
+          .update(schema.members)
+          .set({ status: input.status, lifecycleState: targetLifecycle })
+          .where(eq(schema.members.id, m.id));
+      }
+
       if (input.status !== "active") {
         await db.insert(schema.membershipEvents).values({
           memberId: m.id,
@@ -551,7 +574,7 @@ export const membershipRouter = createRouter({
       await audit(ctx.user, "member.status", {
         type: "member",
         id: m.id,
-        detail: `status → ${input.status}`,
+        detail: `status → ${input.status} (${targetLifecycle})`,
       });
       return { ok: true };
     }),
