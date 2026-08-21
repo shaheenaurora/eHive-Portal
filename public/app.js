@@ -1130,7 +1130,7 @@ function submitLead(payload, onOk, onErr) {
     }
   })();
 
-  /* ---- booking engine (placeholder availability & backend) ---- */
+  /* ---- booking engine (live availability + backend) ---- */
   (function () {
     var bkConfirm = document.getElementById("bkConfirm");
     if (!bkConfirm) return;
@@ -1193,7 +1193,8 @@ function submitLead(payload, onOk, onErr) {
       },
     };
     var pm = location.search.match(/[?&](?:product|type)=([a-z0-9-]+)/);
-    var bk = BOOK[pm && pm[1]] || BOOK["discovery"];
+    var product = (pm && pm[1]) || "discovery";
+    var bk = BOOK[product] || BOOK["discovery"];
     document.getElementById("bkName").textContent = bk.name;
     document.getElementById("bkFmt").textContent = bk.fmt;
     document.getElementById("bkPrice").textContent = bk.price;
@@ -1217,11 +1218,13 @@ function submitLead(payload, onOk, onErr) {
       "Nov",
       "Dec",
     ];
-    var selDay = null,
-      selSlot = null;
     var dayGrid = document.getElementById("dayGrid");
     var slotGrid = document.getElementById("slotGrid");
     var bkHint = document.getElementById("bkHint");
+    var availability = [];
+    var selDay = null,
+      selSlot = null;
+
     function fmtDay(d) {
       return (
         WD[d.getDay()].charAt(0) +
@@ -1232,6 +1235,9 @@ function submitLead(payload, onOk, onErr) {
         MO[d.getMonth()]
       );
     }
+    function isoDate(d) {
+      return d.toLocaleDateString("en-CA", { timeZone: "Asia/Dubai" });
+    }
     function updateHint() {
       bkHint.textContent =
         selDay && selSlot
@@ -1240,60 +1246,93 @@ function submitLead(payload, onOk, onErr) {
             ? "Now pick a time slot."
             : "Pick a day and a time first.";
     }
-    for (var i = 1; i <= 14; i++) {
-      (function () {
-        var dt = new Date();
-        dt.setHours(0, 0, 0, 0);
-        dt.setDate(dt.getDate() + i);
-        var wknd = dt.getDay() === 0 || dt.getDay() === 6;
+    function slotsForDate(dateStr) {
+      return availability.filter(function (s) {
+        return s.date === dateStr && s.available;
+      });
+    }
+    function renderDays() {
+      dayGrid.innerHTML = "";
+      var seen = {};
+      availability.forEach(function (s) {
+        if (seen[s.date]) return;
+        seen[s.date] = true;
+        var d = new Date(s.date + "T00:00:00+04:00");
         var b = document.createElement("button");
         b.type = "button";
         b.className = "day";
         b.innerHTML =
           '<span class="dw">' +
-          WD[dt.getDay()] +
+          WD[d.getDay()] +
           '</span><span class="dn">' +
-          dt.getDate() +
+          d.getDate() +
           '</span><span class="dm">' +
-          MO[dt.getMonth()] +
+          MO[d.getMonth()] +
           "</span>";
-        if (wknd) b.disabled = true;
         b.addEventListener("click", function () {
           dayGrid.querySelectorAll(".day").forEach(function (x) {
             x.classList.remove("on");
           });
           b.classList.add("on");
-          selDay = dt;
+          selDay = d;
           selSlot = null;
           renderSlots();
           updateHint();
         });
         dayGrid.appendChild(b);
-      })();
+      });
     }
     function renderSlots() {
       slotGrid.innerHTML = "";
-      ["09:00", "11:00", "14:00", "16:00"].forEach(function (t, idx) {
+      if (!selDay) return;
+      var dateStr = isoDate(selDay);
+      var slots = slotsForDate(dateStr);
+      if (slots.length === 0) {
+        slotGrid.innerHTML =
+          '<p class="bk-tz">No slots available on this day.</p>';
+        return;
+      }
+      slots.forEach(function (s) {
         var b = document.createElement("button");
         b.type = "button";
         b.className = "slot";
-        b.innerHTML = t + "<small>GST</small>";
-        var taken =
-          selDay && (Math.floor(selDay.getTime() / 864e5) + idx) % 4 === 1;
-        if (!selDay || taken) b.disabled = true;
-        if (taken) b.classList.add("taken");
+        b.innerHTML = s.time + "<small>GST</small>";
         b.addEventListener("click", function () {
           slotGrid.querySelectorAll(".slot").forEach(function (x) {
             x.classList.remove("on");
           });
           b.classList.add("on");
-          selSlot = t;
+          selSlot = s.time;
           updateHint();
         });
         slotGrid.appendChild(b);
       });
     }
-    renderSlots();
+
+    var today = new Date();
+    var from = isoDate(new Date(today.getTime() + 24 * 60 * 60 * 1000));
+    var toDate = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000);
+    var to = isoDate(toDate);
+    fetch(
+      "/api/availability?product=" +
+        encodeURIComponent(product) +
+        "&from=" +
+        from +
+        "&to=" +
+        to
+    )
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (data) {
+        availability = Array.isArray(data.slots) ? data.slots : [];
+        renderDays();
+        renderSlots();
+      })
+      .catch(function () {
+        dayGrid.innerHTML =
+          '<p class="bk-tz">Unable to load live availability. Please refresh or contact us.</p>';
+      });
 
     function submitBooking() {
       if (!selDay || !selSlot) {
@@ -1301,7 +1340,9 @@ function submitLead(payload, onOk, onErr) {
         return;
       }
       var name = document.getElementById("bkNameIn"),
-        email = document.getElementById("bkEmail");
+        email = document.getElementById("bkEmail"),
+        notes = document.getElementById("bkNotes"),
+        phoneIn = document.getElementById("bkPhone");
       var nameBad = !name.value.trim();
       var emailBad = !isValidEmail(email.value.trim());
       name.classList.toggle("err", nameBad);
@@ -1310,8 +1351,8 @@ function submitLead(payload, onOk, onErr) {
       document.getElementById("bkErrEmail").classList.toggle("on", emailBad);
       if (nameBad || emailBad) return;
 
+      var dateStr = isoDate(selDay);
       var when = fmtDay(selDay) + " · " + selSlot + " GST";
-      var phoneIn = document.getElementById("bkPhone");
       var phone = phoneIn ? sanitizePhone(phoneIn.value) : "";
       var rows = [
         ["Booked", bk.name],
@@ -1338,48 +1379,60 @@ function submitLead(payload, onOk, onErr) {
       if (!setBtnBusy(bkConfirm, "Confirming\u2026")) return;
       var errNote = document.getElementById("bkErr");
       var payload = {
-        form: "booking",
-        product: (pm && pm[1]) || "discovery",
-        when: when,
-        format: bk.fmt,
+        product: product,
+        date: dateStr,
+        time: selSlot,
         name: name.value.trim(),
         email: email.value.trim(),
-        source_page: "book.html",
-        referrer: document.referrer || "",
-        timestamp: new Date().toISOString(),
-        user_agent: navigator.userAgent,
+        notes: notes ? notes.value.trim() : "",
+        phone: phone,
       };
-      if (phone) payload.phone = phone;
-      submitLead(
-        payload,
-        function (d) {
+      fetch("/api/bookings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(payload),
+      })
+        .then(function (r) {
+          return r.json();
+        })
+        .then(function (d) {
           restoreBtn(bkConfirm);
-          if (d && d.emailSent === false) {
-            if (errNote) {
+          if (d && d.ok) {
+            if (d.emailSent === false && errNote) {
               errNote.textContent =
                 "We saved your request, but the confirmation email could not be sent" +
                 (d.emailError ? " (" + d.emailError + ")" : "") +
                 ". We'll confirm your slot directly.";
               errNote.classList.add("show");
+            } else {
+              location.href = "/thank-you?src=booking";
+              return;
             }
             document.getElementById("bkForm").style.display = "none";
             document.getElementById("bkDone").style.display = "block";
             var card = document.querySelector(".bk-card");
             if (card)
               card.scrollIntoView({ behavior: "smooth", block: "start" });
-            return;
+          } else {
+            if (errNote) {
+              errNote.textContent =
+                d.error ||
+                "That slot is no longer available. Please choose another time.";
+              errNote.classList.add("show");
+            }
           }
-          location.href = "/thank-you?src=booking";
-        },
-        function () {
+        })
+        .catch(function () {
           restoreBtn(bkConfirm);
           if (errNote) {
             errNote.textContent =
-              "We couldn't reach the booking server. Your slot is summarised above; please try again or contact us directly.";
+              "We couldn't reach the booking server. Please try again or contact us directly.";
             errNote.classList.add("show");
           }
-        }
-      );
+        });
     }
 
     bkConfirm.addEventListener("click", submitBooking);
@@ -1395,10 +1448,14 @@ function submitLead(payload, onOk, onErr) {
       again.addEventListener("click", function () {
         document.getElementById("bkDone").style.display = "none";
         document.getElementById("bkForm").style.display = "block";
+        selDay = null;
+        selSlot = null;
+        renderDays();
+        renderSlots();
+        updateHint();
       });
     }
   })();
-
   /* ---- login: pre-launch state vs live form (PORTAL_LIVE flag) ---- */
   (function () {
     var launch = document.getElementById("lgLaunch");

@@ -305,3 +305,85 @@ export async function sendScorecardFollowUp(input: {
   });
   return { ok: r.ok, error: r.error };
 }
+
+/** Send a booking request confirmation. The submitter gets a polite "request
+ *  received" note; the owner gets the full details so they can confirm manually
+ *  until automated calendar sync is wired in. */
+export async function sendBookingConfirmation(input: {
+  name: string;
+  email: string;
+  product: string;
+  when: string;
+  format: string;
+  phone?: string | null;
+  notes?: string | null;
+  confirmed: boolean;
+}): Promise<{
+  ok: boolean;
+  ownerSent: boolean;
+  confirmSent: boolean;
+  error?: string;
+}> {
+  if (!mailEnabled()) {
+    return {
+      ok: false,
+      ownerSent: false,
+      confirmSent: false,
+      error: "Email is not configured.",
+    };
+  }
+  const notifyTo = env.leadNotifyEmail;
+  const errors: string[] = [];
+
+  const ownerHtml = shell(`
+    <p style="margin:0 0 4px;color:#b8862e;font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:700">New booking request</p>
+    <h1 style="margin:0 0 16px;font-family:Georgia,serif;font-size:20px;color:#101d2c;font-weight:600">${esc(input.product)} — ${esc(input.email)}</h1>
+    <table style="width:100%;border-collapse:collapse;background:#faf7f1;border-radius:10px">
+      <tr><td style="padding:6px 12px;color:#5d6f82;font-size:13px">Name</td><td style="padding:6px 12px;color:#101d2c;font-size:14px;font-weight:600">${esc(input.name)}</td></tr>
+      <tr><td style="padding:6px 12px;color:#5d6f82;font-size:13px">Email</td><td style="padding:6px 12px;color:#101d2c;font-size:14px;font-weight:600">${esc(input.email)}</td></tr>
+      <tr><td style="padding:6px 12px;color:#5d6f82;font-size:13px">When</td><td style="padding:6px 12px;color:#101d2c;font-size:14px;font-weight:600">${esc(input.when)}</td></tr>
+      <tr><td style="padding:6px 12px;color:#5d6f82;font-size:13px">Format</td><td style="padding:6px 12px;color:#101d2c;font-size:14px;font-weight:600">${esc(input.format)}</td></tr>
+      ${input.phone ? `<tr><td style="padding:6px 12px;color:#5d6f82;font-size:13px">Phone</td><td style="padding:6px 12px;color:#101d2c;font-size:14px;font-weight:600">${esc(input.phone)}</td></tr>` : ""}
+      ${input.notes ? `<tr><td style="padding:6px 12px;color:#5d6f82;font-size:13px;vertical-align:top">Notes</td><td style="padding:6px 12px;color:#101d2c;font-size:14px;font-weight:600;white-space:pre-wrap">${esc(input.notes)}</td></tr>` : ""}
+    </table>
+  `);
+
+  let ownerSent = false;
+  if (notifyTo) {
+    const r = await sendMailDetailed({
+      to: notifyTo,
+      subject: `Booking request — ${input.product} (${input.name})`,
+      html: ownerHtml,
+      replyTo: input.email,
+    });
+    ownerSent = r.ok;
+    if (!r.ok && r.error) errors.push(r.error);
+  }
+
+  let confirmSent = false;
+  const firstName = input.name.split(" ")[0];
+  const confirmHtml = shell(`
+    <h1 style="margin:0 0 12px;font-family:Georgia,serif;font-size:22px;color:#101d2c;font-weight:600">${firstName ? `Thank you, ${esc(firstName)}.` : "Thank you."}</h1>
+    <p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">We've received your request for a <strong style="color:#101d2c">${esc(input.product)}</strong> on <strong style="color:#101d2c">${esc(input.when)}</strong>.</p>
+    <p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">${input.confirmed ? "Your slot is confirmed and a calendar invite will follow shortly." : "A member of the team will confirm your slot within one business day and send you a calendar invitation."}</p>
+    <p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">If you need to reschedule, just reply to this email.</p>
+    <p style="margin:20px 0 0;color:#33465e;font-size:14px;line-height:1.55">Warm regards,<br/><strong>The eHive team</strong></p>
+  `);
+  const r = await sendMailDetailed({
+    to: input.email,
+    subject: input.confirmed
+      ? `Confirmed — ${input.product} on ${esc(input.when)}`
+      : `Booking request received — ${input.product}`,
+    html: confirmHtml,
+    replyTo: notifyTo || undefined,
+  });
+  confirmSent = r.ok;
+  if (!r.ok && r.error) errors.push(r.error);
+
+  return {
+    ok: ownerSent && confirmSent,
+    ownerSent,
+    confirmSent,
+    error: errors.length ? errors.join("; ") : undefined,
+  };
+}

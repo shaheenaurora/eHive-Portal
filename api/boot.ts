@@ -12,8 +12,18 @@ import { createContext } from "./context";
 import { env } from "./lib/env";
 import { getDb } from "./queries/connection";
 import * as schema from "@db/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
 import { paymentsEnabled, getPaymentProvider } from "./lib/payments";
+import {
+  BOOKING_SLOTS,
+  productDurationMin,
+  generateAvailability,
+  isSlotAvailable,
+  toGstTimestamp,
+  formatGstDate,
+  formatGstTime,
+} from "./lib/booking";
+import { sendBookingConfirmation } from "./lib/lead-mail";
 import { activateMembership } from "./queries/circle";
 import { notifyLead } from "./lib/lead-mail";
 import { rateLimit } from "./lib/rate-limit";
@@ -416,6 +426,162 @@ app.get("/api/newsletters", async c => {
     .orderBy(desc(schema.newsletters.publishedAt))
     .limit(24);
   return c.json({ issues: rows });
+});
+
+/* Public booking API — real availability check + appointment storage. */
+
+/** Return available slots for a product across a date range (inclusive).
+ *  Query: ?product=&from=YYYY-MM-DD&to=YYYY-MM-DD */
+app.get("/api/availability", async c => {
+  const product = c.req.query("product") || "discovery";
+  const fromDate = c.req.query("from");
+  const toDate = c.req.query("to");
+  if (
+    !fromDate ||
+    !toDate ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(fromDate) ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(toDate)
+  ) {
+    return c.json(
+      { error: "from and to dates are required (YYYY-MM-DD)" },
+      400
+    );
+  }
+  const start = toGstTimestamp(fromDate, "00:00");
+  const end = toGstTimestamp(toDate, "23:59");
+  const existing = await getDb()
+    .select({
+      scheduledAt: schema.appointments.scheduledAt,
+      durationMin: schema.appointments.durationMin,
+      status: schema.appointments.status,
+    })
+    .from(schema.appointments)
+    .where(
+      and(
+        gte(schema.appointments.scheduledAt, start),
+        lte(schema.appointments.scheduledAt, end)
+      )
+    );
+  return c.json({
+    product,
+    slots: generateAvailability(existing, fromDate, toDate),
+  });
+});
+
+/** Create a booking request. Body: { product, date, time, name, email, phone?, notes? } */
+app.post("/api/bookings", async c => {
+  if (!rateLimit(`booking:${clientIp(c)}`, 10, 10 * 60 * 1000)) {
+    return c.json(
+      {
+        ok: false,
+        error: "Too many booking attempts. Please try again shortly.",
+      },
+      429
+    );
+  }
+  let body: Record<string, unknown>;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ ok: false, error: "invalid json" }, 400);
+  }
+  const product = typeof body.product === "string" ? body.product : "discovery";
+  const date =
+    typeof body.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.date)
+      ? body.date
+      : null;
+  const time =
+    typeof body.time === "string" &&
+    BOOKING_SLOTS.includes(body.time as (typeof BOOKING_SLOTS)[number])
+      ? body.time
+      : null;
+  const name =
+    typeof body.name === "string" ? body.name.trim().slice(0, 255) : "";
+  const email =
+    typeof body.email === "string" ? body.email.trim().slice(0, 320) : "";
+  const phone =
+    typeof body.phone === "string" ? body.phone.trim().slice(0, 64) : null;
+  const notes =
+    typeof body.notes === "string" ? body.notes.slice(0, 2000) : null;
+  if (!date || !time || !name || !email || !email.includes("@")) {
+    return c.json({ ok: false, error: "missing or invalid fields" }, 400);
+  }
+
+  const durationMin = productDurationMin(product);
+  const scheduledAt = toGstTimestamp(date, time);
+
+  // Re-check availability inside a short window to avoid double-booking.
+  const windowStart = new Date(scheduledAt.getTime() - 24 * 60 * 60 * 1000);
+  const windowEnd = new Date(scheduledAt.getTime() + 24 * 60 * 60 * 1000);
+  const existing = await getDb()
+    .select({
+      scheduledAt: schema.appointments.scheduledAt,
+      durationMin: schema.appointments.durationMin,
+      status: schema.appointments.status,
+    })
+    .from(schema.appointments)
+    .where(
+      and(
+        gte(schema.appointments.scheduledAt, windowStart),
+        lte(schema.appointments.scheduledAt, windowEnd)
+      )
+    );
+  if (!isSlotAvailable(existing, date, time, durationMin)) {
+    return c.json(
+      { ok: false, error: "That slot is no longer available." },
+      409
+    );
+  }
+
+  const when = `${formatGstDate(scheduledAt)} · ${formatGstTime(scheduledAt)} GST`;
+
+  let leadId: number | undefined;
+  try {
+    const leadRes = await getDb()
+      .insert(schema.leads)
+      .values({
+        form: "booking",
+        email,
+        payload: JSON.stringify({ ...body, when }),
+        sourcePage: "book.html",
+      });
+    leadId = Number((leadRes as unknown as [{ insertId: number }])[0].insertId);
+  } catch (err) {
+    console.error("booking lead insert failed", err);
+  }
+
+  const apptRes = await getDb().insert(schema.appointments).values({
+    product,
+    name,
+    email,
+    phone,
+    notes,
+    scheduledAt,
+    durationMin,
+    leadId,
+  });
+  const appointmentId = Number(
+    (apptRes as unknown as [{ insertId: number }])[0].insertId
+  );
+
+  const emailResult = await sendBookingConfirmation({
+    name,
+    email,
+    product,
+    when,
+    format: `${durationMin}-minute session`,
+    phone,
+    notes,
+    confirmed: false,
+  });
+
+  return c.json({
+    ok: true,
+    appointmentId,
+    when,
+    emailSent: emailResult.confirmSent,
+    emailError: emailResult.error || null,
+  });
 });
 
 /* Payment gateway webhook (SRS INT-01). Reads the RAW body for signature

@@ -11,7 +11,11 @@ import { officerRouter } from "./officer-router";
 import { conductRouter } from "./conduct-router";
 import { createRouter, publicQuery, scopedAdmin } from "./middleware";
 import { getDb } from "./queries/connection";
-import { sendScorecardFollowUp } from "./lib/lead-mail";
+import {
+  sendScorecardFollowUp,
+  sendBookingConfirmation,
+} from "./lib/lead-mail";
+import { formatGstDate, formatGstTime } from "./lib/booking";
 
 export const appRouter = createRouter({
   ping: publicQuery.query(() => ({ ok: true, ts: Date.now() })),
@@ -125,6 +129,60 @@ export const appRouter = createRouter({
           .where(eq(schema.scorecardResults.id, input.id));
       }
       return emailResult;
+    }),
+
+  /* ---- appointment admin (leads scope) ---- */
+  appointmentsAdmin: scopedAdmin("leads").query(async () => {
+    const rows = await getDb()
+      .select()
+      .from(schema.appointments)
+      .orderBy(desc(schema.appointments.scheduledAt))
+      .limit(200);
+    return rows;
+  }),
+
+  confirmAppointment: scopedAdmin("leads")
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      const row = (
+        await getDb()
+          .select()
+          .from(schema.appointments)
+          .where(eq(schema.appointments.id, input.id))
+          .limit(1)
+      ).at(0);
+      if (!row) throw new Error("Appointment not found");
+      const when = `${formatGstDate(row.scheduledAt)} · ${formatGstTime(row.scheduledAt)} GST`;
+      const emailResult = await sendBookingConfirmation({
+        name: row.name,
+        email: row.email,
+        product: row.product,
+        when,
+        format: `${row.durationMin}-minute session`,
+        phone: row.phone,
+        notes: row.notes,
+        confirmed: true,
+      });
+      await getDb()
+        .update(schema.appointments)
+        .set({ status: "confirmed", confirmedAt: new Date() })
+        .where(eq(schema.appointments.id, input.id));
+      return { ok: true, emailSent: emailResult.confirmSent };
+    }),
+
+  cancelAppointment: scopedAdmin("leads")
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        reason: z.string().max(500).optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      await getDb()
+        .update(schema.appointments)
+        .set({ status: "cancelled", cancelledAt: new Date() })
+        .where(eq(schema.appointments.id, input.id));
+      return { ok: true };
     }),
 });
 

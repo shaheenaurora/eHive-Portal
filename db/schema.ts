@@ -1826,3 +1826,41 @@ export const scorecardResults = mysqlTable(
 );
 export type ScorecardResult = typeof scorecardResults.$inferSelect;
 export type InsertScorecardResult = typeof scorecardResults.$inferInsert;
+
+/* Public appointment bookings — consulting discovery calls, sprints and business
+   setup consultations. Stored with the requested slot so the team can confirm,
+   reschedule and avoid double-booking once the live calendar connects. */
+export const appointments = mysqlTable(
+  "appointments",
+  {
+    id: serial("id").primaryKey(),
+    product: varchar("product", { length: 64 }).notNull(),
+    status: mysqlEnum("status", ["requested", "confirmed", "cancelled"])
+      .notNull()
+      .default("requested"),
+    name: varchar("name", { length: 255 }).notNull(),
+    email: varchar("email", { length: 320 }).notNull(),
+    phone: varchar("phone", { length: 64 }),
+    notes: text("notes"),
+    scheduledAt: timestamp("scheduledAt").notNull(),
+    timezone: varchar("timezone", { length: 64 })
+      .notNull()
+      .default("Asia/Dubai"),
+    durationMin: int("durationMin").notNull().default(30),
+    leadId: bigint("leadId", { mode: "number", unsigned: true }),
+    confirmedAt: timestamp("confirmedAt"),
+    cancelledAt: timestamp("cancelledAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  t => [
+    index("ix_appointments_status").on(t.status),
+    index("ix_appointments_scheduled").on(t.scheduledAt),
+    index("ix_appointments_email").on(t.email),
+  ]
+);
+export type Appointment = typeof appointments.$inferSelect;
+export type InsertAppointment = typeof appointments.$inferInsert;
