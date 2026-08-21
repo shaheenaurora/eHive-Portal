@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, like, or } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, like, lte, or, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import * as schema from "@db/schema";
 import { getDb } from "./connection";
@@ -12,7 +12,7 @@ import {
 import { sendInvoiceReady } from "../lib/lead-mail";
 import { applyLifecycleTransition } from "../lib/lifecycle";
 import { paymentsEnabled, getPaymentProvider } from "../lib/payments";
-import { TIER_PRICE_AED } from "@contracts/constants";
+import { TIER_PRICE_AED, REFUND_WINDOW_DAYS } from "@contracts/constants";
 import {
   summarizePayments,
   rollupBudgets,
@@ -85,10 +85,24 @@ export async function financeSummary() {
   };
 }
 
+export type FinanceReportRange = { from?: Date | null; to?: Date | null };
+
 /** Build the finance report (revenue by month/tier, expenses by category,
- *  totals) from all payment records and chapter spend lines. */
-export async function financeReport(): Promise<FinanceReport> {
+ *  totals) from payment records and chapter spend lines, optionally restricted
+ *  to a date range. Payments are dated by settlement (paidAt, falling back to
+ *  createdAt); expenses by createdAt. */
+export async function financeReport(
+  range?: FinanceReportRange
+): Promise<FinanceReport> {
   const db = getDb();
+  const payDate = sql`coalesce(${schema.paymentRecords.paidAt}, ${schema.paymentRecords.createdAt})`;
+  const payConds = [];
+  if (range?.from) payConds.push(gte(payDate, range.from));
+  if (range?.to) payConds.push(lte(payDate, range.to));
+  const expConds = [eq(schema.chapterBudgets.kind, "spend")];
+  if (range?.from)
+    expConds.push(gte(schema.chapterBudgets.createdAt, range.from));
+  if (range?.to) expConds.push(lte(schema.chapterBudgets.createdAt, range.to));
   const [pays, expenses] = await Promise.all([
     db
       .select({
@@ -99,7 +113,8 @@ export async function financeReport(): Promise<FinanceReport> {
         createdAt: schema.paymentRecords.createdAt,
         refundedAmount: schema.paymentRecords.refundedAmount,
       })
-      .from(schema.paymentRecords),
+      .from(schema.paymentRecords)
+      .where(payConds.length ? and(...payConds) : undefined),
     db
       .select({
         amount: schema.chapterBudgets.amount,
@@ -108,17 +123,19 @@ export async function financeReport(): Promise<FinanceReport> {
         createdAt: schema.chapterBudgets.createdAt,
       })
       .from(schema.chapterBudgets)
-      .where(eq(schema.chapterBudgets.kind, "spend")),
+      .where(and(...expConds)),
   ]);
   return buildFinanceReport(pays as ReportPay[], expenses as ReportExpense[]);
 }
 
 /** The finance report rendered as a downloadable CSV (filename + contents). */
-export async function financeReportCsvString(): Promise<{
+export async function financeReportCsvString(
+  range?: FinanceReportRange
+): Promise<{
   filename: string;
   csv: string;
 }> {
-  const report = await financeReport();
+  const report = await financeReport(range);
   const stamp = new Date().toISOString().slice(0, 10);
   return {
     filename: `ehive-finance-report-${stamp}.csv`,
@@ -347,7 +364,9 @@ export async function refundPayment(
   actor: Actor,
   id: number,
   reason: string,
-  amountAed?: number
+  amountAed?: number,
+  /** Set by the router when a full administrator refunds outside the window. */
+  overrideWindow = false
 ) {
   const db = getDb();
   const p = (
@@ -359,6 +378,17 @@ export async function refundPayment(
   ).at(0);
   if (!p)
     throw new TRPCError({ code: "NOT_FOUND", message: "Payment not found." });
+
+  // Refund window: a finance admin self-serves within REFUND_WINDOW_DAYS of the
+  // charge; an older charge needs a full administrator to override, so a stale
+  // membership isn't casually reversed.
+  const charged = new Date(p.paidAt ?? p.createdAt).getTime();
+  const ageDays = (Date.now() - charged) / (24 * 60 * 60 * 1000);
+  if (ageDays > REFUND_WINDOW_DAYS && !overrideWindow)
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: `This charge is ${Math.floor(ageDays)} days old — past the ${REFUND_WINDOW_DAYS}-day refund window. A full administrator can override.`,
+    });
 
   // Validate + compute the refund (pure, unit-tested).
   let plan: ReturnType<typeof computeRefund>;
