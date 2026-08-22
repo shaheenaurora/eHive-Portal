@@ -5,6 +5,7 @@ import { getDb } from "../queries/connection";
 import { createRouter, authedQuery } from "../middleware";
 import { audit } from "../lib/audit";
 import {
+  financeReport,
   listExpenses,
   recordExpense as recordExpenseSvc,
 } from "../queries/finance";
@@ -36,6 +37,16 @@ export const officerFinanceRouter = createRouter({
       ...rollupBudgets(budgetRows),
       expenses,
     };
+  }),
+
+  chapterFinanceReport: authedQuery.query(async ({ ctx }) => {
+    const { chapterId, roleKeys } = await requireOfficer(ctx.user.id);
+    assertRoles(
+      roleKeys,
+      ["treasurer", "president"],
+      "Finance actions require Treasurer or President."
+    );
+    return financeReport(undefined, { chapterId });
   }),
 
   recordExpense: authedQuery

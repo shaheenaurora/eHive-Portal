@@ -1,4 +1,15 @@
-import { and, desc, eq, gte, isNull, like, lte, or, sql } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNull,
+  like,
+  lte,
+  or,
+  sql,
+} from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import * as schema from "@db/schema";
 import { getDb } from "./connection";
@@ -93,23 +104,62 @@ export async function financeSummary() {
 }
 
 export type FinanceReportRange = { from?: Date | null; to?: Date | null };
+export type FinanceReportFilters = { chapterId?: number; unitId?: number };
+
+/** Recursively collect all chapter IDs whose zone falls under the given org unit. */
+async function chapterIdsForUnit(unitId: number): Promise<number[]> {
+  const db = getDb();
+  const units = await db.select().from(schema.orgUnits);
+  const byParent = new Map<number | null, number[]>();
+  for (const u of units) {
+    const arr = byParent.get(u.parentId ?? null) ?? [];
+    arr.push(u.id);
+    byParent.set(u.parentId ?? null, arr);
+  }
+  const descendantIds = new Set<number>();
+  const walk = (id: number) => {
+    descendantIds.add(id);
+    for (const child of byParent.get(id) ?? []) walk(child);
+  };
+  walk(unitId);
+  const rows = await db
+    .select({ id: schema.chapters.id })
+    .from(schema.chapters)
+    .where(inArray(schema.chapters.zoneId, [...descendantIds]));
+  return rows.map(r => r.id);
+}
 
 /** Build the finance report (revenue by month/tier, expenses by category,
  *  totals) from payment records and chapter spend lines, optionally restricted
- *  to a date range. Payments are dated by settlement (paidAt, falling back to
- *  createdAt); expenses by createdAt. */
+ *  to a date range and/or scoped to a chapter or org-unit subtree. Payments are
+ *  dated by settlement (paidAt, falling back to createdAt); expenses by createdAt. */
 export async function financeReport(
-  range?: FinanceReportRange
+  range?: FinanceReportRange,
+  filters?: FinanceReportFilters
 ): Promise<FinanceReport> {
   const db = getDb();
+  const scopedChapterIds = filters?.unitId
+    ? await chapterIdsForUnit(filters.unitId)
+    : filters?.chapterId
+      ? [filters.chapterId]
+      : null;
+
   const payDate = sql`coalesce(${schema.paymentRecords.paidAt}, ${schema.paymentRecords.createdAt})`;
   const payConds = [];
   if (range?.from) payConds.push(gte(payDate, range.from));
   if (range?.to) payConds.push(lte(payDate, range.to));
+  if (scopedChapterIds) {
+    payConds.push(inArray(schema.members.homeChapterId, scopedChapterIds));
+  }
+
   const expConds = [eq(schema.chapterBudgets.kind, "spend")];
   if (range?.from)
     expConds.push(gte(schema.chapterBudgets.createdAt, range.from));
   if (range?.to) expConds.push(lte(schema.chapterBudgets.createdAt, range.to));
+  if (scopedChapterIds) {
+    expConds.push(inArray(schema.chapterBudgets.chapterId, scopedChapterIds));
+  }
+
   const [rawPays, expenses, rates] = await Promise.all([
     db
       .select({
@@ -122,6 +172,10 @@ export async function financeReport(
         refundedAmount: schema.paymentRecords.refundedAmount,
       })
       .from(schema.paymentRecords)
+      .leftJoin(
+        schema.members,
+        eq(schema.members.userId, schema.paymentRecords.userId)
+      )
       .where(payConds.length ? and(...payConds) : undefined),
     db
       .select({
@@ -150,12 +204,13 @@ export async function financeReport(
 
 /** The finance report rendered as a downloadable CSV (filename + contents). */
 export async function financeReportCsvString(
-  range?: FinanceReportRange
+  range?: FinanceReportRange,
+  filters?: FinanceReportFilters
 ): Promise<{
   filename: string;
   csv: string;
 }> {
-  const report = await financeReport(range);
+  const report = await financeReport(range, filters);
   const stamp = new Date().toISOString().slice(0, 10);
   return {
     filename: `ehive-finance-report-${stamp}.csv`,

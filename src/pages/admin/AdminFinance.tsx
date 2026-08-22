@@ -1405,16 +1405,30 @@ const money = (aedNum: number) =>
 function ReportsTab() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [chapterId, setChapterId] = useState<string>("");
+  const [unitId, setUnitId] = useState<string>("");
+  const chapters = trpc.admin.financeChapters.useQuery(undefined, {
+    retry: false,
+  });
+  const orgUnits = trpc.admin.financeOrgUnits.useQuery(undefined, {
+    retry: false,
+  });
   const range =
     from || to ? { from: from || undefined, to: to || undefined } : undefined;
-  const q = trpc.admin.financeReport.useQuery(range, { retry: false });
+  const filters = {
+    ...range,
+    chapterId: chapterId ? Number(chapterId) : undefined,
+    unitId: unitId ? Number(unitId) : undefined,
+  };
+  const q = trpc.admin.financeReport.useQuery(filters, { retry: false });
   const utils = trpc.useUtils();
   const [downloading, setDownloading] = useState(false);
 
   const download = async () => {
     setDownloading(true);
     try {
-      const { filename, csv } = await utils.admin.financeReportCsv.fetch(range);
+      const { filename, csv } =
+        await utils.admin.financeReportCsv.fetch(filters);
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -1485,12 +1499,46 @@ function ReportsTab() {
             min={from || undefined}
             onChange={e => setTo(e.target.value)}
           />
-          {(from || to) && (
+          <select
+            className="eh-select sm"
+            value={chapterId}
+            onChange={e => {
+              setChapterId(e.target.value);
+              if (e.target.value) setUnitId("");
+            }}
+            style={{ minWidth: 160 }}
+          >
+            <option value="">All chapters</option>
+            {(chapters.data ?? []).map(c => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <select
+            className="eh-select sm"
+            value={unitId}
+            onChange={e => {
+              setUnitId(e.target.value);
+              if (e.target.value) setChapterId("");
+            }}
+            style={{ minWidth: 160 }}
+          >
+            <option value="">All org units</option>
+            {(orgUnits.data ?? []).map(u => (
+              <option key={u.id} value={u.id}>
+                {u.name} ({u.level})
+              </option>
+            ))}
+          </select>
+          {(from || to || chapterId || unitId) && (
             <button
               className="eh-btn ghost sm"
               onClick={() => {
                 setFrom("");
                 setTo("");
+                setChapterId("");
+                setUnitId("");
               }}
             >
               Clear

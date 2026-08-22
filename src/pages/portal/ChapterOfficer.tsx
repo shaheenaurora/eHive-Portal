@@ -25,6 +25,7 @@ export default function ChapterOfficer() {
   const meetings = trpc.officer.meetings.useQuery();
   const events = trpc.officer.events.useQuery();
   const finance = trpc.officer.chapterFinance.useQuery();
+  const financeReport = trpc.officer.chapterFinanceReport.useQuery();
 
   const refresh = () => {
     utils.officer.elections.invalidate();
@@ -32,6 +33,7 @@ export default function ChapterOfficer() {
     utils.officer.meetings.invalidate();
     utils.officer.events.invalidate();
     utils.officer.chapterFinance.invalidate();
+    utils.officer.chapterFinanceReport.invalidate();
     utils.engage.myChapter.invalidate();
   };
 
@@ -61,6 +63,10 @@ export default function ChapterOfficer() {
         finance={finance.data}
         isLoading={finance.isLoading}
         refresh={refresh}
+      />
+      <OfficerFinanceReport
+        report={financeReport.data}
+        isLoading={financeReport.isLoading}
       />
     </div>
   );
@@ -641,6 +647,175 @@ function OfficerFinance({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+const money = (aedNum: number) =>
+  "AED " +
+  aedNum.toLocaleString("en-AE", {
+    minimumFractionDigits: Number.isInteger(aedNum) ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
+
+function OfficerFinanceReport({
+  report,
+  isLoading,
+}: {
+  report:
+    | {
+        totals: {
+          grossAed: number;
+          refundsAed: number;
+          netRevenueAed: number;
+          expensesAed: number;
+          surplusAed: number;
+        };
+        revenueByMonth: {
+          month: string;
+          grossAed: number;
+          refundsAed: number;
+          netAed: number;
+        }[];
+        byTier: { tier: string; grossAed: number; count: number }[];
+        expenseByCategory: { category: string; aed: number }[];
+      }
+    | undefined;
+  isLoading: boolean;
+}) {
+  const t = report?.totals;
+  return (
+    <div className="eh-card">
+      <h3 style={{ margin: 0 }}>Officer — Finance report</h3>
+      {isLoading && <Spinner />}
+      {report && t && (
+        <>
+          <div className="eh-grid g4 eh-mt" style={{ alignItems: "start" }}>
+            <div className="eh-card eh-stat">
+              <div className="k">Revenue</div>
+              <div className="v eh-num">{money(t.grossAed)}</div>
+            </div>
+            <div className="eh-card eh-stat">
+              <div className="k">Expenses</div>
+              <div className="v eh-num">{money(t.expensesAed)}</div>
+            </div>
+            <div className="eh-card eh-stat">
+              <div className="k">Net</div>
+              <div
+                className="v eh-num"
+                style={{
+                  color:
+                    t.netRevenueAed >= 0
+                      ? "var(--eh-good, #2e7d5b)"
+                      : "var(--eh-red, #b23a2e)",
+                }}
+              >
+                {money(t.netRevenueAed)}
+              </div>
+            </div>
+            <div className="eh-card eh-stat">
+              <div className="k">Surplus</div>
+              <div
+                className="v eh-num"
+                style={{
+                  color:
+                    t.surplusAed >= 0
+                      ? "var(--eh-good, #2e7d5b)"
+                      : "var(--eh-red, #b23a2e)",
+                }}
+              >
+                {money(t.surplusAed)}
+              </div>
+            </div>
+          </div>
+
+          <div className="eh-card eh-mt" style={{ padding: ".4rem 1.25rem" }}>
+            <h4 style={{ margin: ".6rem 0 .3rem" }}>Revenue by month</h4>
+            {report.revenueByMonth.length === 0 ? (
+              <div className="eh-sm eh-muted">No settled revenue yet.</div>
+            ) : (
+              <table className="eh-table stack">
+                <thead>
+                  <tr>
+                    <th>Month</th>
+                    <th>Gross</th>
+                    <th>Refunds</th>
+                    <th>Net</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.revenueByMonth.map(m => (
+                    <tr key={m.month}>
+                      <td data-label="Month">{m.month}</td>
+                      <td data-label="Gross">{money(m.grossAed)}</td>
+                      <td data-label="Refunds">{money(m.refundsAed)}</td>
+                      <td data-label="Net">
+                        <b>{money(m.netAed)}</b>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          <div className="eh-grid g2 eh-mt">
+            <div className="eh-card" style={{ padding: ".4rem 1.25rem" }}>
+              <h4 style={{ margin: ".6rem 0 .3rem" }}>Revenue by tier</h4>
+              {report.byTier.length === 0 ? (
+                <div className="eh-sm eh-muted">No paid memberships yet.</div>
+              ) : (
+                <table className="eh-table stack">
+                  <thead>
+                    <tr>
+                      <th>Tier</th>
+                      <th>Gross</th>
+                      <th>Payments</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {report.byTier.map(row => (
+                      <tr key={row.tier}>
+                        <td data-label="Tier">{row.tier}</td>
+                        <td data-label="Gross">{money(row.grossAed)}</td>
+                        <td data-label="Payments">{row.count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div className="eh-card" style={{ padding: ".4rem 1.25rem" }}>
+              <h4 style={{ margin: ".6rem 0 .3rem" }}>Expenses by category</h4>
+              {report.expenseByCategory.length === 0 ? (
+                <div className="eh-sm eh-muted">
+                  No chapter spend recorded yet.
+                </div>
+              ) : (
+                <table className="eh-table stack">
+                  <thead>
+                    <tr>
+                      <th>Category</th>
+                      <th>Spend</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {report.expenseByCategory.map(row => (
+                      <tr key={row.category}>
+                        <td data-label="Category">
+                          {EXPENSE_CATEGORY_LABEL[row.category] ?? row.category}
+                        </td>
+                        <td data-label="Spend">{money(row.aed)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

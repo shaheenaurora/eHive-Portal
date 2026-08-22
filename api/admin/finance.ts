@@ -32,21 +32,33 @@ import { audit } from "../lib/audit";
 import { EXPENSE_CATEGORY_KEYS, CURRENCY_CODES } from "@contracts/constants";
 import { idInput, isFullAdmin } from "./shared";
 
-/** Optional {from,to} ISO-date range for the finance report. */
+/** Optional {from,to} ISO-date range + scoping filters for the finance report. */
 const reportRangeInput = z
   .object({
     from: z.string().date().optional(),
     to: z.string().date().optional(),
+    chapterId: z.number().int().positive().optional(),
+    unitId: z.number().int().positive().optional(),
   })
   .optional();
 
+type ReportRangeInput = z.infer<typeof reportRangeInput>;
+
 /** Turn {from,to} ISO dates into a Date range; `to` is inclusive (end of day). */
-function parseReportRange(input?: { from?: string; to?: string }) {
+function parseReportRange(input?: ReportRangeInput) {
   if (!input) return undefined;
   return {
     from: input.from ? new Date(input.from + "T00:00:00.000Z") : null,
     to: input.to ? new Date(input.to + "T23:59:59.999Z") : null,
   };
+}
+
+function parseReportFilters(input?: ReportRangeInput) {
+  if (!input) return undefined;
+  const filters: { chapterId?: number; unitId?: number } = {};
+  if (input.chapterId) filters.chapterId = input.chapterId;
+  if (input.unitId) filters.unitId = input.unitId;
+  return Object.keys(filters).length ? filters : undefined;
 }
 
 export const financeRouter = createRouter({
@@ -131,10 +143,14 @@ export const financeRouter = createRouter({
   financeSummary: scopedAdmin("finance").query(() => financeSummary()),
   financeReport: scopedAdmin("finance")
     .input(reportRangeInput)
-    .query(({ input }) => financeReport(parseReportRange(input))),
+    .query(({ input }) =>
+      financeReport(parseReportRange(input), parseReportFilters(input))
+    ),
   financeReportCsv: scopedAdmin("finance")
     .input(reportRangeInput)
-    .query(({ input }) => financeReportCsvString(parseReportRange(input))),
+    .query(({ input }) =>
+      financeReportCsvString(parseReportRange(input), parseReportFilters(input))
+    ),
 
   payments: scopedAdmin("finance")
     .input(
@@ -289,6 +305,18 @@ export const financeRouter = createRouter({
       .from(schema.chapters)
       .where(isNull(schema.chapters.deletedAt))
       .orderBy(schema.chapters.name);
+  }),
+
+  financeOrgUnits: scopedAdmin("finance").query(async () => {
+    return getDb()
+      .select({
+        id: schema.orgUnits.id,
+        name: schema.orgUnits.name,
+        level: schema.orgUnits.level,
+        parentId: schema.orgUnits.parentId,
+      })
+      .from(schema.orgUnits)
+      .orderBy(schema.orgUnits.name);
   }),
 
   /* ---------------- Operations command centre ---------------- */
