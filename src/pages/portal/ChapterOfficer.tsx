@@ -14,6 +14,8 @@ import {
   EXPENSE_CATEGORY_KEYS,
   EXPENSE_CATEGORY_LABEL,
   CHAPTER_ROLE_LABEL,
+  EVENT_KIND_LABEL,
+  EVENT_AUDIENCE_LABEL,
 } from "@contracts/constants";
 
 export default function ChapterOfficer() {
@@ -21,12 +23,14 @@ export default function ChapterOfficer() {
   const elections = trpc.officer.elections.useQuery();
   const motions = trpc.officer.motions.useQuery();
   const meetings = trpc.officer.meetings.useQuery();
+  const events = trpc.officer.events.useQuery();
   const finance = trpc.officer.chapterFinance.useQuery();
 
   const refresh = () => {
     utils.officer.elections.invalidate();
     utils.officer.motions.invalidate();
     utils.officer.meetings.invalidate();
+    utils.officer.events.invalidate();
     utils.officer.chapterFinance.invalidate();
     utils.engage.myChapter.invalidate();
   };
@@ -41,6 +45,11 @@ export default function ChapterOfficer() {
       <OfficerMotions
         motions={motions.data ?? []}
         isLoading={motions.isLoading}
+        refresh={refresh}
+      />
+      <OfficerEvents
+        events={events.data ?? []}
+        isLoading={events.isLoading}
         refresh={refresh}
       />
       <OfficerMeetings
@@ -632,6 +641,182 @@ function OfficerFinance({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function OfficerEvents({
+  events,
+  isLoading,
+  refresh,
+}: {
+  events: {
+    id: number;
+    title: string;
+    kind: string;
+    startsAt: Date;
+    location: string | null;
+    audience: string;
+    capacity: number;
+    regCount: number;
+    status?: string;
+  }[];
+  isLoading: boolean;
+  refresh: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [kind, setKind] = useState("meetup");
+  const [location, setLocation] = useState("");
+  const [startsAt, setStartsAt] = useState("");
+  const [capacity, setCapacity] = useState(40);
+
+  const save = trpc.officer.createEvent.useMutation({
+    onSuccess: () => {
+      toast("Event created.");
+      setOpen(false);
+      setTitle("");
+      setKind("meetup");
+      setLocation("");
+      setStartsAt("");
+      setCapacity(40);
+      refresh();
+    },
+    onError: e => toast(e.message),
+  });
+  const archive = trpc.officer.archiveEvent.useMutation({
+    onSuccess: () => {
+      toast("Event archived.");
+      refresh();
+    },
+    onError: e => toast(e.message),
+  });
+
+  return (
+    <div className="eh-card">
+      <div className="eh-between">
+        <h3 style={{ margin: 0 }}>Officer — Events</h3>
+        <button className="eh-btn sm gold" onClick={() => setOpen(true)}>
+          Create event
+        </button>
+      </div>
+      {isLoading && <Spinner />}
+      {!isLoading && events.length === 0 && (
+        <Empty
+          big="No chapter events."
+          p="Create events for your chapter members."
+        />
+      )}
+      <div className="eh-list eh-mt">
+        {events.map(e => (
+          <div className="row" key={e.id} style={{ alignItems: "flex-start" }}>
+            <div style={{ flex: 1 }}>
+              <div className="t">{e.title}</div>
+              <div className="d">
+                {EVENT_KIND_LABEL[e.kind as keyof typeof EVENT_KIND_LABEL] ??
+                  e.kind}{" "}
+                · {fmtDate(e.startsAt)} · {e.location || "no location"} ·{" "}
+                {EVENT_AUDIENCE_LABEL[
+                  e.audience as keyof typeof EVENT_AUDIENCE_LABEL
+                ] ?? e.audience}
+              </div>
+              <div className="d eh-muted">
+                {e.regCount}/{e.capacity} registered
+              </div>
+            </div>
+            <button
+              className="eh-btn ghost sm danger"
+              disabled={archive.isPending}
+              onClick={async () => {
+                if (
+                  await confirmDialog({
+                    title: "Archive this event?",
+                    body: "It will no longer be visible to members.",
+                    danger: true,
+                    confirmLabel: "Archive",
+                  })
+                )
+                  archive.mutate({ id: e.id });
+              }}
+            >
+              Archive
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {open && (
+        <Modal title="Create chapter event" onClose={() => setOpen(false)}>
+          <Field label="Title">
+            <input
+              className="eh-input"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="e.g. March Circle Dinner"
+            />
+          </Field>
+          <Field label="Kind">
+            <select
+              className="eh-select"
+              value={kind}
+              onChange={e => setKind(e.target.value)}
+            >
+              {Object.entries(EVENT_KIND_LABEL).map(([k, label]) => (
+                <option key={k} value={k}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Location">
+            <input
+              className="eh-input"
+              value={location}
+              onChange={e => setLocation(e.target.value)}
+              placeholder="e.g. Dubai Marina"
+            />
+          </Field>
+          <Field label="Starts at">
+            <input
+              className="eh-input"
+              type="datetime-local"
+              value={startsAt}
+              onChange={e => setStartsAt(e.target.value)}
+            />
+          </Field>
+          <Field label="Capacity">
+            <input
+              className="eh-input"
+              type="number"
+              min={1}
+              max={2000}
+              value={capacity}
+              onChange={e => setCapacity(Number(e.target.value))}
+            />
+          </Field>
+          <button
+            className="eh-btn gold"
+            style={{ width: "100%" }}
+            disabled={
+              save.isPending ||
+              title.trim().length < 2 ||
+              !startsAt ||
+              capacity < 1
+            }
+            onClick={() =>
+              save.mutate({
+                title: title.trim(),
+                kind: kind as never,
+                location: location || undefined,
+                startsAt: new Date(startsAt),
+                capacity,
+              })
+            }
+          >
+            {save.isPending ? "Creating…" : "Create event →"}
+          </button>
+        </Modal>
+      )}
     </div>
   );
 }

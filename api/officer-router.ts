@@ -26,6 +26,7 @@ import { ROLE_ONBOARDING_STEPS } from "@contracts/constants";
 import { requireOfficer, inChapter } from "./officer/shared";
 import { officerGovernanceRouter } from "./officer/governance";
 import { officerFinanceRouter } from "./officer/finance";
+import { officerEventsRouter } from "./officer/events";
 
 const officerCoreRouter = createRouter({
   /* Console overview: roster with mentor/onboarding status + learnings. */
@@ -459,5 +460,6 @@ const officerCoreRouter = createRouter({
 export const officerRouter = mergeRouters(
   officerCoreRouter,
   officerGovernanceRouter,
-  officerFinanceRouter
+  officerFinanceRouter,
+  officerEventsRouter
 );

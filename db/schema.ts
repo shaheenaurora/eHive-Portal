@@ -438,6 +438,11 @@ export const events = mysqlTable("events", {
   // CPD (Continuing Professional Development) credits a member earns by
   // attending. 0 = the event carries no formal credits.
   cpdCredits: int("cpdCredits").notNull().default(0),
+  // When set, the event is owned by a chapter (officer-managed). Null = network-wide.
+  chapterId: bigint("chapterId", { mode: "number", unsigned: true }).references(
+    () => chapters.id,
+    { onDelete: "set null" }
+  ),
   deletedAt: timestamp("deletedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });

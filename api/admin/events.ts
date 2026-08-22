@@ -58,6 +58,7 @@ export const eventsRouter = createRouter({
         audienceTiers: z.array(TIER).optional(),
         capacity: z.number().int().min(1).max(2000).default(40),
         cpdCredits: z.number().int().min(0).max(100).default(0),
+        chapterId: z.number().int().positive().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -88,6 +89,7 @@ export const eventsRouter = createRouter({
         audienceTiers: z.array(TIER).optional(),
         capacity: z.number().int().min(1).max(2000).optional(),
         cpdCredits: z.number().int().min(0).max(100).optional(),
+        chapterId: z.number().int().positive().nullable().optional(),
       })
     )
     .mutation(async ({ input }) => {

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { eq, and, desc, asc, gte, isNull, sql } from "drizzle-orm";
+import { eq, and, or, desc, asc, gte, isNull, sql } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "./queries/connection";
 import { createRouter, authedQuery } from "./middleware";
@@ -992,7 +992,11 @@ export const circleRouter = createRouter({
       .where(
         and(
           gte(schema.events.startsAt, new Date()),
-          isNull(schema.events.deletedAt)
+          isNull(schema.events.deletedAt),
+          or(
+            isNull(schema.events.chapterId),
+            eq(schema.events.chapterId, member.homeChapterId ?? 0)
+          )
         )
       )
       .orderBy(asc(schema.events.startsAt))
@@ -1072,6 +1076,11 @@ export const circleRouter = createRouter({
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "This activity isn't open to your tier.",
+        });
+      if (ev.chapterId && ev.chapterId !== member.homeChapterId)
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "This event is for another chapter.",
         });
       const existing = await db
         .select()
