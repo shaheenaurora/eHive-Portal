@@ -3,8 +3,8 @@ import { TRPCError } from "@trpc/server";
 import { eq, and, isNull, desc, asc, sql } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "./queries/connection";
-import { createRouter, authedQuery } from "./middleware";
-import { getMemberByUserId, notify } from "./queries/circle";
+import { createRouter, mergeRouters, authedQuery } from "./middleware";
+import { notify } from "./queries/circle";
 import { computeChapterHealth } from "./queries/health";
 import { computeOnboarding } from "./queries/onboarding";
 import {
@@ -23,61 +23,11 @@ import {
 } from "./queries/member-admin";
 import { CADENCE_STATUSES } from "@contracts/cadence";
 import { ROLE_ONBOARDING_STEPS } from "@contracts/constants";
+import { requireOfficer, inChapter } from "./officer/shared";
+import { officerGovernanceRouter } from "./officer/governance";
+import { officerFinanceRouter } from "./officer/finance";
 
-/**
- * Resolve the caller's chapter-officer context: the member must hold an active
- * leadership role in their home chapter. Everything an officer does is scoped to
- * that one chapter — never another. Throws FORBIDDEN if they're not an officer.
- */
-async function requireOfficer(userId: number) {
-  const member = await getMemberByUserId(userId);
-  if (!member)
-    throw new TRPCError({ code: "FORBIDDEN", message: "No membership" });
-  if (!member.homeChapterId)
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "You don't lead a chapter.",
-    });
-  const roles = await getDb()
-    .select()
-    .from(schema.chapterRoles)
-    .where(
-      and(
-        eq(schema.chapterRoles.memberId, member.id),
-        eq(schema.chapterRoles.chapterId, member.homeChapterId),
-        eq(schema.chapterRoles.status, "active")
-      )
-    );
-  if (!roles.length)
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "You don't hold a chapter leadership role.",
-    });
-  return {
-    member,
-    chapterId: member.homeChapterId,
-    roleKeys: roles.map(r => r.role),
-  };
-}
-
-/** A member of the officer's chapter — used to validate every target. */
-async function inChapter(memberId: number, chapterId: number) {
-  const m = (
-    await getDb()
-      .select()
-      .from(schema.members)
-      .where(eq(schema.members.id, memberId))
-      .limit(1)
-  ).at(0);
-  if (!m || m.homeChapterId !== chapterId)
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: "That member isn't in your chapter.",
-    });
-  return m;
-}
-
-export const officerRouter = createRouter({
+const officerCoreRouter = createRouter({
   /* Console overview: roster with mentor/onboarding status + learnings. */
   overview: authedQuery.query(async ({ ctx }) => {
     const { chapterId, roleKeys, member } = await requireOfficer(ctx.user.id);
@@ -505,3 +455,9 @@ export const officerRouter = createRouter({
       return decideChange(ctx.user, input.id, input.decision, input.note);
     }),
 });
+
+export const officerRouter = mergeRouters(
+  officerCoreRouter,
+  officerGovernanceRouter,
+  officerFinanceRouter
+);
