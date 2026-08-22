@@ -18,7 +18,11 @@ export const officerFinanceRouter = createRouter({
     const db = getDb();
     const [budgetRows, expenses] = await Promise.all([
       db
-        .select({ kind: schema.chapterBudgets.kind, amount: schema.chapterBudgets.amount, status: schema.chapterBudgets.status })
+        .select({
+          kind: schema.chapterBudgets.kind,
+          amount: schema.chapterBudgets.amount,
+          status: schema.chapterBudgets.status,
+        })
         .from(schema.chapterBudgets)
         .where(eq(schema.chapterBudgets.chapterId, chapterId)),
       listExpenses({ chapterId, limit: 100 }),

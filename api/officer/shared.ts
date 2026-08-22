@@ -69,11 +69,9 @@ export async function inChapter(memberId: number, chapterId: number) {
 }
 
 /** Verify a chapter-scoped resource belongs to the officer's chapter. */
-export async function assertChapterOwner<T extends { chapterId: number | null }>(
-  row: T | undefined,
-  chapterId: number,
-  label: string
-): Promise<T> {
+export async function assertChapterOwner<
+  T extends { chapterId: number | null },
+>(row: T | undefined, chapterId: number, label: string): Promise<T> {
   if (!row || row.chapterId !== chapterId)
     throw new TRPCError({
       code: "FORBIDDEN",

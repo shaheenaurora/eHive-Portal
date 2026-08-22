@@ -31,6 +31,7 @@ import {
   periodLabel,
   type Frequency,
 } from "@contracts/cadence";
+import ChapterOfficer from "./ChapterOfficer";
 
 const CADENCE_STATUS_COLOR: Record<string, "green" | "gold" | "red" | "grey"> =
   {
@@ -936,6 +937,8 @@ export default function Chapter() {
                   Post to chapter
                 </button>
               </div>
+
+              <ChapterOfficer />
             </>
           )}
 

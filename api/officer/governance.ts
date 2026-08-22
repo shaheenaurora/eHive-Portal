@@ -7,7 +7,10 @@ import { getDb } from "../queries/connection";
 import { createRouter, authedQuery } from "../middleware";
 import { audit } from "../lib/audit";
 import { notify } from "../queries/circle";
-import { MEETING_AGENDA_TEMPLATES, seatToChapterRole } from "@contracts/constants";
+import {
+  MEETING_AGENDA_TEMPLATES,
+  seatToChapterRole,
+} from "@contracts/constants";
 import { requireOfficer, assertChapterOwner } from "./shared";
 
 export const officerGovernanceRouter = createRouter({
@@ -495,7 +498,10 @@ export const officerGovernanceRouter = createRouter({
       const patch: Partial<typeof schema.meetings.$inferInsert> = { ...rest };
       if (scheduledAt !== undefined)
         patch.scheduledAt = scheduledAt ? new Date(scheduledAt) : null;
-      await db.update(schema.meetings).set(patch).where(eq(schema.meetings.id, id));
+      await db
+        .update(schema.meetings)
+        .set(patch)
+        .where(eq(schema.meetings.id, id));
       await audit(ctx.user, "officer.meeting.save", {
         type: "meeting",
         id,
