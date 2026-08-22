@@ -27,6 +27,7 @@ import { requireOfficer, inChapter } from "./officer/shared";
 import { officerGovernanceRouter } from "./officer/governance";
 import { officerFinanceRouter } from "./officer/finance";
 import { officerEventsRouter } from "./officer/events";
+import { officerRegionalRouter } from "./officer/regional";
 
 const officerCoreRouter = createRouter({
   /* Console overview: roster with mentor/onboarding status + learnings. */
@@ -461,5 +462,6 @@ export const officerRouter = mergeRouters(
   officerCoreRouter,
   officerGovernanceRouter,
   officerFinanceRouter,
-  officerEventsRouter
+  officerEventsRouter,
+  officerRegionalRouter
 );
