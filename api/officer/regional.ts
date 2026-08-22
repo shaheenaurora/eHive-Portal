@@ -14,9 +14,18 @@ export type RegionalScope = {
   role: string;
 };
 
+/** Regional director roles that grant access to the regional officer router. */
+export const REGIONAL_DIRECTOR_ROLES = [
+  "zone_director",
+  "region_director",
+  "country_director",
+  "national_director",
+] as const;
+
 /**
  * Resolve the caller's regional/zone officer context from unit_roles.
  * A member may hold multiple regional hats; we return the first active one.
+ * Access is granted only when the held role is a recognised regional director role.
  */
 export async function requireRegionalOfficer(
   userId: number
@@ -24,17 +33,17 @@ export async function requireRegionalOfficer(
   const member = await getMemberByUserId(userId);
   if (!member)
     throw new TRPCError({ code: "FORBIDDEN", message: "No membership" });
-  const row = (
-    await getDb()
-      .select()
-      .from(schema.unitRoles)
-      .where(eq(schema.unitRoles.memberId, member.id))
-      .limit(1)
-  ).at(0);
+  const rows = await getDb()
+    .select()
+    .from(schema.unitRoles)
+    .where(eq(schema.unitRoles.memberId, member.id));
+  const row = rows.find(r =>
+    (REGIONAL_DIRECTOR_ROLES as readonly string[]).includes(r.role)
+  );
   if (!row)
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: "You don't hold a regional role.",
+      message: "You don't hold a regional director role.",
     });
   return {
     member,

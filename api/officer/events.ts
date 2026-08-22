@@ -6,7 +6,7 @@ import { getDb } from "../queries/connection";
 import { createRouter, authedQuery } from "../middleware";
 import { audit } from "../lib/audit";
 import { EVENT_KIND, AUDIENCE, TIER, resolveAudience } from "../admin/shared";
-import { requireOfficer, assertChapterOwner } from "./shared";
+import { requireOfficer, assertChapterOwner, assertRoles } from "./shared";
 
 export const officerEventsRouter = createRouter({
   events: authedQuery.query(async ({ ctx }) => {
@@ -61,7 +61,12 @@ export const officerEventsRouter = createRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { chapterId } = await requireOfficer(ctx.user.id);
+      const { chapterId, roleKeys } = await requireOfficer(ctx.user.id);
+      assertRoles(
+        roleKeys,
+        ["vp_programming", "president"],
+        "Event management requires VP Programming or President."
+      );
       const { audience, audienceTiers, ...rest } = input;
       const scope = resolveAudience(audience, audienceTiers);
       const res = await getDb()
@@ -92,7 +97,12 @@ export const officerEventsRouter = createRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { chapterId } = await requireOfficer(ctx.user.id);
+      const { chapterId, roleKeys } = await requireOfficer(ctx.user.id);
+      assertRoles(
+        roleKeys,
+        ["vp_programming", "president"],
+        "Event management requires VP Programming or President."
+      );
       const db = getDb();
       const { id, audience, audienceTiers, ...patch } = input;
       await assertChapterOwner(
@@ -124,7 +134,12 @@ export const officerEventsRouter = createRouter({
   archiveEvent: authedQuery
     .input(z.object({ id: z.number().int().positive() }))
     .mutation(async ({ ctx, input }) => {
-      const { chapterId } = await requireOfficer(ctx.user.id);
+      const { chapterId, roleKeys } = await requireOfficer(ctx.user.id);
+      assertRoles(
+        roleKeys,
+        ["vp_programming", "president"],
+        "Event management requires VP Programming or President."
+      );
       const db = getDb();
       const ev = await assertChapterOwner(
         (
@@ -201,7 +216,12 @@ export const officerEventsRouter = createRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { chapterId } = await requireOfficer(ctx.user.id);
+      const { chapterId, roleKeys } = await requireOfficer(ctx.user.id);
+      assertRoles(
+        roleKeys,
+        ["vp_programming", "president"],
+        "Event management requires VP Programming or President."
+      );
       const db = getDb();
       await assertChapterOwner(
         (

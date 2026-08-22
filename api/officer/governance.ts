@@ -11,7 +11,7 @@ import {
   MEETING_AGENDA_TEMPLATES,
   seatToChapterRole,
 } from "@contracts/constants";
-import { requireOfficer, assertChapterOwner } from "./shared";
+import { requireOfficer, assertChapterOwner, assertRoles } from "./shared";
 
 export const officerGovernanceRouter = createRouter({
   /* ------------------------------- elections ------------------------------- */
@@ -88,7 +88,12 @@ export const officerGovernanceRouter = createRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { chapterId } = await requireOfficer(ctx.user.id);
+      const { chapterId, roleKeys } = await requireOfficer(ctx.user.id);
+      assertRoles(
+        roleKeys,
+        ["secretary", "president"],
+        "Governance actions require Secretary or President."
+      );
       const db = getDb();
       const { id: inputId, ...vals } = input;
       let id = inputId;
@@ -136,7 +141,12 @@ export const officerGovernanceRouter = createRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { chapterId } = await requireOfficer(ctx.user.id);
+      const { chapterId, roleKeys } = await requireOfficer(ctx.user.id);
+      assertRoles(
+        roleKeys,
+        ["secretary", "president"],
+        "Governance actions require Secretary or President."
+      );
       const db = getDb();
       const e = await assertChapterOwner(
         (
@@ -328,7 +338,12 @@ export const officerGovernanceRouter = createRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { chapterId } = await requireOfficer(ctx.user.id);
+      const { chapterId, roleKeys } = await requireOfficer(ctx.user.id);
+      assertRoles(
+        roleKeys,
+        ["secretary", "president"],
+        "Governance actions require Secretary or President."
+      );
       const db = getDb();
       const { id: inputId, ...vals } = input;
       let id = inputId;
@@ -371,7 +386,12 @@ export const officerGovernanceRouter = createRouter({
   closeMotion: authedQuery
     .input(z.object({ id: z.number().int().positive() }))
     .mutation(async ({ ctx, input }) => {
-      const { chapterId } = await requireOfficer(ctx.user.id);
+      const { chapterId, roleKeys } = await requireOfficer(ctx.user.id);
+      assertRoles(
+        roleKeys,
+        ["secretary", "president"],
+        "Governance actions require Secretary or President."
+      );
       const db = getDb();
       const mo = await assertChapterOwner(
         (
@@ -451,7 +471,12 @@ export const officerGovernanceRouter = createRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { chapterId } = await requireOfficer(ctx.user.id);
+      const { chapterId, roleKeys } = await requireOfficer(ctx.user.id);
+      assertRoles(
+        roleKeys,
+        ["secretary", "president"],
+        "Governance actions require Secretary or President."
+      );
       const db = getDb();
       const res = await db.insert(schema.meetings).values({
         chapterId,
@@ -481,7 +506,12 @@ export const officerGovernanceRouter = createRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { chapterId } = await requireOfficer(ctx.user.id);
+      const { chapterId, roleKeys } = await requireOfficer(ctx.user.id);
+      assertRoles(
+        roleKeys,
+        ["secretary", "president"],
+        "Governance actions require Secretary or President."
+      );
       const db = getDb();
       const { id, scheduledAt, ...rest } = input;
       await assertChapterOwner(
@@ -523,7 +553,12 @@ export const officerGovernanceRouter = createRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { chapterId } = await requireOfficer(ctx.user.id);
+      const { chapterId, roleKeys } = await requireOfficer(ctx.user.id);
+      assertRoles(
+        roleKeys,
+        ["secretary", "president"],
+        "Governance actions require Secretary or President."
+      );
       const db = getDb();
       await assertChapterOwner(
         (

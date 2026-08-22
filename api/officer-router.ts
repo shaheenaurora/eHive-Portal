@@ -23,7 +23,7 @@ import {
 } from "./queries/member-admin";
 import { CADENCE_STATUSES } from "@contracts/cadence";
 import { ROLE_ONBOARDING_STEPS } from "@contracts/constants";
-import { requireOfficer, inChapter } from "./officer/shared";
+import { requireOfficer, inChapter, assertRoles } from "./officer/shared";
 import { officerGovernanceRouter } from "./officer/governance";
 import { officerFinanceRouter } from "./officer/finance";
 import { officerEventsRouter } from "./officer/events";
@@ -174,7 +174,12 @@ const officerCoreRouter = createRouter({
   signupCandidates: authedQuery
     .input(z.object({ q: z.string().max(120).optional() }))
     .query(async ({ ctx, input }) => {
-      await requireOfficer(ctx.user.id);
+      const { roleKeys } = await requireOfficer(ctx.user.id);
+      assertRoles(
+        roleKeys,
+        ["vp_membership", "president"],
+        "Membership actions require VP Membership or President."
+      );
       const db = getDb();
       const conds = [
         eq(schema.members.status, "active"),
@@ -206,7 +211,12 @@ const officerCoreRouter = createRouter({
   signupMember: authedQuery
     .input(z.object({ memberId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      const { chapterId } = await requireOfficer(ctx.user.id);
+      const { chapterId, roleKeys } = await requireOfficer(ctx.user.id);
+      assertRoles(
+        roleKeys,
+        ["vp_membership", "president"],
+        "Membership actions require VP Membership or President."
+      );
       const db = getDb();
       const m = (
         await db
@@ -239,7 +249,12 @@ const officerCoreRouter = createRouter({
   assignMentor: authedQuery
     .input(z.object({ menteeId: z.number(), mentorId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      const { chapterId } = await requireOfficer(ctx.user.id);
+      const { chapterId, roleKeys } = await requireOfficer(ctx.user.id);
+      assertRoles(
+        roleKeys,
+        ["vp_learning", "president"],
+        "Learning actions require VP Learning or President."
+      );
       if (input.menteeId === input.mentorId)
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -292,7 +307,12 @@ const officerCoreRouter = createRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { member, chapterId } = await requireOfficer(ctx.user.id);
+      const { member, chapterId, roleKeys } = await requireOfficer(ctx.user.id);
+      assertRoles(
+        roleKeys,
+        ["vp_learning", "president"],
+        "Learning actions require VP Learning or President."
+      );
       await getDb().insert(schema.chapterPosts).values({
         chapterId,
         authorMemberId: member.id,
@@ -306,7 +326,12 @@ const officerCoreRouter = createRouter({
   deleteLearning: authedQuery
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      const { chapterId } = await requireOfficer(ctx.user.id);
+      const { chapterId, roleKeys } = await requireOfficer(ctx.user.id);
+      assertRoles(
+        roleKeys,
+        ["vp_learning", "president"],
+        "Learning actions require VP Learning or President."
+      );
       await getDb()
         .delete(schema.chapterPosts)
         .where(
@@ -320,7 +345,12 @@ const officerCoreRouter = createRouter({
 
   /* Set the chapter's operating rhythm up to standard (the recurring cadences). */
   setupCadences: authedQuery.mutation(async ({ ctx }) => {
-    const { chapterId } = await requireOfficer(ctx.user.id);
+    const { chapterId, roleKeys } = await requireOfficer(ctx.user.id);
+    assertRoles(
+      roleKeys,
+      ["president", "secretary"],
+      "Cadence actions require President or Secretary."
+    );
     const added = await ensureCadenceTemplates(chapterId);
     return { ok: true, added };
   }),
@@ -335,7 +365,12 @@ const officerCoreRouter = createRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { member, chapterId } = await requireOfficer(ctx.user.id);
+      const { member, chapterId, roleKeys } = await requireOfficer(ctx.user.id);
+      assertRoles(
+        roleKeys,
+        ["president", "secretary"],
+        "Cadence actions require President or Secretary."
+      );
       const cad = (
         await getDb()
           .select()
@@ -361,7 +396,12 @@ const officerCoreRouter = createRouter({
   reopenCadence: authedQuery
     .input(z.object({ cadenceId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      const { chapterId } = await requireOfficer(ctx.user.id);
+      const { chapterId, roleKeys } = await requireOfficer(ctx.user.id);
+      assertRoles(
+        roleKeys,
+        ["president", "secretary"],
+        "Cadence actions require President or Secretary."
+      );
       const cad = (
         await getDb()
           .select()
@@ -401,7 +441,12 @@ const officerCoreRouter = createRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { chapterId } = await requireOfficer(ctx.user.id);
+      const { chapterId, roleKeys } = await requireOfficer(ctx.user.id);
+      assertRoles(
+        roleKeys,
+        ["vp_membership", "president"],
+        "Membership actions require VP Membership or President."
+      );
       const { memberId, ...patch } = input;
       await inChapter(memberId, chapterId);
       return applyProfileEdit(ctx.user, memberId, patch, "officer");
@@ -427,7 +472,12 @@ const officerCoreRouter = createRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { chapterId } = await requireOfficer(ctx.user.id);
+      const { chapterId, roleKeys } = await requireOfficer(ctx.user.id);
+      assertRoles(
+        roleKeys,
+        ["vp_membership", "president"],
+        "Membership actions require VP Membership or President."
+      );
       await inChapter(input.memberId, chapterId);
       return proposeChange(ctx.user, input.memberId, {
         category: input.category,
@@ -453,7 +503,12 @@ const officerCoreRouter = createRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      await requireOfficer(ctx.user.id);
+      const { roleKeys } = await requireOfficer(ctx.user.id);
+      assertRoles(
+        roleKeys,
+        ["vp_membership", "president"],
+        "Membership actions require VP Membership or President."
+      );
       return decideChange(ctx.user, input.id, input.decision, input.note);
     }),
 });
