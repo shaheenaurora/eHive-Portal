@@ -1,0 +1,2 @@
+ALTER TABLE `events` ADD `chapterId` bigint unsigned;--> statement-breakpoint
+ALTER TABLE `events` ADD CONSTRAINT `events_chapterId_chapters_id_fk` FOREIGN KEY (`chapterId`) REFERENCES `chapters`(`id`) ON DELETE set null ON UPDATE no action;
