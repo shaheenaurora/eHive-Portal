@@ -271,7 +271,7 @@ export async function recordManualPayment(
     userId: number;
     purpose: string;
     tier?: string | null;
-    amountAed: number;
+    amount: number;
     note?: string;
     extendRenewal?: boolean;
     /** Currency the amount is denominated in (default base/AED). */
@@ -319,7 +319,7 @@ export async function recordManualPayment(
     tier
   ) {
     const expected = TIER_PRICE_AED[tier as keyof typeof TIER_PRICE_AED];
-    if (expected != null && Math.abs(input.amountAed - expected) > 0.01) {
+    if (expected != null && Math.abs(input.amount - expected) > 0.01) {
       throw new TRPCError({
         code: "BAD_REQUEST",
         message: `Amount does not match the ${tier} tier price of AED ${expected}.`,
@@ -327,7 +327,7 @@ export async function recordManualPayment(
     }
   }
 
-  const amount = Math.round(input.amountAed * 100); // AED → fils
+  const amountMinor = Math.round(input.amount * 100); // minor units of the specified currency
   const now = new Date();
   const { paymentId, invoiceNumber } = await withTransaction(async tx => {
     const res = await tx.insert(schema.paymentRecords).values({
@@ -336,7 +336,7 @@ export async function recordManualPayment(
       providerRef: null,
       purpose,
       tier: (tier ?? null) as never,
-      amount,
+      amount: amountMinor,
       currency,
       status: "paid",
       paidAt: now,
@@ -352,7 +352,7 @@ export async function recordManualPayment(
         userId: input.userId,
         purpose,
         tier: tier ?? null,
-        amount,
+        amount: amountMinor,
         currency,
         note: input.note ?? null,
         paidAt: now,
@@ -373,13 +373,14 @@ export async function recordManualPayment(
   await audit(actor, "finance.manual_payment", {
     type: "payment",
     id: paymentId,
-    detail: `AED ${input.amountAed} · ${input.purpose} · ${invoiceNumber}`,
+    detail: `${currency.toUpperCase()} ${input.amount} · ${input.purpose} · ${invoiceNumber}`,
   });
   sendInvoiceReady({
     email: user.email,
     name: user.name,
     invoiceNumber,
-    amountAed: input.amountAed,
+    amount: input.amount,
+    currency,
   }).catch(() => {
     /* non-fatal */
   });

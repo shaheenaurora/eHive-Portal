@@ -180,16 +180,18 @@ export async function sendInvoiceReady(input: {
   email: string;
   name: string | null;
   invoiceNumber: string;
-  amountAed: number;
+  amount: number;
+  currency: string;
 }): Promise<{ ok: boolean; error?: string }> {
   if (!mailEnabled()) {
     return { ok: false, error: "Email is not configured." };
   }
   const firstName = input.name ? esc(input.name.split(" ")[0]) : "";
   const amount =
-    "AED " +
-    input.amountAed.toLocaleString("en-AE", {
-      minimumFractionDigits: Number.isInteger(input.amountAed) ? 0 : 2,
+    input.currency.toUpperCase() +
+    " " +
+    input.amount.toLocaleString("en-AE", {
+      minimumFractionDigits: Number.isInteger(input.amount) ? 0 : 2,
       maximumFractionDigits: 2,
     });
   const body = shell(`

@@ -1079,7 +1079,7 @@ function ManualPaymentModal({
             userId: userId!,
             purpose,
             tier: (tier || null) as never,
-            amountAed: Number(amount),
+            amount: Number(amount),
             currency: currency as never,
             note: note || undefined,
             extendRenewal: purpose === "renewal" ? extend : false,

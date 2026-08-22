@@ -752,7 +752,8 @@ app.post("/api/payments/webhook", async c => {
           email: payer.email,
           name: payer.name,
           invoiceNumber: invoiceResult.invoiceNumber,
-          amountAed: record.amount / 100,
+          amount: record.amount / 100,
+          currency: record.currency,
         }).catch(() => {
           /* non-fatal */
         });

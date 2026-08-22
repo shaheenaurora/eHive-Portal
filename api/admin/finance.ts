@@ -188,7 +188,7 @@ export const financeRouter = createRouter({
           .enum(["horizon", "ascent", "vanguard", "zenith"])
           .nullable()
           .optional(),
-        amountAed: z.number().positive().max(1_000_000),
+        amount: z.number().positive().max(1_000_000),
         note: z.string().max(500).optional(),
         extendRenewal: z.boolean().optional(),
         currency: z.enum(CURRENCY_CODES as [string, ...string[]]).optional(),
