@@ -852,6 +852,12 @@ export const ADMIN_NAV: NavGroup[] = [
         icon: "◷",
         scope: "leads",
       },
+      {
+        to: "/admin/data-requests",
+        label: "Data Requests",
+        icon: "⏚",
+        scope: "finance",
+      },
       { to: "/admin/finance", label: "Finance", icon: "▦", scope: "finance" },
     ],
   },

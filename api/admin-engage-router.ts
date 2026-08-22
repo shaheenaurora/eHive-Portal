@@ -2912,7 +2912,10 @@ export const adminEngageRouter = createRouter({
       return { ok: true };
     }),
 
-  /* ---- PDPL data-subject requests (BRD 8.4) ---- */
+  /* ---- PDPL data-subject requests (BRD 8.4) ----
+     NOTE: the active fulfillment UI now uses admin.dataRequests.*
+     (api/admin/data-requests.ts). These legacy endpoints are kept for
+     backward compatibility but are superseded by the new router. ---- */
   dataRequestsAdmin: scopedAdmin("finance").query(async () => {
     const db = getDb();
     const rows = await db

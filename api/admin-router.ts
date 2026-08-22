@@ -1,4 +1,4 @@
-import { mergeRouters } from "./middleware";
+import { createRouter, mergeRouters } from "./middleware";
 import { systemRouter } from "./admin/system";
 import { membershipRouter } from "./admin/membership";
 import { communityRouter } from "./admin/community";
@@ -8,8 +8,9 @@ import { contentRouter } from "./admin/content";
 import { partnershipsRouter } from "./admin/partnerships";
 import { financeRouter } from "./admin/finance";
 import { memberSuccessRouter } from "./admin/member-success";
+import { adminDataRequestsRouter } from "./admin/data-requests";
 
-export const adminRouter = mergeRouters(
+const baseAdminRouter = mergeRouters(
   systemRouter,
   membershipRouter,
   communityRouter,
@@ -20,3 +21,8 @@ export const adminRouter = mergeRouters(
   financeRouter,
   memberSuccessRouter
 );
+
+export const adminRouter = createRouter({
+  ...baseAdminRouter._def.procedures,
+  dataRequests: adminDataRequestsRouter,
+});
