@@ -792,6 +792,7 @@ export const MEMBER_NAV: NavGroup[] = [
     label: "Circle",
     items: [
       { to: "/portal/chapter", label: "My Chapter", icon: "⌂" },
+      { to: "/portal/regional", label: "My Region", icon: "⧉" },
       { to: "/portal/governance", label: "Governance", icon: "§" },
       { to: "/portal/membership", label: "Membership", icon: "◈" },
       { to: "/portal/documents", label: "Documents", icon: "▦" },

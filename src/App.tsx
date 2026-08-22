@@ -22,6 +22,7 @@ const PodDetail = lazy(() => import("./pages/portal/PodDetail"));
 const Events = lazy(() => import("./pages/portal/Events"));
 const Connect = lazy(() => import("./pages/portal/Connect"));
 const Chapter = lazy(() => import("./pages/portal/Chapter"));
+const Regional = lazy(() => import("./pages/portal/Regional"));
 const Score = lazy(() => import("./pages/portal/Score"));
 const Frp = lazy(() => import("./pages/portal/Frp"));
 const Governance = lazy(() => import("./pages/portal/Governance"));
@@ -88,6 +89,7 @@ export default function App() {
           <Route path="/portal/events" element={<Events />} />
           <Route path="/portal/connect" element={<Connect />} />
           <Route path="/portal/chapter" element={<Chapter />} />
+          <Route path="/portal/regional" element={<Regional />} />
           <Route path="/portal/score" element={<Score />} />
           <Route path="/portal/frp" element={<Frp />} />
           <Route path="/portal/governance" element={<Governance />} />
