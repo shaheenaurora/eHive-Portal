@@ -11,6 +11,7 @@ import {
   uniqueIndex,
   json,
 } from "drizzle-orm/mysql-core";
+import type { AnyMySqlColumn } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
   id: serial("id").primaryKey(),
@@ -1157,7 +1158,9 @@ export const investorIntros = mysqlTable("investor_intros", {
 /* BRD 8.4 — PDPL data-subject requests (export / deletion) */
 export const dataRequests = mysqlTable("data_requests", {
   id: serial("id").primaryKey(),
-  memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+  memberId: bigint("memberId", { mode: "number", unsigned: true })
+    .notNull()
+    .references(() => members.id, { onDelete: "cascade" }),
   kind: mysqlEnum("kind", ["export", "deletion"]).notNull(),
   status: mysqlEnum("status", ["open", "done"]).notNull().default("open"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -1172,7 +1175,10 @@ export const orgUnits = mysqlTable("org_units", {
   level: mysqlEnum("level", ["zone", "region", "country"]).notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   code: varchar("code", { length: 24 }),
-  parentId: bigint("parentId", { mode: "number", unsigned: true }), // zone→region→country→null
+  parentId: bigint("parentId", { mode: "number", unsigned: true }).references(
+    (): AnyMySqlColumn => orgUnits.id,
+    { onDelete: "set null" }
+  ), // zone→region→country→null
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type OrgUnit = typeof orgUnits.$inferSelect;
@@ -1181,9 +1187,13 @@ export type OrgUnit = typeof orgUnits.$inferSelect;
    (ZO/RE/NA). Mirrors chapterRoles but keyed to an org unit. */
 export const unitRoles = mysqlTable("unit_roles", {
   id: serial("id").primaryKey(),
-  unitId: bigint("unitId", { mode: "number", unsigned: true }).notNull(),
+  unitId: bigint("unitId", { mode: "number", unsigned: true })
+    .notNull()
+    .references(() => orgUnits.id, { onDelete: "cascade" }),
   level: mysqlEnum("level", ["zone", "region", "country"]).notNull(),
-  memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+  memberId: bigint("memberId", { mode: "number", unsigned: true })
+    .notNull()
+    .references(() => members.id, { onDelete: "cascade" }),
   role: varchar("role", { length: 96 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -1193,7 +1203,9 @@ export const unitRoles = mysqlTable("unit_roles", {
    motions the council carries/defeats. Scoped to an org_unit. */
 export const councilMeetings = mysqlTable("council_meetings", {
   id: serial("id").primaryKey(),
-  unitId: bigint("unitId", { mode: "number", unsigned: true }).notNull(),
+  unitId: bigint("unitId", { mode: "number", unsigned: true })
+    .notNull()
+    .references(() => orgUnits.id, { onDelete: "cascade" }),
   title: varchar("title", { length: 255 }).notNull(),
   scheduledAt: timestamp("scheduledAt"),
   status: mysqlEnum("status", ["scheduled", "held", "cancelled"])
@@ -1205,8 +1217,13 @@ export const councilMeetings = mysqlTable("council_meetings", {
 });
 export const councilDecisions = mysqlTable("council_decisions", {
   id: serial("id").primaryKey(),
-  unitId: bigint("unitId", { mode: "number", unsigned: true }).notNull(),
-  meetingId: bigint("meetingId", { mode: "number", unsigned: true }), // null = standalone decision
+  unitId: bigint("unitId", { mode: "number", unsigned: true })
+    .notNull()
+    .references(() => orgUnits.id, { onDelete: "cascade" }),
+  meetingId: bigint("meetingId", { mode: "number", unsigned: true }).references(
+    () => councilMeetings.id,
+    { onDelete: "set null" }
+  ), // null = standalone decision
   title: varchar("title", { length: 255 }).notNull(),
   detail: text("detail"),
   status: mysqlEnum("status", ["proposed", "carried", "failed", "deferred"])
@@ -1246,20 +1263,22 @@ export const awardCycles = mysqlTable("award_cycles", {
 });
 export const awardNominations = mysqlTable("award_nominations", {
   id: serial("id").primaryKey(),
-  cycleId: bigint("cycleId", { mode: "number", unsigned: true }).notNull(),
+  cycleId: bigint("cycleId", { mode: "number", unsigned: true })
+    .notNull()
+    .references(() => awardCycles.id, { onDelete: "cascade" }),
   category: varchar("category", { length: 48 }).notNull(), // AWARD_CATEGORIES key
   nomineeMemberId: bigint("nomineeMemberId", {
     mode: "number",
     unsigned: true,
-  }), // member subject
+  }).references(() => members.id, { onDelete: "set null" }), // member subject
   nomineeChapterId: bigint("nomineeChapterId", {
     mode: "number",
     unsigned: true,
-  }), // chapter subject
+  }).references(() => chapters.id, { onDelete: "set null" }), // chapter subject
   nominatedByMemberId: bigint("nominatedByMemberId", {
     mode: "number",
     unsigned: true,
-  }), // null = admin-entered
+  }).references(() => members.id, { onDelete: "set null" }), // null = admin-entered
   citation: text("citation"),
   status: mysqlEnum("status", [
     "nominated",
@@ -1274,7 +1293,7 @@ export const awardNominations = mysqlTable("award_nominations", {
   ratifiedByUserId: bigint("ratifiedByUserId", {
     mode: "number",
     unsigned: true,
-  }),
+  }).references(() => users.id, { onDelete: "set null" }),
   ratifiedAt: timestamp("ratifiedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -1287,12 +1306,16 @@ export const awardJudges = mysqlTable(
   "award_judges",
   {
     id: serial("id").primaryKey(),
-    cycleId: bigint("cycleId", { mode: "number", unsigned: true }).notNull(),
-    userId: bigint("userId", { mode: "number", unsigned: true }).notNull(), // the judge (staff/officer)
+    cycleId: bigint("cycleId", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => awardCycles.id, { onDelete: "cascade" }),
+    userId: bigint("userId", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }), // the judge (staff/officer)
     assignedByUserId: bigint("assignedByUserId", {
       mode: "number",
       unsigned: true,
-    }),
+    }).references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   t => [uniqueIndex("award_judges_cycle_user_unique").on(t.cycleId, t.userId)]
@@ -1302,15 +1325,21 @@ export const awardScores = mysqlTable(
   "award_scores",
   {
     id: serial("id").primaryKey(),
-    cycleId: bigint("cycleId", { mode: "number", unsigned: true }).notNull(),
+    cycleId: bigint("cycleId", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => awardCycles.id, { onDelete: "cascade" }),
     nominationId: bigint("nominationId", {
       mode: "number",
       unsigned: true,
-    }).notNull(),
+    })
+      .notNull()
+      .references(() => awardNominations.id, { onDelete: "cascade" }),
     judgeUserId: bigint("judgeUserId", {
       mode: "number",
       unsigned: true,
-    }).notNull(),
+    })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     // Per-criterion scores (0–100) as JSON [{ key, value }], and the rubric-
     // weighted total (0–100) computed at submit time.
     scores: text("scores").notNull(),
@@ -1338,7 +1367,10 @@ export const awardRecords = mysqlTable(
   "award_records",
   {
     id: serial("id").primaryKey(),
-    cycleId: bigint("cycleId", { mode: "number", unsigned: true }),
+    cycleId: bigint("cycleId", { mode: "number", unsigned: true }).references(
+      () => awardCycles.id,
+      { onDelete: "set null" }
+    ),
     awardKey: varchar("awardKey", { length: 64 }).notNull(), // stable award identifier
     label: varchar("label", { length: 160 }).notNull(),
     level: mysqlEnum("level", [
@@ -1350,15 +1382,21 @@ export const awardRecords = mysqlTable(
     ])
       .notNull()
       .default("network"),
-    memberId: bigint("memberId", { mode: "number", unsigned: true }),
-    chapterId: bigint("chapterId", { mode: "number", unsigned: true }),
+    memberId: bigint("memberId", { mode: "number", unsigned: true }).references(
+      () => members.id,
+      { onDelete: "set null" }
+    ),
+    chapterId: bigint("chapterId", {
+      mode: "number",
+      unsigned: true,
+    }).references(() => chapters.id, { onDelete: "set null" }),
     source: mysqlEnum("source", ["auto", "panel", "vote"]).notNull(),
     score: int("score"), // winning score where applicable
     points: int("points").notNull().default(0), // recognition points awarded
     conferredByUserId: bigint("conferredByUserId", {
       mode: "number",
       unsigned: true,
-    }),
+    }).references(() => users.id, { onDelete: "set null" }),
     conferredAt: timestamp("conferredAt").defaultNow().notNull(),
     note: varchar("note", { length: 500 }),
   },
@@ -1375,15 +1413,21 @@ export const awardVotes = mysqlTable(
   "award_votes",
   {
     id: serial("id").primaryKey(),
-    cycleId: bigint("cycleId", { mode: "number", unsigned: true }).notNull(),
+    cycleId: bigint("cycleId", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => awardCycles.id, { onDelete: "cascade" }),
     nominationId: bigint("nominationId", {
       mode: "number",
       unsigned: true,
-    }).notNull(),
+    })
+      .notNull()
+      .references(() => awardNominations.id, { onDelete: "cascade" }),
     voterMemberId: bigint("voterMemberId", {
       mode: "number",
       unsigned: true,
-    }).notNull(),
+    })
+      .notNull()
+      .references(() => members.id, { onDelete: "cascade" }),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   t => [
@@ -1403,10 +1447,18 @@ export const awardIntegrityFlags = mysqlTable(
   "award_integrity_flags",
   {
     id: serial("id").primaryKey(),
-    cycleId: bigint("cycleId", { mode: "number", unsigned: true }).notNull(),
+    cycleId: bigint("cycleId", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => awardCycles.id, { onDelete: "cascade" }),
     // Optional subjects — a nomination and/or a member the flag concerns.
-    nominationId: bigint("nominationId", { mode: "number", unsigned: true }),
-    memberId: bigint("memberId", { mode: "number", unsigned: true }),
+    nominationId: bigint("nominationId", {
+      mode: "number",
+      unsigned: true,
+    }).references(() => awardNominations.id, { onDelete: "set null" }),
+    memberId: bigint("memberId", { mode: "number", unsigned: true }).references(
+      () => members.id,
+      { onDelete: "set null" }
+    ),
     kind: mysqlEnum("kind", [
       "conflict", // officer self-dealing / connected judge
       "reciprocity", // mutual-crediting collusion
@@ -1425,11 +1477,11 @@ export const awardIntegrityFlags = mysqlTable(
     raisedByUserId: bigint("raisedByUserId", {
       mode: "number",
       unsigned: true,
-    }),
+    }).references(() => users.id, { onDelete: "set null" }),
     resolvedByUserId: bigint("resolvedByUserId", {
       mode: "number",
       unsigned: true,
-    }),
+    }).references(() => users.id, { onDelete: "set null" }),
     resolutionNote: varchar("resolutionNote", { length: 500 }),
     resolvedAt: timestamp("resolvedAt"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -1452,7 +1504,10 @@ export type UnitRole = typeof unitRoles.$inferSelect;
 export const chapters = mysqlTable("chapters", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
-  zoneId: bigint("zoneId", { mode: "number", unsigned: true }), // the Zone this chapter rolls up to
+  zoneId: bigint("zoneId", { mode: "number", unsigned: true }).references(
+    () => orgUnits.id,
+    { onDelete: "set null" }
+  ), // the Zone this chapter rolls up to
   code: varchar("code", { length: 24 }), // short chapter code, e.g. "AE-DXB-01"
   country: varchar("country", { length: 128 }),
   region: varchar("region", { length: 128 }), // operating region (e.g. "Gulf", "UAE")
@@ -1481,12 +1536,19 @@ export const chapterTransfers = mysqlTable(
   "chapter_transfers",
   {
     id: serial("id").primaryKey(),
-    memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
-    fromChapterId: bigint("fromChapterId", { mode: "number", unsigned: true }),
+    memberId: bigint("memberId", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => members.id, { onDelete: "cascade" }),
+    fromChapterId: bigint("fromChapterId", {
+      mode: "number",
+      unsigned: true,
+    }).references(() => chapters.id, { onDelete: "set null" }),
     toChapterId: bigint("toChapterId", {
       mode: "number",
       unsigned: true,
-    }).notNull(),
+    })
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
     note: varchar("note", { length: 500 }),
     status: mysqlEnum("status", ["pending", "approved", "rejected"])
       .notNull()
@@ -1510,7 +1572,9 @@ export const cadences = mysqlTable(
     chapterId: bigint("chapterId", {
       mode: "number",
       unsigned: true,
-    }).notNull(),
+    })
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
     type: varchar("type", { length: 48 }).notNull(), // CADENCE_TEMPLATES type
     title: varchar("title", { length: 128 }).notNull(),
     frequency: varchar("frequency", { length: 16 }).notNull(), // weekly | biweekly | ...
@@ -1531,11 +1595,16 @@ export const cadenceLog = mysqlTable(
     cadenceId: bigint("cadenceId", {
       mode: "number",
       unsigned: true,
-    }).notNull(),
+    })
+      .notNull()
+      .references(() => cadences.id, { onDelete: "cascade" }),
     periodKey: varchar("periodKey", { length: 16 }).notNull(),
     status: mysqlEnum("status", ["kept", "rescheduled", "missed"]).notNull(),
     note: varchar("note", { length: 500 }),
-    actorMemberId: bigint("actorMemberId", { mode: "number", unsigned: true }),
+    actorMemberId: bigint("actorMemberId", {
+      mode: "number",
+      unsigned: true,
+    }).references(() => members.id, { onDelete: "set null" }),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   t => [index("ix_cadencelog_cadence_period").on(t.cadenceId, t.periodKey)]
@@ -1550,7 +1619,9 @@ export const healthSnapshots = mysqlTable(
     chapterId: bigint("chapterId", {
       mode: "number",
       unsigned: true,
-    }).notNull(),
+    })
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
     total: int("total").notNull(),
     retention: int("retention").notNull(),
     engagement: int("engagement").notNull(),
@@ -1573,11 +1644,15 @@ export const chapterPosts = mysqlTable(
     chapterId: bigint("chapterId", {
       mode: "number",
       unsigned: true,
-    }).notNull(),
+    })
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
     authorMemberId: bigint("authorMemberId", {
       mode: "number",
       unsigned: true,
-    }).notNull(),
+    })
+      .notNull()
+      .references(() => members.id, { onDelete: "cascade" }),
     title: varchar("title", { length: 255 }).notNull(),
     body: text("body"),
     url: varchar("url", { length: 512 }),
@@ -1596,12 +1671,19 @@ export const chapterRoles = mysqlTable(
     chapterId: bigint("chapterId", {
       mode: "number",
       unsigned: true,
-    }).notNull(),
-    memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+    })
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
+    memberId: bigint("memberId", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => members.id, { onDelete: "cascade" }),
     role: varchar("role", { length: 64 }).notNull(), // CHAPTER_ROLES key, or "other"
     title: varchar("title", { length: 128 }), // custom title when role = "other"
     responsibilities: text("responsibilities"), // optional override of the default
-    electionId: bigint("electionId", { mode: "number", unsigned: true }), // set when elected
+    electionId: bigint("electionId", {
+      mode: "number",
+      unsigned: true,
+    }).references(() => elections.id, { onDelete: "set null" }), // set when elected
     termStart: timestamp("termStart"),
     termEnd: timestamp("termEnd"),
     onboardingMask: int("onboardingMask").notNull().default(0), // ROLE_ONBOARDING_STEPS progress
@@ -1626,7 +1708,9 @@ export const elections = mysqlTable(
     chapterId: bigint("chapterId", {
       mode: "number",
       unsigned: true,
-    }).notNull(),
+    })
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
     title: varchar("title", { length: 255 }).notNull(),
     seat: varchar("seat", { length: 128 }).notNull(),
     status: mysqlEnum("status", ["open", "voting", "closed"])
@@ -1648,8 +1732,12 @@ export const candidates = mysqlTable(
     electionId: bigint("electionId", {
       mode: "number",
       unsigned: true,
-    }).notNull(),
-    memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+    })
+      .notNull()
+      .references(() => elections.id, { onDelete: "cascade" }),
+    memberId: bigint("memberId", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => members.id, { onDelete: "cascade" }),
     statement: varchar("statement", { length: 1000 }),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
@@ -1661,11 +1749,15 @@ export const ballots = mysqlTable("ballots", {
   electionId: bigint("electionId", {
     mode: "number",
     unsigned: true,
-  }).notNull(),
+  })
+    .notNull()
+    .references(() => elections.id, { onDelete: "cascade" }),
   candidateId: bigint("candidateId", {
     mode: "number",
     unsigned: true,
-  }).notNull(),
+  })
+    .notNull()
+    .references(() => candidates.id, { onDelete: "cascade" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -1676,8 +1768,12 @@ export const ballotRoll = mysqlTable(
     electionId: bigint("electionId", {
       mode: "number",
       unsigned: true,
-    }).notNull(),
-    memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(), // voted — not how
+    })
+      .notNull()
+      .references(() => elections.id, { onDelete: "cascade" }),
+    memberId: bigint("memberId", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => members.id, { onDelete: "cascade" }), // voted — not how
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   t => [index("ix_ballotroll_election_member").on(t.electionId, t.memberId)]
@@ -1691,7 +1787,9 @@ export const motions = mysqlTable(
     chapterId: bigint("chapterId", {
       mode: "number",
       unsigned: true,
-    }).notNull(),
+    })
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
     title: varchar("title", { length: 255 }).notNull(),
     body: text("body"),
     status: mysqlEnum("status", ["open", "passed", "rejected"])
@@ -1707,8 +1805,12 @@ export const motionVotes = mysqlTable(
   "motion_votes",
   {
     id: serial("id").primaryKey(),
-    motionId: bigint("motionId", { mode: "number", unsigned: true }).notNull(),
-    memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+    motionId: bigint("motionId", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => motions.id, { onDelete: "cascade" }),
+    memberId: bigint("memberId", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => members.id, { onDelete: "cascade" }),
     choice: mysqlEnum("choice", ["yes", "no", "abstain"]).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
@@ -1718,7 +1820,9 @@ export const motionVotes = mysqlTable(
 /* BRD 6.7 — chapter budgets: allocations, sponsorships, spend approvals */
 export const chapterBudgets = mysqlTable("chapter_budgets", {
   id: serial("id").primaryKey(),
-  chapterId: bigint("chapterId", { mode: "number", unsigned: true }).notNull(),
+  chapterId: bigint("chapterId", { mode: "number", unsigned: true })
+    .notNull()
+    .references(() => chapters.id, { onDelete: "cascade" }),
   label: varchar("label", { length: 255 }).notNull(),
   kind: mysqlEnum("kind", ["allocation", "sponsorship", "spend"])
     .notNull()
@@ -1733,7 +1837,7 @@ export const chapterBudgets = mysqlTable("chapter_budgets", {
   approvedByUserId: bigint("approvedByUserId", {
     mode: "number",
     unsigned: true,
-  }), // who approved/rejected
+  }).references(() => users.id, { onDelete: "set null" }), // who approved/rejected
   note: text("note"), // decision note / justification
   // Optional receipt for a spend line — the file as a base64 data URL plus its
   // original name. Stored in-row (small receipts only); no external storage.
@@ -1756,7 +1860,7 @@ export const currencyRates = mysqlTable("currency_rates", {
   updatedByUserId: bigint("updatedByUserId", {
     mode: "number",
     unsigned: true,
-  }),
+  }).references(() => users.id, { onDelete: "set null" }),
   updatedAt: timestamp("updatedAt")
     .defaultNow()
     .notNull()
@@ -1781,12 +1885,15 @@ export const conductCases = mysqlTable("conduct_cases", {
   reporterMemberId: bigint("reporterMemberId", {
     mode: "number",
     unsigned: true,
-  }), // null = anonymous
+  }).references(() => members.id, { onDelete: "set null" }), // null = anonymous
   subjectMemberId: bigint("subjectMemberId", {
     mode: "number",
     unsigned: true,
-  }), // null = not a named member
-  chapterId: bigint("chapterId", { mode: "number", unsigned: true }),
+  }).references(() => members.id, { onDelete: "set null" }), // null = not a named member
+  chapterId: bigint("chapterId", { mode: "number", unsigned: true }).references(
+    () => chapters.id,
+    { onDelete: "set null" }
+  ),
   category: varchar("category", { length: 64 }).notNull(),
   severity: mysqlEnum("severity", ["low", "moderate", "high", "safeguarding"])
     .notNull()
@@ -1805,7 +1912,7 @@ export const conductCases = mysqlTable("conduct_cases", {
   handledByUserId: bigint("handledByUserId", {
     mode: "number",
     unsigned: true,
-  }),
+  }).references(() => users.id, { onDelete: "set null" }),
   resolution: text("resolution"),
   /* MOD-04 — appeal: the subject may challenge an action; reviewed one level up
      (never the original decider). none until the member appeals. */
@@ -1822,7 +1929,7 @@ export const conductCases = mysqlTable("conduct_cases", {
   appealReviewerUserId: bigint("appealReviewerUserId", {
     mode: "number",
     unsigned: true,
-  }),
+  }).references(() => users.id, { onDelete: "set null" }),
   appealOutcome: text("appealOutcome"),
   appealedAt: timestamp("appealedAt"),
   appealDecidedAt: timestamp("appealDecidedAt"),
@@ -1839,13 +1946,21 @@ export const conductCases = mysqlTable("conduct_cases", {
    flagged at-risk; at most one open case per member at a time. */
 export const memberSaveCases = mysqlTable("member_save_cases", {
   id: serial("id").primaryKey(),
-  memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
-  chapterId: bigint("chapterId", { mode: "number", unsigned: true }),
+  memberId: bigint("memberId", { mode: "number", unsigned: true })
+    .notNull()
+    .references(() => members.id, { onDelete: "cascade" }),
+  chapterId: bigint("chapterId", { mode: "number", unsigned: true }).references(
+    () => chapters.id,
+    { onDelete: "set null" }
+  ),
   status: mysqlEnum("status", ["open", "working", "saved", "lost"])
     .notNull()
     .default("open"),
   reason: varchar("reason", { length: 255 }).notNull(),
-  ownerUserId: bigint("ownerUserId", { mode: "number", unsigned: true }),
+  ownerUserId: bigint("ownerUserId", {
+    mode: "number",
+    unsigned: true,
+  }).references(() => users.id, { onDelete: "set null" }),
   stepsMask: int("stepsMask").notNull().default(0),
   notes: text("notes"),
   resolution: text("resolution"),
@@ -1862,7 +1977,9 @@ export type ConductCase = typeof conductCases.$inferSelect;
    (pre-loaded from the manual templates), attendance and minutes. */
 export const meetings = mysqlTable("meetings", {
   id: serial("id").primaryKey(),
-  chapterId: bigint("chapterId", { mode: "number", unsigned: true }).notNull(),
+  chapterId: bigint("chapterId", { mode: "number", unsigned: true })
+    .notNull()
+    .references(() => chapters.id, { onDelete: "cascade" }),
   kind: mysqlEnum("kind", [
     "chapter_meeting",
     "board_meeting",
@@ -1885,8 +2002,12 @@ export type Meeting = typeof meetings.$inferSelect;
 /* Attendance for a meeting (M3). One row per member per meeting. */
 export const meetingAttendance = mysqlTable("meeting_attendance", {
   id: serial("id").primaryKey(),
-  meetingId: bigint("meetingId", { mode: "number", unsigned: true }).notNull(),
-  memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+  meetingId: bigint("meetingId", { mode: "number", unsigned: true })
+    .notNull()
+    .references(() => meetings.id, { onDelete: "cascade" }),
+  memberId: bigint("memberId", { mode: "number", unsigned: true })
+    .notNull()
+    .references(() => members.id, { onDelete: "cascade" }),
   status: mysqlEnum("status", ["present", "absent", "excused"])
     .notNull()
     .default("present"),
@@ -1901,7 +2022,10 @@ export const prospects = mysqlTable("prospects", {
   email: varchar("email", { length: 320 }),
   phone: varchar("phone", { length: 40 }),
   company: varchar("company", { length: 255 }),
-  chapterId: bigint("chapterId", { mode: "number", unsigned: true }),
+  chapterId: bigint("chapterId", { mode: "number", unsigned: true }).references(
+    () => chapters.id,
+    { onDelete: "set null" }
+  ),
   stage: mysqlEnum("stage", [
     "prospect",
     "guest",
@@ -1913,7 +2037,10 @@ export const prospects = mysqlTable("prospects", {
     .default("prospect"),
   source: varchar("source", { length: 120 }),
   notes: text("notes"),
-  ownerUserId: bigint("ownerUserId", { mode: "number", unsigned: true }),
+  ownerUserId: bigint("ownerUserId", {
+    mode: "number",
+    unsigned: true,
+  }).references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt")
     .defaultNow()
@@ -1927,9 +2054,18 @@ export type Prospect = typeof prospects.$inferSelect;
    dropped. Also usable for ad-hoc chapter follow-ups. */
 export const followUps = mysqlTable("follow_ups", {
   id: serial("id").primaryKey(),
-  chapterId: bigint("chapterId", { mode: "number", unsigned: true }),
-  prospectId: bigint("prospectId", { mode: "number", unsigned: true }),
-  ownerUserId: bigint("ownerUserId", { mode: "number", unsigned: true }),
+  chapterId: bigint("chapterId", { mode: "number", unsigned: true }).references(
+    () => chapters.id,
+    { onDelete: "set null" }
+  ),
+  prospectId: bigint("prospectId", {
+    mode: "number",
+    unsigned: true,
+  }).references(() => prospects.id, { onDelete: "set null" }),
+  ownerUserId: bigint("ownerUserId", {
+    mode: "number",
+    unsigned: true,
+  }).references(() => users.id, { onDelete: "set null" }),
   title: varchar("title", { length: 255 }).notNull(),
   dueAt: timestamp("dueAt"),
   status: mysqlEnum("status", ["open", "done", "dismissed"])
