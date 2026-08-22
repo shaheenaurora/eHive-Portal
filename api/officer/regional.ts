@@ -91,7 +91,10 @@ export const officerRegionalRouter = createRouter({
         .where(inArray(schema.chapters.id, chapterIds))
         .orderBy(schema.chapters.name),
       db
-        .select({ chapterId: schema.members.homeChapterId, n: sql<number>`count(*)` })
+        .select({
+          chapterId: schema.members.homeChapterId,
+          n: sql<number>`count(*)`,
+        })
         .from(schema.members)
         .where(
           and(
@@ -101,7 +104,10 @@ export const officerRegionalRouter = createRouter({
         )
         .groupBy(schema.members.homeChapterId),
       db
-        .select({ chapterId: schema.members.homeChapterId, n: sql<number>`count(*)` })
+        .select({
+          chapterId: schema.members.homeChapterId,
+          n: sql<number>`count(*)`,
+        })
         .from(schema.members)
         .where(inArray(schema.members.homeChapterId, chapterIds))
         .groupBy(schema.members.homeChapterId),
