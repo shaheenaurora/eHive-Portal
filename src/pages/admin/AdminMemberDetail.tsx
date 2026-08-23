@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useParams, useNavigate } from "react-router";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { trpc } from "@/providers/trpc";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -50,6 +51,8 @@ const CHANGE_REQ_COLOR: Record<
 export default function AdminMemberDetail() {
   const { id } = useParams<{ id: string }>();
   const mid = Number(id);
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const utils = trpc.useUtils();
   const { user } = useAuth();
   const isFullAdmin = !user?.adminScopes || user.adminScopes === "*";
@@ -146,6 +149,20 @@ export default function AdminMemberDetail() {
 
   return (
     <EhShell groups={ADMIN_NAV} brandSub="Admin">
+      {isMobile && (
+        <button
+          className="eh-btn ghost sm eh-mb"
+          onClick={() => navigate(-1)}
+          style={{
+            position: "sticky",
+            top: 0,
+            zIndex: 10,
+            background: "var(--eh-card, #fff)",
+          }}
+        >
+          ← Back
+        </button>
+      )}
       <div className="eh-page-head">
         <div>
           <div className="eh-eyebrow">

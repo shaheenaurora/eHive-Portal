@@ -394,10 +394,15 @@ export function Field(props: { label: string; children: ReactNode }) {
   );
 }
 
-export function Bar(props: { pct: number; green?: boolean }) {
+export function Bar(props: { pct: number; green?: boolean; label?: string }) {
+  const pct = Math.min(100, Math.max(0, props.pct));
   return (
-    <div className={"eh-bar" + (props.green ? " green" : "")}>
-      <i style={{ width: Math.min(100, Math.max(0, props.pct)) + "%" }} />
+    <div
+      className={"eh-bar" + (props.green ? " green" : "")}
+      role="img"
+      aria-label={props.label ?? `${pct}%`}
+    >
+      <i style={{ width: pct + "%" }} />
     </div>
   );
 }
@@ -688,6 +693,8 @@ function NotifBell() {
       <button
         className="eh-btn ghost sm"
         aria-label="Notifications"
+        aria-haspopup="true"
+        aria-expanded={open}
         onClick={() => {
           setOpen(!open);
           if (!open && unread > 0) mark.mutate({});

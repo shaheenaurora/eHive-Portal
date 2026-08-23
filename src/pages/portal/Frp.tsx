@@ -220,7 +220,11 @@ export default function Frp() {
                         ))}
                       </div>
                     </div>
-                    <Bar pct={(scores[i] / 5) * 100} green={scores[i] >= 4} />
+                    <Bar
+                      pct={(scores[i] / 5) * 100}
+                      green={scores[i] >= 4}
+                      label={`${d.label} readiness: ${scores[i]} out of 5`}
+                    />
                   </div>
                 ))}
               </div>

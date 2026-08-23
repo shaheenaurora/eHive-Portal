@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { trpc } from "@/providers/trpc";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   EhShell,
   ADMIN_NAV,
@@ -82,6 +83,7 @@ function geoLine(c: {
 
 export default function AdminChapters() {
   useDocumentTitle("Chapters");
+  const isMobile = useIsMobile();
   const utils = trpc.useUtils();
   const list = trpc.adminEngage.chaptersAdmin.useQuery(undefined, {
     retry: false,
@@ -501,6 +503,20 @@ export default function AdminChapters() {
 
       {ch && (
         <>
+          {isMobile && (
+            <button
+              className="eh-btn ghost sm eh-mb"
+              onClick={() => setSel(null)}
+              style={{
+                position: "sticky",
+                top: 0,
+                zIndex: 10,
+                background: "var(--eh-card, #fff)",
+              }}
+            >
+              ← Back
+            </button>
+          )}
           <button
             className="eh-btn ghost sm eh-mb"
             onClick={() => setSel(null)}

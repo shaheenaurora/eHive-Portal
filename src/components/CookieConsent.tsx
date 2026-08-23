@@ -1,3 +1,4 @@
+import { useEffect, useRef, useId, useCallback } from "react";
 import { useState } from "react";
 
 const KEY = "eh_cookie_consent";
@@ -18,10 +19,10 @@ function storedChoice(): string | null {
 export function CookieConsent() {
   // SPA (no SSR): read the stored choice lazily on first render — no effect needed.
   const [choice, setChoice] = useState<string | null>(() => storedChoice());
+  const acceptAllRef = useRef<HTMLButtonElement>(null);
+  const textId = useId();
 
-  if (choice) return null; // already decided
-
-  const decide = (value: "all" | "essential") => {
+  const decide = useCallback((value: "all" | "essential") => {
     try {
       localStorage.setItem(KEY, value);
     } catch {
@@ -30,12 +31,33 @@ export function CookieConsent() {
     setChoice(value);
     if (value === "all")
       window.dispatchEvent(new CustomEvent("eh-consent-granted"));
-  };
+  }, []);
+
+  useEffect(() => {
+    // Move focus to the primary action so keyboard users land inside the banner.
+    acceptAllRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    if (choice) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        decide("essential");
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [choice, decide]);
+
+  if (choice) return null; // already decided
 
   return (
     <div
       role="dialog"
       aria-label="Cookie preferences"
+      aria-describedby={textId}
+      tabIndex={-1}
       style={{
         position: "fixed",
         left: "1rem",
@@ -56,6 +78,7 @@ export function CookieConsent() {
       }}
     >
       <p
+        id={textId}
         style={{
           margin: 0,
           fontSize: ".86rem",
@@ -89,6 +112,7 @@ export function CookieConsent() {
           Essential only
         </button>
         <button
+          ref={acceptAllRef}
           onClick={() => decide("all")}
           style={{
             background: "var(--eh-gold, #b8862e)",

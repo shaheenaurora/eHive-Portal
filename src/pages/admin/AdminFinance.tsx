@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { trpc } from "@/providers/trpc";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   EhShell,
   ADMIN_NAV,
@@ -52,8 +53,20 @@ type Tab =
   | "reports"
   | "fx";
 
+const TABS: { key: Tab; label: string }[] = [
+  { key: "payments", label: "Payments" },
+  { key: "invoices", label: "Invoices" },
+  { key: "creditNotes", label: "Credit notes" },
+  { key: "renewals", label: "Renewals due" },
+  { key: "budgets", label: "Chapter budgets" },
+  { key: "expenses", label: "Expenses" },
+  { key: "reports", label: "Reports" },
+  { key: "fx", label: "FX rates" },
+];
+
 export default function AdminFinance() {
   useDocumentTitle("Finance");
+  const isMobile = useIsMobile();
   const utils = trpc.useUtils();
   const summary = trpc.admin.financeSummary.useQuery(undefined, {
     retry: false,
@@ -148,56 +161,37 @@ export default function AdminFinance() {
         </>
       )}
 
-      <div className="eh-tabs eh-mb">
-        <button
-          className={tab === "payments" ? "on" : ""}
-          onClick={() => setTab("payments")}
-        >
-          Payments
-        </button>
-        <button
-          className={tab === "invoices" ? "on" : ""}
-          onClick={() => setTab("invoices")}
-        >
-          Invoices
-        </button>
-        <button
-          className={tab === "creditNotes" ? "on" : ""}
-          onClick={() => setTab("creditNotes")}
-        >
-          Credit notes
-        </button>
-        <button
-          className={tab === "renewals" ? "on" : ""}
-          onClick={() => setTab("renewals")}
-        >
-          Renewals due
-        </button>
-        <button
-          className={tab === "budgets" ? "on" : ""}
-          onClick={() => setTab("budgets")}
-        >
-          Chapter budgets
-        </button>
-        <button
-          className={tab === "expenses" ? "on" : ""}
-          onClick={() => setTab("expenses")}
-        >
-          Expenses
-        </button>
-        <button
-          className={tab === "reports" ? "on" : ""}
-          onClick={() => setTab("reports")}
-        >
-          Reports
-        </button>
-        <button
-          className={tab === "fx" ? "on" : ""}
-          onClick={() => setTab("fx")}
-        >
-          FX rates
-        </button>
-      </div>
+      {isMobile ? (
+        <div className="eh-mb">
+          <label className="eh-sm eh-muted" htmlFor="finance-tab-select">
+            Section
+          </label>
+          <select
+            id="finance-tab-select"
+            className="eh-select"
+            value={tab}
+            onChange={e => setTab(e.target.value as Tab)}
+          >
+            {TABS.map(t => (
+              <option key={t.key} value={t.key}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : (
+        <div className="eh-tabs eh-mb">
+          {TABS.map(t => (
+            <button
+              key={t.key}
+              className={tab === t.key ? "on" : ""}
+              onClick={() => setTab(t.key)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {tab === "payments" && (
         <PaymentsTab
