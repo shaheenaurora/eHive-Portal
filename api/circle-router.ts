@@ -13,6 +13,7 @@ import {
   newCheckinCode,
   promoteWaitlist,
   engagementCounts,
+  notify,
 } from "./queries/circle";
 import {
   proposeChange,
@@ -782,6 +783,30 @@ export const circleRouter = createRouter({
         note: input.note,
         status: "pending",
       });
+      // Notify destination-chapter officers so they can review the request.
+      try {
+        const officers = await db
+          .select({ memberId: schema.chapterRoles.memberId })
+          .from(schema.chapterRoles)
+          .where(
+            and(
+              eq(schema.chapterRoles.chapterId, input.toChapterId),
+              eq(schema.chapterRoles.status, "active")
+            )
+          );
+        for (const officer of officers) {
+          await notify(
+            officer.memberId,
+            "A member has requested to transfer into your chapter. Review it in the chapter officer console.",
+            "membership"
+          );
+        }
+      } catch (err) {
+        console.error(
+          "Failed to notify destination officers of transfer:",
+          err
+        );
+      }
       return { ok: true };
     }),
 

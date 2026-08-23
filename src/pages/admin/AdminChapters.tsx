@@ -289,7 +289,15 @@ export default function AdminChapters() {
           </div>
           <div className="eh-list">
             {transfers.data!.map(
-              ({ req, memberName, memberEmail, fromName, toName }) => (
+              ({
+                req,
+                memberName,
+                memberEmail,
+                fromName,
+                toName,
+                officerDecision,
+                officerNote,
+              }) => (
                 <div
                   className="row"
                   key={req.id}
@@ -307,6 +315,25 @@ export default function AdminChapters() {
                         “{req.note}”
                       </div>
                     )}
+                    <div className="d eh-muted" style={{ marginTop: ".2rem" }}>
+                      Officer:{" "}
+                      <Pill
+                        color={
+                          officerDecision === "approved"
+                            ? "green"
+                            : officerDecision === "rejected"
+                              ? "red"
+                              : "amber"
+                        }
+                      >
+                        {officerDecision ?? "pending"}
+                      </Pill>
+                      {officerNote && (
+                        <span style={{ marginLeft: ".4rem" }}>
+                          “{officerNote}”
+                        </span>
+                      )}
+                    </div>
                     <div className="d eh-muted">{fmtDate(req.createdAt)}</div>
                   </div>
                   <div className="eh-row">

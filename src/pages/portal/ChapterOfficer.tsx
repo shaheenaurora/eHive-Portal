@@ -26,6 +26,7 @@ export default function ChapterOfficer() {
   const events = trpc.officer.events.useQuery();
   const finance = trpc.officer.chapterFinance.useQuery();
   const financeReport = trpc.officer.chapterFinanceReport.useQuery();
+  const transfers = trpc.officer.chapterTransfers.useQuery();
 
   const refresh = () => {
     utils.officer.elections.invalidate();
@@ -34,6 +35,7 @@ export default function ChapterOfficer() {
     utils.officer.events.invalidate();
     utils.officer.chapterFinance.invalidate();
     utils.officer.chapterFinanceReport.invalidate();
+    utils.officer.chapterTransfers.invalidate();
     utils.engage.myChapter.invalidate();
   };
 
@@ -67,6 +69,11 @@ export default function ChapterOfficer() {
       <OfficerFinanceReport
         report={financeReport.data}
         isLoading={financeReport.isLoading}
+      />
+      <OfficerTransfers
+        transfers={transfers.data ?? []}
+        isLoading={transfers.isLoading}
+        refresh={refresh}
       />
     </div>
   );
@@ -1012,6 +1019,115 @@ function OfficerEvents({
           </button>
         </Modal>
       )}
+    </div>
+  );
+}
+
+function OfficerTransfers({
+  transfers,
+  isLoading,
+  refresh,
+}: {
+  transfers: {
+    transfer: {
+      id: number;
+      note: string | null;
+      createdAt: Date;
+    };
+    memberName: string | null;
+    memberEmail: string | null;
+    fromName: string | null;
+  }[];
+  isLoading: boolean;
+  refresh: () => void;
+}) {
+  const [notes, setNotes] = useState<Record<number, string>>({});
+  const review = trpc.officer.reviewChapterTransfer.useMutation({
+    onSuccess: () => {
+      toast("Transfer review recorded.");
+      refresh();
+    },
+    onError: e => toast(e.message),
+  });
+
+  return (
+    <div className="eh-card">
+      <div className="eh-between">
+        <h3 style={{ margin: 0 }}>Officer — Incoming transfers</h3>
+      </div>
+      {isLoading && <Spinner />}
+      {!isLoading && transfers.length === 0 && (
+        <Empty
+          big="No incoming transfers."
+          p="Members requesting to join this chapter will appear here."
+        />
+      )}
+      <div className="eh-list eh-mt">
+        {transfers.map(({ transfer, memberName, memberEmail, fromName }) => (
+          <div
+            className="row"
+            key={transfer.id}
+            style={{ alignItems: "flex-start" }}
+          >
+            <div style={{ flex: 1 }}>
+              <div className="t">{memberName ?? memberEmail ?? "Member"}</div>
+              <div className="d">
+                {fromName ?? "No chapter"} → <b>your chapter</b>
+              </div>
+              {transfer.note && (
+                <div className="d" style={{ marginTop: ".2rem" }}>
+                  “{transfer.note}”
+                </div>
+              )}
+              <div className="d eh-muted">
+                Requested {fmtDate(transfer.createdAt)}
+              </div>
+              <Field label="Officer note (optional)">
+                <input
+                  className="eh-input"
+                  value={notes[transfer.id] ?? ""}
+                  onChange={e =>
+                    setNotes(prev => ({
+                      ...prev,
+                      [transfer.id]: e.target.value,
+                    }))
+                  }
+                  placeholder="Reason for your recommendation"
+                  maxLength={500}
+                />
+              </Field>
+            </div>
+            <div className="eh-row" style={{ gap: ".3rem" }}>
+              <button
+                className="eh-btn sm green"
+                disabled={review.isPending}
+                onClick={() =>
+                  review.mutate({
+                    transferId: transfer.id,
+                    decision: "approve",
+                    note: notes[transfer.id] || undefined,
+                  })
+                }
+              >
+                Approve
+              </button>
+              <button
+                className="eh-btn ghost sm danger"
+                disabled={review.isPending}
+                onClick={() =>
+                  review.mutate({
+                    transferId: transfer.id,
+                    decision: "reject",
+                    note: notes[transfer.id] || undefined,
+                  })
+                }
+              >
+                Reject
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

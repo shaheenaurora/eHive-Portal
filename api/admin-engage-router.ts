@@ -1205,6 +1205,8 @@ export const adminEngageRouter = createRouter({
         memberEmail: schema.users.email,
         fromName: from.name,
         toName: to.name,
+        officerDecision: schema.chapterTransfers.officerDecision,
+        officerNote: schema.chapterTransfers.officerNote,
       })
       .from(schema.chapterTransfers)
       .innerJoin(

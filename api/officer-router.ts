@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { eq, and, isNull, desc, asc, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/mysql-core";
 import * as schema from "@db/schema";
 import { getDb } from "./queries/connection";
 import { createRouter, mergeRouters, authedQuery } from "./middleware";
@@ -492,6 +493,95 @@ const officerCoreRouter = createRouter({
     const { chapterId } = await requireOfficer(ctx.user.id);
     return listChangeRequests({ chapterId });
   }),
+
+  /** Incoming chapter-transfer requests awaiting the destination officers' review. */
+  chapterTransfers: authedQuery.query(async ({ ctx }) => {
+    const { chapterId } = await requireOfficer(ctx.user.id);
+    const db = getDb();
+    const from = alias(schema.chapters, "fromCh");
+    return db
+      .select({
+        transfer: schema.chapterTransfers,
+        memberName: schema.users.name,
+        memberEmail: schema.users.email,
+        fromName: from.name,
+      })
+      .from(schema.chapterTransfers)
+      .innerJoin(
+        schema.members,
+        eq(schema.members.id, schema.chapterTransfers.memberId)
+      )
+      .leftJoin(schema.users, eq(schema.users.id, schema.members.userId))
+      .leftJoin(from, eq(from.id, schema.chapterTransfers.fromChapterId))
+      .where(
+        and(
+          eq(schema.chapterTransfers.toChapterId, chapterId),
+          eq(schema.chapterTransfers.status, "pending")
+        )
+      )
+      .orderBy(desc(schema.chapterTransfers.createdAt))
+      .limit(100);
+  }),
+
+  /** Destination-chapter officers recommend approving/rejecting a transfer. */
+  reviewChapterTransfer: authedQuery
+    .input(
+      z.object({
+        transferId: z.number().int().positive(),
+        decision: z.enum(["approve", "reject"]),
+        note: z.string().max(500).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { chapterId } = await requireOfficer(ctx.user.id);
+      const db = getDb();
+      const transfer = (
+        await db
+          .select()
+          .from(schema.chapterTransfers)
+          .where(eq(schema.chapterTransfers.id, input.transferId))
+          .limit(1)
+      ).at(0);
+      if (!transfer)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Transfer request not found.",
+        });
+      if (transfer.toChapterId !== chapterId)
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "This transfer is not headed to your chapter.",
+        });
+      if (transfer.officerDecision !== "pending")
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "This transfer has already been reviewed by an officer.",
+        });
+      await db
+        .update(schema.chapterTransfers)
+        .set({
+          officerDecision:
+            input.decision === "approve" ? "approved" : "rejected",
+          officerNote: input.note ?? null,
+          officerDecidedAt: new Date(),
+        })
+        .where(eq(schema.chapterTransfers.id, transfer.id));
+      await audit(ctx.user, "officer.transfer.review", {
+        type: "chapterTransfer",
+        id: transfer.id,
+        detail: `${input.decision} → chapter #${transfer.toChapterId}`,
+      });
+      try {
+        await notify(
+          transfer.memberId,
+          "Your transfer request is being reviewed by the destination chapter officers.",
+          "membership"
+        );
+      } catch {
+        /* non-fatal */
+      }
+      return { ok: true };
+    }),
 
   /** Approve/reject a request for a chapter member (four-eyes enforced). */
   decideChapterMemberChange: authedQuery

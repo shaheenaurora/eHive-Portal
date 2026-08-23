@@ -1556,6 +1556,15 @@ export const chapterTransfers = mysqlTable(
     status: mysqlEnum("status", ["pending", "approved", "rejected"])
       .notNull()
       .default("pending"),
+    officerDecision: mysqlEnum("officerDecision", [
+      "pending",
+      "approved",
+      "rejected",
+    ])
+      .notNull()
+      .default("pending"),
+    officerNote: varchar("officerNote", { length: 500 }),
+    officerDecidedAt: timestamp("officerDecidedAt"),
     actorEmail: varchar("actorEmail", { length: 320 }),
     decidedAt: timestamp("decidedAt"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
