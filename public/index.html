@@ -18,10 +18,10 @@
       href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="home.css?v=2" />
-    <link rel="stylesheet" href="apps.min.css?v=2" />
+    <link rel="stylesheet" href="home.css?v=3" />
+    <link rel="stylesheet" href="apps.min.css?v=3" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#f8f6f0" />
+    <meta name="theme-color" content="#0a0a0a" />
     <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -30,7 +30,7 @@
     <link rel="prefetch" href="business-setup.html" />
     <link rel="prefetch" href="consulting.html" />
   </head>
-  <body>
+  <body class="eh-v2">
     <a class="skip" href="#main">Skip to content</a>
 
     <header class="h-nav site-nav" id="siteNav">
@@ -70,180 +70,169 @@
 
     <main id="main">
       <!-- HERO -->
-      <section class="h-hero" aria-labelledby="home-h1">
-        <div class="h-wrap">
-          <div class="h-hero-grid">
-            <div class="h-reveal">
-              <p class="h-eyebrow">The founder ecosystem · UAE</p>
-              <h1 id="home-h1" class="h-h1">
-                Start, run, and scale your UAE business — in one place.
-              </h1>
-              <p class="h-lede">
-                eHive brings together company setup, world-class consulting, and
-                a founder community under one roof. One ecosystem. One team. One
-                clear path forward.
-              </p>
-              <div class="h-hero-actions">
-                <a class="h-btn h-btn-primary" href="get-started.html"
-                  >Take the 30-second pathfinder <span class="h-arr">→</span></a
-                >
-                <a class="h-btn h-btn-ghost" href="book.html?type=discovery"
-                  >Book a free consultation</a
-                >
-              </div>
-              <div class="h-hero-meta">
-                <span>No commitment</span>
-                <span>Dubai-based, UAE-wide</span>
-                <span>Expert-led</span>
-              </div>
-            </div>
-            <div class="h-reveal" style="--d: 0.1s">
-              <div class="h-hero-visual">
-                <img
-                  src="assets/img/ehive-hero.svg"
-                  alt="A network of founders above the Gulf skyline"
-                  width="1200"
-                  height="440"
-                  fetchpriority="high"
-                />
-              </div>
-              <div class="h-hero-stats">
-                <div class="stat">
-                  <b>1</b
-                  ><span>ecosystem for setup, consulting &amp; community</span>
-                </div>
-                <div class="stat">
-                  <b>6</b><span>proprietary consulting products</span>
-                </div>
-                <div class="stat">
-                  <b>4</b><span>Circle membership tiers</span>
-                </div>
-                <div class="stat">
-                  <b>Dubai</b><span>UAE · expanding across the Gulf</span>
-                </div>
-              </div>
-            </div>
+      <section class="eh-hero-v2" aria-labelledby="home-h1">
+        <canvas id="networkSphere" aria-hidden="true"></canvas>
+        <div class="eh-hero-content">
+          <p class="eh-eyebrow eh-reveal">The founder ecosystem · UAE</p>
+          <h1 id="home-h1" class="eh-reveal" style="--d: 0.08s">
+            Start, run, and scale<br />your UAE business — <em>in one place.</em>
+          </h1>
+          <p class="eh-lead eh-reveal" style="--d: 0.16s">
+            eHive brings together company setup, world-class consulting, and a
+            founder community under one roof. One ecosystem. One team. One clear
+            path forward.
+          </p>
+          <div class="eh-actions eh-reveal" style="--d: 0.24s">
+            <a class="eh-btn eh-btn-primary" href="get-started.html"
+              >Take the 30-second pathfinder <span class="h-arr">→</span></a
+            >
+            <a class="eh-btn eh-btn-ghost" href="book.html?type=discovery"
+              >Book a free consultation</a
+            >
+          </div>
+          <div class="eh-meta eh-reveal" style="--d: 0.32s">
+            <span>No commitment</span>
+            <span>Dubai-based, UAE-wide</span>
+            <span>Expert-led</span>
           </div>
         </div>
+        <div class="eh-scroll-hint">Scroll</div>
       </section>
 
-      <!-- TRUST BAR -->
-      <section class="h-trust" aria-label="Operating credentials">
-        <div class="h-wrap">
-          <div class="h-trust-grid">
-            <div class="h-trust-item h-reveal">
-              <b>Dubai, UAE</b><span>Based where we operate</span>
-            </div>
-            <div class="h-trust-item h-reveal" style="--d: 0.08s">
-              <b>Free zone + mainland</b><span>Every jurisdiction covered</span>
-            </div>
-            <div class="h-trust-item h-reveal" style="--d: 0.16s">
-              <b>Transparent pricing</b><span>Quoted before work begins</span>
-            </div>
-            <div class="h-trust-item h-reveal" style="--d: 0.24s">
-              <b>Expert-led</b><span>Specialists in the industry</span>
-            </div>
-          </div>
+      <!-- MARQUEE -->
+      <div class="eh-marquee" aria-hidden="true">
+        <div class="eh-marquee-track">
+          <span>Business Setup <i>·</i></span>
+          <span>Strategy Consulting <i>·</i></span>
+          <span>Founder Community <i>·</i></span>
+          <span>UAE-wide <i>·</i></span>
+          <span>Transparent Pricing <i>·</i></span>
+          <span>Expert-led <i>·</i></span>
+          <span>Business Setup <i>·</i></span>
+          <span>Strategy Consulting <i>·</i></span>
+          <span>Founder Community <i>·</i></span>
+          <span>UAE-wide <i>·</i></span>
+          <span>Transparent Pricing <i>·</i></span>
+          <span>Expert-led <i>·</i></span>
         </div>
-      </section>
+      </div>
 
       <!-- MANIFESTO -->
-      <section class="h-section alt" aria-labelledby="manifesto-h">
-        <div class="h-wrap">
-          <div class="h-2col">
-            <div class="h-reveal">
-              <p class="h-eyebrow">The eHive belief</p>
-              <h2 id="manifesto-h" class="h-h2">
+      <section
+        class="eh-section-v2 eh-full eh-light eh-manifesto-v2"
+        aria-labelledby="manifesto-h"
+      >
+        <div class="eh-wrap">
+          <div class="eh-2col">
+            <div class="eh-reveal">
+              <p class="eh-eyebrow">The eHive belief</p>
+              <h2 id="manifesto-h" class="eh-h2">
                 Growth happens when the right people, ideas, and opportunities
                 meet in one place.
               </h2>
             </div>
-            <div class="h-reveal" style="--d: 0.1s">
-              <p class="h-lede">
+            <div class="eh-reveal" style="--d: 0.12s">
+              <p class="eh-lead">
                 eHive is an entrepreneurial ecosystem where businesses connect
                 with experts, investors, mentors, partners, technology and a
                 community that helps them move forward. When every connection
                 creates another opportunity, growth becomes exponential.
               </p>
-              <a class="h-btn h-btn-ghost h-mt-1" href="#how-it-works"
-                >See how it works <span class="h-arr">→</span></a
-              >
+              <div style="margin-top: 1.8rem">
+                <a class="eh-btn eh-btn-light" href="#how-it-works"
+                  >See how it works <span class="h-arr">→</span></a
+                >
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       <!-- PILLARS -->
-      <section class="h-section" id="pillars" aria-labelledby="pillars-h">
-        <div class="h-wrap">
-          <div class="h-sec-head">
-            <div class="h-reveal">
-              <p class="h-eyebrow">The architecture</p>
-              <h2 id="pillars-h" class="h-h2">
-                Three pillars.<br />One system.
-              </h2>
-            </div>
-            <p class="h-reveal" style="--d: 0.1s">
+      <section
+        class="eh-section-v2 eh-full eh-dark eh-pillars-v2"
+        id="pillars"
+        aria-labelledby="pillars-h"
+      >
+        <div class="eh-wrap">
+          <div class="eh-reveal">
+            <p class="eh-eyebrow">The architecture</p>
+            <h2 id="pillars-h" class="eh-h2">
+              Three pillars.<br /><em>One system.</em>
+            </h2>
+            <p class="eh-lead" style="max-width: 56ch; margin-top: 1rem">
               Most founders stitch this together from a dozen vendors. eHive is
               the single place it all connects.
             </p>
           </div>
-          <div class="h-3col">
-            <a class="h-card h-reveal" href="business-setup.html">
-              <div class="h-card-img">
+          <div class="eh-pillar-grid">
+            <a
+              class="eh-pillar-card eh-reveal"
+              href="business-setup.html"
+              style="--d: 0.1s"
+            >
+              <div class="eh-card-img">
                 <img
                   src="assets/img/img-business-setup-light.jpg"
                   alt="Business setup in the UAE"
                   loading="lazy"
                 />
-                <span class="h-card-tag">01 — Start</span>
+                <span class="eh-card-tag">01 — Start</span>
               </div>
-              <div class="h-card-body">
+              <div class="eh-card-body">
                 <span class="kicker">Start on solid ground.</span>
-                <h3 class="h-h3">Business Setup</h3>
+                <h3>Business Setup</h3>
                 <p>
                   Company formation, licensing, visas and the operational
                   infrastructure to get from idea to incorporated.
                 </p>
-                <span class="h-card-link">Explore Business Setup →</span>
+                <span class="eh-card-link">Explore Business Setup →</span>
               </div>
             </a>
-            <a class="h-card h-reveal" href="consulting.html" style="--d: 0.1s">
-              <div class="h-card-img">
+            <a
+              class="eh-pillar-card eh-reveal"
+              href="consulting.html"
+              style="--d: 0.2s"
+            >
+              <div class="eh-card-img">
                 <img
                   src="assets/img/img-consulting-light.jpg"
                   alt="Strategy consulting"
                   loading="lazy"
                 />
-                <span class="h-card-tag">02 — Run · Scale</span>
+                <span class="eh-card-tag">02 — Run · Scale</span>
               </div>
-              <div class="h-card-body">
+              <div class="eh-card-body">
                 <span class="kicker">Run and scale with rigour.</span>
-                <h3 class="h-h3">Consulting</h3>
+                <h3>Consulting</h3>
                 <p>
                   Six proprietary products, from a three-hour clarity sprint to
                   a 90-day growth engagement.
                 </p>
-                <span class="h-card-link">Explore Consulting →</span>
+                <span class="eh-card-link">Explore Consulting →</span>
               </div>
             </a>
-            <a class="h-card h-reveal" href="circle.html" style="--d: 0.2s">
-              <div class="h-card-img">
+            <a
+              class="eh-pillar-card eh-reveal"
+              href="circle.html"
+              style="--d: 0.3s"
+            >
+              <div class="eh-card-img">
                 <img
                   src="assets/img/img-circle-light.jpg"
                   alt="The eHive Circle community"
                   loading="lazy"
                 />
-                <span class="h-card-tag">03 — Belong</span>
+                <span class="eh-card-tag">03 — Belong</span>
               </div>
-              <div class="h-card-body">
+              <div class="eh-card-body">
                 <span class="kicker">Never build alone.</span>
-                <h3 class="h-h3">eHive Circle</h3>
+                <h3>eHive Circle</h3>
                 <p>
                   A membership community of founders, mentors, experts and
                   investors — the people who keep you moving.
                 </p>
-                <span class="h-card-link">Explore eHive Circle →</span>
+                <span class="eh-card-link">Explore eHive Circle →</span>
               </div>
             </a>
           </div>
@@ -251,69 +240,101 @@
       </section>
 
       <!-- HOW IT WORKS -->
-      <section class="h-section alt" id="how-it-works" aria-labelledby="hiw-h">
-        <div class="h-wrap">
-          <div class="h-sec-head">
-            <div class="h-reveal">
-              <p class="h-eyebrow">The process</p>
-              <h2 id="hiw-h" class="h-h2">How it works</h2>
-            </div>
-            <p class="h-reveal" style="--d: 0.1s">
+      <section
+        class="eh-section-v2 eh-full eh-light eh-hiw-v2"
+        id="how-it-works"
+        aria-labelledby="hiw-h"
+      >
+        <div class="eh-wrap">
+          <div class="eh-reveal">
+            <p class="eh-eyebrow">The process</p>
+            <h2 id="hiw-h" class="eh-h2">How it works</h2>
+            <p class="eh-lead" style="max-width: 56ch; margin-top: 1rem">
               Most founders use more than one pillar over time — that's the
               design, not an upsell.
             </p>
           </div>
-          <div class="h-4col">
-            <div class="h-step h-reveal">
-              <div class="num">1</div>
-              <h3 class="h-h3">Tell us where you are</h3>
+          <div class="eh-steps">
+            <div class="eh-step eh-reveal" data-num="01">
+              <h3>Tell us where you are</h3>
               <p>
                 A short intake — starting up, running and needing clarity, or
                 looking to join a community of peers.
               </p>
             </div>
-            <div class="h-step h-reveal" style="--d: 0.08s">
-              <div class="num">2</div>
-              <h3 class="h-h3">We match the right door</h3>
+            <div class="eh-step eh-reveal" data-num="02" style="--d: 0.1s">
+              <h3>We match the right door</h3>
               <p>
                 Business Setup for formation. Consulting for a sprint. Circle
                 for belonging and network.
               </p>
             </div>
-            <div class="h-step h-reveal" style="--d: 0.16s">
-              <div class="num">3</div>
-              <h3 class="h-h3">You book directly</h3>
+            <div class="eh-step eh-reveal" data-num="03" style="--d: 0.2s">
+              <h3>You book directly</h3>
               <p>
                 Real dates and real pricing where possible — no back-and-forth
                 for standard engagements.
               </p>
             </div>
-            <div class="h-step h-reveal" style="--d: 0.24s">
-              <div class="num">4</div>
-              <h3 class="h-h3">You keep going</h3>
+            <div class="eh-step eh-reveal" data-num="04" style="--d: 0.3s">
+              <h3>You keep going</h3>
               <p>
                 The pillars compound. Founders return as they move from starting
                 up to scaling.
               </p>
             </div>
           </div>
-          <div class="h-text-center h-mt-2">
-            <a class="h-btn h-btn-primary h-reveal" href="get-started.html"
+          <div style="margin-top: 3rem; text-align: center">
+            <a class="eh-btn eh-btn-dark eh-reveal" href="get-started.html"
               >Find your door <span class="h-arr">→</span></a
             >
           </div>
         </div>
       </section>
 
+      <!-- STATS -->
+      <section
+        class="eh-section-v2 eh-full eh-dark eh-stats-v2"
+        aria-label="By the numbers"
+      >
+        <div class="eh-wrap">
+          <div class="eh-reveal" style="text-align: center">
+            <p class="eh-eyebrow">By the numbers</p>
+            <h2 class="eh-h2">
+              One ecosystem.<br /><em>Everything a founder needs.</em>
+            </h2>
+          </div>
+          <div class="eh-stats-grid">
+            <div class="eh-stat eh-reveal" style="--d: 0.1s">
+              <b data-count="1">1</b><span>ecosystem for setup, consulting &amp; community</span>
+            </div>
+            <div class="eh-stat eh-reveal" data-count="6" style="--d: 0.2s">
+              <b data-count="6">6</b><span>proprietary consulting products</span>
+            </div>
+            <div class="eh-stat eh-reveal" data-count="4" style="--d: 0.3s">
+              <b data-count="4">4</b><span>Circle membership tiers</span>
+            </div>
+            <div class="eh-stat eh-reveal" style="--d: 0.4s">
+              <b>Dubai</b><span>UAE · expanding across the Gulf</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- VOICES -->
-      <section class="h-section" aria-labelledby="voices-h">
-        <div class="h-wrap">
-          <p class="h-eyebrow h-reveal">From the founders</p>
-          <h2 id="voices-h" class="h-h2 h-reveal" style="--d: 0.05s">
-            Built by operators, for operators.
-          </h2>
-          <div class="h-2col h-mt-2">
-            <div class="h-voice h-reveal" style="--d: 0.1s">
+      <section
+        class="eh-section-v2 eh-full eh-light eh-voices-v2"
+        aria-labelledby="voices-h"
+      >
+        <div class="eh-wrap">
+          <div class="eh-reveal">
+            <p class="eh-eyebrow">From the founders</p>
+            <h2 id="voices-h" class="eh-h2">
+              Built by operators,<br /><em>for operators.</em>
+            </h2>
+          </div>
+          <div class="eh-voice-grid">
+            <div class="eh-voice eh-reveal" style="--d: 0.1s">
               <blockquote>
                 “The market never rewards more noise — it rewards the companies
                 that know exactly what they are.”
@@ -328,7 +349,7 @@
                 <div><b>Shaheen</b><span>Founder &amp; CEO, eHive</span></div>
               </div>
             </div>
-            <div class="h-voice h-reveal" style="--d: 0.2s">
+            <div class="eh-voice eh-reveal" style="--d: 0.2s">
               <blockquote>
                 “Finally, one place where setup, strategy, and the right people
                 actually connect.”
@@ -344,8 +365,8 @@
               </div>
             </div>
           </div>
-          <div class="h-text-center h-mt-2">
-            <a class="h-btn h-btn-ghost h-reveal" href="circle.html"
+          <div style="margin-top: 3rem; text-align: center">
+            <a class="eh-btn eh-btn-light eh-reveal" href="circle.html"
               >Join the founders building here <span class="h-arr">→</span></a
             >
           </div>
@@ -353,43 +374,44 @@
       </section>
 
       <!-- CIRCLE -->
-      <section class="h-section alt" aria-labelledby="circle-h">
-        <div class="h-wrap">
-          <div class="h-2col">
-            <div class="h-reveal">
-              <p class="h-eyebrow">eHive Circle</p>
-              <h2 id="circle-h" class="h-h2">Never build alone.</h2>
-              <p class="h-lede h-mt-1">
+      <section
+        class="eh-section-v2 eh-full eh-dark eh-circle-v2"
+        aria-labelledby="circle-h"
+      >
+        <div class="eh-wrap">
+          <div class="eh-2col">
+            <div class="eh-reveal">
+              <p class="eh-eyebrow">eHive Circle</p>
+              <h2 id="circle-h" class="eh-h2">
+                Never build<br /><em>alone.</em>
+              </h2>
+              <p class="eh-lead" style="max-width: 52ch; margin-top: 1rem">
                 A membership community of founders, mentors, experts and
                 investors — a tribe with tiers, where every tier is a home, not
                 a waiting room for the next one.
               </p>
-              <div
-                class="h-mt-1"
-                style="display: flex; gap: 0.6rem; flex-wrap: wrap"
-              >
-                <span class="h-chip">Horizon AED 999/yr</span>
-                <span class="h-chip">Ascent AED 5,999/yr</span>
-                <span class="h-chip">Vanguard AED 11,999/yr</span>
-                <span class="h-chip">Zenith invitation-only</span>
+              <div class="eh-chips">
+                <span class="eh-chip">Horizon AED 999/yr</span>
+                <span class="eh-chip">Ascent AED 5,999/yr</span>
+                <span class="eh-chip">Vanguard AED 11,999/yr</span>
+                <span class="eh-chip">Zenith invitation-only</span>
               </div>
-              <div class="h-hero-actions h-mt-1">
-                <a class="h-btn h-btn-primary" href="get-started.html"
+              <div class="eh-actions" style="justify-content: flex-start">
+                <a class="eh-btn eh-btn-primary" href="get-started.html"
                   >Join the waitlist <span class="h-arr">→</span></a
                 >
-                <a class="h-btn h-btn-ghost" href="circle.html"
+                <a class="eh-btn eh-btn-ghost" href="circle.html"
                   >Apply for Zenith</a
                 >
               </div>
-              <p class="h-muted" style="margin-top: 0.8rem; font-size: 0.85rem">
+              <p style="margin-top: 1rem; font-size: 0.85rem; color: rgba(255,255,255,0.55)">
                 No charge to apply. Vetting is a conversation, not a filter.
               </p>
             </div>
-            <div class="h-reveal" style="--d: 0.12s">
+            <div class="eh-reveal" style="--d: 0.15s">
               <img
                 src="assets/img/img-circle-light.jpg"
                 alt="eHive Circle community"
-                style="border-radius: var(--h-radius); width: 100%"
                 loading="lazy"
               />
             </div>
@@ -397,63 +419,18 @@
         </div>
       </section>
 
-      <!-- LEAD MAGNET -->
-      <section class="h-section h-lead" aria-labelledby="lead-h">
-        <div class="h-wrap">
-          <div class="h-2col">
-            <div class="h-reveal">
-              <p class="h-eyebrow">Stay in the loop</p>
-              <h2 id="lead-h" class="h-h2">
-                Get founder updates + the UAE Setup Cost Guide.
-              </h2>
-              <p class="h-mt-1">
-                One email a week with practical guidance for UAE founders, plus
-                early access to Circle cohorts and new consulting products.
-              </p>
-            </div>
-            <div class="h-reveal" style="--d: 0.12s">
-              <form
-                class="h-lead-form news-form"
-                aria-label="Newsletter signup"
-              >
-                <label class="visually-hidden" for="lead-email"
-                  >Email address</label
-                >
-                <input
-                  id="lead-email"
-                  type="email"
-                  placeholder="you@company.com"
-                  autocomplete="email"
-                  required
-                />
-                <button type="submit">Subscribe</button>
-              </form>
-              <p
-                style="
-                  margin-top: 0.8rem;
-                  font-size: 0.85rem;
-                  color: rgba(255, 255, 255, 0.65);
-                "
-              >
-                We’ll email you a copy. No spam — see our
-                <a href="privacy.html" style="text-decoration: underline"
-                  >Privacy Policy</a
-                >.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <!-- FAQ -->
-      <section class="h-section alt" aria-labelledby="faq-h">
-        <div class="h-narrow">
-          <p class="h-eyebrow h-reveal">Questions</p>
-          <h2 id="faq-h" class="h-h2 h-reveal" style="--d: 0.05s">
-            What founders ask
-          </h2>
-          <div class="h-faq h-mt-1">
-            <details class="h-reveal">
+      <section
+        class="eh-section-v2 eh-light eh-faq-v2"
+        aria-labelledby="faq-h"
+      >
+        <div class="eh-wrap">
+          <div class="eh-reveal" style="text-align: center">
+            <p class="eh-eyebrow">Questions</p>
+            <h2 id="faq-h" class="eh-h2">What founders ask</h2>
+          </div>
+          <div class="eh-faq">
+            <details class="eh-reveal">
               <summary>Who is eHive for?</summary>
               <p>
                 Founders and operators building in the UAE — whether you're
@@ -461,7 +438,7 @@
                 or looking for a community of peers.
               </p>
             </details>
-            <details class="h-reveal" style="--d: 0.06s">
+            <details class="eh-reveal" style="--d: 0.06s">
               <summary>How much does business setup cost?</summary>
               <p>
                 It depends on jurisdiction (free zone vs mainland), visa
@@ -470,7 +447,7 @@
                 quote.
               </p>
             </details>
-            <details class="h-reveal" style="--d: 0.12s">
+            <details class="eh-reveal" style="--d: 0.12s">
               <summary>Free zone or mainland — which is right for me?</summary>
               <p>
                 Free zones offer 100% foreign ownership and tax benefits but may
@@ -478,7 +455,7 @@
                 the UAE. We help you choose based on your business model.
               </p>
             </details>
-            <details class="h-reveal" style="--d: 0.18s">
+            <details class="eh-reveal" style="--d: 0.18s">
               <summary>Is there any commitment to get started?</summary>
               <p>
                 No. The pathfinder, scorecard, and initial consultation are
@@ -486,7 +463,7 @@
                 membership.
               </p>
             </details>
-            <details class="h-reveal" style="--d: 0.24s">
+            <details class="eh-reveal" style="--d: 0.24s">
               <summary>How long does setup take?</summary>
               <p>
                 Many free-zone setups complete in 5–10 business days. Mainland
@@ -499,33 +476,27 @@
       </section>
 
       <!-- CLOSE -->
-      <section class="h-section h-text-center" aria-labelledby="close-h">
-        <div class="h-wrap">
-          <p class="h-eyebrow h-reveal">Ready to move forward?</p>
-          <h2 id="close-h" class="h-h2 h-reveal" style="--d: 0.05s">
-            Build. Belong.<br />Become.
+      <section
+        class="eh-section-v2 eh-full eh-dark eh-close-v2"
+        aria-labelledby="close-h"
+      >
+        <div class="eh-wrap">
+          <p class="eh-eyebrow eh-reveal">Ready to move forward?</p>
+          <h2 id="close-h" class="eh-h2 eh-reveal" style="--d: 0.06s">
+            Build. Belong.<br /><em>Become.</em>
           </h2>
-          <p class="h-lede h-mx-auto h-mt-1 h-reveal" style="--d: 0.1s">
+          <p class="eh-lead eh-mx-auto eh-reveal" style="--d: 0.12s">
             Two minutes to find the one move that matters for you right now — no
             call required.
           </p>
-          <div
-            class="h-hero-actions h-mx-auto h-mt-2"
-            style="justify-content: center"
-          >
-            <a class="h-btn h-btn-primary h-reveal" href="business-setup.html"
+          <div class="eh-actions eh-reveal" style="--d: 0.2s">
+            <a class="eh-btn eh-btn-primary" href="business-setup.html"
               >Start a business <span class="h-arr">→</span></a
             >
-            <a
-              class="h-btn h-btn-ghost h-reveal"
-              href="book.html?type=discovery"
-              style="--d: 0.08s"
+            <a class="eh-btn eh-btn-ghost" href="book.html?type=discovery"
               >Book a free consultation</a
             >
-            <a
-              class="h-btn h-btn-secondary h-reveal"
-              href="circle.html"
-              style="--d: 0.16s"
+            <a class="eh-btn eh-btn-ghost" href="circle.html"
               >Join the Circle</a
             >
           </div>
@@ -603,32 +574,7 @@
       >
     </div>
 
-    <script src="app.min.js?v=2" defer></script>
-    <script src="apps.min.js?v=2" defer></script>
-    <script>
-      // Reveal animations for the light homepage
-      document.body.classList.add("loaded");
-      var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-      if (!reduce) {
-        var ro = new IntersectionObserver(
-          function (es) {
-            es.forEach(function (e) {
-              if (e.isIntersecting) {
-                e.target.classList.add("in");
-                ro.unobserve(e.target);
-              }
-            });
-          },
-          { threshold: 0.12, rootMargin: "0px 0px -40px 0px" }
-        );
-        document.querySelectorAll(".h-reveal").forEach(function (el) {
-          ro.observe(el);
-        });
-      } else {
-        document.querySelectorAll(".h-reveal").forEach(function (el) {
-          el.classList.add("in");
-        });
-      }
-    </script>
+    <script src="app.min.js?v=3" defer></script>
+    <script src="apps.min.js?v=3" defer></script>
   </body>
 </html>

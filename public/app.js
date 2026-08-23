@@ -1846,6 +1846,236 @@ function submitLead(payload, onOk, onErr) {
           });
         });
     }
+
+    /* ---- homepage v2: network sphere + reveals ---- */
+    if (document.body.classList.contains("eh-v2")) {
+      /* reveal observer for .eh-reveal */
+      var ehReveals = document.querySelectorAll(".eh-reveal");
+      if (ehReveals.length) {
+        if ("IntersectionObserver" in window && !prefersReduced) {
+          var ehIo = new IntersectionObserver(
+            function (entries) {
+              entries.forEach(function (e) {
+                if (e.isIntersecting) {
+                  e.target.classList.add("in");
+                  ehIo.unobserve(e.target);
+                }
+              });
+            },
+            { threshold: 0.12, rootMargin: "0px 0px -8% 0px" }
+          );
+          ehReveals.forEach(function (el) {
+            ehIo.observe(el);
+          });
+          document
+            .querySelectorAll(".eh-hero-v2 .eh-reveal")
+            .forEach(function (el) {
+              setTimeout(function () {
+                el.classList.add("in");
+                ehIo.unobserve(el);
+              }, 200 + (parseFloat(getComputedStyle(el).getPropertyValue("--d")) || 0) * 1000);
+            });
+        } else {
+          ehReveals.forEach(function (el) {
+            el.classList.add("in");
+          });
+        }
+      }
+
+      /* animated network sphere canvas */
+      var sphereCanvas = document.getElementById("networkSphere");
+      if (sphereCanvas && !prefersReduced) {
+        var sCtx = sphereCanvas.getContext("2d");
+        var sW, sH, sDPR;
+        var nodes = [];
+        var sRaf = null;
+        var sRunning = false;
+        var sMouse = { x: -9999, y: -9999 };
+        var SPHERE_NODES = 120;
+        var SPHERE_R = 0.32;
+        var SPHERE_COLOR = "218,58,34";
+        var GOLD_COLOR = "255,194,40";
+
+        function resizeSphere() {
+          sDPR = Math.min(window.devicePixelRatio || 1, 2);
+          sW = sphereCanvas.clientWidth;
+          sH = sphereCanvas.clientHeight;
+          sphereCanvas.width = sW * sDPR;
+          sphereCanvas.height = sH * sDPR;
+          sCtx.setTransform(sDPR, 0, 0, sDPR, 0, 0);
+          buildSphere();
+        }
+
+        function buildSphere() {
+          nodes = [];
+          var r = Math.min(sW, sH) * SPHERE_R;
+          var cx = sW / 2;
+          var cy = sH / 2;
+          for (var i = 0; i < SPHERE_NODES; i++) {
+            var phi = Math.acos(-1 + (2 * i) / SPHERE_NODES);
+            var theta = Math.sqrt(SPHERE_NODES * Math.PI) * phi;
+            var x = r * Math.cos(theta) * Math.sin(phi);
+            var y = r * Math.sin(theta) * Math.sin(phi);
+            var z = r * Math.cos(phi);
+            nodes.push({
+              x: x,
+              y: y,
+              z: z,
+              ox: x,
+              oy: y,
+              oz: z,
+              r: 1.2 + Math.random() * 1.3,
+              gold: Math.random() < 0.12,
+              pulse: Math.random() * Math.PI * 2,
+            });
+          }
+        }
+
+        var rotX = 0;
+        var rotY = 0;
+        function rotate(p, ax, ay) {
+          var cosX = Math.cos(ax);
+          var sinX = Math.sin(ax);
+          var y1 = p.y * cosX - p.z * sinX;
+          var z1 = p.y * sinX + p.z * cosX;
+          var cosY = Math.cos(ay);
+          var sinY = Math.sin(ay);
+          var x1 = p.x * cosY + z1 * sinY;
+          var z2 = -p.x * sinY + z1 * cosY;
+          return { x: x1, y: y1, z: z2 };
+        }
+
+        function drawSphere() {
+          sCtx.clearRect(0, 0, sW, sH);
+          var cx = sW / 2;
+          var cy = sH / 2;
+          var projected = [];
+          for (var i = 0; i < nodes.length; i++) {
+            var n = nodes[i];
+            var p = rotate({ x: n.ox, y: n.oy, z: n.oz }, rotX, rotY);
+            var scale = 1 + p.z / (Math.min(sW, sH) * SPHERE_R * 1.8);
+            var px = cx + p.x * scale;
+            var py = cy + p.y * scale;
+            var boost = 0;
+            var dx = px - sMouse.x;
+            var dy = py - sMouse.y;
+            var d = Math.sqrt(dx * dx + dy * dy);
+            if (d < 180) boost = 1 - d / 180;
+            projected.push({
+              x: px,
+              y: py,
+              z: p.z,
+              r: n.r * scale + boost * 1.2,
+              gold: n.gold,
+              pulse: n.pulse,
+            });
+          }
+          projected.sort(function (a, b) {
+            return a.z - b.z;
+          });
+
+          /* draw links between near nodes in 3D */
+          sCtx.lineWidth = 0.5;
+          for (var a = 0; a < projected.length; a++) {
+            for (var b = a + 1; b < projected.length; b++) {
+              var dx = projected[a].x - projected[b].x;
+              var dy = projected[a].y - projected[b].y;
+              var dist = Math.sqrt(dx * dx + dy * dy);
+              var threshold = Math.min(sW, sH) * 0.13;
+              if (dist < threshold) {
+                var alpha = (1 - dist / threshold) * 0.18;
+                var zAvg = (projected[a].z + projected[b].z) / 2;
+                alpha *= 0.6 + 0.4 * ((zAvg + Math.min(sW, sH) * SPHERE_R) / (Math.min(sW, sH) * SPHERE_R * 2));
+                var color = projected[a].gold || projected[b].gold ? GOLD_COLOR : SPHERE_COLOR;
+                sCtx.strokeStyle = "rgba(" + color + "," + alpha.toFixed(3) + ")";
+                sCtx.beginPath();
+                sCtx.moveTo(projected[a].x, projected[a].y);
+                sCtx.lineTo(projected[b].x, projected[b].y);
+                sCtx.stroke();
+              }
+            }
+          }
+
+          /* draw nodes */
+          for (var j = 0; j < projected.length; j++) {
+            var p = projected[j];
+            var glow = p.gold ? 0.85 : 0.45;
+            var rr = Math.max(p.r, 0.5);
+            if (p.gold) {
+              sCtx.shadowColor = "rgba(" + GOLD_COLOR + ",0.8)";
+              sCtx.shadowBlur = 12;
+            } else {
+              sCtx.shadowColor = "rgba(" + SPHERE_COLOR + ",0.5)";
+              sCtx.shadowBlur = 6;
+            }
+            sCtx.fillStyle =
+              "rgba(" + (p.gold ? GOLD_COLOR : SPHERE_COLOR) + "," + glow.toFixed(2) + ")";
+            sCtx.beginPath();
+            sCtx.arc(p.x, p.y, rr, 0, Math.PI * 2);
+            sCtx.fill();
+            sCtx.shadowBlur = 0;
+          }
+        }
+
+        function tickSphere(t) {
+          if (!sRunning) return;
+          rotX += 0.0018;
+          rotY += 0.0024;
+          for (var i = 0; i < nodes.length; i++) {
+            nodes[i].pulse += 0.02;
+          }
+          drawSphere();
+          sRaf = requestAnimationFrame(tickSphere);
+        }
+
+        function startSphere() {
+          if (sRunning) return;
+          sRunning = true;
+          sRaf = requestAnimationFrame(tickSphere);
+        }
+        function stopSphere() {
+          sRunning = false;
+          if (sRaf) cancelAnimationFrame(sRaf);
+        }
+
+        resizeSphere();
+        if ("IntersectionObserver" in window) {
+          var sphereIo = new IntersectionObserver(
+            function (entries) {
+              entries.forEach(function (e) {
+                if (e.isIntersecting) startSphere();
+                else stopSphere();
+              });
+            },
+            { threshold: 0 }
+          );
+          sphereIo.observe(sphereCanvas);
+        } else {
+          startSphere();
+        }
+
+        var sphereResizeT;
+        window.addEventListener("resize", function () {
+          clearTimeout(sphereResizeT);
+          sphereResizeT = setTimeout(resizeSphere, 180);
+        });
+
+        sphereCanvas.addEventListener("pointermove", function (e) {
+          var rect = sphereCanvas.getBoundingClientRect();
+          sMouse.x = e.clientX - rect.left;
+          sMouse.y = e.clientY - rect.top;
+        });
+        sphereCanvas.addEventListener("pointerleave", function () {
+          sMouse.x = -9999;
+          sMouse.y = -9999;
+        });
+
+        document.addEventListener("visibilitychange", function () {
+          if (document.hidden) stopSphere();
+          else startSphere();
+        });
+      }
+    }
   })();
 })();
 
