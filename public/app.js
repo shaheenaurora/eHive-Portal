@@ -222,6 +222,49 @@ function submitLead(payload, onOk, onErr) {
     }, 2600);
   }
 
+  /* ---- homepage editorial reveals (.h-reveal -> .in) --------------------
+     The light marketing homepage uses .h-reveal; this drives the staggered
+     fade/slide entrance that makes the page feel alive on scroll. */
+  var hReveals = document.querySelectorAll(".h-reveal");
+  if (hReveals.length) {
+    if ("IntersectionObserver" in window && !reduceMotion) {
+      var hio = new IntersectionObserver(
+        function (entries) {
+          entries.forEach(function (e) {
+            if (e.isIntersecting) {
+              e.target.classList.add("in");
+              hio.unobserve(e.target);
+            }
+          });
+        },
+        { threshold: 0.12, rootMargin: "0px 0px -8% 0px" }
+      );
+      hReveals.forEach(function (el) {
+        hio.observe(el);
+      });
+      // Reveal hero elements immediately for first paint impact.
+      document
+        .querySelectorAll(".h-hero .h-reveal, .h-trust .h-reveal")
+        .forEach(function (el) {
+          setTimeout(function () {
+            el.classList.add("in");
+            hio.unobserve(el);
+          }, 300 + (parseFloat(getComputedStyle(el).getPropertyValue("--d")) || 0) * 1000);
+        });
+    } else {
+      hReveals.forEach(function (el) {
+        el.classList.add("in");
+      });
+    }
+    setTimeout(function () {
+      document
+        .querySelectorAll(".h-reveal:not(.in)")
+        .forEach(function (el) {
+          el.classList.add("in");
+        });
+    }, 3000);
+  }
+
   /* ---- how-it-works connector line ---- */
   var steps = document.getElementById("steps");
   if (steps) {
