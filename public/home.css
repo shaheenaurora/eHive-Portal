@@ -6891,6 +6891,125 @@ a.art:hover {
   }
 }
 
+/* ---- inner pages v2 theme ---- */
+.eh-v2 .h-page-hero,
+.eh-v2 .p-hero {
+  min-height: 70svh;
+  background: var(--eh-ink);
+  color: #fff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.eh-v2 .h-page-hero h1,
+.eh-v2 .p-hero h1 {
+  font-size: clamp(2.6rem, 6vw, 5rem);
+  color: #fff;
+}
+
+.eh-v2 .h-page-hero h1 em,
+.eh-v2 .p-hero h1 em {
+  color: var(--eh-coral);
+}
+
+.eh-v2 .h-page-hero .sub,
+.eh-v2 .p-hero .sub {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.eh-v2 .h-crumbs,
+.eh-v2 .p-hero .crumbs {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.eh-v2 .h-crumbs a,
+.eh-v2 .p-hero .crumbs a {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.eh-v2 .h-crumbs a:hover,
+.eh-v2 .p-hero .crumbs a:hover {
+  color: #fff;
+}
+
+.eh-v2 .h-page-hero .h-eyebrow,
+.eh-v2 .p-hero .p-name {
+  color: var(--eh-coral-2);
+}
+
+.eh-v2 .h-page-hero .h-eyebrow::before,
+.eh-v2 .p-hero .p-name::before {
+  background: var(--eh-coral-2);
+}
+
+.eh-v2 .p-hero .book-card {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  backdrop-filter: blur(8px);
+}
+
+.eh-v2 .book-card .bc-format {
+  color: var(--eh-coral-2);
+}
+
+.eh-v2 .book-card .bc-price {
+  color: #fff;
+}
+
+.eh-v2 .book-card .bc-price-note,
+.eh-v2 .book-card .bc-list li,
+.eh-v2 .book-card .bc-note {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.eh-v2 .book-card .bc-list {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.eh-v2 .p-hero .motif {
+  filter: brightness(1.8);
+}
+
+.eh-v2 .h-img-banner,
+.eh-v2 .img-banner {
+  border: 1px solid rgba(10, 10, 10, 0.08);
+}
+
+.eh-v2 .h-section.light,
+.eh-v2 .h-section {
+  background: var(--eh-cream);
+  color: var(--eh-ink);
+}
+
+.eh-v2 .h-section.alt {
+  background: #fff;
+  color: var(--eh-ink);
+}
+
+.eh-v2 .h-page-hero .h-btn-ghost,
+.eh-v2 .p-hero .h-btn-ghost {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.eh-v2 .h-page-hero .h-btn-ghost:hover,
+.eh-v2 .p-hero .h-btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+.eh-v2 .h-page-hero .h-btn-secondary,
+.eh-v2 .p-hero .h-btn-secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.eh-v2 .h-page-hero .h-btn-secondary:hover,
+.eh-v2 .p-hero .h-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
 /* Respect users who prefer reduced motion. */
 @media (prefers-reduced-motion: reduce) {
   *,
