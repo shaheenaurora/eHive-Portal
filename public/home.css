@@ -458,6 +458,13 @@ a {
   transition:
     transform 0.8s var(--h-ease),
     box-shadow 0.8s var(--h-ease);
+  transform: translate(
+    var(--mouse-x, 0),
+    var(--mouse-y, 0)
+  );
+}
+
+.h-hero-visual img {
   animation: hero-float 6s ease-in-out infinite;
 }
 
@@ -467,7 +474,7 @@ a {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .h-hero-visual {
+  .h-hero-visual img {
     animation: none;
   }
 }
@@ -5895,6 +5902,165 @@ a.art:hover {
   white-space: nowrap;
 }
 
+/* ==========================================================================
+   Premium interactions — scroll parallax, mouse parallax, split reveals,
+   magnetic buttons, count-up numbers, scroll progress.
+   ========================================================================== */
+
+/* ---- scroll progress bar ---- */
+.scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  width: 0%;
+  background: linear-gradient(90deg, var(--h-coral), var(--h-coral-2));
+  z-index: 9999;
+  pointer-events: none;
+  transform-origin: left;
+  transition: width 0.08s linear;
+}
+
+/* ---- parallax image containers ---- */
+.h-img-banner,
+.img-banner {
+  position: relative;
+  overflow: hidden;
+}
+
+.h-img-banner img,
+.img-banner img {
+  will-change: transform;
+  transform: translateY(var(--parallax-y, 0)) scale(var(--img-scale, 1));
+  transition: transform 0.08s linear;
+}
+
+.h-img-banner:hover img,
+.img-banner:hover img {
+  --img-scale: 1.03;
+}
+
+/* ---- hero mouse-parallax layers ---- */
+.h-hero,
+.h-page-hero,
+.p-hero {
+  position: relative;
+  overflow: hidden;
+}
+
+.h-hero-visual,
+.h-page-hero .lattice-bg,
+.p-hero .motif,
+.p-hero .book-card {
+  will-change: transform;
+  transition: transform 0.18s var(--h-ease);
+  transform: translate(
+    var(--mouse-x, 0),
+    var(--mouse-y, 0)
+  );
+}
+
+/* ---- split text reveal ---- */
+.split-reveal {
+  overflow: hidden;
+}
+
+.split-word,
+.split-line {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+}
+
+.split-word-inner,
+.split-line-inner {
+  display: inline-block;
+  transform: translateY(110%);
+  opacity: 0;
+  transition:
+    transform 0.75s var(--h-ease),
+    opacity 0.55s ease;
+  transition-delay: var(--d, 0s);
+}
+
+.split-reveal.in .split-word-inner,
+.split-reveal.in .split-line-inner {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* ---- magnetic buttons ---- */
+.h-btn,
+.btn {
+  transition:
+    transform 0.25s var(--h-ease),
+    background 0.25s var(--h-ease),
+    color 0.25s var(--h-ease),
+    box-shadow 0.25s var(--h-ease),
+    border-color 0.25s var(--h-ease);
+}
+
+.h-btn.magnetic,
+.btn.magnetic {
+  transform: translate(var(--mag-x, 0), var(--mag-y, 0));
+}
+
+.h-btn .h-arr,
+.btn .h-arr {
+  transition: transform 0.25s var(--h-ease);
+}
+
+.h-btn:hover .h-arr,
+.btn:hover .h-arr {
+  transform: translateX(4px);
+}
+
+/* ---- count-up numbers ---- */
+.count-up {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- ambient hero grain/shimmer overlay ---- */
+.hero-shimmer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    120% 120% at 20% 0%,
+    rgba(218, 58, 34, 0.06) 0%,
+    transparent 45%
+  );
+  opacity: 0.6;
+  mix-blend-mode: soft-light;
+  animation: hero-shimmer 10s ease-in-out infinite alternate;
+}
+
+@keyframes hero-shimmer {
+  0% {
+    opacity: 0.4;
+    transform: translateX(-2%) scale(1.02);
+  }
+  100% {
+    opacity: 0.7;
+    transform: translateX(2%) scale(1);
+  }
+}
+
+/* ---- subtle floating dots for page heroes ---- */
+.p-hero::before,
+.h-page-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(
+    circle at 90% 20%,
+    rgba(218, 58, 34, 0.08) 0%,
+    transparent 28%
+  );
+  opacity: 0.6;
+}
+
 /* Respect users who prefer reduced motion. */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -5904,5 +6070,21 @@ a.art:hover {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  .scroll-progress,
+  .hero-shimmer,
+  .p-hero::before,
+  .h-page-hero::before {
+    display: none;
+  }
+
+  .h-img-banner img,
+  .img-banner img,
+  .h-hero-visual,
+  .h-page-hero .lattice-bg,
+  .p-hero .motif,
+  .p-hero .book-card {
+    transform: none !important;
   }
 }

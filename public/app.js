@@ -1653,6 +1653,200 @@ function submitLead(payload, onOk, onErr) {
       });
     }
   })();
+
+  /* ---- premium interactions: parallax, reveals, magnetic buttons, counters ---- */
+  (function () {
+    var prefersReduced = reduceMotion;
+    var isTouch = window.matchMedia("(pointer: coarse)").matches;
+
+    /* ---- scroll progress bar ---- */
+    var progress = document.createElement("div");
+    progress.className = "scroll-progress";
+    progress.setAttribute("aria-hidden", "true");
+    document.body.appendChild(progress);
+    function updateProgress() {
+      var scrollTop = window.scrollY || document.documentElement.scrollTop;
+      var docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      var pct = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+      progress.style.width = pct + "%";
+    }
+    window.addEventListener("scroll", updateProgress, { passive: true });
+    updateProgress();
+
+    /* ---- ambient shimmer overlay on heroes ---- */
+    document
+      .querySelectorAll(".h-hero, .h-page-hero, .p-hero")
+      .forEach(function (hero) {
+        if (prefersReduced) return;
+        var shimmer = document.createElement("div");
+        shimmer.className = "hero-shimmer";
+        shimmer.setAttribute("aria-hidden", "true");
+        hero.appendChild(shimmer);
+      });
+
+    /* ---- banner image scroll parallax ---- */
+    var bannerImgs = document.querySelectorAll(
+      ".h-img-banner img, .img-banner img"
+    );
+    if (bannerImgs.length && !prefersReduced) {
+      function updateBannerParallax() {
+        bannerImgs.forEach(function (img) {
+          var rect = img.getBoundingClientRect();
+          var center = rect.top + rect.height / 2;
+          var viewportCenter = window.innerHeight / 2;
+          var distance = (center - viewportCenter) / window.innerHeight;
+          img.style.setProperty("--parallax-y", distance * -28 + "px");
+        });
+      }
+      window.addEventListener("scroll", updateBannerParallax, {
+        passive: true,
+      });
+      updateBannerParallax();
+    }
+
+    /* ---- hero mouse parallax (desktop only) ---- */
+    if (!prefersReduced && !isTouch) {
+      document
+        .querySelectorAll(".h-hero, .h-page-hero, .p-hero")
+        .forEach(function (hero) {
+          var layer = hero.querySelector(
+            ".h-hero-visual, .lattice-bg, .motif, .book-card"
+          );
+          if (!layer) return;
+          hero.addEventListener("pointermove", function (e) {
+            var rect = hero.getBoundingClientRect();
+            var x = (e.clientX - rect.left) / rect.width - 0.5;
+            var y = (e.clientY - rect.top) / rect.height - 0.5;
+            layer.style.setProperty("--mouse-x", x * -10 + "px");
+            layer.style.setProperty("--mouse-y", y * -10 + "px");
+          });
+          hero.addEventListener("pointerleave", function () {
+            layer.style.setProperty("--mouse-x", "0px");
+            layer.style.setProperty("--mouse-y", "0px");
+          });
+        });
+    }
+
+    /* ---- split headline reveal ---- */
+    function splitText(el) {
+      el.classList.add("split-reveal");
+      var children = Array.prototype.slice.call(el.childNodes);
+      var delay = 0;
+      el.innerHTML = "";
+      children.forEach(function (node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+          var parts = node.textContent.split(/(\s+)/);
+          parts.forEach(function (part) {
+            if (!part.trim()) {
+              el.appendChild(document.createTextNode(part));
+              return;
+            }
+            var wrap = document.createElement("span");
+            wrap.className = "split-word";
+            var inner = document.createElement("span");
+            inner.className = "split-word-inner";
+            inner.style.transitionDelay = delay + "s";
+            inner.textContent = part;
+            delay += 0.03;
+            wrap.appendChild(inner);
+            el.appendChild(wrap);
+          });
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+          var clone = node.cloneNode(false);
+          Array.prototype.slice.call(node.childNodes).forEach(function (c) {
+            if (c.nodeType === Node.TEXT_NODE) {
+              var parts = c.textContent.split(/(\s+)/);
+              parts.forEach(function (part) {
+                if (!part.trim()) {
+                  clone.appendChild(document.createTextNode(part));
+                  return;
+                }
+                var wrap = document.createElement("span");
+                wrap.className = "split-word";
+                var inner = document.createElement("span");
+                inner.className = "split-word-inner";
+                inner.style.transitionDelay = delay + "s";
+                inner.textContent = part;
+                delay += 0.03;
+                wrap.appendChild(inner);
+                clone.appendChild(wrap);
+              });
+            } else {
+              clone.appendChild(c.cloneNode(true));
+            }
+          });
+          el.appendChild(clone);
+        }
+      });
+    }
+
+    document
+      .querySelectorAll(".h-hero h1, .h-page-hero h1, .p-hero h1")
+      .forEach(function (h1) {
+        if (prefersReduced) return;
+        splitText(h1);
+        requestAnimationFrame(function () {
+          setTimeout(function () {
+            h1.classList.add("in");
+          }, 120);
+        });
+      });
+
+    /* ---- count-up numbers for hero stats ---- */
+    function animateCount(el, target) {
+      var duration = 1600;
+      var start = null;
+      function step(timestamp) {
+        if (!start) start = timestamp;
+        var p = Math.min((timestamp - start) / duration, 1);
+        var eased = 1 - Math.pow(1 - p, 4);
+        el.textContent = Math.floor(eased * target);
+        if (p < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+
+    var countTargets = document.querySelectorAll(
+      ".h-hero-stats .stat b, [data-count]"
+    );
+    if (countTargets.length && !prefersReduced) {
+      var countIo = new IntersectionObserver(
+        function (entries) {
+          entries.forEach(function (e) {
+            if (e.isIntersecting) {
+              var target = parseInt(e.target.textContent, 10);
+              if (!isNaN(target)) animateCount(e.target, target);
+              countIo.unobserve(e.target);
+            }
+          });
+        },
+        { threshold: 0.5 }
+      );
+      countTargets.forEach(function (el) {
+        countIo.observe(el);
+      });
+    }
+
+    /* ---- magnetic buttons (desktop only) ---- */
+    if (!prefersReduced && !isTouch) {
+      document
+        .querySelectorAll(".h-btn-primary, .h-btn-ghost, .btn-primary")
+        .forEach(function (btn) {
+          btn.classList.add("magnetic");
+          btn.addEventListener("mousemove", function (e) {
+            var rect = btn.getBoundingClientRect();
+            var x = e.clientX - rect.left - rect.width / 2;
+            var y = e.clientY - rect.top - rect.height / 2;
+            btn.style.setProperty("--mag-x", x * 0.18 + "px");
+            btn.style.setProperty("--mag-y", y * 0.18 + "px");
+          });
+          btn.addEventListener("mouseleave", function () {
+            btn.style.setProperty("--mag-x", "0px");
+            btn.style.setProperty("--mag-y", "0px");
+          });
+        });
+    }
+  })();
 })();
 
 /* ===== eHive Clarity Scorecard — nav button + popup (progressive enhancement) =====
