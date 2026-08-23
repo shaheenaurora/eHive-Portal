@@ -6,6 +6,15 @@ import { getDb } from "../queries/connection";
 import { createRouter, authedQuery } from "../middleware";
 import { getMemberByUserId } from "../queries/circle";
 import { computeChapterHealth } from "../queries/health";
+import { audit } from "../lib/audit";
+import {
+  listCouncil,
+  createCouncilMeeting,
+  updateCouncilMeeting,
+  logDecision,
+  updateDecision,
+} from "../queries/councils";
+import { financeReport, listExpenses } from "../queries/finance";
 
 export type RegionalScope = {
   member: typeof schema.members.$inferSelect;
@@ -206,4 +215,153 @@ export const officerRegionalRouter = createRouter({
         cadence,
       };
     }),
+
+  regionalCouncil: authedQuery.query(async ({ ctx }) => {
+    const scope = await requireRegionalOfficer(ctx.user.id);
+    return listCouncil(scope.unitId);
+  }),
+
+  regionalCreateCouncilMeeting: authedQuery
+    .input(
+      z.object({
+        title: z.string().min(3).max(255),
+        scheduledAt: z.string().datetime().optional(),
+        agenda: z.string().max(10000).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const scope = await requireRegionalOfficer(ctx.user.id);
+      const id = await createCouncilMeeting(scope.unitId, {
+        title: input.title,
+        scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null,
+        agenda: input.agenda ?? null,
+      });
+      await audit(ctx.user, "regional.council.meeting.create", {
+        type: "councilMeeting",
+        id,
+        detail: input.title,
+      });
+      return { ok: true, id };
+    }),
+
+  regionalUpdateCouncilMeeting: authedQuery
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        status: z.enum(["scheduled", "held", "cancelled"]).optional(),
+        agenda: z.string().max(10000).optional(),
+        minutes: z.string().max(20000).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const scope = await requireRegionalOfficer(ctx.user.id);
+      const db = getDb();
+      const meeting = (
+        await db
+          .select()
+          .from(schema.councilMeetings)
+          .where(eq(schema.councilMeetings.id, input.id))
+          .limit(1)
+      ).at(0);
+      if (!meeting) throw new TRPCError({ code: "NOT_FOUND" });
+      if (meeting.unitId !== scope.unitId)
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "That meeting isn't in your regional unit.",
+        });
+      await updateCouncilMeeting(input.id, {
+        status: input.status,
+        agenda: input.agenda,
+        minutes: input.minutes,
+      });
+      await audit(ctx.user, "regional.council.meeting.update", {
+        type: "councilMeeting",
+        id: input.id,
+        detail: `${meeting.title}${input.status ? ` → ${input.status}` : ""}`,
+      });
+      return { ok: true };
+    }),
+
+  regionalLogDecision: authedQuery
+    .input(
+      z.object({
+        meetingId: z.number().int().positive().optional(),
+        title: z.string().min(3).max(255),
+        detail: z.string().max(4000).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const scope = await requireRegionalOfficer(ctx.user.id);
+      const db = getDb();
+      if (input.meetingId) {
+        const meeting = (
+          await db
+            .select()
+            .from(schema.councilMeetings)
+            .where(eq(schema.councilMeetings.id, input.meetingId))
+            .limit(1)
+        ).at(0);
+        if (!meeting) throw new TRPCError({ code: "NOT_FOUND" });
+        if (meeting.unitId !== scope.unitId)
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "That meeting isn't in your regional unit.",
+          });
+      }
+      const id = await logDecision(scope.unitId, {
+        meetingId: input.meetingId ?? null,
+        title: input.title,
+        detail: input.detail ?? null,
+      });
+      await audit(ctx.user, "regional.council.decision.log", {
+        type: "councilDecision",
+        id,
+        detail: input.title,
+      });
+      return { ok: true, id };
+    }),
+
+  regionalDecideDecision: authedQuery
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        status: z.enum(["proposed", "carried", "failed", "deferred"]),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const scope = await requireRegionalOfficer(ctx.user.id);
+      const db = getDb();
+      const decision = (
+        await db
+          .select()
+          .from(schema.councilDecisions)
+          .where(eq(schema.councilDecisions.id, input.id))
+          .limit(1)
+      ).at(0);
+      if (!decision) throw new TRPCError({ code: "NOT_FOUND" });
+      if (decision.unitId !== scope.unitId)
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "That decision isn't in your regional unit.",
+        });
+      await updateDecision(input.id, input.status);
+      await audit(ctx.user, "regional.council.decision.decide", {
+        type: "councilDecision",
+        id: input.id,
+        detail: `${decision.title} → ${input.status}`,
+      });
+      return { ok: true };
+    }),
+
+  regionalFinanceReport: authedQuery.query(async ({ ctx }) => {
+    const scope = await requireRegionalOfficer(ctx.user.id);
+    const chapterIds = await regionalChapterIds(scope);
+    return financeReport(undefined, { chapterIds });
+  }),
+
+  regionalExpenses: authedQuery.query(async ({ ctx }) => {
+    const scope = await requireRegionalOfficer(ctx.user.id);
+    const chapterIds = await regionalChapterIds(scope);
+    return listExpenses({ scope: { chapterIds }, limit: 200 });
+  }),
 });
