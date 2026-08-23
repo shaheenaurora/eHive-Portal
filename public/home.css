@@ -2332,18 +2332,19 @@ body.has-sticky-cta {
 .h-img-banner {
   position: relative;
   width: calc(100% - 2 * clamp(1rem, 5vw, 3rem));
-  max-width: 1160px;
+  max-width: 960px;
   margin: 1.5rem auto;
   border-radius: var(--h-radius-lg);
   overflow: hidden;
   box-shadow: var(--h-shadow-lg);
   aspect-ratio: 16 / 9;
+  max-height: min(260px, 32vh);
 }
 
 @media (min-width: 768px) {
   .h-img-banner {
     aspect-ratio: 21 / 9;
-    max-height: min(420px, 45vh);
+    max-height: min(280px, 32vh);
   }
 }
 
@@ -5388,18 +5389,19 @@ a.art:hover {
 .img-banner {
   position: relative;
   width: calc(100% - 2 * clamp(1rem, 5vw, 3rem));
-  max-width: 1160px;
+  max-width: 960px;
   margin: 1.5rem auto;
   border-radius: var(--h-radius-lg);
   overflow: hidden;
   box-shadow: var(--h-shadow-lg);
   aspect-ratio: 16 / 9;
+  max-height: min(260px, 32vh);
 }
 
 @media (min-width: 768px) {
   .img-banner {
     aspect-ratio: 21 / 9;
-    max-height: min(420px, 45vh);
+    max-height: min(280px, 32vh);
   }
 }
 
