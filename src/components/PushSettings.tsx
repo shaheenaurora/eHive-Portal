@@ -117,17 +117,26 @@ export function PushSettings() {
             On for this device. Choose what you'd like to be notified about:
           </p>
           <div className="eh-list">
-            {PUSH_CATEGORIES.map(c => (
-              <label className="row" key={c.key} style={{ cursor: "pointer" }}>
-                <span className="t">{c.label}</span>
-                <input
-                  type="checkbox"
-                  checked={cats.includes(c.key)}
-                  onChange={() => toggle(c.key)}
-                  style={{ accentColor: "#b8862e", width: 18, height: 18 }}
-                />
-              </label>
-            ))}
+            {PUSH_CATEGORIES.map(c => {
+              const id = `push-cat-${c.key}`;
+              return (
+                <label
+                  className="row"
+                  key={c.key}
+                  htmlFor={id}
+                  style={{ cursor: "pointer" }}
+                >
+                  <span className="t">{c.label}</span>
+                  <input
+                    id={id}
+                    type="checkbox"
+                    checked={cats.includes(c.key)}
+                    onChange={() => toggle(c.key)}
+                    style={{ accentColor: "#b8862e", width: 18, height: 18 }}
+                  />
+                </label>
+              );
+            })}
           </div>
           <button
             className="eh-btn ghost sm"

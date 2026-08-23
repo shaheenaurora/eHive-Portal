@@ -335,7 +335,11 @@ export default function Events() {
                       boxShadow: "0 2px 10px rgba(0,0,0,.06)",
                     }}
                   >
-                    <QrCode value={ev.checkinCode} size={230} />
+                    <QrCode
+                      value={ev.checkinCode}
+                      size={230}
+                      alt={`Check-in code ${ev.checkinCode}`}
+                    />
                   </div>
                 )}
                 {user?.name && (

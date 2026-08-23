@@ -516,6 +516,7 @@ export function EhShell(props: {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const sideId = useId();
+  const burgerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!isLoading && !user) navigate("/login");
@@ -528,6 +529,19 @@ export function EhShell(props: {
       navigate("/portal");
   }, [isLoading, user, navigate, props.roleRequired]);
 
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setMenuOpen(false);
+        burgerRef.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
+
   if (isLoading || !user) return <Spinner />;
   if (props.roleRequired === "admin" && user.role !== "admin")
     return <Spinner />;
@@ -539,6 +553,7 @@ export function EhShell(props: {
       </a>
       <header className="eh-mtop">
         <button
+          ref={burgerRef}
           className="eh-burger"
           aria-label="Menu"
           aria-expanded={menuOpen}
@@ -662,6 +677,8 @@ export function EhShell(props: {
 function NotifBell() {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const bellRef = useRef<HTMLButtonElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
   const q = trpc.engage.myNotifications.useQuery(undefined, {
     retry: false,
     refetchInterval: 30000,
@@ -671,6 +688,15 @@ function NotifBell() {
   });
   const rows = q.data?.rows ?? [];
   const unread = q.data?.unread ?? 0;
+
+  useEffect(() => {
+    if (open) {
+      closeRef.current?.focus();
+    } else {
+      bellRef.current?.focus();
+    }
+  }, [open]);
+
   // Dismiss the dropdown on Escape or an outside click (only while open).
   useEffect(() => {
     if (!open) return;
@@ -691,6 +717,7 @@ function NotifBell() {
   return (
     <div ref={wrapRef} className="eh-notif-bell">
       <button
+        ref={bellRef}
         className="eh-btn ghost sm"
         aria-label="Notifications"
         aria-haspopup="true"
@@ -749,7 +776,11 @@ function NotifBell() {
         >
           <div className="eh-between eh-mb">
             <b>Notifications</b>
-            <button className="eh-btn ghost sm" onClick={() => setOpen(false)}>
+            <button
+              ref={closeRef}
+              className="eh-btn ghost sm"
+              onClick={() => setOpen(false)}
+            >
               ✕
             </button>
           </div>

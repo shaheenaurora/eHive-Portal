@@ -491,6 +491,8 @@ export default function Membership() {
               <Field label="Company">
                 <input
                   className="eh-input"
+                  type="text"
+                  autoComplete="organization"
                   value={form.company}
                   onChange={e => setForm({ ...form, company: e.target.value })}
                 />
@@ -498,6 +500,8 @@ export default function Membership() {
               <Field label="Your title">
                 <input
                   className="eh-input"
+                  type="text"
+                  autoComplete="organization-title"
                   value={form.title}
                   onChange={e => setForm({ ...form, title: e.target.value })}
                 />
@@ -505,6 +509,8 @@ export default function Membership() {
               <Field label="Phone (only the Circle team sees this)">
                 <input
                   className="eh-input"
+                  type="tel"
+                  autoComplete="tel"
                   value={form.phone}
                   onChange={e => setForm({ ...form, phone: e.target.value })}
                 />

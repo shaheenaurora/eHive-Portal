@@ -3,6 +3,14 @@ import { trpc } from "@/providers/trpc";
 import { QrCode } from "@/components/QrCode";
 import { toast } from "@/components/eh";
 
+function secretFromUri(uri: string): string | null {
+  try {
+    return new URL(uri).searchParams.get("secret");
+  } catch {
+    return null;
+  }
+}
+
 /** Enrol / manage TOTP two-factor authentication. Strongly recommended for
  *  admins; available to every member. */
 export function TwoFactorSettings() {
@@ -15,6 +23,7 @@ export function TwoFactorSettings() {
   const [setup, setSetup] = useState<{
     otpauthUri: string;
   } | null>(null);
+  const [showSecret, setShowSecret] = useState(false);
   const [code, setCode] = useState("");
 
   const begin = trpc.auth.twoFactorSetup.useMutation({
@@ -25,6 +34,7 @@ export function TwoFactorSettings() {
     onSuccess: () => {
       toast("Two-factor authentication is on.");
       setSetup(null);
+      setShowSecret(false);
       setCode("");
       refresh();
     },
@@ -95,8 +105,53 @@ export function TwoFactorSettings() {
         <div>
           <p className="eh-sm">1. Scan this with your authenticator app:</p>
           <div style={{ margin: ".4rem 0 .8rem" }}>
-            <QrCode value={setup.otpauthUri} size={190} />
+            <QrCode
+              value={setup.otpauthUri}
+              size={190}
+              alt="Two-factor authentication setup QR code"
+            />
           </div>
+          {secretFromUri(setup.otpauthUri) && (
+            <div className="eh-sm eh-muted" style={{ marginBottom: ".8rem" }}>
+              Can&apos;t scan?{" "}
+              <button
+                type="button"
+                className="eh-btn ghost sm"
+                style={{ padding: 0, height: "auto" }}
+                onClick={() => setShowSecret(s => !s)}
+              >
+                {showSecret ? "Hide setup key" : "Show setup key"}
+              </button>
+              {showSecret && (
+                <>
+                  <br />
+                  <code
+                    style={{
+                      wordBreak: "break-all",
+                      background: "var(--eh-paper)",
+                      padding: ".15rem .35rem",
+                      borderRadius: 4,
+                    }}
+                  >
+                    {secretFromUri(setup.otpauthUri)}
+                  </code>{" "}
+                  <button
+                    type="button"
+                    className="eh-btn ghost sm"
+                    style={{ padding: 0, height: "auto" }}
+                    onClick={() => {
+                      navigator.clipboard
+                        .writeText(secretFromUri(setup.otpauthUri) || "")
+                        .then(() => toast("Setup key copied."))
+                        .catch(() => toast("Could not copy."));
+                    }}
+                  >
+                    Copy
+                  </button>
+                </>
+              )}
+            </div>
+          )}
           <p className="eh-sm">2. Enter the 6-digit code it shows:</p>
           <div
             className="eh-row"
@@ -122,6 +177,7 @@ export function TwoFactorSettings() {
               className="eh-btn ghost sm"
               onClick={() => {
                 setSetup(null);
+                setShowSecret(false);
                 setCode("");
               }}
             >

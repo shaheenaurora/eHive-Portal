@@ -5,9 +5,11 @@ import QRCode from "qrcode";
 export function QrCode({
   value,
   size = 240,
+  alt,
 }: {
   value: string;
   size?: number;
+  alt?: string;
 }) {
   const [src, setSrc] = useState("");
   useEffect(() => {
@@ -34,7 +36,7 @@ export function QrCode({
       src={src}
       width={size}
       height={size}
-      alt="Check-in QR code"
+      alt={alt ?? "QR code"}
       style={{ borderRadius: 10, display: "block" }}
     />
   ) : (
