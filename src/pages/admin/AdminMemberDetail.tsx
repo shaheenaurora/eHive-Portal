@@ -153,12 +153,7 @@ export default function AdminMemberDetail() {
         <button
           className="eh-btn ghost sm eh-mb"
           onClick={() => navigate(-1)}
-          style={{
-            position: "sticky",
-            top: 0,
-            zIndex: 10,
-            background: "var(--eh-card, #fff)",
-          }}
+          style={{ background: "var(--eh-card, #fff)" }}
         >
           ← Back
         </button>

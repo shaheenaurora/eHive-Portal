@@ -46,7 +46,7 @@ export class ErrorBoundary extends Component<
           />
           <h1
             style={{
-              fontFamily: "Fraunces, Georgia, serif",
+              fontFamily: "Archivo, Georgia, serif",
               color: "#f5efe2",
               fontSize: "1.5rem",
               fontWeight: 600,
