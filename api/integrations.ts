@@ -17,6 +17,7 @@
  *    or after that instant (payments/members use updatedAt, expenses createdAt).
  *  - Money: major units (AED), with an explicit `currency`.
  */
+import { createHash } from "node:crypto";
 import { Hono, type Context } from "hono";
 import {
   integrationEnabled,
@@ -28,6 +29,7 @@ import {
   toMemberDto,
 } from "./lib/integration";
 import { rateLimit } from "./lib/rate-limit";
+import { audit } from "./lib/audit";
 import type { IntegrationApiKey } from "./lib/env";
 import {
   fetchPayments,
@@ -37,6 +39,10 @@ import {
 } from "./queries/integrations";
 
 const INTEGRATION_KEY = "integrationKey";
+
+function keyHash(value: string): string {
+  return createHash("sha256").update(value).digest("hex").slice(0, 32);
+}
 
 function parseOpts(c: Context): PageOpts {
   const cursorRaw = Number(c.req.query("cursor"));
@@ -84,7 +90,13 @@ integrationApp.use("*", async (c, next) => {
       .at(-1) ??
     c.req.header("x-real-ip") ??
     "unknown";
-  if (!(await rateLimit(`integration:${ip}`, 600, 60 * 1000)))
+  // Per-IP bucket + per-key bucket so a compromised key can't exhaust the IP
+  // window and a shared IP can't exhaust a key's budget.
+  const [ipOk, keyOk] = await Promise.all([
+    rateLimit(`integration:ip:${ip}`, 600, 60 * 1000),
+    rateLimit(`integration:key:${keyHash(key.value)}`, 2000, 60 * 1000),
+  ]);
+  if (!ipOk || !keyOk)
     return c.json({ error: "Too many requests. Please slow down." }, 429);
   await next();
 });
@@ -103,6 +115,16 @@ function requireScope(
   return key;
 }
 
+async function auditIntegration(c: Context, resource: string, count: number) {
+  const key = c.get(INTEGRATION_KEY) as IntegrationApiKey | undefined;
+  if (!key) return;
+  await audit(
+    { id: 0, email: `integration:${key.name}` },
+    `integration.${resource}`,
+    { type: resource, detail: `${count} rows` }
+  );
+}
+
 integrationApp.get("/", c =>
   c.json({
     object: "index",
@@ -117,7 +139,9 @@ integrationApp.get("/payments", async c => {
   if (denied instanceof Response) return denied;
   const opts = parseOpts(c);
   const rows = await fetchPayments(opts);
-  return list(c, rows, rows.map(toPaymentDto), opts.limit);
+  const data = rows.map(toPaymentDto);
+  await auditIntegration(c, "payments", data.length);
+  return list(c, rows, data, opts.limit);
 });
 
 integrationApp.get("/expenses", async c => {
@@ -125,7 +149,9 @@ integrationApp.get("/expenses", async c => {
   if (denied instanceof Response) return denied;
   const opts = parseOpts(c);
   const rows = await fetchExpenses(opts);
-  return list(c, rows, rows.map(toExpenseDto), opts.limit);
+  const data = rows.map(toExpenseDto);
+  await auditIntegration(c, "expenses", data.length);
+  return list(c, rows, data, opts.limit);
 });
 
 integrationApp.get("/members", async c => {
@@ -133,5 +159,7 @@ integrationApp.get("/members", async c => {
   if (denied instanceof Response) return denied;
   const opts = parseOpts(c);
   const rows = await fetchMembers(opts);
-  return list(c, rows, rows.map(toMemberDto), opts.limit);
+  const data = rows.map(toMemberDto);
+  await auditIntegration(c, "members", data.length);
+  return list(c, rows, data, opts.limit);
 });

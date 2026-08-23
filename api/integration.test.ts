@@ -94,6 +94,13 @@ describe("toPaymentDto", () => {
     expect(d.customer.email).toBe("sam@example.com");
     expect(d.paidAt).toBe("2026-06-01T00:00:00.000Z");
   });
+
+  it("masks customer PII when the payer has not consented", () => {
+    const d = toPaymentDto({ ...row, consentAt: null });
+    expect(d.customer.name).toBeNull();
+    expect(d.customer.email).toBeNull();
+    expect(d.amount).toBe(5999);
+  });
 });
 
 describe("toExpenseDto", () => {

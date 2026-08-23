@@ -100,6 +100,7 @@ export type IntegrationPaymentRow = {
   updatedAt: Date | string;
   payerName: string | null;
   payerEmail: string | null;
+  consentAt?: Date | string | null;
 };
 
 function iso(d: Date | string | null | undefined): string | null {
@@ -112,6 +113,7 @@ export function toPaymentDto(r: IntegrationPaymentRow) {
   const currency = (r.currency || "aed").toUpperCase();
   const gross = r.amount / 100;
   const refunded = (r.refundedAmount ?? 0) / 100;
+  const consented = r.consentAt !== null;
   return {
     ref: refCode("payment", r.id),
     object: "payment",
@@ -126,8 +128,8 @@ export function toPaymentDto(r: IntegrationPaymentRow) {
     providerRef: r.providerRef,
     customer: {
       ref: refCode("user", r.userId),
-      name: r.payerName,
-      email: r.payerEmail,
+      name: consented ? r.payerName : null,
+      email: consented ? r.payerEmail : null,
     },
     createdAt: iso(r.createdAt),
     paidAt: iso(r.paidAt),

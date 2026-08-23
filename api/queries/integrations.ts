@@ -5,7 +5,7 @@
  * updatedAt (bumped on every change, including status/refund updates); chapter
  * expenses are append-oriented and filter on createdAt.
  */
-import { and, asc, eq, gt, gte } from "drizzle-orm";
+import { and, asc, eq, gt, gte, isNotNull } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "./connection";
 import type {
@@ -45,6 +45,7 @@ export async function fetchPayments(
       updatedAt: schema.paymentRecords.updatedAt,
       payerName: schema.users.name,
       payerEmail: schema.users.email,
+      consentAt: schema.users.consentAt,
     })
     .from(schema.paymentRecords)
     .leftJoin(schema.users, eq(schema.users.id, schema.paymentRecords.userId))
@@ -86,7 +87,10 @@ export async function fetchMembers(
   opts: PageOpts
 ): Promise<IntegrationMemberRow[]> {
   const db = getDb();
-  const conds = [gt(schema.members.id, opts.cursor ?? 0)];
+  const conds = [
+    gt(schema.members.id, opts.cursor ?? 0),
+    isNotNull(schema.users.consentAt),
+  ];
   if (opts.updatedSince)
     conds.push(gte(schema.members.updatedAt, opts.updatedSince));
   const rows = await db
