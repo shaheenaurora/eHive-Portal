@@ -34,9 +34,11 @@ export function CookieConsent() {
   }, []);
 
   useEffect(() => {
-    // Move focus to the primary action so keyboard users land inside the banner.
+    // Only move focus when the banner is actually shown; otherwise we steal
+    // focus from whatever the user is doing on every app mount.
+    if (choice) return;
     acceptAllRef.current?.focus();
-  }, []);
+  }, [choice]);
 
   useEffect(() => {
     if (choice) return;
@@ -60,9 +62,9 @@ export function CookieConsent() {
       tabIndex={-1}
       style={{
         position: "fixed",
-        left: "1rem",
-        right: "1rem",
-        bottom: "1rem",
+        left: "max(1rem, env(safe-area-inset-left))",
+        right: "max(1rem, env(safe-area-inset-right))",
+        bottom: "max(1rem, env(safe-area-inset-bottom))",
         zIndex: 90,
         maxWidth: 640,
         margin: "0 auto",
