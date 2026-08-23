@@ -513,14 +513,27 @@ function InvoicesTab() {
                     {fmtDate(inv.billedAt)}
                   </td>
                   <td>
-                    <a
-                      className="eh-btn ghost sm"
-                      href={`/api/admin/invoice-html?id=${inv.id}`}
-                      target="_blank"
-                      rel="noreferrer"
+                    <span
+                      className="eh-row"
+                      style={{ gap: ".3rem", justifyContent: "flex-end" }}
                     >
-                      View
-                    </a>
+                      <a
+                        className="eh-btn ghost sm"
+                        href={`/api/admin/invoice-html?id=${inv.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        HTML
+                      </a>
+                      <a
+                        className="eh-btn ghost sm"
+                        href={`/api/admin/invoice-pdf?id=${inv.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        PDF
+                      </a>
+                    </span>
                   </td>
                 </tr>
               ))}
@@ -558,6 +571,7 @@ function CreditNotesTab() {
                 <th>Amount</th>
                 <th>Reason</th>
                 <th>Date</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -578,6 +592,21 @@ function CreditNotesTab() {
                   </td>
                   <td data-label="Date" className="eh-sm eh-muted">
                     {fmtDate(cn.createdAt)}
+                  </td>
+                  <td>
+                    <span
+                      className="eh-row"
+                      style={{ gap: ".3rem", justifyContent: "flex-end" }}
+                    >
+                      <a
+                        className="eh-btn ghost sm"
+                        href={`/api/admin/credit-note-pdf?id=${cn.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        PDF
+                      </a>
+                    </span>
                   </td>
                 </tr>
               ))}

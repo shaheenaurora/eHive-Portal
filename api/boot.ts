@@ -32,9 +32,11 @@ import {
 import { activateMembership } from "./queries/circle";
 import {
   createInvoiceFromPayment,
+  getCreditNoteById,
   getInvoiceById,
   renderInvoiceHtml,
 } from "./queries/invoicing";
+import { renderCreditNotePdf, renderInvoicePdf } from "./lib/pdf-invoice";
 import { hasScope } from "./middleware";
 import { authenticateRequest } from "./lib/session";
 import { rateLimit } from "./lib/rate-limit";
@@ -825,6 +827,112 @@ app.get("/api/admin/invoice-html", async c => {
     }
     console.error("invoice-html render failed", err);
     return c.json({ error: "Unable to render invoice." }, 500);
+  }
+});
+
+/** Resolve the member name and home chapter for an invoice/credit note. */
+async function resolveMemberAndChapter(memberId: number | null): Promise<{
+  memberName?: string;
+  chapterName?: string;
+}> {
+  if (!memberId) return {};
+  const row = (
+    await getDb()
+      .select({
+        memberName: schema.users.name,
+        chapterName: schema.chapters.name,
+      })
+      .from(schema.members)
+      .leftJoin(schema.users, eq(schema.users.id, schema.members.userId))
+      .leftJoin(
+        schema.chapters,
+        eq(schema.chapters.id, schema.members.homeChapterId)
+      )
+      .where(eq(schema.members.id, memberId))
+      .limit(1)
+  ).at(0);
+  return {
+    memberName: row?.memberName ?? undefined,
+    chapterName: row?.chapterName ?? undefined,
+  };
+}
+
+/* Downloadable invoice PDF for finance admins. Reuses the same session/auth
+   pattern as the HTML printable above. */
+app.get("/api/admin/invoice-pdf", async c => {
+  let user;
+  try {
+    user = await authenticateRequest(c.req.raw.headers);
+  } catch {
+    return c.json({ error: "Not signed in." }, 401);
+  }
+  if (!hasScope(user, "finance")) {
+    return c.json({ error: "Forbidden." }, 403);
+  }
+  const rawId = c.req.query("id");
+  const id = rawId ? Number(rawId) : NaN;
+  if (!Number.isFinite(id) || id <= 0) {
+    return c.json({ error: "Invalid invoice id." }, 400);
+  }
+  try {
+    const row = await getInvoiceById(id);
+    const extra = await resolveMemberAndChapter(row.invoice.memberId);
+    const pdf = await renderInvoicePdf(
+      { ...row.invoice, payerName: row.payerName, payerEmail: row.payerEmail },
+      extra
+    );
+    const number = encodeURIComponent(row.invoice.invoiceNumber);
+    return c.body(Buffer.from(pdf), 200, {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="ehive-invoice-${number}.pdf"`,
+    });
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("not found")) {
+      return c.json({ error: "Invoice not found." }, 404);
+    }
+    console.error("invoice-pdf render failed", err);
+    return c.json({ error: "Unable to render invoice PDF." }, 500);
+  }
+});
+
+/* Downloadable credit-note PDF for finance admins. */
+app.get("/api/admin/credit-note-pdf", async c => {
+  let user;
+  try {
+    user = await authenticateRequest(c.req.raw.headers);
+  } catch {
+    return c.json({ error: "Not signed in." }, 401);
+  }
+  if (!hasScope(user, "finance")) {
+    return c.json({ error: "Forbidden." }, 403);
+  }
+  const rawId = c.req.query("id");
+  const id = rawId ? Number(rawId) : NaN;
+  if (!Number.isFinite(id) || id <= 0) {
+    return c.json({ error: "Invalid credit note id." }, 400);
+  }
+  try {
+    const row = await getCreditNoteById(id);
+    const extra = await resolveMemberAndChapter(row.creditNote.memberId);
+    const pdf = await renderCreditNotePdf(
+      {
+        ...row.creditNote,
+        payerName: row.payerName,
+        payerEmail: row.payerEmail,
+      },
+      extra
+    );
+    const number = encodeURIComponent(row.creditNote.creditNoteNumber);
+    return c.body(Buffer.from(pdf), 200, {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="ehive-credit-note-${number}.pdf"`,
+    });
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("not found")) {
+      return c.json({ error: "Credit note not found." }, 404);
+    }
+    console.error("credit-note-pdf render failed", err);
+    return c.json({ error: "Unable to render credit note PDF." }, 500);
   }
 });
 

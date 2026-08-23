@@ -205,6 +205,7 @@ export type InvoiceRow = {
   dueAt: Date | null;
   payerName: string | null;
   payerEmail: string | null;
+  lineItems: InvoiceLineItem[];
   createdAt: Date;
 };
 
