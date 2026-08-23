@@ -444,6 +444,9 @@ export const events = mysqlTable("events", {
     () => chapters.id,
     { onDelete: "set null" }
   ),
+  // Optional approved-budget commitment for chapter events. If set, it consumes
+  // the chapter's approved allocation/sponsorship budget until the event runs.
+  costAed: int("costAed"),
   deletedAt: timestamp("deletedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });

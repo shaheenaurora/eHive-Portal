@@ -10,6 +10,7 @@ import {
   promoteWaitlist,
 } from "../queries/circle";
 import { audit } from "../lib/audit";
+import { chapterEventBudgetRemaining } from "../lib/chapter-budget";
 import { EVENT_CHECKIN_OPENS_BEFORE_MS } from "@contracts/constants";
 import { TIER, idInput, EVENT_KIND, AUDIENCE, resolveAudience } from "./shared";
 
@@ -59,14 +60,24 @@ export const eventsRouter = createRouter({
         capacity: z.number().int().min(1).max(2000).default(40),
         cpdCredits: z.number().int().min(0).max(100).default(0),
         chapterId: z.number().int().positive().optional(),
+        costAed: z.number().int().min(0).max(1_000_000).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { audience, audienceTiers, ...rest } = input;
+      const { audience, audienceTiers, chapterId, costAed, ...rest } = input;
+      if (chapterId && costAed && costAed > 0) {
+        const remaining = await chapterEventBudgetRemaining(chapterId);
+        if (costAed > remaining) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `This chapter only has AED ${remaining.toLocaleString()} of uncommitted event budget.`,
+          });
+        }
+      }
       const scope = resolveAudience(audience, audienceTiers);
       const res = await getDb()
         .insert(schema.events)
-        .values({ ...rest, ...scope });
+        .values({ ...rest, ...scope, chapterId, costAed });
       const id = Number(res[0].insertId);
       await audit(ctx.user, "event.create", {
         type: "event",
@@ -90,14 +101,25 @@ export const eventsRouter = createRouter({
         capacity: z.number().int().min(1).max(2000).optional(),
         cpdCredits: z.number().int().min(0).max(100).optional(),
         chapterId: z.number().int().positive().nullable().optional(),
+        costAed: z.number().int().min(0).max(1_000_000).optional(),
       })
     )
     .mutation(async ({ input }) => {
-      const { id, audience, audienceTiers, ...patch } = input;
+      const { id, audience, audienceTiers, chapterId, costAed, ...patch } =
+        input;
+      if (chapterId && costAed && costAed > 0) {
+        const remaining = await chapterEventBudgetRemaining(chapterId, id);
+        if (costAed > remaining) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `This chapter only has AED ${remaining.toLocaleString()} of uncommitted event budget.`,
+          });
+        }
+      }
       const scope = audience ? resolveAudience(audience, audienceTiers) : {};
       await getDb()
         .update(schema.events)
-        .set({ ...patch, ...scope })
+        .set({ ...patch, ...scope, chapterId, costAed })
         .where(eq(schema.events.id, id));
       return { ok: true };
     }),

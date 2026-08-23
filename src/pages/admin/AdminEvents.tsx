@@ -139,6 +139,7 @@ export default function AdminEvents() {
         audience === "tiers" ? ([...audTiers] as never) : undefined,
       capacity: Number(f.get("capacity")) || 40,
       cpdCredits: Number(f.get("cpdCredits")) || 0,
+      costAed: f.get("costAed") ? Number(String(f.get("costAed"))) : undefined,
     });
   }
 
@@ -232,6 +233,7 @@ export default function AdminEvents() {
                 <th>When</th>
                 <th>Audience</th>
                 <th>Registered</th>
+                <th>Cost</th>
                 <th></th>
               </tr>
             </thead>
@@ -277,6 +279,11 @@ export default function AdminEvents() {
                   </td>
                   <td className="eh-num" data-label="Registered">
                     {e.regCount}/{e.capacity}
+                  </td>
+                  <td className="eh-num" data-label="Cost">
+                    {e.costAed != null
+                      ? `AED ${e.costAed.toLocaleString()}`
+                      : "—"}
                   </td>
                   <td style={{ whiteSpace: "nowrap" }}>
                     <button
@@ -337,6 +344,16 @@ export default function AdminEvents() {
                   type="number"
                   min={0}
                   defaultValue={0}
+                />
+              </Field>
+              <Field label="Cost (AED)">
+                <input
+                  className="eh-input"
+                  name="costAed"
+                  type="number"
+                  min={0}
+                  max={1_000_000}
+                  placeholder="Optional — consumes chapter budget"
                 />
               </Field>
             </div>

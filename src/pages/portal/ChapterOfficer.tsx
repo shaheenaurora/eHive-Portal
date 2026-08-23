@@ -834,6 +834,7 @@ function OfficerEvents({
     audience: string;
     capacity: number;
     regCount: number;
+    costAed: number | null;
     status?: string;
   }[];
   isLoading: boolean;
@@ -845,6 +846,7 @@ function OfficerEvents({
   const [location, setLocation] = useState("");
   const [startsAt, setStartsAt] = useState("");
   const [capacity, setCapacity] = useState(40);
+  const [costAed, setCostAed] = useState<number | "">("");
 
   const save = trpc.officer.createEvent.useMutation({
     onSuccess: () => {
@@ -855,6 +857,7 @@ function OfficerEvents({
       setLocation("");
       setStartsAt("");
       setCapacity(40);
+      setCostAed("");
       refresh();
     },
     onError: e => toast(e.message),
@@ -894,6 +897,9 @@ function OfficerEvents({
                 {EVENT_AUDIENCE_LABEL[
                   e.audience as keyof typeof EVENT_AUDIENCE_LABEL
                 ] ?? e.audience}
+                {e.costAed != null
+                  ? ` · AED ${e.costAed.toLocaleString()}`
+                  : ""}
               </div>
               <div className="d eh-muted">
                 {e.regCount}/{e.capacity} registered
@@ -969,6 +975,19 @@ function OfficerEvents({
               onChange={e => setCapacity(Number(e.target.value))}
             />
           </Field>
+          <Field label="Cost (AED)">
+            <input
+              className="eh-input"
+              type="number"
+              min={0}
+              max={1_000_000}
+              value={costAed}
+              onChange={e =>
+                setCostAed(e.target.value === "" ? "" : Number(e.target.value))
+              }
+              placeholder="Optional — consumes approved chapter budget"
+            />
+          </Field>
           <button
             className="eh-btn gold"
             style={{ width: "100%" }}
@@ -985,6 +1004,7 @@ function OfficerEvents({
                 location: location || undefined,
                 startsAt: new Date(startsAt),
                 capacity,
+                costAed: costAed === "" ? undefined : Number(costAed),
               })
             }
           >
