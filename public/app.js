@@ -2075,6 +2075,41 @@ function submitLead(payload, onOk, onErr) {
           else startSphere();
         });
       }
+
+      /* ---- cursor spotlight on dark v2 sections ---- */
+      if (!isTouch) {
+        var darkSections = document.querySelectorAll(
+          ".eh-section-v2.eh-dark"
+        );
+        darkSections.forEach(function (sec) {
+          sec.addEventListener("pointermove", function (e) {
+            var rect = sec.getBoundingClientRect();
+            sec.style.setProperty("--spot-x", e.clientX - rect.left + "px");
+            sec.style.setProperty("--spot-y", e.clientY - rect.top + "px");
+            sec.classList.add("spot-active");
+          });
+          sec.addEventListener("pointerleave", function () {
+            sec.classList.remove("spot-active");
+          });
+        });
+      }
+
+      /* ---- 3D tilt on pillar cards ---- */
+      if (!prefersReduced && !isTouch) {
+        document.querySelectorAll(".eh-tilt").forEach(function (card) {
+          card.addEventListener("mousemove", function (e) {
+            var rect = card.getBoundingClientRect();
+            var x = (e.clientX - rect.left) / rect.width - 0.5;
+            var y = (e.clientY - rect.top) / rect.height - 0.5;
+            card.style.setProperty("--rx", y * -12 + "deg");
+            card.style.setProperty("--ry", x * 12 + "deg");
+          });
+          card.addEventListener("mouseleave", function () {
+            card.style.setProperty("--rx", "0deg");
+            card.style.setProperty("--ry", "0deg");
+          });
+        });
+      }
     }
   })();
 })();

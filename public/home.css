@@ -6818,6 +6818,79 @@ a.art:hover {
   }
 }
 
+/* ---- v2 mobile menu contrast ---- */
+@media (max-width: 900px) {
+  .eh-v2 .h-nav .nav-links {
+    background: var(--eh-ink);
+  }
+
+  .eh-v2 .h-nav .nav-links li {
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .eh-v2 .h-nav .nav-links a,
+  .eh-v2 .h-nav .nav-links .h-btn {
+    color: #fff;
+  }
+
+  .eh-v2 .h-nav .nav-links .h-btn {
+    border-color: rgba(255, 255, 255, 0.35);
+  }
+}
+
+/* ---- cursor spotlight on dark v2 sections ---- */
+.eh-section-v2.eh-dark {
+  position: relative;
+}
+
+.eh-section-v2.eh-dark::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: radial-gradient(
+    520px circle at var(--spot-x, 50%) var(--spot-y, 50%),
+    rgba(218, 58, 34, 0.11),
+    transparent 55%
+  );
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.eh-section-v2.eh-dark.spot-active::before {
+  opacity: 1;
+}
+
+.eh-section-v2.eh-dark > .eh-wrap {
+  position: relative;
+  z-index: 2;
+}
+
+/* ---- 3D tilt cards ---- */
+.eh-tilt {
+  transform-style: preserve-3d;
+  transform: perspective(1000px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform 0.12s ease-out;
+}
+
+.eh-tilt .eh-card-img img,
+.eh-tilt .eh-card-body {
+  transform: translateZ(20px);
+}
+
+/* ---- sticky side panels ---- */
+.eh-sticky {
+  position: sticky;
+  top: 30vh;
+}
+
+@media (max-width: 920px) {
+  .eh-sticky {
+    position: static;
+  }
+}
+
 /* Respect users who prefer reduced motion. */
 @media (prefers-reduced-motion: reduce) {
   *,
