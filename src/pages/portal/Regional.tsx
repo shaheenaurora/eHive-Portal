@@ -53,7 +53,7 @@ export default function Regional() {
     null
   );
 
-  const overview = trpc.officer.overview.useQuery(undefined, {
+  const overview = trpc.officer.regionalOverview.useQuery(undefined, {
     retry: false,
   });
 

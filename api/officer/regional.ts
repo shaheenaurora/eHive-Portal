@@ -83,7 +83,7 @@ export async function regionalChapterIds(scope: RegionalScope) {
 }
 
 export const officerRegionalRouter = createRouter({
-  overview: authedQuery.query(async ({ ctx }) => {
+  regionalOverview: authedQuery.query(async ({ ctx }) => {
     const scope = await requireRegionalOfficer(ctx.user.id);
     const chapterIds = await regionalChapterIds(scope);
     const db = getDb();
