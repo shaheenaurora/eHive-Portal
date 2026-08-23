@@ -314,6 +314,59 @@ export const authRouter = createRouter({
       return { ok: true };
     }),
 
+  /* ---- change password while authenticated ---- */
+  changePassword: authedQuery
+    .input(
+      z.object({
+        currentPassword: z.string().min(8).max(200),
+        password: z.string().min(8).max(200),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (
+        !ctx.user.passwordHash ||
+        !(await verifyPassword(input.currentPassword, ctx.user.passwordHash))
+      ) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Your current password is incorrect.",
+        });
+      }
+      const pwdCheck = validatePassword(input.password);
+      if (!pwdCheck.ok) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: pwdCheck.error });
+      }
+      if (
+        !(await rateLimit(`changePassword:${ctx.user.id}`, 5, 60 * 60 * 1000))
+      ) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "Too many attempts. Please try again later.",
+        });
+      }
+      await setUserPassword(ctx.user.id, await hashPassword(input.password));
+      const user = await findUserById(ctx.user.id);
+      if (!user) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Account not found.",
+        });
+      }
+      ctx.resHeaders.append(
+        "set-cookie",
+        await sessionSetCookie(user.unionId, user.tokenVersion, ctx.req.headers)
+      );
+      try {
+        await sendPasswordChangedEmail({
+          email: user.email!,
+          name: user.name,
+        });
+      } catch (e) {
+        console.error("password-changed email failed", e);
+      }
+      return { ok: true };
+    }),
+
   /* ---- two-factor authentication (TOTP) ---- */
   twoFactorStatus: authedQuery.query(({ ctx }) => ({
     enabled: !!ctx.user.totpEnabled,

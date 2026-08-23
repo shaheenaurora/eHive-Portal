@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { eq, desc, or, sql } from "drizzle-orm";
+import { eq, desc, or, sql, inArray } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "../queries/connection";
 import { createRouter, scopedAdmin } from "../middleware";
@@ -299,6 +299,11 @@ export const adminDataRequestsRouter = createRouter({
             name: "Deleted User",
             email: sql`concat('deleted-', ${schema.users.id}, '@anon.ehive')`,
             avatar: null,
+            passwordHash: null,
+            totpEnabled: 0,
+            totpSecret: null,
+            adminScopes: "",
+            tokenVersion: sql`tokenVersion + 1`,
           })
           .where(eq(schema.users.id, userId));
 
@@ -322,16 +327,54 @@ export const adminDataRequestsRouter = createRouter({
           .set({ status: "done" })
           .where(eq(schema.dataRequests.id, req.id));
 
-        // 4. Delete personal-content rows.
+        // 4. Invalidate credentials and sessions.
+        await tx
+          .delete(schema.authTokens)
+          .where(eq(schema.authTokens.userId, userId));
+        await tx
+          .delete(schema.pushSubscriptions)
+          .where(eq(schema.pushSubscriptions.memberId, memberId));
+
+        // 5. Delete personal-content rows.
         await tx
           .delete(schema.memberKyc)
           .where(eq(schema.memberKyc.memberId, memberId));
         await tx
+          .delete(schema.onboardingMilestones)
+          .where(eq(schema.onboardingMilestones.memberId, memberId));
+        await tx
           .delete(schema.applications)
           .where(eq(schema.applications.userId, userId));
         await tx
+          .delete(schema.membershipEvents)
+          .where(eq(schema.membershipEvents.memberId, memberId));
+        await tx
+          .delete(schema.memberChangeRequests)
+          .where(eq(schema.memberChangeRequests.memberId, memberId));
+        await tx
+          .delete(schema.zenithApps)
+          .where(eq(schema.zenithApps.userId, userId));
+        await tx
+          .delete(schema.podMembers)
+          .where(eq(schema.podMembers.memberId, memberId));
+        await tx
+          .delete(schema.attendance)
+          .where(eq(schema.attendance.memberId, memberId));
+        await tx
+          .delete(schema.actionItems)
+          .where(eq(schema.actionItems.memberId, memberId));
+        await tx
+          .delete(schema.eventRegs)
+          .where(eq(schema.eventRegs.memberId, memberId));
+        await tx
           .delete(schema.eventFeedback)
           .where(eq(schema.eventFeedback.memberId, memberId));
+        await tx
+          .delete(schema.scoreEvents)
+          .where(eq(schema.scoreEvents.memberId, memberId));
+        await tx
+          .delete(schema.hiveScoreHistory)
+          .where(eq(schema.hiveScoreHistory.memberId, memberId));
         await tx
           .delete(schema.referrals)
           .where(eq(schema.referrals.memberId, memberId));
@@ -352,23 +395,17 @@ export const adminDataRequestsRouter = createRouter({
             )
           );
         await tx
-          .delete(schema.scorecardResults)
-          .where(eq(schema.scorecardResults.email, user.email));
+          .delete(schema.deals)
+          .where(eq(schema.deals.postedBy, memberId));
         await tx
-          .delete(schema.pushSubscriptions)
-          .where(eq(schema.pushSubscriptions.memberId, memberId));
+          .delete(schema.endorsements)
+          .where(eq(schema.endorsements.memberId, memberId));
+        await tx
+          .delete(schema.investorIntros)
+          .where(eq(schema.investorIntros.memberId, memberId));
         await tx
           .delete(schema.notifications)
           .where(eq(schema.notifications.memberId, memberId));
-        await tx
-          .delete(schema.followUps)
-          .where(eq(schema.followUps.ownerUserId, userId));
-        await tx
-          .delete(schema.prospects)
-          .where(eq(schema.prospects.email, user.email));
-        await tx
-          .delete(schema.appointments)
-          .where(eq(schema.appointments.email, user.email));
         await tx
           .delete(schema.conductCases)
           .where(
@@ -377,6 +414,100 @@ export const adminDataRequestsRouter = createRouter({
               eq(schema.conductCases.subjectMemberId, memberId)
             )
           );
+        await tx
+          .delete(schema.memberSaveCases)
+          .where(eq(schema.memberSaveCases.memberId, memberId));
+        await tx
+          .delete(schema.chapterTransfers)
+          .where(eq(schema.chapterTransfers.memberId, memberId));
+        await tx
+          .delete(schema.chapterRoles)
+          .where(eq(schema.chapterRoles.memberId, memberId));
+        await tx
+          .delete(schema.candidates)
+          .where(eq(schema.candidates.memberId, memberId));
+        await tx
+          .delete(schema.ballotRoll)
+          .where(eq(schema.ballotRoll.memberId, memberId));
+        await tx
+          .delete(schema.motionVotes)
+          .where(eq(schema.motionVotes.memberId, memberId));
+        await tx
+          .delete(schema.govRoles)
+          .where(eq(schema.govRoles.memberId, memberId));
+        await tx
+          .delete(schema.unitRoles)
+          .where(eq(schema.unitRoles.memberId, memberId));
+        await tx
+          .delete(schema.chapterPosts)
+          .where(eq(schema.chapterPosts.authorMemberId, memberId));
+        await tx
+          .delete(schema.meetingAttendance)
+          .where(eq(schema.meetingAttendance.memberId, memberId));
+        await tx
+          .delete(schema.dormancyLog)
+          .where(eq(schema.dormancyLog.memberId, memberId));
+
+        // 6. FRP clean-up via enrolment ids.
+        const enrolmentRows = await tx
+          .select({ id: schema.frpEnrolments.id })
+          .from(schema.frpEnrolments)
+          .where(eq(schema.frpEnrolments.memberId, memberId));
+        const enrolmentIds = enrolmentRows.map(r => r.id);
+        if (enrolmentIds.length > 0) {
+          await tx
+            .delete(schema.readinessAssessments)
+            .where(
+              inArray(schema.readinessAssessments.enrolmentId, enrolmentIds)
+            );
+          await tx
+            .delete(schema.frpMilestones)
+            .where(inArray(schema.frpMilestones.enrolmentId, enrolmentIds));
+          await tx
+            .delete(schema.frpEnrolments)
+            .where(inArray(schema.frpEnrolments.id, enrolmentIds));
+        }
+
+        // 7. Awards clean-up.
+        await tx
+          .update(schema.awardNominations)
+          .set({ nominatedByMemberId: null })
+          .where(eq(schema.awardNominations.nominatedByMemberId, memberId));
+        await tx
+          .delete(schema.awardNominations)
+          .where(eq(schema.awardNominations.nomineeMemberId, memberId));
+        await tx
+          .delete(schema.awardRecords)
+          .where(eq(schema.awardRecords.memberId, memberId));
+        await tx
+          .delete(schema.awardVotes)
+          .where(eq(schema.awardVotes.voterMemberId, memberId));
+        await tx
+          .delete(schema.awardIntegrityFlags)
+          .where(eq(schema.awardIntegrityFlags.memberId, memberId));
+        await tx
+          .delete(schema.awardScores)
+          .where(eq(schema.awardScores.judgeUserId, userId));
+        await tx
+          .delete(schema.awardJudges)
+          .where(eq(schema.awardJudges.userId, userId));
+
+        // 8. Prospect/lead, appointment and follow-up traces.
+        await tx
+          .delete(schema.prospects)
+          .where(eq(schema.prospects.email, user.email));
+        await tx.delete(schema.leads).where(eq(schema.leads.email, user.email));
+        await tx
+          .delete(schema.appointments)
+          .where(eq(schema.appointments.email, user.email));
+        await tx
+          .delete(schema.followUps)
+          .where(eq(schema.followUps.ownerUserId, userId));
+        await tx
+          .delete(schema.scorecardResults)
+          .where(eq(schema.scorecardResults.email, user.email));
+
+        // 9. Finally remove any outstanding data requests for this member.
         await tx
           .delete(schema.dataRequests)
           .where(eq(schema.dataRequests.memberId, memberId));

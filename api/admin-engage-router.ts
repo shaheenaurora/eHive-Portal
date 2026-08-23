@@ -1246,6 +1246,13 @@ export const adminEngageRouter = createRouter({
         });
       if (req.status !== "pending")
         throw new TRPCError({ code: "CONFLICT", message: "Already decided." });
+      if (input.decision === "approve" && req.officerDecision !== "approved") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "A chapter transfer can only be approved after the destination chapter officers have recommended it.",
+        });
+      }
       let toChapterName: string | null = null;
       if (input.decision === "approve") {
         // Validate the destination chapter still exists (and isn't archived)
