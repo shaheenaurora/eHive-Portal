@@ -110,14 +110,26 @@ export default function AdminApplications() {
                 <tr
                   key={a.id}
                   className="click"
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`Review application from ${a.name}`}
                   onClick={() => {
                     setSel(a);
                     setNote(a.note ?? "");
                     setTier(a.tierRequested);
                     setChapter("");
                   }}
+                  onKeyDown={e => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setSel(a);
+                      setNote(a.note ?? "");
+                      setTier(a.tierRequested);
+                      setChapter("");
+                    }
+                  }}
                 >
-                  <td>
+                  <td data-label="Applicant">
                     <b>{a.name}</b>
                     <div className="eh-muted eh-sm">{a.email}</div>
                   </td>
@@ -134,7 +146,7 @@ export default function AdminApplications() {
                   <td className="eh-sm eh-muted" data-label="Applied">
                     {fmtDate(a.createdAt)}
                   </td>
-                  <td>
+                  <td data-label="">
                     <span className="eh-btn ghost sm">Review →</span>
                   </td>
                 </tr>

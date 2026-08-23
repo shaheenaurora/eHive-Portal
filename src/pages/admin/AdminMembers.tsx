@@ -371,11 +371,20 @@ export default function AdminMembers() {
                 <tr
                   key={member.id}
                   className="click"
+                  tabIndex={0}
+                  role="link"
+                  aria-label={`Open ${userName ?? "member"} profile`}
                   onClick={() =>
                     (window.location.href = `/admin/members/${member.id}`)
                   }
+                  onKeyDown={e => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      window.location.href = `/admin/members/${member.id}`;
+                    }
+                  }}
                 >
-                  <td onClick={e => e.stopPropagation()}>
+                  <td data-label="" onClick={e => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       aria-label={`Select ${userName ?? "member"}`}
@@ -383,7 +392,7 @@ export default function AdminMembers() {
                       onChange={() => toggle(member.id)}
                     />
                   </td>
-                  <td>
+                  <td data-label="Member">
                     <div className="eh-row" style={{ flexWrap: "nowrap" }}>
                       <span className="eh-avatar">{initials(userName)}</span>
                       <div>
@@ -420,7 +429,7 @@ export default function AdminMembers() {
                   <td className="eh-num" data-label="Score">
                     <b>{member.hiveScore}</b>
                   </td>
-                  <td>
+                  <td data-label="" onClick={e => e.stopPropagation()}>
                     <Link
                       className="eh-btn ghost sm"
                       to={`/admin/members/${member.id}`}

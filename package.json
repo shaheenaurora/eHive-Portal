@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && esbuild api/boot.ts --platform=node --bundle --format=esm --outdir=dist --banner:js=\"import { createRequire } from 'module';const require = createRequire(import.meta.url);\" && esbuild scripts/pre-deploy.ts --platform=node --bundle --format=esm --outdir=dist --banner:js=\"import { createRequire } from 'module';const require = createRequire(import.meta.url);\"",
+    "build": "vite build && npm run build:public && esbuild api/boot.ts --platform=node --bundle --format=esm --outdir=dist --banner:js=\"import { createRequire } from 'module';const require = createRequire(import.meta.url);\" && esbuild scripts/pre-deploy.ts --platform=node --bundle --format=esm --outdir=dist --banner:js=\"import { createRequire } from 'module';const require = createRequire(import.meta.url);\"",
     "build:public-css": "esbuild public/styles.css --minify --outfile=public/styles.min.css && esbuild public/apps.css --minify --outfile=public/apps.min.css",
     "build:public-js": "esbuild public/app.js --minify --outfile=public/app.min.js && esbuild public/apps.js --minify --outfile=public/apps.min.js",
     "build:public": "npm run build:public-css && npm run build:public-js",

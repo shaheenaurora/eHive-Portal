@@ -47,7 +47,7 @@ function submitLead(payload, onOk, onErr) {
           if (onOk) onOk(d);
         })
         .catch(function () {
-          if (onOk) onOk({ ok: true });
+          if (onErr) onErr("parse");
         });
     })
     .catch(function (e) {
