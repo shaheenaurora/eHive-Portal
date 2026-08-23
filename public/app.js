@@ -14,8 +14,8 @@ var PORTAL_LIVE = true; /* portal is live at /portal */
 var WA_NUMBER = null; /* e.g. "9715XXXXXXXX" once the WhatsApp line exists */
 
 /* ---- launch date (single source of truth) -------------------------------
-   1 Aug 2026, 00:00 Gulf Standard Time. Used by countdowns and launch copy. */
-var LAUNCH_DATE_UTC = Date.UTC(2026, 6, 31, 20, 0, 0);
+   1 Oct 2026, 00:00 Gulf Standard Time. Used by countdowns and launch copy. */
+var LAUNCH_DATE_UTC = Date.UTC(2026, 8, 30, 20, 0, 0);
 var LAUNCH_DATE = new Date(LAUNCH_DATE_UTC);
 function launchDateLabel() {
   return LAUNCH_DATE.toLocaleDateString("en-GB", {
@@ -289,7 +289,7 @@ function submitLead(payload, onOk, onErr) {
   });
 
   /* ---- founding-cohort countdown ------------------------------------------
-     Target: LAUNCH_DATE_UTC (1 Aug 2026 GST).
+     Target: LAUNCH_DATE_UTC (1 Oct 2026 GST).
      Any [data-countdown] block with .cd-d/.cd-h/.cd-m/.cd-s cells is driven;
      [data-cd-days] elements receive the plain day count. Zeroes, never dashes. */
   (function () {

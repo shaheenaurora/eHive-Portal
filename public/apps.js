@@ -158,7 +158,7 @@
         "The Circle opens <b>" +
         (window.ehiveLaunchLabel
           ? window.ehiveLaunchLabel()
-          : "1 August 2026") +
+          : "1 October 2026") +
         "</b> — the founding cohort is forming now. Tiers run from Horizon (AED 999/yr) to Zenith (invitation-only); Ascent fits most founders.",
       chips: [
         ["See the tiers", "go:circle.html#tiers"],
@@ -352,7 +352,7 @@
           "The founding cohort opens " +
           (window.ehiveLaunchLabel
             ? window.ehiveLaunchLabel()
-            : "1 August 2026") +
+            : "1 October 2026") +
           ". Four tiers from AED 999 a year — Ascent fits most founders. Membership is how you stop building alone.",
         ctas: [
           ["See the tiers", "circle.html#tiers"],
