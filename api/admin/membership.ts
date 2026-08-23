@@ -84,6 +84,27 @@ export const membershipRouter = createRouter({
 
       const decided =
         input.status === "approved" || input.status === "rejected";
+
+      if (input.chapterId) {
+        const chapter = await db
+          .select({ id: schema.chapters.id, deletedAt: schema.chapters.deletedAt })
+          .from(schema.chapters)
+          .where(eq(schema.chapters.id, input.chapterId))
+          .limit(1);
+        if (chapter.length === 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Selected chapter does not exist.",
+          });
+        }
+        if (chapter[0].deletedAt) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Cannot admit a member into a deleted chapter.",
+          });
+        }
+      }
+
       await db
         .update(schema.applications)
         .set({
@@ -749,7 +770,7 @@ export const membershipRouter = createRouter({
         note: z.string().max(255).optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       await mustMember(input.memberId);
       await awardPoints(
         input.memberId,
@@ -757,6 +778,11 @@ export const membershipRouter = createRouter({
         input.points,
         input.note ?? "Admin adjustment"
       );
+      await audit(ctx.user, "member.score.adjust", {
+        type: "member",
+        id: input.memberId,
+        detail: `${input.factor}: ${input.points > 0 ? "+" : ""}${input.points}`,
+      });
       return { ok: true };
     }),
 
@@ -791,7 +817,7 @@ export const membershipRouter = createRouter({
         )
         .min(1)
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = getDb();
       for (const c of input) {
         const existing = await db
@@ -808,10 +834,14 @@ export const membershipRouter = createRouter({
           await db.insert(schema.hiveScoreConfig).values(c);
         }
       }
+      await audit(ctx.user, "member.score.weights", {
+        type: "hiveScoreConfig",
+        detail: input.map(c => `${c.factor}=${c.weight}`).join(","),
+      });
       return { ok: true };
     }),
 
-  recomputeAll: scopedAdmin("membership").mutation(async () => {
+  recomputeAll: scopedAdmin("membership").mutation(async ({ ctx }) => {
     const db = getDb();
     const rows = await db
       .select({ id: schema.members.id })
@@ -821,6 +851,10 @@ export const membershipRouter = createRouter({
       await recomputeScore(r.id);
       n++;
     }
+    await audit(ctx.user, "member.score.recompute", {
+      type: "member",
+      detail: `recomputed ${n} members`,
+    });
     return { ok: true, recomputed: n };
   }),
 

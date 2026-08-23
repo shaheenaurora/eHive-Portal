@@ -19,6 +19,7 @@ export const SCOPE_ENUM = z.enum([
   "content",
   "finance",
   "conduct",
+  "leads",
 ]);
 
 export const TIER = z.enum(["horizon", "ascent", "vanguard", "zenith"]);

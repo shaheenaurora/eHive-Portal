@@ -58,7 +58,7 @@ export default function Login() {
       );
       return;
     }
-    register.mutate({ name, email, password });
+    register.mutate({ name, email, password, consent: true });
   }
 
   return (

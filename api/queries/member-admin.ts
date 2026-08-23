@@ -248,7 +248,9 @@ async function applyHighImpact(
 /* ------------------------------- services ------------------------------- */
 
 /** Immediate profile-field edit (no approval). Records an `applied` row so the
- *  member's activity ledger captures the change; audits and notifies. */
+ *  member's activity ledger captures the change; audits and notifies. Email
+ *  changes made by officers/admins are treated as high-impact and routed
+ *  through the approval queue instead of being applied immediately. */
 export async function applyProfileEdit(
   actor: Actor,
   memberId: number,
@@ -258,6 +260,18 @@ export async function applyProfileEdit(
   const row = await loadMemberUser(memberId);
   const changes = diffProfile(row, patch);
   if (!changes.length) return { ok: true, changed: 0 };
+
+  const emailChange = changes.find(c => c.field === "email");
+  if (emailChange && source !== "member") {
+    const r = await proposeChange(actor, memberId, {
+      category: "profile",
+      changes: [emailChange],
+      reason: "Email address change requested by staff.",
+      source,
+    });
+    return { ok: true, changed: 1, requestId: r.id };
+  }
+
   await writeProfile(memberId, row.userId, row.userName, changes);
   await getDb()
     .insert(schema.memberChangeRequests)

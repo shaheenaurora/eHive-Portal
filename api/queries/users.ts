@@ -12,10 +12,19 @@ import { env } from "../lib/env";
  */
 export async function ensureOwnerRole(user: User): Promise<User> {
   const owner = env.ownerEmail.trim().toLowerCase();
-  const isOwner =
-    !!owner &&
-    !!user.emailVerifiedAt &&
-    (user.email ?? "").toLowerCase() === owner;
+  const emailMatchesOwner =
+    !!owner && (user.email ?? "").toLowerCase() === owner;
+  // The deployment-controlled OWNER_EMAIL is a trust anchor. If the owner
+  // account hasn't verified its email yet (e.g. SMTP is not configured), we
+  // auto-verify it so the bootstrap account can always log back in.
+  if (emailMatchesOwner && !user.emailVerifiedAt) {
+    await getDb()
+      .update(schema.users)
+      .set({ emailVerifiedAt: new Date() })
+      .where(eq(schema.users.id, user.id));
+    user = { ...user, emailVerifiedAt: new Date() };
+  }
+  const isOwner = emailMatchesOwner && !!user.emailVerifiedAt;
   if (user.role === "admin") {
     // Owner always holds the full "*" scope even if promoted before scopes existed.
     if (isOwner && user.adminScopes !== "*") {

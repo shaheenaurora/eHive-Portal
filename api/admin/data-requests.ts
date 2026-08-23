@@ -406,47 +406,13 @@ export const adminDataRequestsRouter = createRouter({
         await tx
           .delete(schema.notifications)
           .where(eq(schema.notifications.memberId, memberId));
-        await tx
-          .delete(schema.conductCases)
-          .where(
-            or(
-              eq(schema.conductCases.reporterMemberId, memberId),
-              eq(schema.conductCases.subjectMemberId, memberId)
-            )
-          );
-        await tx
-          .delete(schema.memberSaveCases)
-          .where(eq(schema.memberSaveCases.memberId, memberId));
+        // Legal / governance records are retained but reference the now
+        // anonymised member/user rows. Deleting them would destroy election
+        // outcomes, safeguarding cases, and officer-appointment history.
+        // chapterTransfers are personal administrative history and can be removed.
         await tx
           .delete(schema.chapterTransfers)
           .where(eq(schema.chapterTransfers.memberId, memberId));
-        await tx
-          .delete(schema.chapterRoles)
-          .where(eq(schema.chapterRoles.memberId, memberId));
-        await tx
-          .delete(schema.candidates)
-          .where(eq(schema.candidates.memberId, memberId));
-        await tx
-          .delete(schema.ballotRoll)
-          .where(eq(schema.ballotRoll.memberId, memberId));
-        await tx
-          .delete(schema.motionVotes)
-          .where(eq(schema.motionVotes.memberId, memberId));
-        await tx
-          .delete(schema.govRoles)
-          .where(eq(schema.govRoles.memberId, memberId));
-        await tx
-          .delete(schema.unitRoles)
-          .where(eq(schema.unitRoles.memberId, memberId));
-        await tx
-          .delete(schema.chapterPosts)
-          .where(eq(schema.chapterPosts.authorMemberId, memberId));
-        await tx
-          .delete(schema.meetingAttendance)
-          .where(eq(schema.meetingAttendance.memberId, memberId));
-        await tx
-          .delete(schema.dormancyLog)
-          .where(eq(schema.dormancyLog.memberId, memberId));
 
         // 6. FRP clean-up via enrolment ids.
         const enrolmentRows = await tx

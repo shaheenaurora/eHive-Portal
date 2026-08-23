@@ -85,7 +85,16 @@ export const authRouter = createRouter({
   config: publicQuery.query(() => ({ mailConfigured: mailEnabled() })),
 
   register: publicQuery
-    .input(credentials.extend({ name: z.string().min(1).max(255) }))
+    .input(
+      credentials.extend({
+        name: z.string().min(1).max(255),
+        consent: z
+          .boolean()
+          .refine(v => v === true, {
+            message: "You must accept the Privacy Policy and Terms.",
+          }),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       const ip = clientIp(ctx.req.headers);
       if (!(await rateLimit(`register:${ip}`, 5, 60 * 60 * 1000))) {

@@ -64,7 +64,7 @@ export function hasScope(
 export function scopedAdmin(scope: string) {
   return adminQuery.use(async opts => {
     const { ctx, next } = opts;
-    if (!hasScope(ctx.user as never, scope)) {
+    if (!hasScope(ctx.user, scope)) {
       throw new TRPCError({
         code: "FORBIDDEN",
         message: "Your admin role doesn't include this action.",
@@ -88,7 +88,7 @@ export function isFullAdmin(user: {
  *  Platform configuration and cross-cutting tools live here. */
 export const fullAdmin = adminQuery.use(async opts => {
   const { ctx, next } = opts;
-  if (!isFullAdmin(ctx.user as never)) {
+  if (!isFullAdmin(ctx.user)) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "Only a full administrator can do this.",

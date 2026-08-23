@@ -1915,7 +1915,7 @@ export const adminEngageRouter = createRouter({
           .default("proposed"),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = getDb();
       const { id, ...vals } = input;
       if (id)
@@ -1924,6 +1924,11 @@ export const adminEngageRouter = createRouter({
           .set(vals)
           .where(eq(schema.chapterBudgets.id, id));
       else await db.insert(schema.chapterBudgets).values(vals);
+      await audit(ctx.user, "chapter.budget.save", {
+        type: "chapterBudget",
+        id: id ?? input.chapterId,
+        detail: `${input.kind} ${input.status} AED ${input.amount} · ${input.label}`,
+      });
       return { ok: true };
     }),
 

@@ -1136,11 +1136,17 @@ function ExpensesTab({ onRecord }: { onRecord: () => void }) {
         toast("No receipt on file.");
         return;
       }
+      // Open in a new tab using an <object> tag. The sandboxed object tag plus
+      // the backend MIME whitelist prevents a malicious receipt from executing
+      // JavaScript in the admin session.
       const win = window.open();
-      if (win)
+      if (win) {
         win.document.write(
-          `<title>${r.name}</title><iframe src="${r.data}" style="border:0;width:100vw;height:100vh"></iframe>`
+          `<title>${r.name}</title>` +
+            `<object data="${r.data}" type="${r.mime ?? "application/pdf"}" ` +
+            `sandbox style="border:0;width:100vw;height:100vh"></object>`
         );
+      }
     } catch (e) {
       toast(e instanceof Error ? e.message : "Couldn't open the receipt.");
     }

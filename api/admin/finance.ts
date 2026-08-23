@@ -378,14 +378,20 @@ export const financeRouter = createRouter({
   setCurrencyRate: scopedAdmin("finance")
     .input(z.object({ code: z.string().min(2).max(8), rate: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      if (!isFullAdmin(ctx.user as never)) {
+      if (!isFullAdmin(ctx.user)) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Only a full administrator can set FX rates.",
         });
       }
       try {
-        return await setRate(ctx.user, input.code.toLowerCase(), input.rate);
+        const r = await setRate(ctx.user, input.code.toLowerCase(), input.rate);
+        await audit(ctx.user, "finance.fx.set", {
+          type: "fxRate",
+          id: input.code.toLowerCase(),
+          detail: `rate=${input.rate}`,
+        });
+        return r;
       } catch (e) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -396,13 +402,18 @@ export const financeRouter = createRouter({
   clearCurrencyRate: scopedAdmin("finance")
     .input(z.object({ code: z.string().min(2).max(8) }))
     .mutation(async ({ ctx, input }) => {
-      if (!isFullAdmin(ctx.user as never)) {
+      if (!isFullAdmin(ctx.user)) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Only a full administrator can clear FX rates.",
         });
       }
-      return clearRate(ctx.user, input.code.toLowerCase());
+      const r = await clearRate(ctx.user, input.code.toLowerCase());
+      await audit(ctx.user, "finance.fx.clear", {
+        type: "fxRate",
+        id: input.code.toLowerCase(),
+      });
+      return r;
     }),
 
   refundPayment: scopedAdmin("finance")

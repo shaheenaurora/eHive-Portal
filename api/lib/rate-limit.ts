@@ -5,6 +5,7 @@
 import { eq, sql } from "drizzle-orm";
 import { getDb } from "../queries/connection";
 import * as schema from "@db/schema";
+import { env } from "./env";
 
 type Bucket = { count: number; resetAt: number };
 const memoryStore = new Map<string, Bucket>();
@@ -22,7 +23,10 @@ function memoryRateLimit(key: string, max: number, windowMs: number): boolean {
 }
 
 /** Returns true if the action is allowed, false if the caller is over the limit.
- *  `key` scopes the window (e.g. `login:<ip>` or `login:<email>`). */
+ *  `key` scopes the window (e.g. `login:<ip>` or `login:<email>`).
+ *  In production the limiter fails closed (denies the request) when the
+ *  database is unreachable, because an in-process fallback is per-replica and
+ *  can be bypassed in a multi-instance deployment. */
 export async function rateLimit(
   key: string,
   max: number,
@@ -48,6 +52,7 @@ export async function rateLimit(
     return (rows[0]?.count ?? 0) <= max;
   } catch (err) {
     console.error("rate limit db error", err);
+    if (env.isProduction) return false;
     return memoryRateLimit(key, max, windowMs);
   }
 }

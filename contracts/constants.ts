@@ -15,6 +15,10 @@ export const Paths = {
   login: "/login",
 } as const;
 
+/* Privacy-policy / terms version captured at sign-up for PDPL/GDPR evidence.
+   Bump this whenever the privacy policy or terms change meaningfully. */
+export const PRIVACY_POLICY_VERSION = "2026-08-23";
+
 /* ---- eHive Circle domain constants (shared frontend <-> backend) ---- */
 export const TIERS = ["horizon", "ascent", "vanguard", "zenith"] as const;
 export type Tier = (typeof TIERS)[number];
@@ -1071,6 +1075,10 @@ export const ADMIN_SCOPES = [
   {
     key: "conduct",
     label: "Conduct & Safeguarding — incident reports, cases & member removal",
+  },
+  {
+    key: "leads",
+    label: "Leads & Pipeline — prospecting, scorecards, bookings & admissions",
   },
 ] as const;
 export type AdminScope = (typeof ADMIN_SCOPES)[number]["key"];

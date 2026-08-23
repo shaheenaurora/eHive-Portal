@@ -799,11 +799,11 @@ export async function listExpenses(
   return rows as ExpenseRow[];
 }
 
-/** Fetch a spend line's receipt (the data URL + filename), or null if none. */
+/** Fetch a spend line's receipt (the data URL + filename + MIME), or null if none. */
 export async function expenseReceipt(
   id: number,
   scope?: FinanceScope
-): Promise<{ name: string; data: string } | null> {
+): Promise<{ name: string; data: string; mime: string } | null> {
   const conds = [eq(schema.chapterBudgets.id, id)];
   if (scope?.chapterIds?.length) {
     conds.push(inArray(schema.chapterBudgets.chapterId, scope.chapterIds));
@@ -819,7 +819,8 @@ export async function expenseReceipt(
       .limit(1)
   ).at(0);
   if (!row?.data) return null;
-  return { name: row.name ?? "receipt", data: row.data };
+  const mime = row.data.match(/^data:([^;]+);base64,/)?.[1] ?? "application/pdf";
+  return { name: row.name ?? "receipt", data: row.data, mime };
 }
 
 /** Record a chapter expense against its operating budget. */
@@ -888,10 +889,13 @@ export async function recordExpense(
   // sane (base64 of ~4 MB ≈ 5.5 MB of text).
   const receiptData = input.receiptData?.trim() || null;
   if (receiptData) {
-    if (!/^data:[\w./+-]+;base64,/.test(receiptData))
+    // Only images and PDFs are accepted as financial evidence. This blocks
+    // text/html and image/svg+xml data URLs that could execute scripts when
+    // viewed by another finance admin.
+    if (!/^data:(image\/[\w.+ -]|application\/pdf);base64,/.test(receiptData))
       throw new TRPCError({
         code: "BAD_REQUEST",
-        message: "Receipt must be a base64 data URL.",
+        message: "Receipt must be a PDF or image (JPG/PNG/WebP).",
       });
     if (receiptData.length > 6_000_000)
       throw new TRPCError({

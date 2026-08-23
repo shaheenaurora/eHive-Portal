@@ -274,7 +274,15 @@ export const systemRouter = createRouter({
   }),
   acknowledgeKpiAlert: fullAdmin
     .input(z.object({ id: z.number().int().positive() }))
-    .mutation(({ ctx, input }) => acknowledgeKpiAlert(ctx.user, input.id)),
+    .mutation(async ({ ctx, input }) => {
+      const r = await acknowledgeKpiAlert(ctx.user, input.id);
+      await audit(ctx.user, "kpi.alert.ack", {
+        type: "kpiAlert",
+        id: input.id,
+        detail: "acknowledged",
+      });
+      return r;
+    }),
 
   /* ---------------- Reports & KPIs — role-scoped drill-down ----------------
      The network/board scorecard stays full-admin; each domain report is gated to
@@ -356,7 +364,7 @@ export const systemRouter = createRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      if (!isFullAdmin(ctx.user as never))
+      if (!isFullAdmin(ctx.user))
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Only a full administrator can manage admin access.",
@@ -377,17 +385,51 @@ export const systemRouter = createRouter({
       ).at(0);
       if (!target)
         throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
-      // Never demote the platform owner or strip their full scope.
-      const isOwner = target.adminScopes === "*";
+
+      // Determine owner by the deployment-controlled email, not just the current
+      // scope value, so the owner can never be demoted.
+      const ownerEmail = env.ownerEmail.trim().toLowerCase();
+      const isOwner =
+        !!ownerEmail && (target.email ?? "").toLowerCase() === ownerEmail;
+      const targetWasFullAdmin = isFullAdmin(target);
+      const newScopes = isOwner
+        ? "*"
+        : input.makeAdmin
+          ? input.scopes.join(",")
+          : "";
+      const targetStillFullAdmin = isFullAdmin({
+        role: input.makeAdmin ? "admin" : "user",
+        adminScopes: newScopes,
+      });
+
+      // Prevent self-demotion from full admin to scoped admin.
+      if (input.userId === ctx.user.id && targetWasFullAdmin && !targetStillFullAdmin) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "You can't remove your own full administrator access.",
+        });
+      }
+
+      // Never leave the platform without at least one full administrator.
+      if (targetWasFullAdmin && !targetStillFullAdmin) {
+        const fullAdmins = await db
+          .select({ id: schema.users.id, adminScopes: schema.users.adminScopes })
+          .from(schema.users)
+          .where(eq(schema.users.role, "admin"));
+        const otherFullAdmins = fullAdmins.filter(u => u.id !== input.userId && isFullAdmin({ role: "admin", adminScopes: u.adminScopes }));
+        if (otherFullAdmins.length === 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Cannot remove the last full administrator.",
+          });
+        }
+      }
+
       await db
         .update(schema.users)
         .set({
           role: input.makeAdmin ? "admin" : "user",
-          adminScopes: isOwner
-            ? "*"
-            : input.makeAdmin
-              ? input.scopes.join(",")
-              : "",
+          adminScopes: newScopes,
         })
         .where(eq(schema.users.id, input.userId));
       await audit(ctx.user, "admin.access", {

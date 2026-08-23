@@ -1,9 +1,14 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, or } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "./queries/connection";
-import { createRouter, authedQuery, scopedAdmin } from "./middleware";
+import {
+  createRouter,
+  authedQuery,
+  scopedAdmin,
+  isFullAdmin,
+} from "./middleware";
 import { getMemberByUserId, notify } from "./queries/circle";
 import { audit } from "./lib/audit";
 import { applyLifecycleTransition } from "./lib/lifecycle";
@@ -12,6 +17,44 @@ import { CONDUCT_SEVERITIES, CONDUCT_STATUSES } from "@contracts/constants";
 const SEVERITY = z.enum(CONDUCT_SEVERITIES);
 const STATUS = z.enum(CONDUCT_STATUSES);
 const conductAdmin = scopedAdmin("conduct");
+
+/** Chapter-level scoping for conduct admins. Full admins see everything;
+ *  scoped conduct admins only see cases for chapters where they hold an
+ *  active chapter role. This prevents Chapter A's safeguarding reports from
+ *  leaking to Chapter B officers in a franchise deployment. */
+async function actorConductChapterScope(actor: {
+  id: number;
+  role: string;
+  adminScopes?: string | null;
+}): Promise<{ full: boolean; chapterIds: number[] }> {
+  if (isFullAdmin(actor)) return { full: true, chapterIds: [] };
+  const db = getDb();
+  const actorMember = await db
+    .select({ id: schema.members.id })
+    .from(schema.members)
+    .where(eq(schema.members.userId, actor.id))
+    .limit(1);
+  const memberId = actorMember.at(0)?.id;
+  if (!memberId) return { full: false, chapterIds: [] };
+  const roles = await db
+    .select({ chapterId: schema.chapterRoles.chapterId })
+    .from(schema.chapterRoles)
+    .where(
+      and(
+        eq(schema.chapterRoles.memberId, memberId),
+        eq(schema.chapterRoles.status, "active")
+      )
+    );
+  return { full: false, chapterIds: roles.map(r => r.chapterId) };
+}
+
+function caseScopeFilter(
+  chapterIds: number[],
+  table: typeof schema.conductCases = schema.conductCases
+) {
+  if (chapterIds.length === 0) return isNull(table.chapterId);
+  return or(inArray(table.chapterId, chapterIds), isNull(table.chapterId));
+}
 
 /** Attach reporter/subject display names to a case row for the admin views. */
 async function withNames(rows: schema.ConductCase[]) {
@@ -95,24 +138,29 @@ export const conductRouter = createRouter({
   /* ---- admin (conduct scope): case queue ---- */
   cases: conductAdmin
     .input(z.object({ status: STATUS.optional() }).optional())
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const db = getDb();
-      const rows = input?.status
-        ? await db
-            .select()
-            .from(schema.conductCases)
-            .where(eq(schema.conductCases.status, input.status))
-            .orderBy(desc(schema.conductCases.createdAt))
-        : await db
-            .select()
-            .from(schema.conductCases)
-            .orderBy(desc(schema.conductCases.createdAt));
+      const scope = await actorConductChapterScope(ctx.user);
+      const baseFilter = scope.full
+        ? null
+        : caseScopeFilter(scope.chapterIds);
+      let query = db.select().from(schema.conductCases);
+      if (input?.status) {
+        query = query.where(
+          baseFilter
+            ? and(eq(schema.conductCases.status, input.status), baseFilter)
+            : eq(schema.conductCases.status, input.status)
+        ) as typeof query;
+      } else if (baseFilter) {
+        query = query.where(baseFilter) as typeof query;
+      }
+      const rows = await query.orderBy(desc(schema.conductCases.createdAt));
       return withNames(rows);
     }),
 
   caseDetail: conductAdmin
     .input(z.object({ id: z.number().int().positive() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const row = (
         await getDb()
           .select()
@@ -122,6 +170,17 @@ export const conductRouter = createRouter({
       ).at(0);
       if (!row)
         throw new TRPCError({ code: "NOT_FOUND", message: "Case not found" });
+      const scope = await actorConductChapterScope(ctx.user);
+      if (
+        !scope.full &&
+        row.chapterId !== null &&
+        !scope.chapterIds.includes(row.chapterId)
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "This case is outside your chapter scope.",
+        });
+      }
       return (await withNames([row]))[0];
     }),
 
@@ -135,16 +194,33 @@ export const conductRouter = createRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      const db = getDb();
+      const c = (
+        await db
+          .select()
+          .from(schema.conductCases)
+          .where(eq(schema.conductCases.id, input.id))
+          .limit(1)
+      ).at(0);
+      if (!c) throw new TRPCError({ code: "NOT_FOUND", message: "Case not found" });
+      const scope = await actorConductChapterScope(ctx.user);
+      if (
+        !scope.full &&
+        c.chapterId !== null &&
+        !scope.chapterIds.includes(c.chapterId)
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "This case is outside your chapter scope.",
+        });
+      }
       const patch: Partial<typeof schema.conductCases.$inferInsert> = {
         handledByUserId: ctx.user.id,
       };
       if (input.status) patch.status = input.status;
       if (input.severity) patch.severity = input.severity;
       if (input.resolution !== undefined) patch.resolution = input.resolution;
-      await getDb()
-        .update(schema.conductCases)
-        .set(patch)
-        .where(eq(schema.conductCases.id, input.id));
+      await db.update(schema.conductCases).set(patch).where(eq(schema.conductCases.id, input.id));
       await audit(ctx.user, "conduct.update", {
         type: "conduct_case",
         id: input.id,
@@ -173,6 +249,17 @@ export const conductRouter = createRouter({
       ).at(0);
       if (!c)
         throw new TRPCError({ code: "NOT_FOUND", message: "Case not found" });
+      const scope = await actorConductChapterScope(ctx.user);
+      if (
+        !scope.full &&
+        c.chapterId !== null &&
+        !scope.chapterIds.includes(c.chapterId)
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "This case is outside your chapter scope.",
+        });
+      }
       if (c.subjectMemberId !== input.memberId) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -297,11 +384,18 @@ export const conductRouter = createRouter({
     }),
 
   /* ---- admin (conduct scope): appeals queue ---- */
-  appeals: conductAdmin.query(async () => {
+  appeals: conductAdmin.query(async ({ ctx }) => {
+    const scope = await actorConductChapterScope(ctx.user);
+    const baseFilter = scope.full
+      ? eq(schema.conductCases.appealStatus, "open")
+      : and(
+          eq(schema.conductCases.appealStatus, "open"),
+          caseScopeFilter(scope.chapterIds)
+        );
     const rows = await getDb()
       .select()
       .from(schema.conductCases)
-      .where(eq(schema.conductCases.appealStatus, "open"))
+      .where(baseFilter)
       .orderBy(desc(schema.conductCases.appealedAt));
     return withNames(rows);
   }),
@@ -325,6 +419,17 @@ export const conductRouter = createRouter({
           .limit(1)
       ).at(0);
       if (!c) throw new TRPCError({ code: "NOT_FOUND" });
+      const scope = await actorConductChapterScope(ctx.user);
+      if (
+        !scope.full &&
+        c.chapterId !== null &&
+        !scope.chapterIds.includes(c.chapterId)
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "This appeal is outside your chapter scope.",
+        });
+      }
       if (c.appealStatus !== "open")
         throw new TRPCError({
           code: "CONFLICT",
@@ -380,13 +485,18 @@ export const conductRouter = createRouter({
     }),
 
   /* ---- admin: open-case count for the nav badge ---- */
-  openCount: conductAdmin.query(async () => {
-    const rows = await getDb()
+  openCount: conductAdmin.query(async ({ ctx }) => {
+    const scope = await actorConductChapterScope(ctx.user);
+    const query = getDb()
       .select({
         status: schema.conductCases.status,
         appealStatus: schema.conductCases.appealStatus,
+        chapterId: schema.conductCases.chapterId,
       })
       .from(schema.conductCases);
+    const rows = scope.full
+      ? await query
+      : await query.where(caseScopeFilter(scope.chapterIds));
     return rows.filter(
       r =>
         r.status === "open" ||
