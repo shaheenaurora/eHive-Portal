@@ -2331,14 +2331,26 @@ body.has-sticky-cta {
 /* ---- image banner ---- */
 .h-img-banner {
   position: relative;
-  width: 100%;
+  width: calc(100% - 2 * clamp(1rem, 5vw, 3rem));
+  max-width: 1160px;
+  margin: 1.5rem auto;
+  border-radius: var(--h-radius-lg);
   overflow: hidden;
-  margin: 0;
+  box-shadow: var(--h-shadow-lg);
+  aspect-ratio: 16 / 9;
+}
+
+@media (min-width: 768px) {
+  .h-img-banner {
+    aspect-ratio: 21 / 9;
+    max-height: min(420px, 45vh);
+  }
 }
 
 .h-img-banner img {
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: cover;
   display: block;
 }
 
@@ -2357,14 +2369,14 @@ body.has-sticky-cta {
   bottom: 0;
   left: 0;
   right: 0;
-  padding: clamp(1.5rem, 4vw, 3rem);
+  padding: clamp(1rem, 3vw, 2rem);
   color: #fff;
   font-family: "Archivo", system-ui, sans-serif;
   font-weight: 800;
-  font-size: clamp(1.1rem, 2.2vw, 1.6rem);
+  font-size: clamp(1rem, 1.8vw, 1.35rem);
   line-height: 1.25;
   letter-spacing: -0.01em;
-  max-width: 900px;
+  max-width: 760px;
 }
 
 /* ---- tier cards ---- */
@@ -5375,14 +5387,26 @@ a.art:hover {
 /* ---- image banner ---- */
 .img-banner {
   position: relative;
-  width: 100%;
+  width: calc(100% - 2 * clamp(1rem, 5vw, 3rem));
+  max-width: 1160px;
+  margin: 1.5rem auto;
+  border-radius: var(--h-radius-lg);
   overflow: hidden;
-  margin: 0;
+  box-shadow: var(--h-shadow-lg);
+  aspect-ratio: 16 / 9;
+}
+
+@media (min-width: 768px) {
+  .img-banner {
+    aspect-ratio: 21 / 9;
+    max-height: min(420px, 45vh);
+  }
 }
 
 .img-banner img {
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: cover;
   display: block;
 }
 
@@ -5401,14 +5425,14 @@ a.art:hover {
   bottom: 0;
   left: 0;
   right: 0;
-  padding: clamp(1.5rem, 4vw, 3rem);
+  padding: clamp(1rem, 3vw, 2rem);
   color: #fff;
   font-family: "Archivo", system-ui, sans-serif;
   font-weight: 800;
-  font-size: clamp(1.1rem, 2.2vw, 1.6rem);
+  font-size: clamp(1rem, 1.8vw, 1.35rem);
   line-height: 1.25;
   letter-spacing: -0.01em;
-  max-width: 900px;
+  max-width: 760px;
 }
 
 /* ---- section common ---- */
