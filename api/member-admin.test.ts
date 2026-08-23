@@ -3,6 +3,7 @@ import {
   violatesFourEyes,
   canApprove,
   mergeActivity,
+  canChangeTier,
   HIGH_IMPACT,
   type Actor,
   type Activity,
@@ -103,5 +104,59 @@ describe("member activity ledger merge", () => {
   it("returns an empty array for empty input", () => {
     expect(mergeActivity([])).toEqual([]);
     expect(mergeActivity([[], []])).toEqual([]);
+  });
+});
+
+describe("tier-change business rules", () => {
+  const member = (tier: string, daysAgo: number, status = "active") => ({
+    status,
+    tier,
+    createdAt: new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000),
+  });
+
+  it("allows a change after the minimum tenure", () => {
+    const m = member("horizon", 100);
+    expect(canChangeTier(m, "ascent", []).ok).toBe(true);
+  });
+
+  it("blocks a change before the minimum tenure", () => {
+    const m = member("horizon", 10);
+    expect(canChangeTier(m, "ascent", []).ok).toBe(false);
+  });
+
+  it("blocks change for non-active members", () => {
+    const m = member("horizon", 100, "paused");
+    expect(canChangeTier(m, "ascent", []).ok).toBe(false);
+  });
+
+  it("blocks self-serve zenith requests", () => {
+    const m = member("vanguard", 100);
+    expect(
+      canChangeTier(m, "zenith", [], { isSelfServe: true }).ok
+    ).toBe(false);
+  });
+
+  it("blocks downgrade within the upgrade cooldown", () => {
+    const m = member("ascent", 100);
+    const history = [
+      {
+        type: "upgrade",
+        toTier: "ascent" as const,
+        createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+      },
+    ];
+    expect(canChangeTier(m, "horizon", history).ok).toBe(false);
+  });
+
+  it("allows downgrade after the upgrade cooldown", () => {
+    const m = member("ascent", 200);
+    const history = [
+      {
+        type: "upgrade",
+        toTier: "ascent" as const,
+        createdAt: new Date(Date.now() - 100 * 24 * 60 * 60 * 1000),
+      },
+    ];
+    expect(canChangeTier(m, "horizon", history).ok).toBe(true);
   });
 });

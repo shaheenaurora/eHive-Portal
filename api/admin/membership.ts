@@ -18,11 +18,13 @@ import {
   decideChange,
   listChangeRequests,
   memberActivity,
+  canChangeTier,
+  tierChangeHistory,
 } from "../queries/member-admin";
 import { kycQueue, getKyc, reviewKyc } from "../queries/kyc";
 import { pipelineReport } from "../queries/reports";
 import { audit } from "../lib/audit";
-import { tierRank, type MemberLifecycle } from "@contracts/constants";
+import { tierRank, type MemberLifecycle, type Tier } from "@contracts/constants";
 import {
   TIER,
   idInput,
@@ -606,6 +608,11 @@ export const membershipRouter = createRouter({
       const db = getDb();
       const m = await mustMember(input.memberId);
       if (m.tier === input.tier) return { ok: true };
+      const history = await tierChangeHistory(m.id);
+      const check = canChangeTier(m, input.tier, history);
+      if (!check.ok) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: check.reason });
+      }
       const type =
         tierRank(input.tier) > tierRank(m.tier) ? "upgrade" : "downgrade";
       await db
@@ -683,13 +690,21 @@ export const membershipRouter = createRouter({
       const m = await mustMember(req.memberId);
 
       if (input.decision === "approve") {
-        // Guard against a stale request whose starting tier has since changed.
-        if (req.toTier && tierRank(req.toTier) !== tierRank(m.tier)) {
-          await db
-            .update(schema.members)
-            .set({ tier: req.toTier as never })
-            .where(eq(schema.members.id, m.id));
+        if (!req.toTier) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Request has no target tier.",
+          });
         }
+        const history = await tierChangeHistory(m.id);
+        const check = canChangeTier(m, req.toTier, history);
+        if (!check.ok) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: check.reason });
+        }
+        await db
+          .update(schema.members)
+          .set({ tier: req.toTier as Tier })
+          .where(eq(schema.members.id, m.id));
       }
       await db
         .update(schema.membershipEvents)

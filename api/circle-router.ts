@@ -18,6 +18,8 @@ import {
 import {
   proposeChange,
   listChangeRequests,
+  canChangeTier,
+  tierChangeHistory,
   type FieldChange,
 } from "./queries/member-admin";
 import { computeOnboarding } from "./queries/onboarding";
@@ -538,6 +540,16 @@ export const circleRouter = createRouter({
             code: "BAD_REQUEST",
             message: "That's already your tier.",
           });
+        const history = await tierChangeHistory(member.id);
+        const check = canChangeTier(member, input.toTier, history, {
+          isSelfServe: true,
+        });
+        if (!check.ok) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: check.reason,
+          });
+        }
         const existingPending = await db
           .select()
           .from(schema.membershipEvents)

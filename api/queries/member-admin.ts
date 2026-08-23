@@ -40,6 +40,7 @@ export {
   violatesFourEyes,
   canApprove,
   mergeActivity,
+  canChangeTier,
 } from "../lib/member-change";
 
 /* --------------------------- data-bound helpers -------------------------- */
@@ -60,6 +61,25 @@ async function loadMemberUser(memberId: number) {
   if (!row)
     throw new TRPCError({ code: "NOT_FOUND", message: "Member not found" });
   return row;
+}
+
+/** Tier-change history for a member, used by the canChangeTier business rules. */
+export async function tierChangeHistory(memberId: number) {
+  const db = getDb();
+  return db
+    .select({
+      type: schema.membershipEvents.type,
+      toTier: schema.membershipEvents.toTier,
+      createdAt: schema.membershipEvents.createdAt,
+    })
+    .from(schema.membershipEvents)
+    .where(
+      and(
+        eq(schema.membershipEvents.memberId, memberId),
+        inArray(schema.membershipEvents.type, ["upgrade", "downgrade", "approved"])
+      )
+    )
+    .orderBy(desc(schema.membershipEvents.createdAt));
 }
 
 /** Does the actor hold an active leadership role in the member's home chapter? */

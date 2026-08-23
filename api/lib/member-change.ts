@@ -89,3 +89,63 @@ export function summarise(changes: FieldChange[]): string {
     .map(c => `${c.label}: ${c.from || "—"} → ${c.to || "—"}`)
     .join("; ");
 }
+
+/** Tier-change business rules (BRD 9.1). Returns {ok:true} or {ok:false,reason}.
+ *  - active members only
+ *  - must have been in the current tier for at least `minTenureDays`
+ *  - cannot downgrade within `cooldownDays` of a recent upgrade
+ *  - zenith is application-only and cannot be self-served */
+import { tierRank } from "@contracts/constants";
+
+export function canChangeTier(
+  member: { status: string; tier: string; createdAt: Date },
+  toTier: string,
+  history: { type: string; toTier: string | null; createdAt: Date }[],
+  opts: { minTenureDays?: number; upgradeCooldownDays?: number; isSelfServe?: boolean } = {}
+): { ok: true } | { ok: false; reason: string } {
+  const minTenureDays = opts.minTenureDays ?? 90;
+  const upgradeCooldownDays = opts.upgradeCooldownDays ?? 30;
+  const isSelfServe = opts.isSelfServe ?? false;
+
+  if (member.status !== "active") {
+    return { ok: false, reason: "Tier changes are only allowed for active members." };
+  }
+  if (toTier === member.tier) {
+    return { ok: false, reason: "That's already the current tier." };
+  }
+  if (isSelfServe && toTier === "zenith") {
+    return { ok: false, reason: "Zenith membership is by invitation only." };
+  }
+
+  // Find when the member entered the current tier.
+  const tierEvents = history
+    .filter(h => ["upgrade", "downgrade", "approved"].includes(h.type) && h.toTier)
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  const currentTierEvent = tierEvents.find(h => h.toTier === member.tier);
+  const tierSince = currentTierEvent?.createdAt ?? member.createdAt;
+  const daysInTier = Math.floor(
+    (Date.now() - tierSince.getTime()) / (1000 * 60 * 60 * 24)
+  );
+  if (daysInTier < minTenureDays) {
+    return {
+      ok: false,
+      reason: `You must be in your current tier for at least ${minTenureDays} days before changing.`,
+    };
+  }
+
+  // Prevent gaming the system by upgrading then immediately downgrading.
+  const lastUpgrade = tierEvents.find(h => h.type === "upgrade" || (h.type === "approved" && tierRank(h.toTier!) > tierRank(member.tier)));
+  if (lastUpgrade && tierRank(toTier) < tierRank(member.tier)) {
+    const daysSinceUpgrade = Math.floor(
+      (Date.now() - lastUpgrade.createdAt.getTime()) / (1000 * 60 * 60 * 24)
+    );
+    if (daysSinceUpgrade < upgradeCooldownDays) {
+      return {
+        ok: false,
+        reason: `Downgrades are not allowed within ${upgradeCooldownDays} days of an upgrade.`,
+      };
+    }
+  }
+
+  return { ok: true };
+}
