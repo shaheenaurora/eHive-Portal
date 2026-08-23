@@ -1,6 +1,8 @@
 import * as React from "react";
 
-const MOBILE_BREAKPOINT = 768;
+// Keep this in sync with the mobile layout breakpoint in src/index.css
+// (currently @media (max-width: 900px)).
+const MOBILE_BREAKPOINT = 900;
 
 export function useIsMobile() {
   const [isMobile, setIsMobile] = React.useState<boolean | undefined>(

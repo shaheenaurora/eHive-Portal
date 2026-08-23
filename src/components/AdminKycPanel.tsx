@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/providers/trpc";
-import { Pill, toast, confirmDialog } from "@/components/eh";
+import { Pill, Field, toast, confirmDialog } from "@/components/eh";
 import { fmtDate } from "@/lib/ehf";
 import {
   KYC_ID_TYPE_LABEL,
@@ -61,13 +61,14 @@ export function AdminKycPanel({ memberId }: { memberId: number }) {
           </div>
           {kyc.status === "submitted" && (
             <>
-              <input
-                className="eh-input"
-                style={{ marginBottom: ".5rem" }}
-                placeholder="Review note (required to reject)"
-                value={note}
-                onChange={e => setNote(e.target.value)}
-              />
+              <Field label="Review note">
+                <input
+                  className="eh-input"
+                  placeholder="Required to reject"
+                  value={note}
+                  onChange={e => setNote(e.target.value)}
+                />
+              </Field>
               <div className="eh-row" style={{ gap: ".4rem" }}>
                 <button
                   className="eh-btn green sm"

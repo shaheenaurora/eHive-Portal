@@ -1,4 +1,5 @@
 import { trpc } from "@/providers/trpc";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
   EhShell,
   ADMIN_NAV,
@@ -39,6 +40,7 @@ function downloadExport(payload: Record<string, unknown>, memberId: number) {
 }
 
 export default function AdminDataRequests() {
+  useDocumentTitle("Data Requests");
   const utils = trpc.useUtils();
   const list = trpc.admin.dataRequests.list.useQuery(undefined, {
     retry: false,

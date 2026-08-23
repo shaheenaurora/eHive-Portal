@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/providers/trpc";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
   EhShell,
   MEMBER_NAV,
@@ -22,6 +23,7 @@ import {
 type Tab = "121" | "referrals" | "deals";
 
 export default function Connect() {
+  useDocumentTitle("Connect");
   const utils = trpc.useUtils();
   const [tab, setTab] = useState<Tab>("121");
   const [logOpen, setLogOpen] = useState(false);

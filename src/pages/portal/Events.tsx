@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/providers/trpc";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
   EhShell,
   MEMBER_NAV,
@@ -23,6 +24,7 @@ import {
 } from "@contracts/constants";
 
 export default function Events() {
+  useDocumentTitle("Events");
   const utils = trpc.useUtils();
   const { user } = useAuth();
   const q = trpc.circle.events.useQuery(undefined, { retry: false });

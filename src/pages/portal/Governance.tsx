@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/providers/trpc";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
   EhShell,
   MEMBER_NAV,
@@ -21,6 +22,7 @@ import {
 import type { ConductSeverity } from "@contracts/constants";
 
 export default function Governance() {
+  useDocumentTitle("Governance");
   const utils = trpc.useUtils();
   const q = trpc.circle.governance.useQuery(undefined, { retry: false });
   const ack = trpc.circle.ackPolicy.useMutation({

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/providers/trpc";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
   EhShell,
   ADMIN_NAV,
@@ -80,6 +81,7 @@ function geoLine(c: {
 }
 
 export default function AdminChapters() {
+  useDocumentTitle("Chapters");
   const utils = trpc.useUtils();
   const list = trpc.adminEngage.chaptersAdmin.useQuery(undefined, {
     retry: false,

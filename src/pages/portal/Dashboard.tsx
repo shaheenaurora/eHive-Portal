@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Link, useSearchParams } from "react-router";
 import { trpc } from "@/providers/trpc";
 import { useAuth } from "@/hooks/useAuth";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
   EhShell,
   MEMBER_NAV,
@@ -28,6 +29,7 @@ const OB_LINK: Record<string, { to: string; cta: string }> = {
 };
 
 export default function Dashboard() {
+  useDocumentTitle("Dashboard");
   const d = trpc.circle.dashboard.useQuery(undefined, { retry: false });
   const ob = trpc.circle.myOnboarding.useQuery(undefined, { retry: false });
   const utils = trpc.useUtils();

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { trpc } from "@/providers/trpc";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
   EhShell,
   MEMBER_NAV,
@@ -29,6 +30,7 @@ import {
 import type { DormancyStage } from "@contracts/constants";
 
 export default function Membership() {
+  useDocumentTitle("Membership");
   const utils = trpc.useUtils();
   const me = trpc.circle.me.useQuery(undefined, { retry: false });
   const hist = trpc.circle.membershipHistory.useQuery(undefined, {

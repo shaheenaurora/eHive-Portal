@@ -361,7 +361,7 @@ export function Modal(props: {
     >
       <div
         ref={ref}
-        className="eh-modal"
+        className={"eh-modal" + (props.wide ? " wide" : "")}
         style={props.wide ? { maxWidth: 760 } : undefined}
         role="dialog"
         aria-modal="true"
@@ -684,10 +684,7 @@ function NotifBell() {
     };
   }, [open]);
   return (
-    <div
-      ref={wrapRef}
-      style={{ position: "fixed", top: "1rem", right: "1.25rem", zIndex: 60 }}
-    >
+    <div ref={wrapRef} className="eh-notif-bell">
       <button
         className="eh-btn ghost sm"
         aria-label="Notifications"

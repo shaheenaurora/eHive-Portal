@@ -122,6 +122,7 @@ export default function AdminAccess() {
                 </p>
               ) : (
                 <ScopeEditor
+                  email={a.email}
                   disabled={!iAmFull || setAccess.isPending}
                   initial={current}
                   fullNote={
@@ -172,6 +173,7 @@ export default function AdminAccess() {
             Capabilities
           </div>
           <ScopeChecklist
+            email={email || undefined}
             selected={newScopes}
             onToggle={k => {
               const next = new Set(newScopes);
@@ -437,40 +439,51 @@ function AutomationSettings() {
 function ScopeChecklist({
   selected,
   onToggle,
+  email,
 }: {
   selected: Set<string>;
   onToggle: (k: string) => void;
+  email?: string;
 }) {
   return (
-    <div className="eh-list">
-      {ADMIN_SCOPES.map(s => (
-        <label
-          key={s.key}
-          className="row"
-          style={{ cursor: "pointer", alignItems: "flex-start" }}
-        >
-          <input
-            type="checkbox"
-            checked={selected.has(s.key)}
-            onChange={() => onToggle(s.key)}
-            style={{ marginTop: ".3rem", accentColor: "#b8862e" }}
-          />
-          <span className="t" style={{ flex: 1 }}>
-            {s.label}
-          </span>
-        </label>
-      ))}
-    </div>
+    <fieldset className="eh-scope-fieldset">
+      {email && (
+        <legend className="eh-eyebrow" style={{ marginBottom: ".4rem" }}>
+          Capabilities for {email}
+        </legend>
+      )}
+      <div className="eh-list">
+        {ADMIN_SCOPES.map(s => (
+          <label
+            key={s.key}
+            className="row"
+            style={{ cursor: "pointer", alignItems: "flex-start" }}
+          >
+            <input
+              type="checkbox"
+              checked={selected.has(s.key)}
+              onChange={() => onToggle(s.key)}
+              style={{ marginTop: ".3rem", accentColor: "#b8862e" }}
+            />
+            <span className="t" style={{ flex: 1 }}>
+              {s.label}
+            </span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
   );
 }
 
 function ScopeEditor({
+  email,
   initial,
   onSave,
   onRevoke,
   disabled,
   fullNote,
 }: {
+  email?: string;
   initial: Set<string>;
   onSave: (scopes: string[]) => void;
   onRevoke?: () => void;
@@ -529,6 +542,7 @@ function ScopeEditor({
         </p>
       )}
       <ScopeChecklist
+        email={email}
         selected={sel}
         onToggle={k => {
           if (disabled) return;

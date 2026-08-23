@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { trpc } from "@/providers/trpc";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
   EhShell,
   ADMIN_NAV,
@@ -25,6 +26,7 @@ import {
 } from "@contracts/constants";
 
 export default function AdminMembers() {
+  useDocumentTitle("Members");
   const [q2, setQ2] = useState("");
   const [tier, setTier] = useState("");
   const [status, setStatus] = useState("");

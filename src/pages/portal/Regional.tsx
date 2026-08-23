@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/providers/trpc";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
   EhShell,
   MEMBER_NAV,
@@ -49,6 +50,7 @@ function levelLabel(level: string) {
 }
 
 export default function Regional() {
+  useDocumentTitle("My Region");
   const [selectedChapterId, setSelectedChapterId] = useState<number | null>(
     null
   );

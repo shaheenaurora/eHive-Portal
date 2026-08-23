@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/providers/trpc";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
   EhShell,
   ADMIN_NAV,
@@ -52,6 +53,7 @@ type Tab =
   | "fx";
 
 export default function AdminFinance() {
+  useDocumentTitle("Finance");
   const utils = trpc.useUtils();
   const summary = trpc.admin.financeSummary.useQuery(undefined, {
     retry: false,

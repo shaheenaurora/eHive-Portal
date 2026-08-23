@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { trpc } from "@/providers/trpc";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
   EhShell,
   ADMIN_NAV,
@@ -19,6 +20,7 @@ import { TIER_LABEL } from "@contracts/constants";
 const BANDS = ["80+", "60-79", "40-59", "20-39", "0-19"];
 
 export default function AdminDashboard() {
+  useDocumentTitle("Admin Dashboard");
   const q = trpc.admin.stats.useQuery(undefined, { retry: false });
   const { user } = useAuth();
   const canApplications = adminHasScope(user?.adminScopes, "membership");

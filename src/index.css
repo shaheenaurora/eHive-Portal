@@ -291,6 +291,19 @@ textarea:focus-visible,
   display: none;
 }
 
+/* Sidebar close control only belongs to the mobile drawer. */
+.eh-side-close {
+  display: none;
+}
+
+/* Notification bell — desktop floats top-right of main content. */
+.eh-notif-bell {
+  position: fixed;
+  top: 1rem;
+  right: 1.25rem;
+  z-index: 60;
+}
+
 @media (max-width: 900px) {
   .eh-shell {
     flex-direction: column;
@@ -352,6 +365,15 @@ textarea:focus-visible,
     z-index: 65;
     background: rgba(16, 29, 44, 0.55);
     backdrop-filter: blur(2px);
+  }
+
+  .eh-side-close {
+    display: inline-flex;
+  }
+
+  .eh-notif-bell {
+    top: 0.55rem;
+    right: 0.9rem;
   }
 
   .eh-main {
@@ -734,6 +756,15 @@ textarea:focus-visible,
   resize: vertical;
 }
 
+.eh-scope-fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+.eh-scope-fieldset legend {
+  padding: 0;
+}
+
 .eh-empty {
   text-align: center;
   padding: 2.6rem 1rem;
@@ -788,6 +819,16 @@ textarea:focus-visible,
   overflow-y: auto;
   box-shadow: 0 24px 60px rgba(16, 29, 44, 0.28);
   animation: eh-pop 0.18s ease-out;
+}
+.eh-modal.wide {
+  max-width: 760px;
+}
+@media (max-width: 720px) {
+  .eh-modal,
+  .eh-modal.wide {
+    max-width: calc(100vw - 1rem) !important;
+    margin: 0.5rem !important;
+  }
 }
 .eh-modal h3 {
   font-family: "Archivo", system-ui, sans-serif;

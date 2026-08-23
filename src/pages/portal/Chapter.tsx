@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/providers/trpc";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
   EhShell,
   MEMBER_NAV,
@@ -43,6 +44,7 @@ const CADENCE_STATUS_COLOR: Record<string, "green" | "gold" | "red" | "grey"> =
 import type { ChapterStatus } from "@contracts/constants";
 
 export default function Chapter() {
+  useDocumentTitle("My Chapter");
   const utils = trpc.useUtils();
   const q = trpc.engage.myChapter.useQuery(undefined, { retry: false });
   const dir = trpc.circle.chaptersDirectory.useQuery(undefined, {
