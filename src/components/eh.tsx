@@ -51,6 +51,41 @@ function VerifyBanner() {
   );
 }
 
+/** Subtle banner when the device goes offline so PWA users know data may be stale. */
+function OfflineBanner() {
+  const [online, setOnline] = useState(navigator.onLine);
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
+  if (online) return null;
+  return (
+    <div
+      role="status"
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 95,
+        background: "var(--eh-ink-2)",
+        color: "#f0ead9",
+        padding: ".5rem 1rem",
+        fontSize: ".82rem",
+        textAlign: "center",
+      }}
+    >
+      You&apos;re offline — some data may be stale until the connection returns.
+    </div>
+  );
+}
+
 /* ------------------------------- confirm ------------------------------- */
 type ConfirmOpts = {
   title: string;
@@ -548,6 +583,7 @@ export function EhShell(props: {
 
   return (
     <div className="eh-shell">
+      <OfflineBanner />
       <a href="#eh-main" className="eh-skip">
         Skip to content
       </a>
