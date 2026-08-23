@@ -1646,6 +1646,7 @@ function submitLead(payload, onOk, onErr) {
     ".sc-close{position:absolute;top:10px;right:12px;z-index:2;width:38px;height:38px;border-radius:50%;border:0;cursor:pointer;" +
     "background:rgba(26,26,46,.9);color:#fff;font-size:20px;line-height:38px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.25);}" +
     ".sc-close:hover{background:#1A1A2E;}" +
+    ".sc-trap{position:absolute;width:1px;height:1px;overflow:hidden;opacity:0;}" +
     "@media (max-width:640px){.sc-modal{height:92vh;max-width:100%;border-radius:14px;}}";
   var style = document.createElement("style");
   style.appendChild(document.createTextNode(css));
@@ -1682,10 +1683,24 @@ function submitLead(payload, onOk, onErr) {
       "<iframe src='" +
       SC_URL +
       "?embed=1' title='eHive Clarity Scorecard' loading='lazy'></iframe>" +
+      "<div class='sc-trap' tabindex='0' aria-hidden='true'></div>" +
       "</div>";
     document.body.appendChild(overlay);
     document.body.style.overflow = "hidden";
-    overlay.querySelector(".sc-close").addEventListener("click", close);
+    var closeBtn = overlay.querySelector(".sc-close");
+    var trap = overlay.querySelector(".sc-trap");
+    closeBtn.addEventListener("click", close);
+    if (trap) {
+      trap.addEventListener("focus", function () {
+        closeBtn.focus();
+      });
+      closeBtn.addEventListener("keydown", function (e) {
+        if (e.key === "Tab" && e.shiftKey) {
+          e.preventDefault();
+          trap.focus();
+        }
+      });
+    }
     overlay.addEventListener("click", function (e) {
       if (e.target === overlay) close();
     });
@@ -1694,8 +1709,7 @@ function submitLead(payload, onOk, onErr) {
       overlay.classList.add("on");
     });
     setTimeout(function () {
-      var b = overlay && overlay.querySelector(".sc-close");
-      if (b) b.focus();
+      if (closeBtn) closeBtn.focus();
     }, 60);
   }
 
@@ -1747,6 +1761,7 @@ function submitLead(payload, onOk, onErr) {
     ".bc-close{position:absolute;top:10px;right:12px;z-index:2;width:38px;height:38px;border-radius:50%;border:0;cursor:pointer;" +
     "background:rgba(26,26,46,.9);color:#fff;font-size:20px;line-height:38px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.25);}" +
     ".bc-close:hover{background:#1A1A2E;}" +
+    ".bc-trap{position:absolute;width:1px;height:1px;overflow:hidden;opacity:0;}" +
     "@media (max-width:640px){.bc-modal{height:94vh;max-width:100%;border-radius:14px;}}";
   var style = document.createElement("style");
   style.appendChild(document.createTextNode(css));
@@ -1783,10 +1798,24 @@ function submitLead(payload, onOk, onErr) {
       "<iframe src='" +
       BC_URL +
       "?embed=1' title='eHive Brand Check' loading='lazy'></iframe>" +
+      "<div class='bc-trap' tabindex='0' aria-hidden='true'></div>" +
       "</div>";
     document.body.appendChild(overlay);
     document.body.style.overflow = "hidden";
-    overlay.querySelector(".bc-close").addEventListener("click", close);
+    var closeBtn = overlay.querySelector(".bc-close");
+    var trap = overlay.querySelector(".bc-trap");
+    closeBtn.addEventListener("click", close);
+    if (trap) {
+      trap.addEventListener("focus", function () {
+        closeBtn.focus();
+      });
+      closeBtn.addEventListener("keydown", function (e) {
+        if (e.key === "Tab" && e.shiftKey) {
+          e.preventDefault();
+          trap.focus();
+        }
+      });
+    }
     overlay.addEventListener("click", function (e) {
       if (e.target === overlay) close();
     });
@@ -1795,8 +1824,7 @@ function submitLead(payload, onOk, onErr) {
       overlay.classList.add("on");
     });
     setTimeout(function () {
-      var b = overlay && overlay.querySelector(".bc-close");
-      if (b) b.focus();
+      if (closeBtn) closeBtn.focus();
     }, 60);
   }
 
