@@ -49,9 +49,21 @@ import {
 
 type Actor = { id: number; email: string };
 
+export type FinanceScope = { chapterIds?: number[] };
+
 /** Headline finance figures for the dashboard (payments in fils, budgets in AED). */
-export async function financeSummary() {
+export async function financeSummary(scope?: FinanceScope) {
   const db = getDb();
+  const payConds = [];
+  const budgetConds = [];
+  const memberConds = [eq(schema.members.status, "active")];
+  if (scope?.chapterIds?.length) {
+    payConds.push(inArray(schema.members.homeChapterId, scope.chapterIds));
+    budgetConds.push(
+      inArray(schema.chapterBudgets.chapterId, scope.chapterIds)
+    );
+    memberConds.push(inArray(schema.members.homeChapterId, scope.chapterIds));
+  }
   const [pays, budgets, activeMembers] = await Promise.all([
     db
       .select({
@@ -61,21 +73,27 @@ export async function financeSummary() {
         createdAt: schema.paymentRecords.createdAt,
         paidAt: schema.paymentRecords.paidAt,
       })
-      .from(schema.paymentRecords),
+      .from(schema.paymentRecords)
+      .leftJoin(
+        schema.members,
+        eq(schema.members.userId, schema.paymentRecords.userId)
+      )
+      .where(payConds.length ? and(...payConds) : undefined),
     db
       .select({
         kind: schema.chapterBudgets.kind,
         amount: schema.chapterBudgets.amount,
         status: schema.chapterBudgets.status,
       })
-      .from(schema.chapterBudgets),
+      .from(schema.chapterBudgets)
+      .where(budgetConds.length ? and(...budgetConds) : undefined),
     db
       .select({
         tier: schema.members.tier,
         renewalAt: schema.members.renewalAt,
       })
       .from(schema.members)
-      .where(eq(schema.members.status, "active")),
+      .where(and(...memberConds)),
   ]);
 
   const pay = summarizePayments(pays as PayLite[]);
@@ -104,10 +122,10 @@ export async function financeSummary() {
 }
 
 export type FinanceReportRange = { from?: Date | null; to?: Date | null };
-export type FinanceReportFilters = { chapterId?: number; unitId?: number };
+export type FinanceReportFilters = { chapterIds?: number[]; unitId?: number };
 
 /** Recursively collect all chapter IDs whose zone falls under the given org unit. */
-async function chapterIdsForUnit(unitId: number): Promise<number[]> {
+export async function chapterIdsForUnit(unitId: number): Promise<number[]> {
   const db = getDb();
   const units = await db.select().from(schema.orgUnits);
   const byParent = new Map<number | null, number[]>();
@@ -140,8 +158,8 @@ export async function financeReport(
   const db = getDb();
   const scopedChapterIds = filters?.unitId
     ? await chapterIdsForUnit(filters.unitId)
-    : filters?.chapterId
-      ? [filters.chapterId]
+    : filters?.chapterIds?.length
+      ? filters.chapterIds
       : null;
 
   const payDate = sql`coalesce(${schema.paymentRecords.paidAt}, ${schema.paymentRecords.createdAt})`;
@@ -239,7 +257,12 @@ export type PaymentRow = {
 
 /** The payments ledger, joined to the payer, newest first. */
 export async function listPayments(
-  opts: { status?: string; q?: string; limit?: number } = {}
+  opts: {
+    status?: string;
+    q?: string;
+    limit?: number;
+    scope?: FinanceScope;
+  } = {}
 ): Promise<PaymentRow[]> {
   const db = getDb();
   const wheres = [];
@@ -253,6 +276,12 @@ export async function listPayments(
         like(schema.users.email, term),
         like(schema.paymentRecords.providerRef, term)
       )
+    );
+  }
+  const scopeConds = [];
+  if (opts.scope?.chapterIds?.length) {
+    scopeConds.push(
+      inArray(schema.members.homeChapterId, opts.scope.chapterIds)
     );
   }
   const rows = await db
@@ -276,16 +305,25 @@ export async function listPayments(
     })
     .from(schema.paymentRecords)
     .leftJoin(schema.users, eq(schema.users.id, schema.paymentRecords.userId))
-    .where(wheres.length ? and(...wheres) : undefined)
+    .leftJoin(
+      schema.members,
+      eq(schema.members.userId, schema.paymentRecords.userId)
+    )
+    .where(
+      and(
+        wheres.length ? and(...wheres) : undefined,
+        scopeConds.length ? and(...scopeConds) : undefined
+      )
+    )
     .orderBy(desc(schema.paymentRecords.createdAt))
     .limit(opts.limit ?? 200);
   return rows as PaymentRow[];
 }
 
 /** A single payment plus payer details, for a printable receipt. */
-export async function paymentReceipt(id: number) {
+export async function paymentReceipt(id: number, scope?: FinanceScope) {
   const row =
-    (await listPayments({ limit: 1 })).find(r => r.id === id) ??
+    (await listPayments({ limit: 1, scope })).find(r => r.id === id) ??
     (
       await getDb()
         .select({
@@ -310,7 +348,18 @@ export async function paymentReceipt(id: number) {
           schema.users,
           eq(schema.users.id, schema.paymentRecords.userId)
         )
-        .where(eq(schema.paymentRecords.id, id))
+        .leftJoin(
+          schema.members,
+          eq(schema.members.userId, schema.paymentRecords.userId)
+        )
+        .where(
+          and(
+            eq(schema.paymentRecords.id, id),
+            scope?.chapterIds?.length
+              ? inArray(schema.members.homeChapterId, scope.chapterIds)
+              : undefined
+          )
+        )
         .limit(1)
     ).at(0);
   if (!row)
@@ -580,8 +629,12 @@ export async function refundPayment(
 }
 
 /** Active members whose renewal is due within the window (or overdue). */
-export async function renewalsDue(withinDays = 30) {
+export async function renewalsDue(withinDays = 30, scope?: FinanceScope) {
   const db = getDb();
+  const conds = [eq(schema.members.status, "active")];
+  if (scope?.chapterIds?.length) {
+    conds.push(inArray(schema.members.homeChapterId, scope.chapterIds));
+  }
   const rows = await db
     .select({
       memberId: schema.members.id,
@@ -597,7 +650,7 @@ export async function renewalsDue(withinDays = 30) {
       schema.chapters,
       eq(schema.chapters.id, schema.members.homeChapterId)
     )
-    .where(eq(schema.members.status, "active"))
+    .where(and(...conds))
     .orderBy(schema.members.renewalAt);
   const now = new Date();
   return rows
@@ -612,8 +665,12 @@ export async function renewalsDue(withinDays = 30) {
 }
 
 /** Chapter budgets rolled up per chapter for the finance view. */
-export async function budgetRollup() {
+export async function budgetRollup(scope?: FinanceScope) {
   const db = getDb();
+  const conds = [];
+  if (scope?.chapterIds?.length) {
+    conds.push(inArray(schema.chapterBudgets.chapterId, scope.chapterIds));
+  }
   const rows = await db
     .select({
       chapterId: schema.chapterBudgets.chapterId,
@@ -626,7 +683,8 @@ export async function budgetRollup() {
     .leftJoin(
       schema.chapters,
       eq(schema.chapters.id, schema.chapterBudgets.chapterId)
-    );
+    )
+    .where(conds.length ? and(...conds) : undefined);
   const byChapter = new Map<
     number,
     { chapterId: number; chapterName: string | null; lines: BudgetLite[] }
@@ -650,9 +708,18 @@ export async function budgetRollup() {
 }
 
 /** Members (id + label) for the manual-payment picker. */
-export async function payableMembers(q?: string) {
+export async function payableMembers(q?: string, scope?: FinanceScope) {
   const db = getDb();
   const term = q ? `%${q}%` : null;
+  const conds = [];
+  if (term) {
+    conds.push(
+      or(like(schema.users.name, term), like(schema.users.email, term))
+    );
+  }
+  if (scope?.chapterIds?.length) {
+    conds.push(inArray(schema.members.homeChapterId, scope.chapterIds));
+  }
   const rows = await db
     .select({
       userId: schema.members.userId,
@@ -662,14 +729,24 @@ export async function payableMembers(q?: string) {
     })
     .from(schema.members)
     .leftJoin(schema.users, eq(schema.users.id, schema.members.userId))
-    .where(
-      term
-        ? or(like(schema.users.name, term), like(schema.users.email, term))
-        : undefined
-    )
+    .where(conds.length ? and(...conds) : undefined)
     .orderBy(schema.users.name)
     .limit(20);
   return rows;
+}
+
+/** Resolve a user's home chapter, if they are a member. */
+export async function memberChapterForUser(
+  userId: number
+): Promise<number | null> {
+  const row = (
+    await getDb()
+      .select({ homeChapterId: schema.members.homeChapterId })
+      .from(schema.members)
+      .where(eq(schema.members.userId, userId))
+      .limit(1)
+  ).at(0);
+  return row?.homeChapterId ?? null;
 }
 
 export type ExpenseRow = {
@@ -687,12 +764,17 @@ export type ExpenseRow = {
 
 /** Chapter expenses (spend budget lines), newest first. */
 export async function listExpenses(
-  opts: { chapterId?: number; limit?: number } = {}
+  opts: { chapterId?: number; limit?: number; scope?: FinanceScope } = {}
 ): Promise<ExpenseRow[]> {
   const db = getDb();
   const wheres = [eq(schema.chapterBudgets.kind, "spend")];
   if (opts.chapterId)
     wheres.push(eq(schema.chapterBudgets.chapterId, opts.chapterId));
+  if (opts.scope?.chapterIds?.length && !opts.chapterId) {
+    wheres.push(
+      inArray(schema.chapterBudgets.chapterId, opts.scope.chapterIds)
+    );
+  }
   const rows = await db
     .select({
       id: schema.chapterBudgets.id,
@@ -719,8 +801,13 @@ export async function listExpenses(
 
 /** Fetch a spend line's receipt (the data URL + filename), or null if none. */
 export async function expenseReceipt(
-  id: number
+  id: number,
+  scope?: FinanceScope
 ): Promise<{ name: string; data: string } | null> {
+  const conds = [eq(schema.chapterBudgets.id, id)];
+  if (scope?.chapterIds?.length) {
+    conds.push(inArray(schema.chapterBudgets.chapterId, scope.chapterIds));
+  }
   const row = (
     await getDb()
       .select({
@@ -728,7 +815,7 @@ export async function expenseReceipt(
         name: schema.chapterBudgets.receiptName,
       })
       .from(schema.chapterBudgets)
-      .where(eq(schema.chapterBudgets.id, id))
+      .where(and(...conds))
       .limit(1)
   ).at(0);
   if (!row?.data) return null;

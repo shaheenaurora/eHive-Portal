@@ -275,8 +275,15 @@ export async function pipelineReport() {
 }
 
 /** Cohort/renewals snapshot used by several management reports. */
-export async function renewalsReport() {
+export async function renewalsReport(scope?: { chapterIds?: number[] }) {
   const db = getDb();
+  const conds = [
+    eq(schema.members.status, "active"),
+    inArray(schema.members.lifecycleState, ["active", "renewal", "at_risk"]),
+  ];
+  if (scope?.chapterIds?.length) {
+    conds.push(inArray(schema.members.homeChapterId, scope.chapterIds));
+  }
   const rows = await db
     .select({
       tier: schema.members.tier,
@@ -290,12 +297,7 @@ export async function renewalsReport() {
       schema.chapters,
       eq(schema.chapters.id, schema.members.homeChapterId)
     )
-    .where(
-      and(
-        eq(schema.members.status, "active"),
-        inArray(schema.members.lifecycleState, ["active", "renewal", "at_risk"])
-      )
-    )
+    .where(and(...conds))
     .orderBy(schema.members.renewalAt)
     .limit(500);
   return rows;

@@ -46,7 +46,7 @@ export const officerFinanceRouter = createRouter({
       ["treasurer", "president"],
       "Finance actions require Treasurer or President."
     );
-    return financeReport(undefined, { chapterId });
+    return financeReport(undefined, { chapterIds: [chapterId] });
   }),
 
   recordExpense: authedQuery

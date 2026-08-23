@@ -1,9 +1,10 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import * as schema from "@db/schema";
 import type { InvoiceLineItem } from "@db/schema";
 import { getDb } from "./connection";
 import type { withTransaction } from "./transaction";
+import type { FinanceScope } from "./finance";
 
 /** Transaction handle passed from withTransaction. */
 type Tx = Parameters<Parameters<typeof withTransaction>[0]>[0];
@@ -211,12 +212,18 @@ export type InvoiceRow = {
 
 /** List invoices newest first, with an optional status filter. */
 export async function listInvoices(
-  opts: { status?: string; limit?: number } = {}
+  opts: { status?: string; limit?: number; scope?: FinanceScope } = {}
 ): Promise<InvoiceRow[]> {
   const db = getDb();
   const wheres = [];
   if (opts.status)
     wheres.push(eq(schema.invoices.status, opts.status as never));
+  const scopeConds = [];
+  if (opts.scope?.chapterIds?.length) {
+    scopeConds.push(
+      inArray(schema.members.homeChapterId, opts.scope.chapterIds)
+    );
+  }
   const rows = await db
     .select({
       id: schema.invoices.id,
@@ -235,15 +242,25 @@ export async function listInvoices(
     })
     .from(schema.invoices)
     .leftJoin(schema.users, eq(schema.users.id, schema.invoices.userId))
-    .where(wheres.length ? and(...wheres) : undefined)
+    .leftJoin(schema.members, eq(schema.members.userId, schema.invoices.userId))
+    .where(
+      and(
+        wheres.length ? and(...wheres) : undefined,
+        scopeConds.length ? and(...scopeConds) : undefined
+      )
+    )
     .orderBy(desc(schema.invoices.createdAt))
     .limit(opts.limit ?? 200);
   return rows as InvoiceRow[];
 }
 
 /** Fetch a single invoice with payer details. */
-export async function getInvoiceById(id: number) {
+export async function getInvoiceById(id: number, scope?: FinanceScope) {
   const db = getDb();
+  const conds = [eq(schema.invoices.id, id)];
+  if (scope?.chapterIds?.length) {
+    conds.push(inArray(schema.members.homeChapterId, scope.chapterIds));
+  }
   const row = (
     await db
       .select({
@@ -253,7 +270,11 @@ export async function getInvoiceById(id: number) {
       })
       .from(schema.invoices)
       .leftJoin(schema.users, eq(schema.users.id, schema.invoices.userId))
-      .where(eq(schema.invoices.id, id))
+      .leftJoin(
+        schema.members,
+        eq(schema.members.userId, schema.invoices.userId)
+      )
+      .where(and(...conds))
       .limit(1)
   ).at(0);
   if (!row)
@@ -278,9 +299,15 @@ export type CreditNoteRow = {
 
 /** List credit notes newest first. */
 export async function listCreditNotes(
-  opts: { limit?: number } = {}
+  opts: { limit?: number; scope?: FinanceScope } = {}
 ): Promise<CreditNoteRow[]> {
   const db = getDb();
+  const scopeConds = [];
+  if (opts.scope?.chapterIds?.length) {
+    scopeConds.push(
+      inArray(schema.members.homeChapterId, opts.scope.chapterIds)
+    );
+  }
   const rows = await db
     .select({
       id: schema.creditNotes.id,
@@ -298,14 +325,23 @@ export async function listCreditNotes(
     })
     .from(schema.creditNotes)
     .leftJoin(schema.users, eq(schema.users.id, schema.creditNotes.userId))
+    .leftJoin(
+      schema.members,
+      eq(schema.members.userId, schema.creditNotes.userId)
+    )
+    .where(scopeConds.length ? and(...scopeConds) : undefined)
     .orderBy(desc(schema.creditNotes.createdAt))
     .limit(opts.limit ?? 200);
   return rows as CreditNoteRow[];
 }
 
 /** Fetch a single credit note with payer details. */
-export async function getCreditNoteById(id: number) {
+export async function getCreditNoteById(id: number, scope?: FinanceScope) {
   const db = getDb();
+  const conds = [eq(schema.creditNotes.id, id)];
+  if (scope?.chapterIds?.length) {
+    conds.push(inArray(schema.members.homeChapterId, scope.chapterIds));
+  }
   const row = (
     await db
       .select({
@@ -315,7 +351,11 @@ export async function getCreditNoteById(id: number) {
       })
       .from(schema.creditNotes)
       .leftJoin(schema.users, eq(schema.users.id, schema.creditNotes.userId))
-      .where(eq(schema.creditNotes.id, id))
+      .leftJoin(
+        schema.members,
+        eq(schema.members.userId, schema.creditNotes.userId)
+      )
+      .where(and(...conds))
       .limit(1)
   ).at(0);
   if (!row)
