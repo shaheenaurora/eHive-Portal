@@ -2264,6 +2264,16 @@ body.has-sticky-cta {
   border-radius: var(--h-radius);
   padding: 1.8rem;
   box-shadow: var(--h-shadow);
+  transition:
+    transform 0.35s var(--h-ease),
+    box-shadow 0.35s var(--h-ease),
+    border-color 0.35s var(--h-ease);
+}
+
+.h-fact-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--h-shadow-lg);
+  border-color: var(--h-line-2);
 }
 
 .h-fact-card h3 {
@@ -2379,12 +2389,28 @@ body.has-sticky-cta {
   display: flex;
   flex-direction: column;
   position: relative;
+  transition:
+    transform 0.35s var(--h-ease),
+    box-shadow 0.35s var(--h-ease),
+    border-color 0.35s var(--h-ease);
+}
+
+.h-tier:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--h-shadow-lg);
+  border-color: var(--h-line-2);
 }
 
 .h-tier.reco {
   border-color: var(--h-coral);
   box-shadow:
     var(--h-shadow),
+    0 0 0 1px var(--h-coral);
+}
+
+.h-tier.reco:hover {
+  box-shadow:
+    var(--h-shadow-lg),
     0 0 0 1px var(--h-coral);
 }
 
@@ -2539,6 +2565,16 @@ body.has-sticky-cta {
   border: 1px solid var(--h-line);
   border-radius: var(--h-radius-sm);
   padding: 1.8rem;
+  transition:
+    transform 0.35s var(--h-ease),
+    box-shadow 0.35s var(--h-ease),
+    border-color 0.35s var(--h-ease);
+}
+
+.h-step-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--h-shadow);
+  border-color: var(--h-line-2);
 }
 
 .h-step-card .num {
@@ -2549,6 +2585,11 @@ body.has-sticky-cta {
   line-height: 1;
   display: block;
   margin-bottom: 1rem;
+  transition: transform 0.35s var(--h-ease);
+}
+
+.h-step-card:hover .num {
+  transform: scale(1.1);
 }
 
 .h-step-card h3 {
@@ -2597,11 +2638,25 @@ body.has-sticky-cta {
   background: var(--h-paper);
   border: 1px solid var(--h-line);
   border-radius: var(--h-radius-sm);
+  transition:
+    transform 0.3s var(--h-ease),
+    box-shadow 0.3s var(--h-ease),
+    border-color 0.3s var(--h-ease),
+    background 0.3s var(--h-ease);
+}
+
+.h-rung:hover {
+  transform: translateX(6px);
+  box-shadow: var(--h-shadow);
 }
 
 .h-rung.pub {
   border-color: var(--h-line-2);
   background: transparent;
+}
+
+.h-rung.pub:hover {
+  background: var(--h-paper);
 }
 
 .h-rung.apex {
@@ -2925,6 +2980,16 @@ body.has-sticky-cta {
   padding: 1.6rem;
   display: flex;
   flex-direction: column;
+  transition:
+    transform 0.35s var(--h-ease),
+    box-shadow 0.35s var(--h-ease),
+    border-color 0.35s var(--h-ease);
+}
+
+.h-ev:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--h-shadow);
+  border-color: var(--h-line-2);
 }
 
 .h-ev h3 {
@@ -3215,6 +3280,16 @@ body.has-sticky-cta {
   display: flex;
   flex-direction: column;
   box-shadow: var(--h-shadow);
+  transition:
+    transform 0.35s var(--h-ease),
+    box-shadow 0.35s var(--h-ease),
+    border-color 0.35s var(--h-ease);
+}
+
+.h-assess-card:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--h-shadow-lg);
+  border-color: var(--h-line-2);
 }
 
 .h-assess-card h3 {
