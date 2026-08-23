@@ -2,7 +2,7 @@
 -- (or nulls a self-reference) whose referenced parent no longer exists, ordered
 -- roots -> leaves so deleting an orphaned parent first causes its descendants
 -- to be removed by the later child-table cleanups.
-UPDATE `org_units` SET `parentId` = NULL WHERE `parentId` NOT IN (SELECT `id` FROM `org_units`);--> statement-breakpoint
+UPDATE `org_units` o LEFT JOIN `org_units` p ON o.`parentId` = p.`id` SET o.`parentId` = NULL WHERE o.`parentId` IS NOT NULL AND p.`id` IS NULL;--> statement-breakpoint
 DELETE FROM `chapters` WHERE `zoneId` NOT IN (SELECT `id` FROM `org_units`);--> statement-breakpoint
 DELETE FROM `council_meetings` WHERE `unitId` NOT IN (SELECT `id` FROM `org_units`);--> statement-breakpoint
 DELETE FROM `meetings` WHERE `chapterId` NOT IN (SELECT `id` FROM `chapters`);--> statement-breakpoint
