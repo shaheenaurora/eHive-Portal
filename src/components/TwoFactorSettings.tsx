@@ -13,7 +13,6 @@ export function TwoFactorSettings() {
   const refresh = () => utils.auth.twoFactorStatus.invalidate();
 
   const [setup, setSetup] = useState<{
-    secret: string;
     otpauthUri: string;
   } | null>(null);
   const [code, setCode] = useState("");
@@ -98,21 +97,6 @@ export function TwoFactorSettings() {
           <div style={{ margin: ".4rem 0 .8rem" }}>
             <QrCode value={setup.otpauthUri} size={190} />
           </div>
-          <p className="eh-sm eh-muted">Can't scan? Enter this key manually:</p>
-          <code
-            className="eh-mono"
-            style={{
-              display: "block",
-              wordBreak: "break-all",
-              fontSize: ".8rem",
-              background: "var(--eh-paper)",
-              padding: ".5rem .7rem",
-              borderRadius: 8,
-              margin: ".2rem 0 .9rem",
-            }}
-          >
-            {setup.secret}
-          </code>
           <p className="eh-sm">2. Enter the 6-digit code it shows:</p>
           <div
             className="eh-row"

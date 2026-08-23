@@ -68,3 +68,18 @@ export async function sendResetEmail(
     `),
   });
 }
+
+export async function sendPasswordChangedEmail(input: {
+  email: string;
+  name: string | null;
+}): Promise<boolean> {
+  const first = input.name?.split(" ")[0] || "there";
+  return sendMail({
+    to: input.email,
+    subject: "Your eHive password was changed",
+    html: shell(`
+      <h1 style="margin:0 0 12px;font-family:Georgia,serif;font-size:22px;color:#101d2c;font-weight:600">Password changed</h1>
+      <p style="margin:0;color:#33465e;font-size:15px;line-height:1.55">Hi ${esc(first)}, your eHive Circle password was just changed. If this was you, no action is needed. If you didn't make this change, contact us immediately.</p>
+    `),
+  });
+}

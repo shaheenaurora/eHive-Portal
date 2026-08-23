@@ -27,6 +27,7 @@ import {
 import { env } from "../lib/env";
 import { createAuthToken } from "../lib/tokens";
 import { sendVerifyEmail } from "../lib/auth-mail";
+import { incrementTokenVersion } from "./users";
 
 export {
   type Actor,
@@ -158,6 +159,10 @@ async function writeProfile(
       .update(schema.users)
       .set(userSet)
       .where(eq(schema.users.id, userId));
+  if (emailChanged) {
+    // Email is a core credential; force re-authentication everywhere.
+    await incrementTokenVersion(userId);
+  }
   if (Object.keys(memberSet).length)
     await db
       .update(schema.members)

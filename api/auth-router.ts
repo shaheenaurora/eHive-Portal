@@ -22,7 +22,11 @@ import {
 } from "./queries/users";
 import { env } from "./lib/env";
 import { createAuthToken, consumeAuthToken } from "./lib/tokens";
-import { sendVerifyEmail, sendResetEmail } from "./lib/auth-mail";
+import {
+  sendVerifyEmail,
+  sendResetEmail,
+  sendPasswordChangedEmail,
+} from "./lib/auth-mail";
 import { rateLimit, rateLimitReset } from "./lib/rate-limit";
 import {
   generateTotpSecret,
@@ -297,6 +301,16 @@ export const authRouter = createRouter({
       // A password reset also proves control of the mailbox.
       const user = await findUserById(userId);
       if (user && !user.emailVerifiedAt) await markEmailVerified(userId);
+      if (user) {
+        try {
+          await sendPasswordChangedEmail({
+            email: user.email!,
+            name: user.name,
+          });
+        } catch (e) {
+          console.error("password-changed email failed", e);
+        }
+      }
       return { ok: true };
     }),
 
@@ -305,13 +319,12 @@ export const authRouter = createRouter({
     enabled: !!ctx.user.totpEnabled,
   })),
 
-  /* Begin enrolment: mint a secret, return it + the otpauth URI for a QR code.
+  /* Begin enrolment: mint a secret, return the otpauth URI for a QR code.
      Not active until confirmed with a valid code via twoFactorEnable. */
   twoFactorSetup: authedQuery.mutation(async ({ ctx }) => {
     const secret = generateTotpSecret();
     await setTotpSecret(ctx.user.id, sealTotpSecret(secret));
     return {
-      secret,
       otpauthUri: totpKeyUri(secret, ctx.user.email ?? "member"),
     };
   }),
