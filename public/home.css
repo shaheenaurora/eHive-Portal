@@ -6108,22 +6108,22 @@ a.art:hover {
   color: var(--eh-ink);
 }
 
-/* ---- nav override for dark hero ---- */
+/* ---- nav override for v2 ---- */
 .eh-v2 .h-nav {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   z-index: 100;
-  background: transparent;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(10, 10, 10, 0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   transition: background 0.35s var(--eh-ease), border-color 0.35s var(--eh-ease);
 }
 
 .eh-v2 .h-nav.scrolled {
-  background: rgba(10, 10, 10, 0.92);
-  backdrop-filter: blur(12px);
-  border-bottom-color: rgba(255, 255, 255, 0.06);
+  background: rgba(10, 10, 10, 0.98);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
 }
 
 .eh-v2 .h-nav .brand img {
@@ -6986,6 +6986,116 @@ a.art:hover {
   color: var(--eh-ink);
 }
 
+.eh-v2 .h-section h1,
+.eh-v2 .h-section h2,
+.eh-v2 .h-section h3,
+.eh-v2 .h-section h4,
+.eh-v2 .h-section p,
+.eh-v2 .h-section li,
+.eh-v2 .h-section.alt h1,
+.eh-v2 .h-section.alt h2,
+.eh-v2 .h-section.alt h3,
+.eh-v2 .h-section.alt h4,
+.eh-v2 .h-section.alt p,
+.eh-v2 .h-section.alt li {
+  color: inherit;
+}
+
+.eh-v2 .h-section .h-h1,
+.eh-v2 .h-section .h-h2,
+.eh-v2 .h-section .h-h3,
+.eh-v2 .h-section .h-lede,
+.eh-v2 .h-section.alt .h-h1,
+.eh-v2 .h-section.alt .h-h2,
+.eh-v2 .h-section.alt .h-h3,
+.eh-v2 .h-section.alt .h-lede {
+  color: var(--eh-ink);
+}
+
+.eh-v2 .h-section .h-eyebrow,
+.eh-v2 .h-section.alt .h-eyebrow {
+  color: var(--eh-coral);
+}
+
+.eh-v2 .h-section .h-eyebrow::before,
+.eh-v2 .h-section.alt .h-eyebrow::before {
+  background: var(--eh-coral);
+}
+
+.eh-v2 .h-section .h-card,
+.eh-v2 .h-section.alt .h-card,
+.eh-v2 .h-section .h-step,
+.eh-v2 .h-section.alt .h-step,
+.eh-v2 .h-section .h-voice,
+.eh-v2 .h-section.alt .h-voice {
+  background: #fff;
+  border-color: rgba(10, 10, 10, 0.08);
+  color: var(--eh-ink);
+}
+
+.eh-v2 .h-section .h-card-body h3,
+.eh-v2 .h-section.alt .h-card-body h3,
+.eh-v2 .h-section .h-step h3,
+.eh-v2 .h-section.alt .h-step h3,
+.eh-v2 .h-section .h-voice blockquote,
+.eh-v2 .h-section.alt .h-voice blockquote,
+.eh-v2 .h-section .h-voice .who b,
+.eh-v2 .h-section.alt .h-voice .who b {
+  color: var(--eh-ink);
+}
+
+.eh-v2 .h-section .h-card-body p,
+.eh-v2 .h-section.alt .h-card-body p,
+.eh-v2 .h-section .h-step p,
+.eh-v2 .h-section.alt .h-step p,
+.eh-v2 .h-section .h-voice p,
+.eh-v2 .h-section.alt .h-voice p,
+.eh-v2 .h-section .h-voice .who span,
+.eh-v2 .h-section.alt .h-voice .who span {
+  color: rgba(10, 10, 10, 0.65);
+}
+
+.eh-v2 .h-section .h-faq summary,
+.eh-v2 .h-section.alt .h-faq summary {
+  color: var(--eh-ink);
+}
+
+.eh-v2 .h-section .h-faq details p,
+.eh-v2 .h-section.alt .h-faq details p {
+  color: rgba(10, 10, 10, 0.65);
+}
+
+.eh-v2 .h-section .h-chip,
+.eh-v2 .h-section.alt .h-chip {
+  background: #fff;
+  border-color: rgba(10, 10, 10, 0.12);
+  color: var(--eh-ink);
+}
+
+.eh-v2 .h-section .h-btn-ghost,
+.eh-v2 .h-section.alt .h-btn-ghost {
+  color: var(--eh-ink);
+  border-color: rgba(10, 10, 10, 0.25);
+}
+
+.eh-v2 .h-section .h-btn-ghost:hover,
+.eh-v2 .h-section.alt .h-btn-ghost:hover {
+  background: rgba(10, 10, 10, 0.04);
+  border-color: rgba(10, 10, 10, 0.4);
+}
+
+.eh-v2 .h-section .h-btn-secondary,
+.eh-v2 .h-section.alt .h-btn-secondary {
+  background: var(--eh-ink);
+  color: #fff;
+  border-color: transparent;
+}
+
+.eh-v2 .h-section .h-btn-secondary:hover,
+.eh-v2 .h-section.alt .h-btn-secondary:hover {
+  background: #222;
+}
+
 .eh-v2 .h-page-hero .h-btn-ghost,
 .eh-v2 .p-hero .h-btn-ghost {
   color: #fff;
@@ -7008,6 +7118,123 @@ a.art:hover {
 .eh-v2 .h-page-hero .h-btn-secondary:hover,
 .eh-v2 .p-hero .h-btn-secondary:hover {
   background: rgba(255, 255, 255, 0.18);
+}
+
+/* ==========================================================================
+   v2 contrast safeguards — prevent white-on-white / dark-on-dark regressions
+   ========================================================================== */
+
+/* Light v2 sections: force dark readable text */
+.eh-v2 .eh-section-v2.eh-light,
+.eh-v2 .eh-section-v2.eh-light .eh-h2,
+.eh-v2 .eh-section-v2.eh-light h3,
+.eh-v2 .eh-section-v2.eh-light p,
+.eh-v2 .eh-section-v2.eh-light li,
+.eh-v2 .eh-section-v2.eh-light summary,
+.eh-v2 .eh-section-v2.eh-light blockquote,
+.eh-v2 .eh-section-v2.eh-light .kicker,
+.eh-v2 .eh-section-v2.eh-light .eh-card-link,
+.eh-v2 .eh-section-v2.eh-light .who b {
+  color: var(--eh-ink);
+}
+
+.eh-v2 .eh-section-v2.eh-light .eh-lead,
+.eh-v2 .eh-section-v2.eh-light .eh-step p,
+.eh-v2 .eh-section-v2.eh-light .eh-voice p,
+.eh-v2 .eh-section-v2.eh-light .eh-pillar-card p,
+.eh-v2 .eh-section-v2.eh-light .eh-faq-v2 details p,
+.eh-v2 .eh-section-v2.eh-light .who span {
+  color: rgba(10, 10, 10, 0.65);
+}
+
+.eh-v2 .eh-section-v2.eh-light .eh-btn-light {
+  color: var(--eh-ink);
+  border-color: rgba(10, 10, 10, 0.25);
+}
+
+/* Dark v2 sections: force light readable text (preserve coral accents) */
+.eh-v2 .eh-section-v2.eh-dark,
+.eh-v2 .eh-section-v2.eh-dark .eh-h2,
+.eh-v2 .eh-section-v2.eh-dark h3,
+.eh-v2 .eh-section-v2.eh-dark p,
+.eh-v2 .eh-section-v2.eh-dark li,
+.eh-v2 .eh-section-v2.eh-dark summary,
+.eh-v2 .eh-section-v2.eh-dark blockquote,
+.eh-v2 .eh-section-v2.eh-dark .who b,
+.eh-v2 .eh-section-v2.eh-dark .who span {
+  color: #fff;
+}
+
+.eh-v2 .eh-section-v2.eh-dark .eh-lead {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+/* Inner-page v2 sections */
+.eh-v2 .h-section,
+.eh-v2 .h-section.alt {
+  color: var(--eh-ink);
+}
+
+.eh-v2 .h-section .h-h1,
+.eh-v2 .h-section .h-h2,
+.eh-v2 .h-section .h-h3,
+.eh-v2 .h-section .h-lede,
+.eh-v2 .h-section p,
+.eh-v2 .h-section li,
+.eh-v2 .h-section summary,
+.eh-v2 .h-section .h-card-body h3,
+.eh-v2 .h-section .h-step h3,
+.eh-v2 .h-section .h-voice blockquote,
+.eh-v2 .h-section .h-voice .who b,
+.eh-v2 .h-section .h-faq summary {
+  color: var(--eh-ink);
+}
+
+.eh-v2 .h-section .h-lede,
+.eh-v2 .h-section .h-card-body p,
+.eh-v2 .h-section .h-step p,
+.eh-v2 .h-section .h-voice p,
+.eh-v2 .h-section .h-voice .who span,
+.eh-v2 .h-section .h-faq details p {
+  color: rgba(10, 10, 10, 0.65);
+}
+
+/* Footer newsletter input must stay dark-on-light */
+.h-footer .h-lead-form input,
+.h-footer .h-lead-form input::placeholder {
+  background: var(--h-paper) !important;
+  color: var(--h-navy) !important;
+}
+
+.h-footer .h-lead-form input::placeholder {
+  color: var(--h-muted-2) !important;
+}
+
+/* No-JS / slow-JS fallback: keep v2 reveals readable by default */
+.eh-v2 .eh-reveal,
+.eh-v2 .reveal {
+  opacity: 1;
+  transform: none;
+}
+
+.eh-v2.anim .eh-reveal {
+  opacity: 0;
+  transform: translateY(36px);
+}
+
+.eh-v2.anim .eh-reveal.in {
+  opacity: 1;
+  transform: none;
+}
+
+.eh-v2.anim .reveal {
+  opacity: 0;
+  transform: translateY(26px) scale(0.985);
+}
+
+.eh-v2.anim .reveal.in-view {
+  opacity: 1;
+  transform: none;
 }
 
 /* Respect users who prefer reduced motion. */
