@@ -23,6 +23,7 @@ import {
   type FieldChange,
 } from "./queries/member-admin";
 import { computeOnboarding } from "./queries/onboarding";
+import { recordAnalyticsEvent } from "./queries/analytics";
 import { ONBOARDING_MANUAL_KEYS } from "@contracts/constants";
 import { paymentsEnabled, getPaymentProvider } from "./lib/payments";
 import { applyLifecycleTransition } from "./lib/lifecycle";
@@ -41,6 +42,7 @@ import {
 } from "./lib/member-docs";
 import { getKyc, submitKyc } from "./queries/kyc";
 import { KYC_ID_TYPE_KEYS } from "@contracts/constants";
+import { hasOpenDataRequest } from "./lib/pdpl";
 
 async function requireMember(userId: number) {
   const member = await getMemberByUserId(userId);
@@ -339,6 +341,10 @@ export const circleRouter = createRouter({
           proofPoint: input.proofPoint,
           consentAt: new Date(),
         });
+      void recordAnalyticsEvent("application_submitted", {
+        userId: ctx.user.id,
+        properties: { tierRequested: input.tierRequested },
+      });
       return { ok: true };
     }),
 
@@ -695,9 +701,52 @@ export const circleRouter = createRouter({
           reason: "Completed onboarding milestones",
           audit: false,
         });
+        void recordAnalyticsEvent("member_onboarding_complete", {
+          userId: ctx.user.id,
+          properties: { memberId: member.id },
+        });
       }
       return { ok: true, already, complete: progress.complete };
     }),
+
+  /* ---- PDPL data requests: member self-service export / deletion ---- */
+  myDataRequests: authedQuery.query(async ({ ctx }) => {
+    const member = await requireMember(ctx.user.id);
+    return getDb()
+      .select()
+      .from(schema.dataRequests)
+      .where(eq(schema.dataRequests.memberId, member.id))
+      .orderBy(desc(schema.dataRequests.createdAt))
+      .limit(20);
+  }),
+
+  requestDataExport: authedQuery.mutation(async ({ ctx }) => {
+    const member = await requireMember(ctx.user.id);
+    if (await hasOpenDataRequest(member.id, "export"))
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "You already have an open export request.",
+      });
+    await getDb().insert(schema.dataRequests).values({
+      memberId: member.id,
+      kind: "export",
+    });
+    return { ok: true };
+  }),
+
+  requestDataDeletion: authedQuery.mutation(async ({ ctx }) => {
+    const member = await requireMember(ctx.user.id);
+    if (await hasOpenDataRequest(member.id, "deletion"))
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "You already have an open deletion request.",
+      });
+    await getDb().insert(schema.dataRequests).values({
+      memberId: member.id,
+      kind: "deletion",
+    });
+    return { ok: true };
+  }),
 
   /* ---- chapter transfers (BRD 6.7): member requests, management approves ---- */
   /* The chapters a member can request to move to (all but their current one). */

@@ -1,7 +1,10 @@
 import { ErrorMessages } from "@contracts/constants";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
+import type { User } from "@db/schema";
 import type { TrpcContext } from "./context";
+import { rateLimit } from "./lib/rate-limit";
+import { env } from "./lib/env";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
@@ -10,6 +13,37 @@ const t = initTRPC.context<TrpcContext>().create({
 export const createRouter = t.router;
 export const mergeRouters = t.mergeRouters;
 export const publicQuery = t.procedure;
+
+export function trpcRateLimitKey(
+  type: "query" | "mutation" | "subscription",
+  userId: number
+): string {
+  return `trpc:${type}:user:${userId}`;
+}
+
+/** Per-user rate limit for authenticated tRPC procedures. Mutations are capped
+ *  more tightly than queries because they are the expensive/ destructive path.
+ *  A tRPC batch counts as one request, so these limits are request-level, not
+ *  procedure-level. */
+const rateLimitMiddleware = t.middleware(async opts => {
+  const { ctx, type, next } = opts;
+  // This middleware is chained after requireAuth, so ctx.user is guaranteed.
+  const user = ctx.user;
+  if (user) {
+    const isMutation = type === "mutation";
+    const key = trpcRateLimitKey(type, user.id);
+    const max = isMutation ? env.trpcMutationRateLimit : env.trpcQueryRateLimit;
+    const windowMs = 60 * 1000;
+    const allowed = await rateLimit(key, max, windowMs);
+    if (!allowed) {
+      throw new TRPCError({
+        code: "TOO_MANY_REQUESTS",
+        message: "Too many requests. Please slow down.",
+      });
+    }
+  }
+  return next({ ctx: ctx as TrpcContext & { user: User } });
+});
 
 const requireAuth = t.middleware(async opts => {
   const { ctx, next } = opts;
@@ -21,7 +55,10 @@ const requireAuth = t.middleware(async opts => {
     });
   }
 
-  return next({ ctx: { ...ctx, user: ctx.user } });
+  // Narrow the context so downstream procedures see a non-optional user.
+  return next({
+    ctx: { ...ctx, user: ctx.user } as TrpcContext & { user: User },
+  });
 });
 
 function requireRole(role: string) {
@@ -39,7 +76,7 @@ function requireRole(role: string) {
   });
 }
 
-export const authedQuery = t.procedure.use(requireAuth);
+export const authedQuery = t.procedure.use(requireAuth).use(rateLimitMiddleware);
 export const adminQuery = authedQuery.use(requireRole("admin"));
 
 /**

@@ -6,6 +6,7 @@ import {
   Pill,
   Empty,
   Spinner,
+  LoadError,
   toast,
   confirmDialog,
 } from "@/components/eh";
@@ -64,6 +65,7 @@ export default function AdminOps() {
 
       <KpiAlertsBanner />
 
+      {ov.isError && <LoadError onRetry={() => ov.refetch()} />}
       {ov.isLoading && <Spinner />}
       {s && (
         <>
@@ -168,6 +170,7 @@ export default function AdminOps() {
             )}
           </div>
           <div className="eh-card">
+            {follow.isError && <LoadError onRetry={() => follow.refetch()} />}
             {follow.isLoading && <Spinner />}
             {follow.data && follow.data.length === 0 && (
               <Empty
@@ -237,6 +240,7 @@ export default function AdminOps() {
             )}
           </div>
           <div className="eh-card">
+            {data.isError && <LoadError onRetry={() => data.refetch()} />}
             {data.isLoading && <Spinner />}
             {data.data && openData.length === 0 && (
               <Empty

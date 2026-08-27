@@ -1,10 +1,15 @@
 import { z } from "zod";
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 import * as schema from "@db/schema";
 import { getDb } from "../queries/connection";
 import { createRouter, scopedAdmin } from "../middleware";
 import { chapterScorecards } from "../queries/reports";
 import { idInput } from "./shared";
+import {
+  evaluateFranchiseReadiness,
+  readinessScore,
+} from "../lib/franchise-readiness";
 
 export const chaptersRouter = createRouter({
   govAdmin: scopedAdmin("chapters").query(async () => {
@@ -132,4 +137,73 @@ export const chaptersRouter = createRouter({
   reportsChapterScorecards: scopedAdmin("chapters").query(() =>
     chapterScorecards()
   ),
+
+  /* ------------------------- franchise readiness -------------------------- */
+  franchiseReadiness: scopedAdmin("chapters")
+    .input(z.object({ chapterId: z.number().int().positive() }))
+    .query(async ({ input }) => {
+      const db = getDb();
+      const chapter = (
+        await db
+          .select({
+            status: schema.chapters.status,
+            charterDate: schema.chapters.charterDate,
+            zoneId: schema.chapters.zoneId,
+          })
+          .from(schema.chapters)
+          .where(eq(schema.chapters.id, input.chapterId))
+          .limit(1)
+      ).at(0);
+      if (!chapter) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const [[memberRow], roles, budgetRows, cadenceRows] = await Promise.all([
+        db
+          .select({ n: sql<number>`count(*)` })
+          .from(schema.members)
+          .where(eq(schema.members.homeChapterId, input.chapterId)),
+        db
+          .select({ role: schema.chapterRoles.role })
+          .from(schema.chapterRoles)
+          .where(
+            and(
+              eq(schema.chapterRoles.chapterId, input.chapterId),
+              eq(schema.chapterRoles.status, "active")
+            )
+          ),
+        db
+          .select({ amount: schema.chapterBudgets.amount })
+          .from(schema.chapterBudgets)
+          .where(
+            and(
+              eq(schema.chapterBudgets.chapterId, input.chapterId),
+              eq(schema.chapterBudgets.status, "approved"),
+              eq(schema.chapterBudgets.kind, "allocation")
+            )
+          ),
+        db
+          .select({ id: schema.cadences.id })
+          .from(schema.cadences)
+          .where(
+            and(
+              eq(schema.cadences.chapterId, input.chapterId),
+              eq(schema.cadences.active, 1)
+            )
+          ),
+      ]);
+
+      const items = evaluateFranchiseReadiness({
+        status: chapter.status,
+        charterDate: chapter.charterDate,
+        zoneId: chapter.zoneId,
+        memberCount: Number(memberRow?.n ?? 0),
+        activeRoleKeys: roles.map(r => r.role),
+        approvedBudgetAed: budgetRows.reduce(
+          (sum, r) => sum + (r.amount ?? 0),
+          0
+        ),
+        activeCadenceCount: cadenceRows.length,
+      });
+
+      return { chapterId: input.chapterId, items, score: readinessScore(items) };
+    }),
 });

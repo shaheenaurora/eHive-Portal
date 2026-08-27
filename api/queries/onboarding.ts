@@ -1,4 +1,5 @@
 import { and, eq, sql } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 import * as schema from "@db/schema";
 import { getDb } from "./connection";
 import { ONBOARDING_MILESTONES, ONBOARDING_DAYS } from "@contracts/constants";
@@ -99,4 +100,20 @@ export async function computeOnboarding(
     stage,
     complete: doneCount === total,
   };
+}
+
+/** Enforce that a member has completed onboarding before accessing higher-value
+ *  actions (e.g. posting a deal). Throws a clear TRPCError if still onboarding. */
+export async function requireOnboardingComplete(
+  member: schema.Member,
+  action = "this action"
+): Promise<void> {
+  if (member.lifecycleState !== "onboarding") return;
+  const progress = await computeOnboarding(member);
+  if (!progress.complete) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: `Please complete your onboarding before ${action}.`,
+    });
+  }
 }

@@ -5,6 +5,7 @@ import {
   ADMIN_NAV,
   PageHead,
   Spinner,
+  LoadError,
   Modal,
   Field,
   Empty,
@@ -58,6 +59,7 @@ export default function AdminNewsletters() {
         </button>
       </div>
 
+      {q.isError && <LoadError onRetry={() => q.refetch()} />}
       {q.isLoading && <Spinner />}
       {q.data && q.data.length === 0 && (
         <div className="eh-card">

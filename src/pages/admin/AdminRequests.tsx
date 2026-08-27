@@ -9,6 +9,7 @@ import {
   Pill,
   Empty,
   Spinner,
+  LoadError,
   Modal,
   Field,
   toast,
@@ -81,6 +82,8 @@ export default function AdminRequests() {
         <Metric k="Tier requests" v={tierRows.length} />
       </div>
 
+      {changes.isError && <LoadError onRetry={() => changes.refetch()} />}
+      {tiers.isError && <LoadError onRetry={() => tiers.refetch()} />}
       {(changes.isLoading || tiers.isLoading) && <Spinner />}
       {!changes.isLoading && !tiers.isLoading && total === 0 && (
         <div className="eh-card">

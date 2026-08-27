@@ -6,6 +6,7 @@ import {
   PageHead,
   Pill,
   Spinner,
+  LoadError,
   Modal,
   Field,
   Empty,
@@ -117,6 +118,7 @@ export default function AdminEngagement() {
           <p className="eh-muted eh-sm">
             What each action earns (or costs). Changes apply immediately.
           </p>
+          {rules.isError && <LoadError onRetry={() => rules.refetch()} />}
           {rules.isLoading && <Spinner />}
           <div className="eh-list">
             {(rules.data ?? []).map(r => (
@@ -205,6 +207,7 @@ export default function AdminEngagement() {
         Dormancy board
       </h2>
       <div className="eh-card">
+        {board.isError && <LoadError onRetry={() => board.refetch()} />}
         {board.isLoading && <Spinner />}
         {board.data && board.data.rows.length === 0 && (
           <Empty big="No members yet." />

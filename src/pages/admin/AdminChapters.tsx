@@ -8,6 +8,7 @@ import {
   PageHead,
   Pill,
   Spinner,
+  LoadError,
   Modal,
   Field,
   Empty,
@@ -426,6 +427,7 @@ export default function AdminChapters() {
               New chapter →
             </button>
           </div>
+          {list.isError && <LoadError onRetry={() => list.refetch()} />}
           {list.isLoading && <Spinner />}
           <div className="eh-grid g3">
             {(list.data ?? []).map(c => (
@@ -1109,6 +1111,7 @@ export default function AdminChapters() {
             </h2>
           </div>
           <div className="eh-card">
+            {activity.isError && <LoadError onRetry={() => activity.refetch()} />}
             {activity.isLoading && <Spinner />}
             {activity.data && activity.data.length === 0 && (
               <Empty
@@ -1335,6 +1338,7 @@ function AddMembers(props: {
           autoFocus
         />
       </Field>
+      {res.isError && <LoadError onRetry={() => res.refetch()} />}
       {res.isLoading && <Spinner />}
       {res.data && res.data.length === 0 && (
         <Empty

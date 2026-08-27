@@ -6744,6 +6744,8 @@ a.art:hover {
 .eh-faq-v2 details {
   border-bottom: 1px solid rgba(10, 10, 10, 0.1);
   padding: 1.4rem 0;
+  background: var(--eh-cream);
+  color: var(--eh-ink);
 }
 
 .eh-faq-v2 summary {
@@ -6755,6 +6757,7 @@ a.art:hover {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  color: var(--eh-ink);
 }
 
 .eh-faq-v2 summary::-webkit-details-marker {

@@ -7,6 +7,7 @@ import {
   Pill,
   Empty,
   Spinner,
+  LoadError,
   toast,
   adminHasScope,
 } from "@/components/eh";
@@ -178,6 +179,7 @@ function ExecTab() {
     onError: e => toast(e.message),
   });
 
+  if (q.isError) return <LoadError onRetry={() => q.refetch()} />;
   if (q.isLoading) return <Spinner />;
   if (!q.data)
     return (
@@ -311,6 +313,7 @@ function ChaptersTab() {
   return (
     <div>
       <Toolbar onCsv={csv} />
+      {q.isError && <LoadError onRetry={() => q.refetch()} />}
       {q.isLoading && <Spinner />}
       {q.data && rows.length === 0 && (
         <div className="eh-card">
@@ -393,6 +396,7 @@ function AtRiskTab() {
   return (
     <div>
       <Toolbar onCsv={csv} />
+      {q.isError && <LoadError onRetry={() => q.refetch()} />}
       {q.isLoading && <Spinner />}
       {q.data && rows.length === 0 && (
         <div className="eh-card">
@@ -470,6 +474,7 @@ function PipelineTab() {
   return (
     <div>
       <Toolbar onCsv={csv} />
+      {q.isError && <LoadError onRetry={() => q.refetch()} />}
       {q.isLoading && <Spinner />}
       {d && (
         <div className="eh-grid g3">

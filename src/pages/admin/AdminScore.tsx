@@ -7,6 +7,7 @@ import {
   Pill,
   Empty,
   Spinner,
+  LoadError,
   TierPill,
   toast,
 } from "@/components/eh";
@@ -59,6 +60,7 @@ export default function AdminScore() {
       <div className="eh-grid g2" style={{ alignItems: "start" }}>
         <div className="eh-card">
           <h3>Factor weights</h3>
+          {q.isError && <LoadError onRetry={() => q.refetch()} />}
           {q.isLoading && <Spinner />}
           {q.data && (
             <>

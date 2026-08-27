@@ -18,6 +18,7 @@ import {
 } from "../queries/kpi-alerts";
 import { networkKpis } from "../queries/reports";
 import { findUserByEmail } from "../queries/users";
+import { funnelCounts } from "../queries/analytics";
 import { SCOPE_ENUM, isFullAdmin } from "./shared";
 
 /* Shared filter for the audit trail: actor-email + action substrings and a date
@@ -283,6 +284,23 @@ export const systemRouter = createRouter({
       });
       return r;
     }),
+
+  /* ---------------- Conversion funnel (analytics event stream) ---------------- */
+  funnelCounts: fullAdmin
+    .input(
+      z
+        .object({
+          from: z.string().date().optional(),
+          to: z.string().date().optional(),
+        })
+        .optional()
+    )
+    .query(({ input }) =>
+      funnelCounts({
+        from: input?.from ? new Date(input.from + "T00:00:00Z") : undefined,
+        to: input?.to ? new Date(input.to + "T23:59:59Z") : undefined,
+      })
+    ),
 
   /* ---------------- Reports & KPIs — role-scoped drill-down ----------------
      The network/board scorecard stays full-admin; each domain report is gated to

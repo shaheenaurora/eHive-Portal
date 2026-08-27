@@ -42,6 +42,8 @@ import { authenticateRequest } from "./lib/session";
 import { rateLimit } from "./lib/rate-limit";
 import { escapeHtml } from "./lib/html";
 import { integrationApp } from "./integrations";
+import { recordAnalyticsEvent } from "./queries/analytics";
+import { incrementRequests, incrementErrors, renderMetrics } from "./lib/metrics";
 import { buildScorecardReport } from "../src/lib/scorecard";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -166,6 +168,32 @@ app.use(
 );
 
 app.use(bodyLimit({ maxSize: 5 * 1024 * 1024 }));
+
+// Increment request counter for observability. 5xx responses are counted below
+// in the global error handler.
+app.use(async (c, next) => {
+  incrementRequests();
+  await next();
+});
+
+// Count 5xx responses and log structured errors in production.
+app.onError((err, c) => {
+  incrementErrors();
+  if (env.isProduction) {
+    console.error(
+      JSON.stringify({
+        level: "error",
+        method: c.req.method,
+        path: c.req.path,
+        message: err.message,
+        stack: err.stack,
+        timestamp: new Date().toISOString(),
+      })
+    );
+  }
+  return c.json({ error: "Internal server error" }, 500);
+});
+
 app.use("/api/trpc/*", async c => {
   // CSRF defense for cookie-authenticated mutations. A browser always attaches
   // an Origin header to cross-site POSTs, so reject any state-changing request
@@ -304,6 +332,13 @@ app.post("/api/lead", async c => {
       return c.json({ ok: false, error: "storage failed" }, 500);
     }
   }
+
+  // Analytics: record the conversion.
+  void recordAnalyticsEvent("lead_submitted", {
+    visitorId: body.visitor_id as string | undefined,
+    properties: { form: body.form, leadId, sourcePage },
+    url: sourcePage,
+  });
 
   // Send notification + confirmation emails and surface the result to the
   // caller so the UI can warn when the confirmation could not be delivered.
@@ -611,6 +646,12 @@ app.post("/api/bookings", async c => {
     return c.json({ ok: false, error: "Unable to save your booking." }, 500);
   }
 
+  void recordAnalyticsEvent("booking_requested", {
+    visitorId: body.visitor_id as string | undefined,
+    properties: { product, appointmentId },
+    url: "book.html",
+  });
+
   const emailResult = await sendBookingConfirmation({
     name,
     email,
@@ -760,6 +801,15 @@ app.post("/api/payments/webhook", async c => {
           /* non-fatal */
         });
       }
+      void recordAnalyticsEvent("payment_succeeded", {
+        userId: record.userId,
+        properties: {
+          purpose: record.purpose,
+          tier: record.tier,
+          amount: record.amount,
+          currency: record.currency,
+        },
+      });
     } else if (
       result.status === "failed" &&
       record &&
@@ -963,6 +1013,14 @@ app.get("/api/ready", async c => {
   } catch {
     return c.json({ ready: false }, 503);
   }
+});
+
+/* Prometheus-compatible metrics endpoint. No authentication by design — it
+   exposes only process counters and DB reachability, suitable for scraping by
+   Railway/Render/Fly monitoring or an external Prometheus instance. */
+app.get("/metrics", async c => {
+  const body = await renderMetrics();
+  return c.text(body, 200, { "content-type": "text/plain; version=0.0.4" });
 });
 
 /* Prometheus-style metrics (text exposition, no external dependency). Enough for

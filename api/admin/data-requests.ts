@@ -6,27 +6,9 @@ import { getDb } from "../queries/connection";
 import { createRouter, scopedAdmin } from "../middleware";
 import { audit } from "../lib/audit";
 import { notify } from "../queries/circle";
+import { exportUser } from "../lib/pdpl";
 
 const requestIdInput = z.object({ requestId: z.number().int().positive() });
-
-/** Strip fields that must never leave the system in a member export. */
-function exportUser(user: typeof schema.users.$inferSelect) {
-  return {
-    id: user.id,
-    unionId: user.unionId,
-    name: user.name,
-    email: user.email,
-    consentAt: user.consentAt,
-    avatar: user.avatar,
-    role: user.role,
-    adminScopes: user.adminScopes,
-    emailVerifiedAt: user.emailVerifiedAt,
-    totpEnabled: user.totpEnabled,
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt,
-    lastSignInAt: user.lastSignInAt,
-  };
-}
 
 export const adminDataRequestsRouter = createRouter({
   list: scopedAdmin("finance").query(async () => {

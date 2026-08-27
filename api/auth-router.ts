@@ -28,6 +28,7 @@ import {
   sendPasswordChangedEmail,
 } from "./lib/auth-mail";
 import { rateLimit, rateLimitReset } from "./lib/rate-limit";
+import { recordAnalyticsEvent } from "./queries/analytics";
 import {
   generateTotpSecret,
   totpKeyUri,
@@ -126,6 +127,10 @@ export const authRouter = createRouter({
         });
       }
       await issueVerification(user.id, user.email!, user.name ?? "");
+      void recordAnalyticsEvent("user_registered", {
+        userId: user.id,
+        properties: { emailDomain: user.email?.split("@")[1] },
+      });
       ctx.resHeaders.append(
         "set-cookie",
         await sessionSetCookie(user.unionId, user.tokenVersion, ctx.req.headers)
@@ -250,6 +255,7 @@ export const authRouter = createRouter({
           message: "This verification link is invalid or has expired.",
         });
       await markEmailVerified(userId);
+      void recordAnalyticsEvent("email_verified", { userId });
       return { ok: true };
     }),
 

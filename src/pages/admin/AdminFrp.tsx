@@ -9,6 +9,7 @@ import {
   Empty,
   TierPill,
   Spinner,
+  LoadError,
   Modal,
   Field,
   Bar,
@@ -80,6 +81,7 @@ export default function AdminFrp() {
         }
       />
 
+      {q.isError && <LoadError onRetry={() => q.refetch()} />}
       {q.isLoading && <Spinner />}
       {q.data && q.data.length === 0 && (
         <div className="eh-card">
@@ -206,6 +208,7 @@ export default function AdminFrp() {
 
       {enrolId !== null && (
         <Modal title="Enrolment review" onClose={() => setEnrolId(null)} wide>
+          {detail.isError && <LoadError onRetry={() => detail.refetch()} />}
           {detail.isLoading && <Spinner />}
           {detail.data && (
             <>

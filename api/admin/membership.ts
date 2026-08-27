@@ -24,6 +24,7 @@ import {
 import { kycQueue, getKyc, reviewKyc } from "../queries/kyc";
 import { pipelineReport } from "../queries/reports";
 import { audit } from "../lib/audit";
+import { recordAnalyticsEvent } from "../queries/analytics";
 import { tierRank, type MemberLifecycle, type Tier } from "@contracts/constants";
 import {
   TIER,
@@ -161,6 +162,10 @@ export const membershipRouter = createRouter({
             type: "application",
             id: input.id,
             detail: `→ member #${memberId} (${tier})`,
+          });
+          void recordAnalyticsEvent("application_approved", {
+            userId: app.userId,
+            properties: { applicationId: input.id, memberId, tier },
           });
           return { ok: true, memberId };
         }

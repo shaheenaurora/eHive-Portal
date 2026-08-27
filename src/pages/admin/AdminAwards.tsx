@@ -7,6 +7,7 @@ import {
   Pill,
   Empty,
   Spinner,
+  LoadError,
   Field,
   Modal,
   toast,
@@ -136,6 +137,7 @@ export default function AdminAwards() {
           </Field>
           {needsUnit && (
             <Field label={AWARD_LEVEL_LABEL[level]}>
+              {units.isError && <LoadError onRetry={() => units.refetch()} />}
               <select
                 className="eh-select"
                 value={unitId}
@@ -183,6 +185,7 @@ export default function AdminAwards() {
 
       <HallOfFameSection />
 
+      {q.isError && <LoadError onRetry={() => q.refetch()} />}
       {q.isLoading && <Spinner />}
       {q.data && cycles.length === 0 && (
         <div className="eh-card">
@@ -304,6 +307,7 @@ function Nominations({ cycleId }: { cycleId: number }) {
         paddingTop: "1rem",
       }}
     >
+      {q.isError && <LoadError onRetry={() => q.refetch()} />}
       {q.isLoading && <Spinner />}
       {q.data && noms.length === 0 && (
         <p className="eh-sm eh-muted">No nominations yet in this cycle.</p>
@@ -441,6 +445,8 @@ function JudgingPanel({ cycleId }: { cycleId: number }) {
         Judging panel
       </div>
 
+      {judges.isError && <LoadError onRetry={() => judges.refetch()} />}
+
       {/* Judges */}
       <div className="eh-row" style={{ gap: ".4rem", flexWrap: "wrap" }}>
         {judgeList.map(j => (
@@ -485,6 +491,7 @@ function JudgingPanel({ cycleId }: { cycleId: number }) {
 
       {/* Board */}
       <div style={{ marginTop: "1rem" }}>
+        {board.isError && <LoadError onRetry={() => board.refetch()} />}
         {board.isLoading && <Spinner />}
         {rows.length === 0 && !board.isLoading && (
           <p className="eh-sm eh-muted">
@@ -726,6 +733,7 @@ function AutoScoreSection({ cycleId }: { cycleId: number }) {
           engagement, referrals and attendance over the cycle window.
         </p>
       )}
+      {q.isError && <LoadError onRetry={() => q.refetch()} />}
       {q.isFetching && <Spinner />}
       {data && (
         <>
@@ -828,6 +836,7 @@ function VoteSection({ cycleId }: { cycleId: number }) {
         )}
       </div>
 
+      {q.isError && <LoadError onRetry={() => q.refetch()} />}
       {q.isLoading && <Spinner />}
       {q.data && rows.length === 0 && (
         <Empty
@@ -962,6 +971,7 @@ function IntegritySection({ cycleId }: { cycleId: number }) {
         upheld.
       </p>
 
+      {flags.isError && <LoadError onRetry={() => flags.refetch()} />}
       {flags.isLoading && <Spinner />}
       {flags.data && rows.length === 0 && (
         <p className="eh-sm eh-muted">
@@ -1086,6 +1096,7 @@ function HallOfFameSection() {
         )}
       </div>
 
+      {board.isError && <LoadError onRetry={() => board.refetch()} />}
       {board.isLoading && <Spinner />}
       {data && rows.length === 0 && (
         <Empty

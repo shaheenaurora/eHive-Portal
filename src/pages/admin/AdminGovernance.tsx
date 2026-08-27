@@ -8,6 +8,7 @@ import {
   Pill,
   Empty,
   Spinner,
+  LoadError,
   Modal,
   Field,
   toast,
@@ -112,6 +113,7 @@ export default function AdminGovernance() {
         }
       />
 
+      {q.isError && <LoadError onRetry={() => q.refetch()} />}
       {q.isLoading && <Spinner />}
 
       <div className="eh-grid g2" style={{ alignItems: "start" }}>
@@ -268,6 +270,7 @@ export default function AdminGovernance() {
       {seatFor !== null && (
         <Modal title="Assign a seat" onClose={() => setSeatFor(null)}>
           <form onSubmit={onSeat}>
+            {members.isError && <LoadError onRetry={() => members.refetch()} />}
             <Field label="Member">
               <select className="eh-select" name="memberId" required>
                 {members.data?.map(({ member, userName }) => (

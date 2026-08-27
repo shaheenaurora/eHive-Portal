@@ -26,6 +26,14 @@ const appSecret = requiredSecret("APP_SECRET", 32);
 // invalidate in-flight 2FA challenges.
 const totpSecret = (process.env.TOTP_SECRET ?? "").trim() || appSecret;
 
+export function parsePositiveInt(
+  input: string | undefined,
+  fallback: number
+): number {
+  const n = Number(input);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
+}
+
 export const env = {
   // Secret used to sign session JWTs. Must be high-entropy and at least 32 chars.
   appSecret,
@@ -76,6 +84,14 @@ export const env = {
   integrationApiKeys: parseIntegrationKeys(
     process.env.INTEGRATION_API_KEYS ?? ""
   ),
+  // Per-user rate limits for authenticated tRPC procedures. These are applied
+  // in addition to the per-IP limit in boot.ts, so a shared office IP can't
+  // exhaust one user's budget and one scripted user can't exhaust the server.
+  trpcMutationRateLimit: parsePositiveInt(
+    process.env.TRPC_MUTATION_RATE_LIMIT,
+    120
+  ),
+  trpcQueryRateLimit: parsePositiveInt(process.env.TRPC_QUERY_RATE_LIMIT, 600),
 };
 
 export type IntegrationApiKey = {

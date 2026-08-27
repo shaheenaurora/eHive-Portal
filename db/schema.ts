@@ -2180,6 +2180,33 @@ export const appointments = mysqlTable(
 export type Appointment = typeof appointments.$inferSelect;
 export type InsertAppointment = typeof appointments.$inferInsert;
 
+/* Analytics event stream for conversion funnels and product insights.
+   Stores high-level business events (not page views) with optional actor
+   attribution. PII is kept minimal: only a hashed/anonymous visitor id and
+   an optional userId for logged-in actions. */
+export const analyticsEvents = mysqlTable(
+  "analytics_events",
+  {
+    id: serial("id").primaryKey(),
+    event: varchar("event", { length: 64 }).notNull(),
+    visitorId: varchar("visitor_id", { length: 64 }), // hashed fingerprint / session id
+    userId: bigint("userId", { mode: "number", unsigned: true }).references(
+      () => users.id,
+      { onDelete: "set null" }
+    ),
+    properties: text("properties"), // JSON blob
+    url: varchar("url", { length: 500 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  t => [
+    index("ix_analytics_event_created").on(t.event, t.createdAt),
+    index("ix_analytics_visitor").on(t.visitorId),
+    index("ix_analytics_user").on(t.userId),
+  ]
+);
+export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
+export type InsertAnalyticsEvent = typeof analyticsEvents.$inferInsert;
+
 /* Shared rate-limit counters — stored in MySQL so per-IP/account limits apply
    across multiple app replicas (Railway can scale horizontally). */
 export const rateLimits = mysqlTable("rate_limits", {
