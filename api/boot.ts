@@ -122,7 +122,7 @@ function clientIp(c: {
 const app = new Hono<{ Bindings: HttpBindings }>();
 
 /* Baseline security headers on every response. CSP uses hashes for the static
-   inline scripts in public/*.html and drops 'unsafe-inline' from script-src.
+   inline scripts in public*.html and drops 'unsafe-inline' from script-src.
    Styles still allow 'unsafe-inline' because Tailwind/React inject inline
    styles at runtime. Frame options are SAMEORIGIN so the scorecard popup (a
    same-origin iframe) keeps working. */
@@ -155,6 +155,21 @@ app.use(
     },
   })
 );
+
+/* CSP report-only mode: when CSP_REPORT_ONLY=true, move the enforcing header to
+   Report-Only so violations are visible in the browser console / report-uri
+   without breaking inline styles. This is the safe path for migrating away from
+   'unsafe-inline'. */
+if (env.cspReportOnly) {
+  app.use("*", async (c, next) => {
+    await next();
+    const csp = c.res.headers.get("Content-Security-Policy");
+    if (csp) {
+      c.header("Content-Security-Policy-Report-Only", csp);
+      c.res.headers.delete("Content-Security-Policy");
+    }
+  });
+}
 
 /* Restrict cross-origin requests to the canonical public URL in production;
    in development reflect the request origin so local Vite/SPA dev keeps working.
@@ -497,7 +512,10 @@ app.get("/insights/:slug", async c => {
 </div></section></main>
 <script src="/app.min.js" defer></script><script src="/apps.min.js" defer></script>
 </body></html>`;
-  c.header("Content-Security-Policy", buildCsp(nonce));
+  const cspHeader = env.cspReportOnly
+    ? "Content-Security-Policy-Report-Only"
+    : "Content-Security-Policy";
+  c.header(cspHeader, buildCsp(nonce));
   return c.html(html);
 });
 

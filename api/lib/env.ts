@@ -92,6 +92,10 @@ export const env = {
     120
   ),
   trpcQueryRateLimit: parsePositiveInt(process.env.TRPC_QUERY_RATE_LIMIT, 600),
+  // When true, the Content-Security-Policy header is sent as Report-Only so you
+  // can collect violations without breaking the site. Use this while migrating
+  // away from 'unsafe-inline' for style-src.
+  cspReportOnly: process.env.CSP_REPORT_ONLY === "true",
 };
 
 export type IntegrationApiKey = {
