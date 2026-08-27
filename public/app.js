@@ -265,6 +265,66 @@ function submitLead(payload, onOk, onErr) {
     }, 3000);
   }
 
+  /* ---- auto-reveal sections/cards that don't have explicit reveal classes ----
+     Makes every public page feel alive without editing every HTML file.
+     Respects prefers-reduced-motion and never hides content if JS fails. */
+  if (!reduceMotion) {
+    var autoSelectors = [
+      ".h-section:not(.no-reveal)",
+      ".h-product",
+      ".h-assess-card",
+      ".h-value-card",
+      ".h-service-card",
+      ".h-door",
+      ".h-offer",
+      ".eh-hero-v2 .h-eyebrow",
+      ".eh-hero-v2 h1",
+      ".eh-hero-v2 .h-lede",
+      ".eh-hero-v2 .h-hero-actions",
+    ];
+    var autoRevealTargets = document.querySelectorAll(autoSelectors.join(","));
+    if (autoRevealTargets.length && "IntersectionObserver" in window) {
+      var autoIO = new IntersectionObserver(
+        function (entries) {
+          entries.forEach(function (e) {
+            if (e.isIntersecting) {
+              e.target.classList.add("auto-revealed");
+              autoIO.unobserve(e.target);
+            }
+          });
+        },
+        { threshold: 0.12, rootMargin: "0px 0px -5% 0px" }
+      );
+      autoRevealTargets.forEach(function (el, i) {
+        el.classList.add("auto-reveal");
+        el.style.setProperty("--ar-d", (i % 5) * 0.08 + "s");
+        autoIO.observe(el);
+      });
+    } else {
+      autoRevealTargets.forEach(function (el) {
+        el.classList.add("auto-revealed");
+      });
+    }
+  }
+
+  /* ---- scroll progress indicator ---- */
+  (function () {
+    var bar = document.createElement("div");
+    bar.className = "scroll-progress";
+    bar.setAttribute("aria-hidden", "true");
+    document.body.appendChild(bar);
+    function updateProgress() {
+      var doc = document.documentElement;
+      var scroll = doc.scrollTop || document.body.scrollTop;
+      var height = doc.scrollHeight - doc.clientHeight;
+      var pct = height > 0 ? (scroll / height) * 100 : 0;
+      bar.style.setProperty("--progress", pct.toFixed(2) + "%");
+    }
+    window.addEventListener("scroll", updateProgress, { passive: true });
+    window.addEventListener("resize", updateProgress);
+    updateProgress();
+  })();
+
   /* ---- how-it-works connector line ---- */
   var steps = document.getElementById("steps");
   if (steps) {
