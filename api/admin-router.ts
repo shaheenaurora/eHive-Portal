@@ -25,4 +25,5 @@ const baseAdminRouter = mergeRouters(
 export const adminRouter = createRouter({
   ...baseAdminRouter._def.procedures,
   dataRequests: adminDataRequestsRouter,
+  chapters: chaptersRouter,
 });
