@@ -6895,6 +6895,7 @@ a.art:hover {
   font-size: 0.82rem;
   font-weight: 600;
   background: #fff;
+  color: var(--eh-ink);
 }
 
 /* ---- FAQ v2 ---- */
@@ -7539,4 +7540,25 @@ a.art:hover {
 .h-offer:hover {
   transform: translateY(-4px);
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.1);
+}
+
+/* ---- homepage white-on-white fixes ---- */
+/* Pillar cards live inside a dark section but have white backgrounds;
+   keep their text dark so they remain readable. */
+.eh-v2 .eh-section-v2.eh-dark .eh-pillar-card,
+.eh-v2 .eh-section-v2.eh-dark .eh-pillar-card h3,
+.eh-v2 .eh-section-v2.eh-dark .eh-pillar-card p,
+.eh-v2 .eh-section-v2.eh-dark .eh-pillar-card .eh-card-bullets,
+.eh-v2 .eh-section-v2.eh-dark .eh-pillar-card .eh-card-bullets li {
+  color: var(--eh-ink);
+}
+
+/* Footer newsletter input sits on a light background and reuses the
+   dark-band form component; reset text and placeholder colours. */
+.h-footer .h-lead-form input {
+  color: var(--h-navy);
+}
+
+.h-footer .h-lead-form input::placeholder {
+  color: var(--h-muted-2);
 }
