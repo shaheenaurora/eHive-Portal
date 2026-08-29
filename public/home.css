@@ -6593,6 +6593,113 @@ a.art:hover {
   color: var(--eh-coral);
 }
 
+.eh-card-bullets {
+  list-style: none;
+  margin: 0.8rem 0 0;
+  padding: 0;
+  font-size: 0.9rem;
+  color: rgba(10, 10, 10, 0.6);
+}
+
+.eh-card-bullets li {
+  position: relative;
+  padding-left: 1.1rem;
+  margin-bottom: 0.35rem;
+  line-height: 1.45;
+}
+
+.eh-card-bullets li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: var(--eh-coral);
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+/* ---- who it is for ---- */
+.h-who-for-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2.5rem;
+  margin-top: 2.5rem;
+}
+
+@media (max-width: 720px) {
+  .h-who-for-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.h-for-col h3 {
+  font-family: "Archivo", system-ui, sans-serif;
+  font-size: 1.15rem;
+  font-weight: 800;
+  margin-bottom: 1rem;
+}
+
+.h-for-col ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.h-for-col li {
+  position: relative;
+  padding-left: 1.4rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.55;
+  color: rgba(10, 10, 10, 0.7);
+}
+
+.h-for-col li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: var(--h-coral);
+  font-weight: 700;
+}
+
+.h-for-col:last-child li::before {
+  content: "×";
+}
+
+/* ---- membership benefits ---- */
+.h-benefit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem;
+  margin-top: 2.5rem;
+}
+
+@media (max-width: 720px) {
+  .h-benefit-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.h-benefit {
+  padding: 1.5rem;
+  border: 1px solid rgba(10, 10, 10, 0.08);
+  border-radius: var(--h-radius);
+  background: #fff;
+}
+
+.h-benefit h3 {
+  font-family: "Archivo", system-ui, sans-serif;
+  font-size: 1.1rem;
+  font-weight: 800;
+  margin-bottom: 0.6rem;
+  color: var(--h-navy);
+}
+
+.h-benefit p {
+  font-size: 0.95rem;
+  color: rgba(10, 10, 10, 0.65);
+  line-height: 1.55;
+  margin: 0;
+}
+
 /* ---- how it works v2 ---- */
 .eh-hiw-v2 .eh-steps {
   display: grid;
