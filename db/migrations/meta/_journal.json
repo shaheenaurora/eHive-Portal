@@ -134,6 +134,13 @@
       "when": 1787475684744,
       "tag": "0018_left_gateway",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "5",
+      "when": 1788026400000,
+      "tag": "0020_membership_gate",
+      "breakpoints": true
     }
   ]
 }

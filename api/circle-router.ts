@@ -54,6 +54,21 @@ async function requireMember(userId: number) {
   return member;
 }
 
+const GATE_MODES = ["open", "muslim_only", "values_gated"] as const;
+type GateMode = (typeof GATE_MODES)[number];
+
+async function getMembershipGateMode(): Promise<GateMode> {
+  const row = await getDb()
+    .select({ value: schema.appConfig.value })
+    .from(schema.appConfig)
+    .where(eq(schema.appConfig.key, "membership_gate_mode"))
+    .limit(1);
+  const value = row.at(0)?.value;
+  return (GATE_MODES as readonly string[]).includes(value ?? "")
+    ? (value as GateMode)
+    : "open";
+}
+
 function requireVerified(ctx: { user: { emailVerifiedAt?: Date | null } }) {
   if (!ctx.user.emailVerifiedAt) {
     throw new TRPCError({
@@ -208,6 +223,11 @@ export const circleRouter = createRouter({
     return { user: safeUser(ctx.user), member, application };
   }),
 
+  /* ---- membership gate mode (read-only; shown on the apply form) ---- */
+  membershipGateMode: authedQuery.query(async () => {
+    return { mode: await getMembershipGateMode() };
+  }),
+
   /* ---- Member documents: membership + attendance certificates, CPD credits.
      Everything here is derived from the member's own records. ---- */
   myDocuments: authedQuery.query(async ({ ctx }) => {
@@ -299,6 +319,9 @@ export const circleRouter = createRouter({
         why: z.string().max(2000).optional(),
         tierRequested: z.enum(["horizon", "ascent", "vanguard", "zenith"]),
         proofPoint: z.string().max(4000).optional(), // BRD 6.2 — Vanguard proof point
+        muslimIdentity: z.boolean().default(false),
+        valuesAligned: z.boolean().default(false),
+        affirmationNote: z.string().max(500).optional(),
         consent: z.boolean(), // BRD 8.4 — PDPL consent capture
       })
     )
@@ -309,6 +332,21 @@ export const circleRouter = createRouter({
           code: "BAD_REQUEST",
           message: "PDPL consent is required to apply",
         });
+      const gateMode = await getMembershipGateMode();
+      if (gateMode === "muslim_only" && !input.muslimIdentity) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "At this stage, membership is open to Muslim entrepreneurs so we can build an unambiguous founding culture.",
+        });
+      }
+      if (gateMode === "values_gated" && !input.valuesAligned) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Membership is open to those who share our code of integrity, generosity and accountability.",
+        });
+      }
       const existing = await getMemberByUserId(ctx.user.id);
       if (existing)
         throw new TRPCError({ code: "CONFLICT", message: "Already a member" });
@@ -339,11 +377,14 @@ export const circleRouter = createRouter({
           why: input.why,
           tierRequested: input.tierRequested,
           proofPoint: input.proofPoint,
+          muslimIdentity: input.muslimIdentity ? 1 : 0,
+          valuesAligned: input.valuesAligned ? 1 : 0,
+          affirmationNote: input.affirmationNote,
           consentAt: new Date(),
         });
       void recordAnalyticsEvent("application_submitted", {
         userId: ctx.user.id,
-        properties: { tierRequested: input.tierRequested },
+        properties: { tierRequested: input.tierRequested, gateMode },
       });
       return { ok: true };
     }),

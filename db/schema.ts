@@ -203,6 +203,14 @@ export const applications = mysqlTable(
     ])
       .notNull()
       .default("ascent"),
+    /* Membership gate affirmations (BRD §9 repositioning addendum).
+       `muslimIdentity` and `valuesAligned` are captured at application time;
+       enforcement is driven by the active gate mode in app_config.
+       The `affirmationNote` lets applicants add context when the gate is
+       values-gated rather than identity-gated. */
+    muslimIdentity: int("muslimIdentity").notNull().default(0),
+    valuesAligned: int("valuesAligned").notNull().default(0),
+    affirmationNote: varchar("affirmationNote", { length: 500 }),
     status: mysqlEnum("status", [
       "received",
       "screening",

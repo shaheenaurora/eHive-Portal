@@ -55,6 +55,34 @@ export const membershipRouter = createRouter({
       return base;
     }),
 
+  membershipGateMode: scopedAdmin("membership").query(async () => {
+    const row = await getDb()
+      .select({ value: schema.appConfig.value })
+      .from(schema.appConfig)
+      .where(eq(schema.appConfig.key, "membership_gate_mode"))
+      .limit(1);
+    const value = row.at(0)?.value;
+    return {
+      mode: ["open", "muslim_only", "values_gated"].includes(value ?? "")
+        ? value
+        : "open",
+    };
+  }),
+
+  setMembershipGateMode: scopedAdmin("membership")
+    .input(z.object({ mode: z.enum(["open", "muslim_only", "values_gated"]) }))
+    .mutation(async ({ ctx, input }) => {
+      await getDb()
+        .insert(schema.appConfig)
+        .values({ key: "membership_gate_mode", value: input.mode })
+        .onDuplicateKeyUpdate({ set: { value: input.mode } });
+      await audit(ctx.user, "membership_gate_mode.set", {
+        type: "app_config",
+        detail: input.mode,
+      });
+      return { ok: true };
+    }),
+
   setApplicationStatus: scopedAdmin("membership")
     .input(
       z.object({

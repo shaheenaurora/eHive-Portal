@@ -17,6 +17,59 @@ import {
 import { fmtDate } from "@/lib/ehf";
 import { APPLICATION_STATUSES, TIERS, TIER_LABEL } from "@contracts/constants";
 
+const GATE_MODES: { value: "open" | "muslim_only" | "values_gated"; label: string; hint: string }[] = [
+  { value: "open", label: "Open", hint: "No affirmation required." },
+  {
+    value: "muslim_only",
+    label: "Muslim-only",
+    hint: "Applicants must identify as Muslim entrepreneurs.",
+  },
+  {
+    value: "values_gated",
+    label: "Values-gated",
+    hint: "Applicants must affirm the Code of Integrity, Generosity and Accountability.",
+  },
+];
+
+function GateModeControl() {
+  const utils = trpc.useUtils();
+  const q = trpc.admin.membershipGateMode.useQuery(undefined, { retry: false });
+  const m = trpc.admin.setMembershipGateMode.useMutation({
+    onSuccess: () => {
+      toast("Membership gate mode updated.");
+      utils.admin.membershipGateMode.invalidate();
+      utils.circle.membershipGateMode.invalidate();
+    },
+    onError: e => toast(e.message),
+  });
+  return (
+    <>
+      <label htmlFor="gateMode" className="eh-sm" style={{ fontWeight: 600 }}>
+        Membership gate
+      </label>
+      <select
+        id="gateMode"
+        className="eh-select"
+        style={{ minWidth: 220 }}
+        value={q.data?.mode ?? "open"}
+        disabled={q.isLoading || m.isPending}
+        onChange={e =>
+          m.mutate({ mode: e.target.value as "open" | "muslim_only" | "values_gated" })
+        }
+      >
+        {GATE_MODES.map(g => (
+          <option key={g.value} value={g.value}>
+            {g.label}
+          </option>
+        ))}
+      </select>
+      <span className="eh-muted eh-sm">
+        {GATE_MODES.find(g => g.value === (q.data?.mode ?? "open"))?.hint}
+      </span>
+    </>
+  );
+}
+
 type AppRow = {
   id: number;
   name: string;
@@ -28,6 +81,9 @@ type AppRow = {
   tierRequested: "horizon" | "ascent" | "vanguard" | "zenith";
   status: string;
   note: string | null;
+  muslimIdentity: number | null;
+  valuesAligned: number | null;
+  affirmationNote: string | null;
   createdAt: Date | string;
 };
 
@@ -70,6 +126,19 @@ export default function AdminApplications() {
         title="Applications"
         sub="Received → screening → interview → decision. Approving creates the membership and writes the first membership event."
       />
+
+      <div
+        className="eh-card"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "1rem",
+          flexWrap: "wrap",
+          marginBottom: "1rem",
+        }}
+      >
+        <GateModeControl />
+      </div>
 
       <div className="eh-tabs">
         {["all", ...APPLICATION_STATUSES].map(s => (
@@ -205,6 +274,36 @@ export default function AdminApplications() {
               <p className="eh-sm" style={{ margin: 0, lineHeight: 1.7 }}>
                 {sel.why}
               </p>
+            </div>
+          )}
+          {(sel.muslimIdentity || sel.valuesAligned || sel.affirmationNote) && (
+            <div
+              className="eh-card"
+              style={{ background: "var(--eh-paper)", marginBottom: "1rem" }}
+            >
+              <div className="eh-eyebrow">Membership gate</div>
+              <div className="eh-list">
+                {!!sel.muslimIdentity && (
+                  <div className="row">
+                    <span className="d">Muslim identity</span>
+                    <Pill color="green">Affirmed</Pill>
+                  </div>
+                )}
+                {!!sel.valuesAligned && (
+                  <div className="row">
+                    <span className="d">Values alignment</span>
+                    <Pill color="green">Affirmed</Pill>
+                  </div>
+                )}
+                {sel.affirmationNote && (
+                  <div className="row" style={{ alignItems: "flex-start" }}>
+                    <span className="d">Note</span>
+                    <span className="eh-sm" style={{ maxWidth: 360, lineHeight: 1.6 }}>
+                      {sel.affirmationNote}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
           <Field label="Internal note">

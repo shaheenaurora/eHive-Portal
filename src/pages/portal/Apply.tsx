@@ -47,13 +47,23 @@ export default function Apply() {
     onError: e => toast(e.message),
   });
 
+  const gate = trpc.circle.membershipGateMode.useQuery(undefined, {
+    retry: false,
+  });
+
   const [tier, setTier] = useState<string>("ascent");
   const [consent, setConsent] = useState(false);
+  const [muslimIdentity, setMuslimIdentity] = useState(false);
+  const [valuesAligned, setValuesAligned] = useState(false);
+  const [affirmationNote, setAffirmationNote] = useState("");
   const wantsProof = tier === "vanguard" || tier === "zenith";
   const canPayNow =
     !!pay.data?.enabled &&
     (SELF_SERVE_TIERS as readonly string[]).includes(tier) &&
     !me.data?.member;
+
+  const gateMode = gate.data?.mode ?? "open";
+  const gateRequired = gateMode !== "open";
 
   function onPayNow() {
     if (!consent) {
@@ -75,6 +85,9 @@ export default function Apply() {
       proofPoint: String(f.get("proofPoint") ?? "") || undefined,
       tierRequested: tier as never,
       consent,
+      muslimIdentity,
+      valuesAligned,
+      affirmationNote: affirmationNote || undefined,
     });
   }
 
@@ -174,10 +187,83 @@ export default function Apply() {
               export or deletion of my data at any time from the portal.
             </span>
           </label>
+
+          {gate.isLoading && (
+            <p className="eh-muted eh-sm">Loading membership settings…</p>
+          )}
+          {gateRequired && !gate.isLoading && (
+            <div
+              style={{
+                border: "1px solid var(--eh-gold, #b8862e)",
+                borderRadius: 8,
+                padding: ".75rem 1rem",
+                marginBottom: "1rem",
+                background: "rgba(184,134,46,0.08)",
+              }}
+            >
+              {gateMode === "muslim_only" && (
+                <label
+                  className="row eh-sm"
+                  style={{ cursor: "pointer", alignItems: "flex-start" }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={muslimIdentity}
+                    onChange={e => setMuslimIdentity(e.target.checked)}
+                    style={{ marginTop: ".2rem", accentColor: "#b8862e" }}
+                    required
+                  />
+                  <span>
+                    I identify as a Muslim entrepreneur and wish to join a
+                    community founded on Islamic principles of integrity,
+                    generosity and accountability.
+                  </span>
+                </label>
+              )}
+              {gateMode === "values_gated" && (
+                <>
+                  <label
+                    className="row eh-sm"
+                    style={{ cursor: "pointer", alignItems: "flex-start" }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={valuesAligned}
+                      onChange={e => setValuesAligned(e.target.checked)}
+                      style={{ marginTop: ".2rem", accentColor: "#b8862e" }}
+                      required
+                    />
+                    <span>
+                      I affirm that I share and will uphold eHive&apos;s Code of
+                      Integrity, Generosity and Accountability in my dealings
+                      with the community.
+                    </span>
+                  </label>
+                  <Field label="Optional: tell us how you live these values">
+                    <textarea
+                      className="eh-textarea"
+                      maxLength={500}
+                      value={affirmationNote}
+                      onChange={e => setAffirmationNote(e.target.value)}
+                      placeholder="A sentence or two is enough."
+                      style={{ minHeight: 70, marginTop: ".5rem" }}
+                    />
+                  </Field>
+                </>
+              )}
+            </div>
+          )}
+
           <button
             className="eh-btn gold"
             type="submit"
-            disabled={apply.isPending || !consent}
+            disabled={
+              apply.isPending ||
+              !consent ||
+              gate.isLoading ||
+              (gateMode === "muslim_only" && !muslimIdentity) ||
+              (gateMode === "values_gated" && !valuesAligned)
+            }
           >
             {apply.isPending ? "Submitting…" : "Submit application →"}
           </button>
