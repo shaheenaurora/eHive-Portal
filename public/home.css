@@ -6456,8 +6456,16 @@ a.art:hover {
   margin-top: 3.5rem;
 }
 
+.eh-pillars-v2 .eh-pillar-grid.two-pillars {
+  grid-template-columns: repeat(2, 1fr);
+  max-width: 920px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 @media (max-width: 980px) {
-  .eh-pillars-v2 .eh-pillar-grid {
+  .eh-pillars-v2 .eh-pillar-grid,
+  .eh-pillars-v2 .eh-pillar-grid.two-pillars {
     grid-template-columns: 1fr;
   }
 }
