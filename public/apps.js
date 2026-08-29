@@ -90,26 +90,10 @@
     start: {
       text: "Hi — I&rsquo;m the eHive guide. I point people to the right door in about twenty seconds. What brings you here?",
       chips: [
-        ["Set up a business", "setup"],
+        ["Take the Clarity Scorecard", "go:clarity-scorecard.html"],
         ["Grow my business", "grow"],
         ["Join the Circle", "circle"],
         ["Just exploring", "explore"],
-      ],
-    },
-    setup: {
-      text: "Good instinct, doing it properly from day one. Do you know your jurisdiction path yet?",
-      chips: [
-        ["Free zone", "setup2"],
-        ["Mainland", "setup2"],
-        ["Not sure yet", "setup2"],
-      ],
-    },
-    setup2: {
-      text: "Either way, start with the <b>cost calculator</b> — thirty seconds, indicative numbers. Then a free consultation scopes your exact case in writing.",
-      chips: [
-        ["Open the calculator", "go:business-setup.html#calculator"],
-        ["Book a free setup call", "go:book.html?product=setup"],
-        ["Start over", "start"],
       ],
     },
     grow: {
@@ -162,7 +146,7 @@
         "</b> — the founding cohort is forming now. Tiers run from Horizon (AED 999/yr) to Zenith (invitation-only); Ascent fits most founders.",
       chips: [
         ["See the tiers", "go:circle.html#tiers"],
-        ["Join the waitlist", "go:get-started.html?door=circle"],
+        ["Apply to join", "go:apply.html"],
         ["Try the Hive Score demo", "sim"],
         ["Start over", "start"],
       ],
@@ -319,7 +303,7 @@
     {
       q: "What do you need most right now?",
       opts: [
-        ["legal", "A legal home in the UAE"],
+        ["start", "A clear starting point"],
         ["clarity", "Clarity on a hard decision"],
         ["people", "People who&rsquo;ve done it before"],
         ["execution", "Senior hands on execution"],
@@ -336,13 +320,13 @@
   ];
   function pfResult(a) {
     var r;
-    if (a[1] === "legal") {
+    if (a[1] === "start") {
       r = {
-        title: "Business Setup",
-        desc: "Start with the indicative cost calculator, then a free consultation scopes your exact case — jurisdiction, activity, visas — in writing.",
+        title: "Clarity Scorecard",
+        desc: "A short, honest read of where your business stands across 8 domains — and the one move that matters most right now. Free, no obligation.",
         ctas: [
-          ["Calculate my setup cost", "business-setup.html#calculator"],
-          ["Book a free consultation", "book.html?product=setup"],
+          ["Take the Scorecard", "clarity-scorecard.html"],
+          ["Explore consulting", "consulting.html"],
         ],
       };
     } else if (a[1] === "people") {
@@ -356,7 +340,7 @@
           ". Four tiers from AED 999 a year — Ascent fits most founders. Membership is how you stop building alone.",
         ctas: [
           ["See the tiers", "circle.html#tiers"],
-          ["Join the waitlist", "get-started.html?door=circle"],
+          ["Apply to join", "apply.html"],
         ],
       };
     } else if (a[1] === "execution") {
@@ -532,9 +516,6 @@
 
   /* ================= COMMAND PALETTE ================= */
   var CMDK_ITEMS = [
-    ["Business Setup", "Page", "business-setup.html"],
-    ["Cost calculator", "Tool", "business-setup.html#calculator"],
-    ["Setup walkthrough", "Tool", "business-setup.html#journey"],
     ["Consulting overview", "Page", "consulting.html"],
     ["Which product fits me?", "Tool", "consulting.html#fit"],
     ["Sprint day, hour by hour", "Tool", "consulting.html#sprintday"],
@@ -545,10 +526,16 @@
     ["OpsBlueprint", "Product", "consulting-opsblueprint.html"],
     ["Momentum90", "Product", "consulting-momentum90.html"],
     ["eHive Circle", "Page", "circle.html"],
+    ["Membership", "Page", "membership.html"],
+    ["How it works", "Page", "how-it-works.html"],
     ["Hive Score demo", "Tool", "circle.html#tiers"],
+    ["Clarity Scorecard", "Tool", "clarity-scorecard.html"],
     ["Insights — The Hive Journal", "Page", "insights.html"],
     ["About eHive", "Page", "about.html"],
-    ["Get Started", "Action", "get-started.html"],
+    ["Partners", "Page", "partners.html"],
+    ["Franchise", "Page", "franchise.html"],
+    ["Apply to join", "Action", "apply.html"],
+    ["Contact", "Action", "contact.html"],
     ["Book a call", "Action", "book.html"],
     ["30-second pathfinder", "Tool", "pf:"],
     ["Member login", "Page", "login.html"],

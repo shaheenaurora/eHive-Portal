@@ -385,7 +385,7 @@ function submitLead(payload, onOk, onErr) {
           f.innerHTML =
             '<p style="margin:0;color:var(--gold-2);font-size:.92rem">The Journal list opens with the launch on ' +
             launchDateLabel() +
-            " — your email hasn\u2019t been stored yet. Leave it with us via Get Started and we\u2019ll keep you posted.</p>";
+            " — your email hasn\u2019t been stored yet. <a href='contact.html'>Contact us</a> and we\u2019ll keep you posted.</p>";
         }
       );
     });
@@ -2435,10 +2435,15 @@ function submitLead(payload, onOk, onErr) {
   var path = location.pathname.split("/").pop() || "index.html";
   var pages = [
     "index.html",
-    "business-setup.html",
     "consulting.html",
     "circle.html",
-    "get-started.html",
+    "membership.html",
+    "how-it-works.html",
+    "about.html",
+    "partners.html",
+    "franchise.html",
+    "apply.html",
+    "contact.html",
   ];
   if (pages.indexOf(path) === -1) return;
   var bar = document.createElement("div");
@@ -2446,8 +2451,8 @@ function submitLead(payload, onOk, onErr) {
   bar.setAttribute("role", "region");
   bar.setAttribute("aria-label", "Quick actions");
   bar.innerHTML =
-    "<a class='btn btn-primary' href='get-started.html'>Get Started</a>" +
-    "<a class='btn btn-ghost' href='book.html?type=discovery'>Book a call</a>";
+    "<a class='btn btn-primary' href='clarity-scorecard.html'>Clarity Scorecard</a>" +
+    "<a class='btn btn-ghost' href='circle.html'>Explore membership</a>";
   document.body.appendChild(bar);
   document.body.classList.add("has-sticky-cta");
 })();
