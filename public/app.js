@@ -391,6 +391,42 @@ function submitLead(payload, onOk, onErr) {
     });
   });
 
+  /* ---- banner parallax + subtle motion ------------------------------------
+     Inner-page image banners get a slow parallax shift on scroll and a
+     gentle reveal when they enter the viewport. Keeps long pages alive
+     without distracting from the copy. */
+  (function () {
+    var banners = document.querySelectorAll(".h-img-banner img");
+    if (!banners.length) return;
+    var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduceMotion) return;
+    var io = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (entry) {
+          entry.target.dataset.inview = entry.isIntersecting ? "1" : "0";
+        });
+      },
+      { threshold: [0, 0.25, 0.5, 0.75, 1] }
+    );
+    banners.forEach(function (img) {
+      io.observe(img);
+      img.style.transform = "scale(1.12) translateY(0)";
+    });
+    function onScroll() {
+      banners.forEach(function (img) {
+        if (img.dataset.inview !== "1") return;
+        var banner = img.closest(".h-img-banner");
+        var rect = banner.getBoundingClientRect();
+        var winH = window.innerHeight;
+        var progress = (winH - rect.top) / (winH + rect.height);
+        var shift = (progress - 0.5) * 18; // +/- 9px
+        img.style.transform = "scale(1.12) translateY(" + shift.toFixed(2) + "px)";
+      });
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+  })();
+
   /* ---- founding-cohort countdown ------------------------------------------
      Target: LAUNCH_DATE_UTC (1 Oct 2026 GST).
      Any [data-countdown] block with .cd-d/.cd-h/.cd-m/.cd-s cells is driven;

@@ -2332,19 +2332,20 @@ body.has-sticky-cta {
 .h-img-banner {
   position: relative;
   width: calc(100% - 2 * clamp(1rem, 5vw, 3rem));
-  max-width: 960px;
-  margin: 1.5rem auto;
+  max-width: 820px;
+  margin: 2rem auto;
   border-radius: var(--h-radius-lg);
   overflow: hidden;
   box-shadow: var(--h-shadow-lg);
   aspect-ratio: 16 / 9;
-  max-height: min(260px, 32vh);
+  max-height: min(180px, 26vh);
+  transform: translateZ(0);
 }
 
 @media (min-width: 768px) {
   .h-img-banner {
     aspect-ratio: 21 / 9;
-    max-height: min(280px, 32vh);
+    max-height: min(200px, 24vh);
   }
 }
 
@@ -2353,6 +2354,14 @@ body.has-sticky-cta {
   height: 100%;
   object-fit: cover;
   display: block;
+  transform: scale(1.08);
+  transition: transform 0.8s var(--h-ease);
+  will-change: transform;
+}
+
+.h-img-banner:hover img,
+.h-img-banner:focus-within img {
+  transform: scale(1);
 }
 
 .h-img-banner .ib-overlay {
@@ -2363,6 +2372,13 @@ body.has-sticky-cta {
     transparent 30%,
     rgba(11, 21, 38, 0.65) 100%
   );
+  opacity: 0.85;
+  transition: opacity 0.5s var(--h-ease);
+}
+
+.h-img-banner:hover .ib-overlay,
+.h-img-banner:focus-within .ib-overlay {
+  opacity: 1;
 }
 
 .h-img-banner figcaption {
@@ -2370,14 +2386,37 @@ body.has-sticky-cta {
   bottom: 0;
   left: 0;
   right: 0;
-  padding: clamp(1rem, 3vw, 2rem);
+  padding: clamp(1rem, 3vw, 1.6rem);
   color: #fff;
   font-family: "Archivo", system-ui, sans-serif;
   font-weight: 800;
-  font-size: clamp(1rem, 1.8vw, 1.35rem);
+  font-size: clamp(0.95rem, 1.6vw, 1.2rem);
   line-height: 1.25;
   letter-spacing: -0.01em;
-  max-width: 760px;
+  max-width: 620px;
+  transform: translateY(0);
+  transition: transform 0.5s var(--h-ease);
+}
+
+.h-img-banner:hover figcaption,
+.h-img-banner:focus-within figcaption {
+  transform: translateY(-4px);
+}
+
+/* subtle animated grain overlay on banners */
+.h-img-banner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s var(--h-ease);
+  mix-blend-mode: overlay;
+}
+
+.h-img-banner:hover::after {
+  opacity: 1;
 }
 
 /* ---- tier cards ---- */
