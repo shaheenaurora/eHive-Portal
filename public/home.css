@@ -7562,3 +7562,213 @@ a.art:hover {
 .h-footer .h-lead-form input::placeholder {
   color: var(--h-muted-2);
 }
+
+/* ---- swipe banner ---- */
+.eh-swipe {
+  position: relative;
+  margin-top: 3rem;
+}
+
+.eh-swipe-track {
+  display: flex;
+  gap: 1.25rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: 0.5rem 0 1.5rem;
+}
+
+.eh-swipe-track::-webkit-scrollbar {
+  display: none;
+}
+
+.eh-swipe-slide {
+  flex: 0 0 86%;
+  scroll-snap-align: center;
+  position: relative;
+  border-radius: var(--eh-radius);
+  overflow: hidden;
+  min-height: 420px;
+  display: flex;
+  align-items: flex-end;
+  background: var(--eh-ink);
+  box-shadow: 0 20px 50px rgba(10, 10, 10, 0.12);
+}
+
+@media (min-width: 760px) {
+  .eh-swipe-slide {
+    flex: 0 0 72%;
+    min-height: 480px;
+  }
+}
+
+@media (min-width: 1100px) {
+  .eh-swipe-slide {
+    flex: 0 0 60%;
+  }
+}
+
+.eh-swipe-slide img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.08);
+  animation: eh-ken-burns 18s ease-in-out infinite alternate;
+}
+
+.eh-swipe-slide:nth-child(2) img {
+  animation-delay: -6s;
+}
+
+.eh-swipe-slide:nth-child(3) img {
+  animation-delay: -12s;
+}
+
+.eh-swipe-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(10, 10, 10, 0.15) 0%,
+    rgba(10, 10, 10, 0.55) 70%,
+    rgba(10, 10, 10, 0.75) 100%
+  );
+}
+
+.eh-swipe-content {
+  position: relative;
+  z-index: 2;
+  padding: 2rem;
+  color: #fff;
+  max-width: 54ch;
+}
+
+.eh-swipe-content .kicker {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--eh-coral-2);
+  margin-bottom: 0.6rem;
+}
+
+.eh-swipe-content h3 {
+  font-family: "Archivo", system-ui, sans-serif;
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  font-weight: 800;
+  line-height: 1.1;
+  margin-bottom: 0.6rem;
+}
+
+.eh-swipe-content p {
+  color: rgba(255, 255, 255, 0.78);
+  margin-bottom: 1.4rem;
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.eh-swipe-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 3;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(10, 10, 10, 0.35);
+  color: #fff;
+  font-size: 1.2rem;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: background 0.25s, border-color 0.25s;
+}
+
+.eh-swipe-arrow:hover {
+  background: rgba(10, 10, 10, 0.55);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.eh-swipe-prev {
+  left: -24px;
+}
+
+.eh-swipe-next {
+  right: -24px;
+}
+
+@media (max-width: 759px) {
+  .eh-swipe-arrow {
+    display: none;
+  }
+}
+
+.eh-swipe-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+
+.eh-swipe-dots button {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(10, 10, 10, 0.2);
+  cursor: pointer;
+  transition: background 0.25s, transform 0.25s;
+}
+
+.eh-swipe-dots button.active {
+  background: var(--eh-coral);
+  transform: scale(1.2);
+}
+
+/* ---- image animations ---- */
+@keyframes eh-ken-burns {
+  0% {
+    transform: scale(1.08) translate(0, 0);
+  }
+  100% {
+    transform: scale(1.18) translate(-2%, -1%);
+  }
+}
+
+.eh-pillar-card .eh-card-img img,
+.eh-circle-v2 img,
+.h-card-img img,
+.h-page-hero figure img,
+.p-hero figure img,
+.img-banner img {
+  transition: transform 0.8s var(--eh-ease);
+}
+
+.eh-pillar-card:hover .eh-card-img img,
+.eh-circle-v2:hover img,
+.h-card:hover .h-card-img img {
+  transform: scale(1.06);
+}
+
+.h-page-hero figure img,
+.p-hero figure img,
+.img-banner img {
+  animation: eh-ken-burns 20s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eh-swipe-slide img,
+  .h-page-hero figure img,
+  .p-hero figure img,
+  .img-banner img {
+    animation: none;
+    transform: none;
+  }
+}

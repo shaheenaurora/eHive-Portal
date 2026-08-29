@@ -107,14 +107,119 @@
               >Explore the Circle</a
             >
           </div>
-          <div class="eh-meta eh-reveal" style="--d: 0.32s">
-            <span>By application</span>
-            <span>Founding chapter Dubai</span>
-            <span>Values-led gatherings</span>
-            <span>UAE · GCC · India</span>
-          </div>
+
         </div>
         <div class="eh-scroll-hint">Scroll</div>
+      </section>
+
+      <!-- SWIPE BANNER -->
+      <section
+        class="eh-section-v2 eh-full eh-light eh-swipe-banner"
+        aria-labelledby="swipe-h"
+      >
+        <div class="eh-wrap">
+          <div class="eh-reveal" style="text-align: center">
+            <p class="eh-eyebrow">Explore eHive</p>
+            <h2 id="swipe-h" class="eh-h2">Swipe through what we built</h2>
+          </div>
+          <div
+            class="eh-swipe"
+            role="region"
+            aria-roledescription="carousel"
+            aria-label="eHive pillars"
+          >
+            <button
+              type="button"
+              class="eh-swipe-arrow eh-swipe-prev"
+              aria-label="Previous slide"
+            >
+              ←
+            </button>
+            <div class="eh-swipe-track">
+              <article
+                class="eh-swipe-slide"
+                aria-roledescription="slide"
+                aria-label="1 of 3"
+              >
+                <img
+                  src="assets/img/img-consulting-light.jpg"
+                  alt="Strategy consulting session"
+                  loading="eager"
+                />
+                <div class="eh-swipe-overlay"></div>
+                <div class="eh-swipe-content">
+                  <span class="kicker">Consulting</span>
+                  <h3>Advisory sprints for clarity</h3>
+                  <p>
+                    From a three-hour Clarity Sprint to a 90-day growth
+                    engagement — focus when you need it most.
+                  </p>
+                  <a class="eh-btn eh-btn-ghost" href="consulting.html"
+                    >Explore Consulting <span class="h-arr">→</span></a
+                  >
+                </div>
+              </article>
+              <article
+                class="eh-swipe-slide"
+                aria-roledescription="slide"
+                aria-label="2 of 3"
+              >
+                <img
+                  src="assets/img/img-circle-light.jpg"
+                  alt="Founders collaborating in the eHive Circle"
+                  loading="lazy"
+                />
+                <div class="eh-swipe-overlay"></div>
+                <div class="eh-swipe-content">
+                  <span class="kicker">eHive Circle</span>
+                  <h3>A room that gets you</h3>
+                  <p>
+                    Vetted founders, mentors and experts — the people who keep
+                    you moving and the code that keeps you honest.
+                  </p>
+                  <a class="eh-btn eh-btn-ghost" href="circle.html"
+                    >Explore the Circle <span class="h-arr">→</span></a
+                  >
+                </div>
+              </article>
+              <article
+                class="eh-swipe-slide"
+                aria-roledescription="slide"
+                aria-label="3 of 3"
+              >
+                <img
+                  src="assets/img/img-clarity-light.jpg"
+                  alt="Clarity Scorecard workshop"
+                  loading="lazy"
+                />
+                <div class="eh-swipe-overlay"></div>
+                <div class="eh-swipe-content">
+                  <span class="kicker">Clarity Scorecard</span>
+                  <h3>Know where you stand</h3>
+                  <p>
+                    A free 5-minute diagnostic that shows your strongest lever
+                    and the one gap worth closing first.
+                  </p>
+                  <a class="eh-btn eh-btn-ghost" href="clarity-scorecard.html"
+                    >Take the Scorecard <span class="h-arr">→</span></a
+                  >
+                </div>
+              </article>
+            </div>
+            <button
+              type="button"
+              class="eh-swipe-arrow eh-swipe-next"
+              aria-label="Next slide"
+            >
+              →
+            </button>
+            <div class="eh-swipe-dots" aria-hidden="true">
+              <button type="button" data-index="0" class="active"></button>
+              <button type="button" data-index="1"></button>
+              <button type="button" data-index="2"></button>
+            </div>
+          </div>
+        </div>
       </section>
 
       <!-- MARQUEE -->
@@ -664,5 +769,76 @@
 
     <script src="app.min.js?v=7" defer></script>
     <script src="apps.min.js?v=7" defer></script>
+    <script>
+      (function () {
+        var swipe = document.querySelector(".eh-swipe");
+        if (!swipe) return;
+        var track = swipe.querySelector(".eh-swipe-track");
+        var slides = Array.from(track.children);
+        var prev = swipe.querySelector(".eh-swipe-prev");
+        var next = swipe.querySelector(".eh-swipe-next");
+        var dots = Array.from(swipe.querySelectorAll(".eh-swipe-dots button"));
+        var index = 0;
+        var autoInterval;
+
+        function slideWidth() {
+          return slides[0].getBoundingClientRect().width + 20; /* gap */
+        }
+
+        function goTo(i) {
+          index = Math.max(0, Math.min(i, slides.length - 1));
+          track.scrollTo({ left: index * slideWidth(), behavior: "smooth" });
+          dots.forEach(function (d, idx) {
+            d.classList.toggle("active", idx === index);
+          });
+        }
+
+        prev.addEventListener("click", function () {
+          goTo(index - 1);
+          resetAuto();
+        });
+        next.addEventListener("click", function () {
+          goTo(index + 1);
+          resetAuto();
+        });
+        dots.forEach(function (d) {
+          d.addEventListener("click", function () {
+            goTo(parseInt(d.dataset.index, 10));
+            resetAuto();
+          });
+        });
+
+        track.addEventListener("scroll", function () {
+          var w = slideWidth();
+          var newIndex = Math.round(track.scrollLeft / w);
+          if (newIndex !== index && newIndex >= 0 && newIndex < slides.length) {
+            index = newIndex;
+            dots.forEach(function (d, idx) {
+              d.classList.toggle("active", idx === index);
+            });
+          }
+        });
+
+        function autoAdvance() {
+          var nextIndex = index + 1 >= slides.length ? 0 : index + 1;
+          goTo(nextIndex);
+        }
+
+        function startAuto() {
+          autoInterval = setInterval(autoAdvance, 6000);
+        }
+
+        function resetAuto() {
+          clearInterval(autoInterval);
+          startAuto();
+        }
+
+        startAuto();
+        track.addEventListener("pointerenter", function () {
+          clearInterval(autoInterval);
+        });
+        track.addEventListener("pointerleave", startAuto);
+      })();
+    </script>
   </body>
 </html>
