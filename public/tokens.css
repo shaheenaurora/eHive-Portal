@@ -1,0 +1,38 @@
+/* ==========================================================================
+   eHive — shared design tokens
+   Single source of truth for colors, typography and motion used by both
+   the public marketing site (home.css) and the member portal (styles.css).
+   ========================================================================== */
+
+:root {
+  /* ---- brand palette ---- */
+  --eh-coral-500: #da3a22;
+  --eh-coral-400: #e4573f;
+  --eh-coral-300: #f0a99b;
+  --eh-coral-soft: rgba(218, 58, 34, 0.12);
+
+  --eh-navy-950: #0b1526;
+  --eh-navy-900: #0f1c3a;
+  --eh-navy-800: #16264c;
+  --eh-navy-700: #1e3157;
+  --eh-navy-600: #2a3e66;
+
+  --eh-paper-50: #faf8f2;
+  --eh-paper-100: #f3f1ea;
+  --eh-paper-200: #e4decf;
+  --eh-paper: #ffffff;
+
+  --eh-ink-900: #141312;
+  --eh-ink-600: #5f5c53;
+  --eh-ink-400: #8a8578;
+
+  --eh-line-dark: rgba(255, 255, 255, 0.12);
+
+  /* ---- typography ---- */
+  --eh-font-display: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --eh-font-body: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --eh-font-mono: "SF Mono", "Menlo", "Consolas", "Liberation Mono", monospace;
+
+  /* ---- motion ---- */
+  --eh-ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+}

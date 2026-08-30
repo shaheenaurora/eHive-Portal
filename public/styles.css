@@ -1,21 +1,23 @@
+@import url('tokens.css');
+
 :root {
   /* ---- eHive design tokens (2026 launch system) ---- */
-  --navy-950: #0b1526;
-  --navy-900: #0f1c3a;
-  --navy-800: #16264c;
-  --navy-700: #1e3157;
-  --navy-600: #2a3e66;
-  --gold-500: #da3a22;
-  --gold-400: #e4573f;
-  --gold-300: #f0a99b;
+  --navy-950: var(--eh-navy-950);
+  --navy-900: var(--eh-navy-900);
+  --navy-800: var(--eh-navy-800);
+  --navy-700: var(--eh-navy-700);
+  --navy-600: var(--eh-navy-600);
+  --gold-500: var(--eh-coral-500);
+  --gold-400: var(--eh-coral-400);
+  --gold-300: var(--eh-coral-300);
   --paper-50: #faf8f2;
-  --paper-100: #f3f1ea;
-  --paper-200: #e4decf;
-  --ink-900: #141312;
-  --ink-600: #5f5c53;
+  --paper-100: var(--eh-paper-100);
+  --paper-200: var(--eh-paper-200);
+  --ink-900: var(--eh-ink-900);
+  --ink-600: var(--eh-ink-600);
   --mist-100: #f1ede4;
-  --mist-400: #8a8578;
-  --line-dark: rgba(255, 255, 255, 0.12);
+  --mist-400: var(--eh-ink-400);
+  --line-dark: var(--eh-line-dark);
   --success: #2e7d5b;
   --error: #c0453b;
   /* ---- legacy aliases (component CSS re-themes through these) ---- */
@@ -32,10 +34,9 @@
   --line-d: var(--line-dark);
   --line-l: var(--paper-200);
   /* ---- type ---- */
-  --font-display: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-body:
-    "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: "SF Mono", "Menlo", "Consolas", "Liberation Mono", monospace;
+  --font-display: var(--eh-font-display);
+  --font-body: var(--eh-font-body);
+  --font-mono: var(--eh-font-mono);
   --sans: var(--font-body);
   /* ---- shape & motion ---- */
   --radius-sm: 4px;
@@ -45,7 +46,7 @@
   --shadow-sm: 0 1px 2px rgba(20, 19, 18, 0.05);
   --shadow-md: 0 8px 24px rgba(20, 19, 18, 0.1);
   --shadow-lg: 0 20px 52px rgba(20, 19, 18, 0.17);
-  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease: var(--eh-ease-out);
   --dur-fast: 180ms;
   --dur: 280ms;
   --dur-slow: 420ms;

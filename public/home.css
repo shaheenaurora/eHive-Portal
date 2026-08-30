@@ -1,21 +1,24 @@
 /* ==========================================================================
    eHive — Editorial Light homepage design system
    A fresh, light, premium aesthetic for the public marketing site.
+   Shares primitive tokens with the member portal via tokens.css.
    ========================================================================== */
+
+@import url('tokens.css');
 
 :root {
   --h-cream: #f8f6f0;
-  --h-cream-2: #f3f1ea;
-  --h-paper: #ffffff;
-  --h-navy: #0b1526;
-  --h-navy-2: #16264c;
-  --h-ink: #141312;
-  --h-muted: #5f5c53;
-  --h-muted-2: #8a8578;
-  --h-coral: #e4573f;
-  --h-coral-2: #e4573f;
+  --h-cream-2: var(--eh-paper-100);
+  --h-paper: var(--eh-paper);
+  --h-navy: var(--eh-navy-950);
+  --h-navy-2: var(--eh-navy-800);
+  --h-ink: var(--eh-ink-900);
+  --h-muted: var(--eh-ink-600);
+  --h-muted-2: var(--eh-ink-400);
+  --h-coral: var(--eh-coral-400);
+  --h-coral-2: var(--eh-coral-400);
   --h-coral-soft: rgba(218, 58, 34, 0.1);
-  --h-line: #e4decf;
+  --h-line: var(--eh-paper-200);
   --h-line-2: #d8d2c4;
   --h-shadow: 0 4px 24px rgba(15, 28, 58, 0.06);
   --h-shadow-lg: 0 20px 60px rgba(15, 28, 58, 0.1);
@@ -23,7 +26,7 @@
   --h-radius-sm: 10px;
   --h-max: 1200px;
   --h-pad: clamp(4.5rem, 9vw, 7rem);
-  --h-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --h-ease: var(--eh-ease-out);
 }
 
 * {
