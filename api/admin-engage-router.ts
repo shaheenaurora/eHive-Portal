@@ -2756,6 +2756,175 @@ export const adminEngageRouter = createRouter({
       return { ok: true };
     }),
 
+  /* Rename / update code for an existing org unit. */
+  updateOrgUnit: scopedAdmin("chapters")
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        name: z.string().min(2).max(255).optional(),
+        code: z.string().max(24).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = getDb();
+      const unit = (
+        await db
+          .select()
+          .from(schema.orgUnits)
+          .where(eq(schema.orgUnits.id, input.id))
+          .limit(1)
+      ).at(0);
+      if (!unit) throw new TRPCError({ code: "NOT_FOUND" });
+      const patch: Partial<typeof schema.orgUnits.$inferInsert> = {};
+      if (input.name !== undefined) patch.name = input.name;
+      if (input.code !== undefined) patch.code = input.code || null;
+      if (Object.keys(patch).length === 0) return { ok: true };
+      await db
+        .update(schema.orgUnits)
+        .set(patch)
+        .where(eq(schema.orgUnits.id, input.id));
+      await audit(ctx.user, "org.update", {
+        type: "org_unit",
+        id: input.id,
+        detail: `${unit.level}: ${input.name ?? unit.name}`,
+      });
+      return { ok: true };
+    }),
+
+  /* Move an org unit under a new parent, preserving the level hierarchy and
+     preventing cycles. */
+  moveOrgUnit: scopedAdmin("chapters")
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        parentId: z.number().int().positive().nullable(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = getDb();
+      const unit = (
+        await db
+          .select()
+          .from(schema.orgUnits)
+          .where(eq(schema.orgUnits.id, input.id))
+          .limit(1)
+      ).at(0);
+      if (!unit) throw new TRPCError({ code: "NOT_FOUND" });
+      if (input.parentId === input.id)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "An org unit cannot be its own parent.",
+        });
+
+      const expectedParentLevel: Record<string, "country" | "region" | null> = {
+        zone: "region",
+        region: "country",
+        country: null,
+      };
+      const expected = expectedParentLevel[unit.level];
+      if (expected === null && input.parentId != null)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "A country must be a top-level unit.",
+        });
+      if (expected !== null && input.parentId == null)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `A ${unit.level} must have a ${expected} parent.`,
+        });
+
+      if (input.parentId != null) {
+        const parent = (
+          await db
+            .select()
+            .from(schema.orgUnits)
+            .where(eq(schema.orgUnits.id, input.parentId))
+            .limit(1)
+        ).at(0);
+        if (!parent) throw new TRPCError({ code: "NOT_FOUND", message: "Parent unit not found." });
+        if (parent.level !== expected)
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `A ${unit.level} must roll up to a ${expected}, not a ${parent.level}.`,
+          });
+
+        // Prevent cycles: the new parent cannot be this unit or any descendant.
+        const all = await db.select().from(schema.orgUnits);
+        const byParent = new Map<number | null, number[]>();
+        for (const u of all) {
+          const arr = byParent.get(u.parentId ?? null) ?? [];
+          arr.push(u.id);
+          byParent.set(u.parentId ?? null, arr);
+        }
+        const descendants = new Set<number>();
+        const walk = (uid: number) => {
+          descendants.add(uid);
+          for (const child of byParent.get(uid) ?? []) walk(child);
+        };
+        walk(input.id);
+        if (descendants.has(input.parentId))
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Cannot move a unit under its own descendant.",
+          });
+      }
+
+      await db
+        .update(schema.orgUnits)
+        .set({ parentId: input.parentId ?? null })
+        .where(eq(schema.orgUnits.id, input.id));
+      await audit(ctx.user, "org.move", {
+        type: "org_unit",
+        id: input.id,
+        detail: `${unit.level}: ${unit.name} → parent #${input.parentId ?? "none"}`,
+      });
+      return { ok: true };
+    }),
+
+  /* Delete an org unit. Only allowed when it has no child units and no chapters
+     assigned, so the hierarchy stays intact. */
+  deleteOrgUnit: scopedAdmin("chapters")
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = getDb();
+      const unit = (
+        await db
+          .select()
+          .from(schema.orgUnits)
+          .where(eq(schema.orgUnits.id, input.id))
+          .limit(1)
+      ).at(0);
+      if (!unit) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const children = await db
+        .select({ n: sql<number>`count(*)` })
+        .from(schema.orgUnits)
+        .where(eq(schema.orgUnits.parentId, input.id));
+      if ((children.at(0)?.n ?? 0) > 0)
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Remove or reassign child units before deleting this one.",
+        });
+
+      const chapters = await db
+        .select({ n: sql<number>`count(*)` })
+        .from(schema.chapters)
+        .where(eq(schema.chapters.zoneId, input.id));
+      if ((chapters.at(0)?.n ?? 0) > 0)
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Reassign chapters to another zone before deleting this one.",
+        });
+
+      await db.delete(schema.orgUnits).where(eq(schema.orgUnits.id, input.id));
+      await audit(ctx.user, "org.delete", {
+        type: "org_unit",
+        id: input.id,
+        detail: `${unit.level}: ${unit.name}`,
+      });
+      return { ok: true };
+    }),
+
   /* AF-02 — decide a proposed spend, gated by the approval threshold. A spend
      over SPEND_APPROVAL_THRESHOLD_AED needs a full administrator to approve. */
   decideBudgetLine: scopedAdmin("chapters")

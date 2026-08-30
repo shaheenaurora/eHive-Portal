@@ -164,6 +164,12 @@ export default function AdminOrg() {
     level: string;
   } | null>(null);
   const [leaderFor, setLeaderFor] = useState<Unit | null>(null);
+  const [edit, setEdit] = useState<
+    (Unit & { code: string | null }) | null
+  >(null);
+  const [move, setMove] = useState<
+    (Unit & { code: string | null }) | null
+  >(null);
 
   const create = trpc.adminEngage.createOrgUnit.useMutation({
     onSuccess: () => {
@@ -176,6 +182,27 @@ export default function AdminOrg() {
   const assign = trpc.adminEngage.setChapterZone.useMutation({
     onSuccess: () => {
       toast("Chapter assigned.");
+      refresh();
+    },
+    onError: e => toast(e.message),
+  });
+  const updateUnit = trpc.adminEngage.updateOrgUnit.useMutation({
+    onSuccess: () => {
+      toast("Unit updated.");
+      refresh();
+    },
+    onError: e => toast(e.message),
+  });
+  const moveUnit = trpc.adminEngage.moveOrgUnit.useMutation({
+    onSuccess: () => {
+      toast("Unit moved.");
+      refresh();
+    },
+    onError: e => toast(e.message),
+  });
+  const deleteUnit = trpc.adminEngage.deleteOrgUnit.useMutation({
+    onSuccess: () => {
+      toast("Unit deleted.");
       refresh();
     },
     onError: e => toast(e.message),
@@ -197,6 +224,18 @@ export default function AdminOrg() {
       })
     )
       removeLeader.mutate({ id });
+  };
+
+  const onDeleteUnit = async (u: Unit & { code: string | null }) => {
+    if (
+      await confirmDialog({
+        title: `Delete ${u.level}: ${u.name}?`,
+        body: "This removes the unit, its leaders and council history. Child units and assigned chapters must be moved first.",
+        confirmLabel: "Delete",
+        danger: true,
+      })
+    )
+      deleteUnit.mutate({ id: u.id });
   };
 
   const zones = q.data?.zones ?? [];
@@ -294,6 +333,30 @@ export default function AdminOrg() {
               <button
                 className="eh-btn ghost sm"
                 onClick={() =>
+                  setEdit({ id: c.id, name: c.name, code: c.code, level: "country" })
+                }
+              >
+                Edit
+              </button>
+              <button
+                className="eh-btn ghost sm"
+                onClick={() =>
+                  setMove({ id: c.id, name: c.name, code: c.code, level: "country" })
+                }
+              >
+                Move
+              </button>
+              <button
+                className="eh-btn ghost sm danger"
+                onClick={() =>
+                  onDeleteUnit({ id: c.id, name: c.name, code: c.code, level: "country" })
+                }
+              >
+                Delete
+              </button>
+              <button
+                className="eh-btn ghost sm"
+                onClick={() =>
                   setAdd({
                     level: "region",
                     parentId: c.id,
@@ -344,6 +407,30 @@ export default function AdminOrg() {
                     }
                   >
                     Council
+                  </button>
+                  <button
+                    className="eh-btn ghost sm"
+                    onClick={() =>
+                      setEdit({ id: r.id, name: r.name, code: r.code, level: "region" })
+                    }
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="eh-btn ghost sm"
+                    onClick={() =>
+                      setMove({ id: r.id, name: r.name, code: r.code, level: "region" })
+                    }
+                  >
+                    Move
+                  </button>
+                  <button
+                    className="eh-btn ghost sm danger"
+                    onClick={() =>
+                      onDeleteUnit({ id: r.id, name: r.name, code: r.code, level: "region" })
+                    }
+                  >
+                    Delete
                   </button>
                   <button
                     className="eh-btn ghost sm"
@@ -402,6 +489,30 @@ export default function AdminOrg() {
                         }
                       >
                         Council
+                      </button>
+                      <button
+                        className="eh-btn ghost sm"
+                        onClick={() =>
+                          setEdit({ id: z.id, name: z.name, code: z.code, level: "zone" })
+                        }
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="eh-btn ghost sm"
+                        onClick={() =>
+                          setMove({ id: z.id, name: z.name, code: z.code, level: "zone" })
+                        }
+                      >
+                        Move
+                      </button>
+                      <button
+                        className="eh-btn ghost sm danger"
+                        onClick={() =>
+                          onDeleteUnit({ id: z.id, name: z.name, code: z.code, level: "zone" })
+                        }
+                      >
+                        Delete
                       </button>
                     </div>
                   </div>
@@ -509,6 +620,39 @@ export default function AdminOrg() {
             refresh();
             setLeaderFor(null);
           }}
+        />
+      )}
+      {edit && (
+        <Modal
+          title={`Edit ${edit.level}: ${edit.name}`}
+          onClose={() => setEdit(null)}
+        >
+          <AddUnit
+            level={edit.level}
+            initialName={edit.name}
+            initialCode={edit.code ?? ""}
+            pending={updateUnit.isPending}
+            onSubmit={(name, code) =>
+              updateUnit.mutate(
+                { id: edit.id, name, code },
+                { onSuccess: () => setEdit(null) }
+              )
+            }
+          />
+        </Modal>
+      )}
+      {move && (
+        <MoveUnitModal
+          unit={move}
+          units={q.data?.countries ?? []}
+          pending={moveUnit.isPending}
+          onClose={() => setMove(null)}
+          onSubmit={parentId =>
+            moveUnit.mutate(
+              { id: move.id, parentId },
+              { onSuccess: () => setMove(null) }
+            )
+          }
         />
       )}
     </EhShell>
@@ -933,16 +1077,21 @@ function CouncilModal({
 
 function AddUnit({
   level,
+  initialName,
+  initialCode,
   pending,
   onSubmit,
 }: {
   level: string;
+  initialName?: string;
+  initialCode?: string;
   parentId?: number;
   pending: boolean;
   onSubmit: (name: string, code?: string) => void;
 }) {
-  const [name, setName] = useState("");
-  const [code, setCode] = useState("");
+  const [name, setName] = useState(initialName ?? "");
+  const [code, setCode] = useState(initialCode ?? "");
+  const isEdit = initialName != null;
   return (
     <>
       <Field label={`${level[0].toUpperCase() + level.slice(1)} name`}>
@@ -966,8 +1115,64 @@ function AddUnit({
         disabled={pending || name.trim().length < 2}
         onClick={() => onSubmit(name, code || undefined)}
       >
-        {pending ? "Creating…" : `Create ${level}`}
+        {pending ? (isEdit ? "Saving…" : "Creating…") : isEdit ? "Save changes" : `Create ${level}`}
       </button>
     </>
+  );
+}
+
+function MoveUnitModal({
+  unit,
+  units,
+  pending,
+  onClose,
+  onSubmit,
+}: {
+  unit: Unit & { code: string | null };
+  units: Country[];
+  pending: boolean;
+  onClose: () => void;
+  onSubmit: (parentId: number | null) => void;
+}) {
+  const validParents: { id: number; name: string; level: string }[] = [];
+  if (unit.level === "region") {
+    validParents.push(...units.map(c => ({ id: c.id, name: c.name, level: "country" })));
+  } else if (unit.level === "zone") {
+    for (const c of units) {
+      for (const r of c.regions) {
+        validParents.push({ id: r.id, name: `${c.name} → ${r.name}`, level: "region" });
+      }
+    }
+  }
+  const [parentId, setParentId] = useState<number | null>(null);
+  return (
+    <Modal title={`Move ${unit.level}: ${unit.name}`} onClose={onClose}>
+      <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>
+        Choose the new parent. Countries cannot be moved.
+      </p>
+      <Field label="New parent">
+        <select
+          className="eh-select"
+          value={parentId ?? ""}
+          onChange={e => setParentId(e.target.value ? Number(e.target.value) : null)}
+        >
+          <option value="" disabled>
+            Select {unit.level === "region" ? "country" : "region"}…
+          </option>
+          {validParents.map(p => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <button
+        className="eh-btn gold"
+        disabled={pending || parentId == null}
+        onClick={() => onSubmit(parentId)}
+      >
+        {pending ? "Moving…" : "Move unit"}
+      </button>
+    </Modal>
   );
 }
