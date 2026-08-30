@@ -42,4 +42,15 @@ describe("public site + ops routes", () => {
     expect(text).toContain("consulting.html");
     expect(text).toContain("clarity-scorecard.html");
   });
+
+  it("/api/public-stats returns non-sensitive counts", async () => {
+    const res = await app.request("/api/public-stats");
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toMatchObject({
+      chapters: expect.any(Number),
+      members: expect.any(Number),
+      countries: expect.any(Number),
+    });
+  });
 });
