@@ -5,6 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Apply to Join eHive — Membership by Application</title>
     <meta name="description" content="eHive is a private community, admitted by application. Tell us about yourself and your business to begin. Values-aligned entrepreneurs welcome." />
+    <meta name="keywords" content="apply to join, entrepreneur membership application, join business community" />
+    <link rel="canonical" href="https://ehive.global/apply.html" />
+    <meta property="og:title" content="Apply to Join eHive — Membership by Application" />
+    <meta property="og:description" content="eHive is a private community, admitted by application. Tell us about yourself and your business to begin. Values-aligned entrepreneurs welcome." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://ehive.global/apply.html" />
+    <meta property="og:image" content="/assets/icon-512.png" />
+    <meta property="og:site_name" content="eHive" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Apply to Join eHive — Membership by Application" />
+    <meta name="twitter:description" content="eHive is a private community, admitted by application. Tell us about yourself and your business to begin. Values-aligned entrepreneurs welcome." />
+    <meta name="twitter:image" content="/assets/icon-512.png" />
     <link
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3 27 9.5v13L16 29 5 22.5v-13z' fill='none' stroke='%23DA3A22' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23DA3A22'/%3E%3C/svg%3E"
@@ -127,17 +139,16 @@
       <!-- ================= WHAT TO EXPECT ================= -->
       <section class="h-section" aria-labelledby="expect-h">
         <div class="h-wrap">
-          <p class="h-eyebrow reveal">How joining works</p>
+          <p class="h-eyebrow reveal">What to expect</p>
           <h2 class="h-h2 reveal" style="--d: 0.08s" id="expect-h">
-            Three steps. One shared standard.
+            How joining works
           </h2>
           <div class="h-steps-3">
             <div class="h-step-card reveal" style="--d: 0.05s">
               <span class="num">1</span>
               <h3>Apply</h3>
               <p>
-                Tell us about you and your business — a few minutes, no pitch
-                decks required.
+                Tell us about you and your business (a few minutes).
               </p>
             </div>
             <div class="h-step-card reveal" style="--d: 0.12s">
@@ -151,53 +162,205 @@
               <span class="num">3</span>
               <h3>Welcome</h3>
               <p>
-                Once admitted, you choose your membership and we help you settle
-                in.
+                Once admitted, you choose your membership and we help you settle in.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- ================= FORM INTRO ================= -->
+      <!-- ================= APPLICATION FORM ================= -->
       <section class="h-section alt" aria-labelledby="form-h">
         <div class="h-wrap">
-          <p class="h-eyebrow reveal">Start now</p>
+          <p class="h-eyebrow reveal">Start your application</p>
           <h2 class="h-h2 reveal" style="--d: 0.08s" id="form-h">
-            Take the Clarity Scorecard.
+            Tell us about you and your business.
           </h2>
           <p class="h-lede reveal" style="--d: 0.14s">
             Everything you share is treated with confidence and used only to
             consider your application. We&rsquo;ll never sell your data.
           </p>
-          <div class="doors reveal" style="--d: 0.18s">
-            <a class="h-btn h-btn-primary" href="clarity-scorecard.html"
-              >Start the scorecard <span class="h-arr">→</span></a
-            >
-            <a class="h-btn h-btn-ghost" href="contact.html"
-              >Prefer to talk first?</a
-            >
+
+          <div class="wizard reveal" style="--d: 0.18s">
+            <form id="applyForm" novalidate>
+              <div class="gs-fields">
+                <label class="h-label" for="appName">
+                  Full name
+                  <input
+                    class="h-input"
+                    id="appName"
+                    name="name"
+                    type="text"
+                    placeholder="Your name"
+                    autocomplete="name"
+                    required
+                  />
+                </label>
+
+                <label class="h-label" for="appEmail">
+                  Email
+                  <input
+                    class="h-input"
+                    id="appEmail"
+                    name="email"
+                    type="email"
+                    placeholder="you@company.com"
+                    autocomplete="email"
+                    required
+                  />
+                </label>
+
+                <label class="h-label" for="appPhone">
+                  Phone
+                  <input
+                    class="h-input"
+                    id="appPhone"
+                    name="phone"
+                    type="tel"
+                    placeholder="+971 ..."
+                    autocomplete="tel"
+                  />
+                </label>
+
+                <label class="h-label" for="appCompany">
+                  Company
+                  <input
+                    class="h-input"
+                    id="appCompany"
+                    name="company"
+                    type="text"
+                    placeholder="Company name"
+                    autocomplete="organization"
+                  />
+                </label>
+
+                <label class="h-label" for="appRole">
+                  Role
+                  <input
+                    class="h-input"
+                    id="appRole"
+                    name="role"
+                    type="text"
+                    placeholder="e.g. Founder, Managing Director"
+                  />
+                </label>
+
+                <label class="h-label" for="appSector">
+                  Sector
+                  <input
+                    class="h-input"
+                    id="appSector"
+                    name="sector"
+                    type="text"
+                    placeholder="e.g. Technology, Retail, Services"
+                  />
+                </label>
+
+                <label class="h-label" for="appStage">
+                  Business stage
+                  <select class="h-select" id="appStage" name="business_stage">
+                    <option value="" selected>Select your stage</option>
+                    <option value="Idea / pre-launch">Idea / pre-launch</option>
+                    <option value="Early revenue">Early revenue</option>
+                    <option value="Established">Established</option>
+                    <option value="Scaling">Scaling</option>
+                  </select>
+                </label>
+
+                <label class="h-label" for="appTier">
+                  Tier of interest
+                  <select class="h-select" id="appTier" name="tier_of_interest">
+                    <option value="" selected>Not sure yet</option>
+                    <option value="Horizon">Horizon</option>
+                    <option value="Ascent">Ascent</option>
+                    <option value="Vanguard">Vanguard</option>
+                    <option value="Zenith (invitation-only)">Zenith (invitation-only)</option>
+                  </select>
+                </label>
+
+                <label class="h-label full" for="appSeek">
+                  What are you hoping to find in eHive?
+                  <textarea
+                    class="h-textarea"
+                    id="appSeek"
+                    name="what_you_seek"
+                    rows="4"
+                    placeholder="A few sentences about what you need and what you can contribute."
+                  ></textarea>
+                </label>
+
+                <label class="h-label full" for="appReferred">
+                  How did you hear about us? <span style="opacity: 0.6; font-weight: 400">(optional)</span>
+                  <input
+                    class="h-input"
+                    id="appReferred"
+                    name="referred_by"
+                    type="text"
+                    placeholder="Referred by, event, search, social..."
+                  />
+                </label>
+
+                <label class="h-label full" for="appConsent" style="flex-direction: row; align-items: flex-start; gap: 0.75rem; font-weight: 500; cursor: pointer;">
+                  <input
+                    id="appConsent"
+                    name="consent"
+                    type="checkbox"
+                    value="yes"
+                    required
+                    style="margin-top: 0.15rem; flex-shrink: 0; width: 1.1rem; height: 1.1rem;"
+                  />
+                  <span>
+                    I consent to eHive storing and using the information above to consider my application, in line with the <a href="privacy.html">Privacy Policy</a>.
+                  </span>
+                </label>
+              </div>
+
+              <input
+                type="text"
+                name="_hp"
+                value=""
+                tabindex="-1"
+                autocomplete="off"
+                aria-hidden="true"
+                style="position: absolute; opacity: 0; pointer-events: none; height: 0; width: 0;"
+              />
+
+              <p id="applyError" class="h-err" role="alert" style="margin-bottom: 1rem;">
+                Please check the fields above and try again.
+              </p>
+
+              <div class="doors" style="justify-content: flex-start;">
+                <button id="applySubmit" type="submit" class="h-btn h-btn-primary">
+                  Submit application <span class="h-arr">→</span>
+                </button>
+                <a class="h-btn h-btn-ghost" href="contact.html">Prefer to talk first?</a>
+              </div>
+            </form>
           </div>
         </div>
       </section>
 
-      <!-- ================= FINAL CTA ================= -->
-      <section class="h-section h-cta-banner" aria-labelledby="cta-h">
+      <!-- ================= CONFIRMATION ================= -->
+      <section
+        id="applyConfirmation"
+        class="h-section h-cta-banner"
+        aria-labelledby="confirm-h"
+        style="display: none"
+      >
         <div class="h-wrap">
-          <p class="h-eyebrow reveal">Membership is by application.</p>
-          <h2 class="reveal" id="cta-h" style="--d: 0.06s">
-            Start with the <em>Scorecard.</em>
+          <p class="h-eyebrow reveal">Received</p>
+          <h2 class="reveal" id="confirm-h">
+            Thank you — we&rsquo;ve received your application.
           </h2>
           <p class="h-lede h-mx-auto reveal" style="--d: 0.12s">
-            A short, honest read of where your business stands — and the one move
-            that matters most right now.
+            Our team will review it and be in touch within a few days. We&rsquo;re glad you&rsquo;re here.
           </p>
           <div class="doors reveal" style="--d: 0.18s">
-            <a class="h-btn h-btn-primary" href="clarity-scorecard.html"
-              >Take the Clarity Scorecard <span class="h-arr">→</span></a
+            <a class="h-btn h-btn-primary" href="index.html"
+              >Back to home <span class="h-arr">→</span></a
             >
             <a class="h-btn h-btn-ghost h-btn-light" href="contact.html"
-              >Prefer to talk first?</a
+              >Contact us</a
             >
           </div>
         </div>
@@ -223,14 +386,20 @@
             <h4>The Network</h4>
             <a href="consulting.html">Consulting</a>
             <a href="circle.html">eHive Circle</a>
+            <a href="membership.html">Membership</a>
+            <a href="partners.html">Partners</a>
+            <a href="franchise.html">Franchise</a>
+            <a href="insights.html">Insights</a>
             <a href="clarity-scorecard.html">Clarity Scorecard</a>
             <a href="brand-check.html">Brand Check</a>
-            <a href="insights.html">Insights</a>
           </div>
           <div>
             <h4>Company</h4>
+            <a href="index.html">Home</a>
             <a href="about.html">About</a>
-            <a href="circle.html">Membership</a>
+            <a href="how-it-works.html">How It Works</a>
+            <a href="apply.html">Apply</a>
+            <a href="contact.html">Contact</a>
             <a href="login.html">Login</a>
           </div>
           <div>
@@ -269,5 +438,73 @@
 
     <script src="app.min.js?v=7" defer></script>
     <script src="apps.min.js?v=7" defer></script>
+    <script>
+      (function () {
+        const form = document.getElementById("applyForm");
+        const confirmation = document.getElementById("applyConfirmation");
+        const error = document.getElementById("applyError");
+        const submitBtn = document.getElementById("applySubmit");
+        if (!form || !submitBtn) return;
+
+        form.addEventListener("submit", async function (e) {
+          e.preventDefault();
+          error.classList.remove("on");
+
+          const data = Object.fromEntries(new FormData(form));
+
+          const email = typeof data.email === "string" ? data.email.trim() : "";
+          if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+            document.getElementById("appEmail").focus();
+            error.textContent = "Please enter a valid email address.";
+            error.classList.add("on");
+            return;
+          }
+
+          if (!data.consent) {
+            document.getElementById("appConsent").focus();
+            error.textContent =
+              "Please confirm your consent so we can process your application.";
+            error.classList.add("on");
+            return;
+          }
+
+          const originalText = submitBtn.innerHTML;
+          submitBtn.disabled = true;
+          submitBtn.textContent = "Sending...";
+
+          try {
+            const res = await fetch("/api/lead", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json",
+              },
+              keepalive: true,
+              body: JSON.stringify({
+                form: "membership-application",
+                source_page: "/apply.html",
+                ...data,
+              }),
+            });
+            const json = await res.json().catch(function () {
+              return {};
+            });
+            if (res.ok && json.ok !== false) {
+              form.closest("section").style.display = "none";
+              confirmation.style.display = "block";
+              confirmation.scrollIntoView({ behavior: "smooth", block: "start" });
+            } else {
+              throw new Error(json.error || "Something went wrong. Please try again.");
+            }
+          } catch (err) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+            error.textContent =
+              err.message || "We couldn’t send your application. Please try again or contact us.";
+            error.classList.add("on");
+          }
+        });
+      })();
+    </script>
   </body>
 </html>

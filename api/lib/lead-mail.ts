@@ -43,6 +43,12 @@ const FORM_META: Record<
     intro:
       "Thank you for completing the eHive Brand Check. Once we've been through your answers, we'll share what we're seeing — where things are genuinely solid, and where the biggest opportunity sits. No cost, no obligation.",
   },
+  "membership-application": {
+    label: "Membership application",
+    subject: "We've received your application — eHive",
+    intro:
+      "Thank you for applying to join eHive. Our team will review your application and be in touch within a few days. We're glad you're here.",
+  },
 };
 
 const GENERIC = {
