@@ -344,6 +344,26 @@ app.post("/api/lead", async c => {
       leadId = Number(
         (leadRes as unknown as [{ insertId: number }])[0].insertId
       );
+      // Keep a real newsletter subscriber list in sync with lead captures.
+      if (body.form === "newsletter" && email) {
+        const name =
+          typeof body.name === "string" ? body.name.slice(0, 255) : null;
+        await getDb()
+          .insert(schema.newsletterSubscribers)
+          .values({
+            email: email.toLowerCase(),
+            name,
+            sourcePage,
+            status: "subscribed",
+          })
+          .onDuplicateKeyUpdate({
+            set: {
+              status: "subscribed",
+              unsubscribedAt: null,
+              sourcePage,
+            },
+          });
+      }
     } catch (err) {
       logger.error("lead insert failed", { error: err });
       return c.json({ ok: false, error: "storage failed" }, 500);

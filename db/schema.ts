@@ -1147,6 +1147,19 @@ export const newsletters = mysqlTable("newsletters", {
   publishedAt: timestamp("publishedAt").defaultNow().notNull(),
 });
 
+/* BRD 6.5 — real newsletter subscriber list (synced from /api/lead form=newsletter). */
+export const newsletterSubscribers = mysqlTable("newsletter_subscribers", {
+  id: serial("id").primaryKey(),
+  email: varchar("email", { length: 320 }).notNull().unique(),
+  name: varchar("name", { length: 255 }),
+  sourcePage: varchar("sourcePage", { length: 255 }),
+  status: mysqlEnum("status", ["subscribed", "unsubscribed"])
+    .notNull()
+    .default("subscribed"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  unsubscribedAt: timestamp("unsubscribedAt"),
+});
+
 /* BRD 6.6 — Zenith admissions: nomination → endorsements → leadership review → decision */
 export const zenithApps = mysqlTable("zenith_apps", {
   id: serial("id").primaryKey(),

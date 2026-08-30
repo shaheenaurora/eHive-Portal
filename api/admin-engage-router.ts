@@ -3096,6 +3096,34 @@ export const adminEngageRouter = createRouter({
       return { ok: true };
     }),
 
+  newsletterSubscribers: scopedAdmin("content").query(async () => {
+    return getDb()
+      .select()
+      .from(schema.newsletterSubscribers)
+      .orderBy(desc(schema.newsletterSubscribers.createdAt))
+      .limit(1000);
+  }),
+
+  updateNewsletterSubscriber: scopedAdmin("content")
+    .input(
+      z.object({
+        id: z.number(),
+        status: z.enum(["subscribed", "unsubscribed"]),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = getDb();
+      await db
+        .update(schema.newsletterSubscribers)
+        .set({
+          status: input.status,
+          unsubscribedAt:
+            input.status === "unsubscribed" ? new Date() : null,
+        })
+        .where(eq(schema.newsletterSubscribers.id, input.id));
+      return { ok: true };
+    }),
+
   /* ---- PDPL data-subject requests (BRD 8.4) ----
      NOTE: the active fulfillment UI now uses admin.dataRequests.*
      (api/admin/data-requests.ts). These legacy endpoints are kept for

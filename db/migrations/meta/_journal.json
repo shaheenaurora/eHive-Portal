@@ -148,6 +148,13 @@
       "when": 1788111131918,
       "tag": "0021_unique_crystal",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "5",
+      "when": 1788117697171,
+      "tag": "0022_handy_turbo",
+      "breakpoints": true
     }
   ]
 }
