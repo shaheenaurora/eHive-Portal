@@ -123,10 +123,13 @@ function submitLead(payload, onOk, onErr) {
 
   /* ---- current-page indicator ---- */
   var here = location.pathname.split("/").pop() || "index.html";
-  if (here === "" || location.pathname === "/") here = "index.html";
+  if (here === "" || location.pathname === "/" || location.pathname === "/index.html")
+    here = "index.html";
   document.querySelectorAll(".nav-links a").forEach(function (a) {
+    a.removeAttribute("aria-current");
     var href = (a.getAttribute("href") || "").split("#")[0].split("?")[0];
     if (href === "/") href = "index.html";
+    href = href.replace(/^\/+/, "");
     if (href && href === here) a.setAttribute("aria-current", "page");
   });
 
