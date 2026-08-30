@@ -35,9 +35,9 @@ jobs:
       - name: Build
         run: npm run build
 
-  # Advisory dependency audit — surfaces known vulnerabilities without blocking
-  # the pipeline (some fixes require major upgrades tracked separately). Check
-  # this job's log for the current high/critical count.
+  # Dependency audit gate — blocks merges while any high/critical vulnerability
+  # exists in production dependencies. Moderate issues are tracked separately
+  # via the scheduled log but do not fail the gate.
   audit:
     runs-on: ubuntu-latest
     steps:
@@ -50,4 +50,3 @@ jobs:
         run: npm ci
       - name: Audit (production deps, high+)
         run: npm audit --omit=dev --audit-level=high
-        continue-on-error: true
