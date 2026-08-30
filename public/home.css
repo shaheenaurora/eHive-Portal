@@ -6314,6 +6314,47 @@ a.art:hover {
   padding: clamp(5rem, 12vh, 9rem) 0;
 }
 
+/* ---- trust bar on homepage ---- */
+.eh-trust-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-top: 1.75rem;
+}
+
+.eh-trust-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem;
+  background: var(--h-paper);
+  border: 1px solid var(--h-line);
+  border-radius: var(--h-radius-sm);
+  box-shadow: var(--h-shadow);
+  color: var(--h-navy);
+  font-weight: 600;
+  font-size: 0.98rem;
+}
+
+.eh-trust-icon {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--h-coral-soft);
+  color: var(--h-coral);
+  display: grid;
+  place-items: center;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+@media (max-width: 640px) {
+  .eh-trust-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .eh-section-v2.eh-full {
   /* Sections size to their content (with the generous base padding above)
      rather than forcing a full viewport each, which left large empty voids. */
