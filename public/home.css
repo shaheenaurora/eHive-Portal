@@ -7563,13 +7563,61 @@ a.art:hover {
   color: var(--h-muted-2);
 }
 
-/* ---- swipe banner ---- */
-.eh-swipe {
-  position: relative;
-  margin-top: 3rem;
+/* ---- trust strip ---- */
+.eh-trust-strip {
+  background: var(--eh-ink);
+  color: #fff;
+  padding: 1.2rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.eh-swipe-track {
+.eh-trust-items {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 2rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.eh-trust-items span {
+  position: relative;
+}
+
+.eh-trust-items span:not(:last-child)::after {
+  content: "•";
+  position: absolute;
+  right: -1.2rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--eh-coral);
+  font-size: 0.6rem;
+}
+
+@media (max-width: 560px) {
+  .eh-trust-items span:not(:last-child)::after {
+    display: none;
+  }
+  .eh-trust-items {
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+}
+
+/* ---- explore swipe cards ---- */
+.eh-explore {
+  padding-bottom: 0;
+}
+
+.eh-swipe-row {
+  margin-top: 2.5rem;
+}
+
+.eh-swipe-row-track {
   display: flex;
   gap: 1.25rem;
   overflow-x: auto;
@@ -7581,133 +7629,91 @@ a.art:hover {
   padding: 0.5rem 0 1.5rem;
 }
 
-.eh-swipe-track::-webkit-scrollbar {
+.eh-swipe-row-track::-webkit-scrollbar {
   display: none;
 }
 
-.eh-swipe-slide {
-  flex: 0 0 86%;
-  scroll-snap-align: center;
-  position: relative;
+.eh-explore-card {
+  flex: 0 0 300px;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid rgba(10, 10, 10, 0.08);
   border-radius: var(--eh-radius);
   overflow: hidden;
-  min-height: 420px;
-  display: flex;
-  align-items: flex-end;
-  background: var(--eh-ink);
-  box-shadow: 0 20px 50px rgba(10, 10, 10, 0.12);
+  box-shadow: 0 12px 34px rgba(10, 10, 10, 0.06);
+  transition: transform 0.35s var(--eh-ease), box-shadow 0.35s var(--eh-ease);
 }
 
-@media (min-width: 760px) {
-  .eh-swipe-slide {
-    flex: 0 0 72%;
-    min-height: 480px;
-  }
+.eh-explore-card:hover {
+  transform: translateY(-7px);
+  box-shadow: 0 22px 50px rgba(10, 10, 10, 0.1);
 }
 
-@media (min-width: 1100px) {
-  .eh-swipe-slide {
-    flex: 0 0 60%;
-  }
+.eh-explore-card:hover .eh-explore-img img {
+  transform: scale(1.07);
 }
 
-.eh-swipe-slide img {
-  position: absolute;
-  inset: 0;
+.eh-explore-img {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: var(--eh-cream-2);
+}
+
+.eh-explore-img img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transform: scale(1.08);
-  animation: eh-ken-burns 18s ease-in-out infinite alternate;
+  transition: transform 0.7s var(--eh-ease);
 }
 
-.eh-swipe-slide:nth-child(2) img {
-  animation-delay: -6s;
+.eh-explore-body {
+  padding: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
-.eh-swipe-slide:nth-child(3) img {
-  animation-delay: -12s;
-}
-
-.eh-swipe-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(10, 10, 10, 0.15) 0%,
-    rgba(10, 10, 10, 0.55) 70%,
-    rgba(10, 10, 10, 0.75) 100%
-  );
-}
-
-.eh-swipe-content {
-  position: relative;
-  z-index: 2;
-  padding: 2rem;
-  color: #fff;
-  max-width: 54ch;
-}
-
-.eh-swipe-content .kicker {
-  display: inline-block;
+.eh-explore-body .kicker {
   font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--eh-coral-2);
-  margin-bottom: 0.6rem;
+  color: var(--eh-coral);
+  margin-bottom: 0.4rem;
 }
 
-.eh-swipe-content h3 {
+.eh-explore-body h3 {
   font-family: "Archivo", system-ui, sans-serif;
-  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  font-size: 1.25rem;
   font-weight: 800;
-  line-height: 1.1;
-  margin-bottom: 0.6rem;
+  line-height: 1.15;
+  margin-bottom: 0.5rem;
+  color: var(--eh-ink);
 }
 
-.eh-swipe-content p {
-  color: rgba(255, 255, 255, 0.78);
-  margin-bottom: 1.4rem;
-  font-size: 1rem;
+.eh-explore-body p {
+  font-size: 0.98rem;
+  color: rgba(10, 10, 10, 0.65);
   line-height: 1.55;
+  flex: 1;
+  margin-bottom: 1rem;
 }
 
-.eh-swipe-arrow {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 3;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  background: rgba(10, 10, 10, 0.35);
-  color: #fff;
-  font-size: 1.2rem;
-  cursor: pointer;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  transition: background 0.25s, border-color 0.25s;
+.eh-explore-link {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--eh-coral);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: gap 0.25s;
 }
 
-.eh-swipe-arrow:hover {
-  background: rgba(10, 10, 10, 0.55);
-  border-color: rgba(255, 255, 255, 0.6);
-}
-
-.eh-swipe-prev {
-  left: -24px;
-}
-
-.eh-swipe-next {
-  right: -24px;
-}
-
-@media (max-width: 759px) {
-  .eh-swipe-arrow {
-    display: none;
-  }
+.eh-explore-link:hover {
+  gap: 0.7rem;
 }
 
 .eh-swipe-dots {
@@ -7742,7 +7748,7 @@ a.art:hover {
   }
 }
 
-.eh-pillar-card .eh-card-img img,
+.eh-explore-card .eh-explore-img img,
 .eh-circle-v2 img,
 .h-card-img img,
 .h-page-hero figure img,
@@ -7751,7 +7757,6 @@ a.art:hover {
   transition: transform 0.8s var(--eh-ease);
 }
 
-.eh-pillar-card:hover .eh-card-img img,
 .eh-circle-v2:hover img,
 .h-card:hover .h-card-img img {
   transform: scale(1.06);
@@ -7764,7 +7769,6 @@ a.art:hover {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .eh-swipe-slide img,
   .h-page-hero figure img,
   .p-hero figure img,
   .img-banner img {
