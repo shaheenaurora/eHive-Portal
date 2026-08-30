@@ -1011,6 +1011,32 @@ export const notifications = mysqlTable(
   t => [index("ix_notifications_member_read").on(t.memberId, t.readAt)]
 );
 
+/* Delivery tracking for in-app notifications pushed out over email and web-push.
+   Each outbound attempt gets a row so admins can see reach, bounces and retries. */
+export const notificationDeliveries = mysqlTable(
+  "notification_deliveries",
+  {
+    id: serial("id").primaryKey(),
+    notificationId: bigint("notificationId", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => notifications.id, { onDelete: "cascade" }),
+    memberId: bigint("memberId", { mode: "number", unsigned: true }).notNull(),
+    channel: mysqlEnum("channel", ["email", "push"]).notNull(),
+    status: mysqlEnum("status", ["pending", "sent", "failed", "bounced"])
+      .notNull()
+      .default("pending"),
+    providerRef: varchar("providerRef", { length: 255 }),
+    error: text("error"),
+    retryCount: int("retryCount").notNull().default(0),
+    sentAt: timestamp("sentAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  t => [
+    index("ix_notification_deliveries_notification").on(t.notificationId),
+    index("ix_notification_deliveries_member_status").on(t.memberId, t.status),
+  ]
+);
+
 /* BRD 6.3 — 1-2-1s with counterpart confirmation; kind=mentoring feeds Give-Back */
 export const oneToOnes = mysqlTable(
   "one_to_ones",

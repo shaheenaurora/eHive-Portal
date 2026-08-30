@@ -141,6 +141,13 @@
       "when": 1788026400000,
       "tag": "0020_membership_gate",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "5",
+      "when": 1788111131918,
+      "tag": "0021_unique_crystal",
+      "breakpoints": true
     }
   ]
 }

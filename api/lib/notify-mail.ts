@@ -3,6 +3,7 @@ import * as schema from "@db/schema";
 import { getDb } from "../queries/connection";
 import { sendMail, mailEnabled } from "./mailer";
 import { env } from "./env";
+import { audit } from "./audit";
 
 const esc = (v: unknown) =>
   String(v ?? "").replace(
@@ -64,16 +65,36 @@ function shell(name: string, text: string, kind: string): string {
   </div>`;
 }
 
+async function markDelivery(
+  deliveryId: number,
+  patch: Partial<typeof schema.notificationDeliveries.$inferInsert>
+) {
+  try {
+    await getDb()
+      .update(schema.notificationDeliveries)
+      .set(patch)
+      .where(eq(schema.notificationDeliveries.id, deliveryId));
+  } catch {
+    /* best-effort tracking; never breaks the email send */
+  }
+}
+
 /** Email a copy of an in-app notification to the member — non-blocking and
  *  best-effort. Skips when email isn't configured, the member has no address,
- *  or they've opted out (members.emailNotify). Never throws. */
+ *  or they've opted out (members.emailNotify). Tracks status in
+ *  notification_deliveries when deliveryId is provided. Never throws. */
 export async function emailNotification(
   memberId: number,
   text: string,
-  kind: string
+  kind: string,
+  deliveryId?: number
 ): Promise<void> {
   try {
-    if (!mailEnabled()) return;
+    if (!mailEnabled()) {
+      if (deliveryId)
+        await markDelivery(deliveryId, { status: "failed", error: "Mail not enabled" });
+      return;
+    }
     const row = (
       await getDb()
         .select({
@@ -86,13 +107,57 @@ export async function emailNotification(
         .where(eq(schema.members.id, memberId))
         .limit(1)
     ).at(0);
-    if (!row?.email || !row.emailNotify) return;
+    if (!row?.email || !row.emailNotify) {
+      if (deliveryId)
+        await markDelivery(deliveryId, {
+          status: "failed",
+          error: !row?.email ? "No email address" : "Member opted out",
+        });
+      return;
+    }
     await sendMail({
       to: row.email,
       subject: KIND_SUBJECT[kind] ?? KIND_SUBJECT.info,
       html: shell(row.name ?? "", text, kind),
     });
-  } catch {
+    if (deliveryId)
+      await markDelivery(deliveryId, { status: "sent", sentAt: new Date() });
+  } catch (err) {
+    if (deliveryId)
+      await markDelivery(deliveryId, {
+        status: "failed",
+        error: err instanceof Error ? err.message : String(err),
+      });
     /* email is best-effort; never breaks the triggering action */
   }
+}
+
+/** Retry a failed email delivery. Reads the original notification text/kind from
+ *  the joined notification row and re-attempts send, incrementing retryCount. */
+export async function retryEmailDelivery(deliveryId: number): Promise<void> {
+  const db = getDb();
+  const row = (
+    await db
+      .select({
+        memberId: schema.notificationDeliveries.memberId,
+        status: schema.notificationDeliveries.status,
+        retryCount: schema.notificationDeliveries.retryCount,
+        text: schema.notifications.text,
+        kind: schema.notifications.kind,
+      })
+      .from(schema.notificationDeliveries)
+      .innerJoin(
+        schema.notifications,
+        eq(schema.notifications.id, schema.notificationDeliveries.notificationId)
+      )
+      .where(eq(schema.notificationDeliveries.id, deliveryId))
+      .limit(1)
+  ).at(0);
+  if (!row) throw new Error("Delivery not found.");
+  if (row.status === "sent") return;
+  await db
+    .update(schema.notificationDeliveries)
+    .set({ retryCount: (row.retryCount ?? 0) + 1 })
+    .where(eq(schema.notificationDeliveries.id, deliveryId));
+  await emailNotification(row.memberId, row.text ?? "", row.kind ?? "info", deliveryId);
 }

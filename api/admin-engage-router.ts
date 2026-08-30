@@ -66,6 +66,7 @@ import {
   raiseFlag,
   resolveFlag,
 } from "./queries/award-integrity";
+import { retryEmailDelivery } from "./lib/notify-mail";
 import { computeChapterHealth } from "./queries/health";
 import {
   ensureCadenceTemplates,
@@ -3156,6 +3157,56 @@ export const adminEngageRouter = createRouter({
         type: "dataRequest",
         id: req.id,
         detail: req.kind,
+      });
+      return { ok: true };
+    }),
+
+  /* ---- notification delivery tracking + retry ---- */
+  notificationDeliveries: scopedAdmin("community")
+    .input(
+      z.object({
+        status: z.enum(["pending", "sent", "failed", "bounced"]).optional(),
+        memberId: z.number().int().positive().optional(),
+        limit: z.number().int().min(1).max(200).default(100),
+      })
+    )
+    .query(async ({ input }) => {
+      const db = getDb();
+      const conds = [];
+      if (input.status) conds.push(eq(schema.notificationDeliveries.status, input.status));
+      if (input.memberId)
+        conds.push(eq(schema.notificationDeliveries.memberId, input.memberId));
+      const rows = await db
+        .select({
+          delivery: schema.notificationDeliveries,
+          text: schema.notifications.text,
+          kind: schema.notifications.kind,
+          name: schema.users.name,
+          email: schema.users.email,
+        })
+        .from(schema.notificationDeliveries)
+        .innerJoin(
+          schema.notifications,
+          eq(schema.notifications.id, schema.notificationDeliveries.notificationId)
+        )
+        .innerJoin(
+          schema.members,
+          eq(schema.members.id, schema.notificationDeliveries.memberId)
+        )
+        .innerJoin(schema.users, eq(schema.users.id, schema.members.userId))
+        .where(conds.length ? and(...conds) : undefined)
+        .orderBy(desc(schema.notificationDeliveries.createdAt))
+        .limit(input.limit);
+      return rows;
+    }),
+
+  retryNotificationDelivery: scopedAdmin("community")
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      await retryEmailDelivery(input.id);
+      await audit(ctx.user, "notification.retry", {
+        type: "notificationDelivery",
+        id: input.id,
       });
       return { ok: true };
     }),

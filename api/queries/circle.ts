@@ -149,17 +149,33 @@ export async function awardRulePoints(
 
 /** In-portal notification (BRD 6.3 — email/WhatsApp dispatch is a platform dependency). */
 export async function notify(memberId: number, text: string, kind = "info") {
-  await getDb().insert(schema.notifications).values({ memberId, text, kind });
+  const db = getDb();
+  const res = await db.insert(schema.notifications).values({ memberId, text, kind });
+  const notificationId = Number((res as unknown as { insertId?: number }).insertId ?? 0);
+
+  // Create delivery tracking rows for each outbound channel.
+  const [emailDelivery] = await db.insert(schema.notificationDeliveries).values({
+    notificationId,
+    memberId,
+    channel: "email",
+    status: "pending",
+  });
+
   // Fire a matching web push (fire-and-forget; never blocks the in-app notify).
   void pushToMember(
     memberId,
     { title: "eHive Circle", body: text, url: "/portal" },
     kind
   );
-  // Email a copy too (best-effort, respects the member's opt-out + mail config).
-  void import("../lib/notify-mail")
-    .then(m => m.emailNotification(memberId, text, kind))
-    .catch(() => {});
+
+  // Email a copy too. Await so the delivery record is updated before notify() returns,
+  // but keep errors from propagating to the caller.
+  try {
+    const { emailNotification } = await import("../lib/notify-mail");
+    await emailNotification(memberId, text, kind, Number((emailDelivery as unknown as { insertId?: number }).insertId ?? 0));
+  } catch {
+    /* delivery status already recorded; never breaks the triggering action */
+  }
 }
 
 /**
