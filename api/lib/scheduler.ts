@@ -493,7 +493,6 @@ async function jobDunning(now = new Date()): Promise<void> {
 async function jobScorecardFollowUp(now = new Date()): Promise<void> {
   const db = getDb();
   const day3 = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
-  const day10 = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000);
   const leads = await db
     .select()
     .from(schema.leads)

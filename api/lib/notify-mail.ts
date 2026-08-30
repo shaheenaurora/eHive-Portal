@@ -3,7 +3,6 @@ import * as schema from "@db/schema";
 import { getDb } from "../queries/connection";
 import { sendMail, mailEnabled } from "./mailer";
 import { env } from "./env";
-import { audit } from "./audit";
 
 const esc = (v: unknown) =>
   String(v ?? "").replace(

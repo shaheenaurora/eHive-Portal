@@ -1654,6 +1654,17 @@ body.has-sticky-cta {
   color: #b23a32;
   font-size: 0.9rem;
 }
+.gs-consent {
+  margin: 0.9rem 0 0;
+  font-size: 0.8rem;
+  color: var(--h-muted);
+  max-width: 60ch;
+  line-height: 1.5;
+}
+.gs-consent a {
+  color: var(--h-coral);
+  text-decoration: underline;
+}
 .gs-ok {
   border: 1px solid var(--h-line);
   border-left: 3px solid var(--h-coral);

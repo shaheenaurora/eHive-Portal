@@ -5,7 +5,12 @@ describe("public site + ops routes", () => {
   it("/api/health returns the expected shape", async () => {
     const res = await app.request("/api/health");
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as {
+      status: string;
+      db: string;
+      mail: { configured: boolean; ok: boolean; provider: string | null };
+      scheduler: { lastRunAt: string | null };
+    };
     expect(body.status).toBe("ok");
     expect(["up", "down"]).toContain(body.db);
     expect(body.mail).toMatchObject({
@@ -19,7 +24,7 @@ describe("public site + ops routes", () => {
   it("/api/ready returns a readiness object", async () => {
     const res = await app.request("/api/ready");
     expect([200, 503]).toContain(res.status);
-    const body = await res.json();
+    const body = (await res.json()) as { ready: boolean };
     expect(typeof body.ready).toBe("boolean");
   });
 

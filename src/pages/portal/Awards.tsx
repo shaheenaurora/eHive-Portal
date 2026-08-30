@@ -41,7 +41,6 @@ export default function Awards() {
     onError: e => toast(e.message),
   });
 
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   return (
     <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif>
@@ -150,7 +149,6 @@ export default function Awards() {
 
 function NominationCard({
   category,
-  cycleId,
   members,
   pending,
   onSubmit,

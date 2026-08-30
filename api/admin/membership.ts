@@ -220,7 +220,7 @@ export const membershipRouter = createRouter({
                 <div style="padding:26px 24px;color:#141312">
                   <p style="margin:0 0 14px;font-size:17px;color:#141312">Hi ${firstName || "there"},</p>
                   <p style="margin:0 0 22px;font-size:16px;line-height:1.55;color:#141312">Thank you for your interest in eHive Circle. After careful review, we won't be able to offer you membership at this time.</p>
-                  ${input.note ? `<p style="margin:0 0 22px;font-size:16px;line-height:1.55;color:#141312"><strong>Note:</strong> ${input.note.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c])}</p>` : ""}
+                  ${input.note ? `<p style="margin:0 0 22px;font-size:16px;line-height:1.55;color:#141312"><strong>Note:</strong> ${input.note.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c] as string)}</p>` : ""}
                   <p style="margin:0 0 22px;font-size:16px;line-height:1.55;color:#141312">We genuinely appreciate the time you took to apply, and we welcome you to stay connected through our public events and insights.</p>
                 </div>
                 <div style="padding:16px 24px;border-top:1px solid #E4DECF;color:#8A8578;font-size:12px;line-height:1.5">

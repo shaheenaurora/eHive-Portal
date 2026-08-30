@@ -11,7 +11,6 @@ import {
   MEETING_AGENDA_TEMPLATES,
   seatToChapterRole,
   CHAPTER_TERM_LIMIT_CONSECUTIVE,
-  CHAPTER_ROLE_LABEL,
 } from "@contracts/constants";
 import { requireOfficer, assertChapterOwner, assertRoles } from "./shared";
 
@@ -490,11 +489,6 @@ export const officerGovernanceRouter = createRouter({
         id: mo.id,
         detail: `${status} · yes ${yes} · no ${no}`,
       });
-      const voters = await db
-        .select({ memberId: schema.motionVotes.memberId })
-        .from(schema.motionVotes)
-        .where(eq(schema.motionVotes.motionId, mo.id));
-      const voterIds = new Set(voters.map(v => v.memberId));
       const chapterMembers = await db
         .select({ id: schema.members.id })
         .from(schema.members)

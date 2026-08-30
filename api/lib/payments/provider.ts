@@ -17,6 +17,9 @@ export type WebhookResult = {
   status: "paid" | "failed";
   userId?: number;
   tier?: Tier;
+  /** Amount the gateway actually settled, in minor units. Lets the webhook
+   *  assert it matches the amount fixed server-side at checkout. */
+  amount?: number;
 } | null;
 
 /**
