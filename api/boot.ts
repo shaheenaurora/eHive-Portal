@@ -29,7 +29,11 @@ import {
   notifyLead,
   sendInvoiceReady,
 } from "./lib/lead-mail";
-import { mailProvider } from "./lib/mailer";
+import {
+  mailProvider,
+  mailEnabled,
+  verifyMailTransport,
+} from "./lib/mailer";
 import { activateMembership } from "./queries/circle";
 import {
   createInvoiceFromPayment,
@@ -1017,10 +1021,15 @@ app.get("/api/health", async c => {
     logger.error("health check: DB ping failed", { error: err });
   }
   const sched = getSchedulerStatus();
+  const mail = await verifyMailTransport();
   return c.json({
     status: "ok",
     db,
-    mail: mailProvider() ?? "not-configured",
+    mail: {
+      configured: mailEnabled(),
+      provider: mailProvider(),
+      ...mail,
+    },
     scheduler: {
       lastRunAt: sched.lastRunAt,
       lastSuccessAt: sched.lastSuccessAt,
@@ -1113,32 +1122,43 @@ const SITEMAP_PAGES = [
   "brand-check.html",
   "book.html",
   "about.html",
+  "how-it-works.html",
+  "membership.html",
+  "partners.html",
+  "franchise.html",
+  "apply.html",
+  "contact.html",
   "insights.html",
   "privacy.html",
   "terms.html",
+  "code-of-conduct.html",
 ];
 app.get("/robots.txt", c => {
-  const origin = new URL(c.req.url).origin;
+  const base = env.publicUrl;
   return c.text(
     [
       "User-agent: *",
-      "Disallow: /portal",
+      "Allow: /",
+      "Disallow: /api/",
       "Disallow: /admin",
+      "Disallow: /portal",
       "Disallow: /login",
+      "Disallow: /logout",
       "Disallow: /forgot-password",
       "Disallow: /reset-password",
       "Disallow: /verify-email",
-      "Disallow: /api",
-      "Allow: /",
-      `Sitemap: ${origin}/sitemap.xml`,
+      `Sitemap: ${base}/sitemap.xml`,
       "",
-    ].join("\n")
+    ].join("\n"),
+    200,
+    { "content-type": "text/plain; charset=utf-8" }
   );
 });
 app.get("/sitemap.xml", async c => {
-  const origin = new URL(c.req.url).origin;
+  const base = env.publicUrl;
   const staticUrls = SITEMAP_PAGES.map(
-    p => `  <url><loc>${origin}/${p}</loc><changefreq>weekly</changefreq></url>`
+    p =>
+      `  <url><loc>${base}/${p}</loc><changefreq>weekly</changefreq></url>`
   );
   let articleUrls: string[] = [];
   try {
@@ -1152,7 +1172,7 @@ app.get("/sitemap.xml", async c => {
       .limit(500);
     articleUrls = posts.map(
       p =>
-        `  <url><loc>${origin}/insights/${p.slug}</loc><lastmod>${new Date(p.updatedAt).toISOString().slice(0, 10)}</lastmod><changefreq>monthly</changefreq></url>`
+        `  <url><loc>${base}/insights/${p.slug}</loc><lastmod>${new Date(p.updatedAt).toISOString().slice(0, 10)}</lastmod><changefreq>monthly</changefreq></url>`
     );
   } catch {
     /* DB unavailable — static sitemap still valid */
@@ -1161,7 +1181,7 @@ app.get("/sitemap.xml", async c => {
   return c.body(
     `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`,
     200,
-    { "content-type": "application/xml" }
+    { "content-type": "application/xml; charset=utf-8" }
   );
 });
 

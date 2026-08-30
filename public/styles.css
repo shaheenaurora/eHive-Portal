@@ -2256,9 +2256,15 @@ table.cmp {
 /* cinematic image banner (chapter break) */
 .img-banner {
   position: relative;
-  height: clamp(340px, 48vw, 600px);
+  height: clamp(260px, 36vw, 420px);
   overflow: hidden;
   margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .img-banner {
+    height: clamp(220px, 30vw, 360px);
+  }
 }
 
 .img-banner img {

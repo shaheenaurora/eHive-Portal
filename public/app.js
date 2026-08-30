@@ -1715,6 +1715,36 @@ function submitLead(payload, onOk, onErr) {
   })();
 })();
 
+/* ===== Scroll-driven parallax for interior image banners =====
+   Subtle vertical translation tied to scroll position makes the large static
+   hero banners feel alive without heavy video assets. Disabled when the user
+   prefers reduced motion. */
+(function () {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  var banners = document.querySelectorAll(".img-banner img");
+  if (!banners.length) return;
+  banners.forEach(function (img) {
+    img.style.animation = "none";
+    img.style.transition = "transform 0.1s linear";
+    img.style.willChange = "transform";
+  });
+  function update() {
+    var vh = window.innerHeight;
+    banners.forEach(function (img) {
+      var wrap = img.parentElement;
+      if (!wrap) return;
+      var rect = wrap.getBoundingClientRect();
+      if (rect.bottom < 0 || rect.top > vh) return;
+      var p = rect.top / vh;
+      img.style.transform =
+        "translateY(" + (p * 22).toFixed(1) + "px) scale(1.08)";
+    });
+  }
+  window.addEventListener("scroll", update, { passive: true });
+  window.addEventListener("resize", update, { passive: true });
+  update();
+})();
+
 /* ===== eHive Clarity Scorecard — nav button + popup (progressive enhancement) =====
    Styles every link to /clarity-scorecard.html as a button and opens the
    scorecard in an in-page modal instead of navigating. Falls back to the plain

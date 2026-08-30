@@ -193,6 +193,35 @@ function htmlToText(html: string): string {
     .trim();
 }
 
+/** Lightweight transport verification for health checks. Does not send email.
+ *  ZeptoMail is reported OK when configured; SMTP is verified with a short
+ *  timeout so a misconfigured relay does not hang the liveness probe. */
+export async function verifyMailTransport(): Promise<{
+  ok: boolean;
+  error?: string;
+}> {
+  const provider = mailProvider();
+  if (!provider) return { ok: false, error: "No email transport configured." };
+  if (provider === "zeptomail") return { ok: true };
+  try {
+    await Promise.race([
+      getTransport().verify(),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error("SMTP verify timeout")),
+          5000
+        )
+      ),
+    ]);
+    return { ok: true };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
 /** Non-secret view of the mail configuration for the admin panel. Never exposes
  *  the SMTP password or the ZeptoMail token. */
 export function mailStatus() {
