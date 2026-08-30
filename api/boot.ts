@@ -464,8 +464,10 @@ app.get("/insights/:slug", async c => {
 <link rel="canonical" href="${url}">
 <meta property="og:type" content="article"><meta property="og:title" content="${title}">
 <meta property="og:description" content="${desc}"><meta property="og:url" content="${url}"><meta property="og:site_name" content="eHive">
+<meta property="og:image" content="${origin}/assets/icon-512.png">
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${title}"><meta name="twitter:description" content="${desc}">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3 27 9.5v13L16 29 5 22.5v-13z' fill='none' stroke='%23D4A24C' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23D4A24C'/%3E%3C/svg%3E">
+<meta name="twitter:image" content="${origin}/assets/icon-512.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3 27 9.5v13L16 29 5 22.5v-13z' fill='none' stroke='%23DA3A22' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23DA3A22'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/styles.min.css"><link rel="stylesheet" href="/apps.min.css">
