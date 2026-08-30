@@ -530,6 +530,7 @@
     ["How it works", "Page", "how-it-works.html"],
     ["Hive Score demo", "Tool", "circle.html#tiers"],
     ["Clarity Scorecard", "Tool", "clarity-scorecard.html"],
+    ["Brand Check", "Tool", "brand-check.html"],
     ["Insights — The Hive Journal", "Page", "insights.html"],
     ["About eHive", "Page", "about.html"],
     ["Partners", "Page", "partners.html"],
