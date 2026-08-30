@@ -1998,6 +1998,73 @@ function submitLead(payload, onOk, onErr) {
   document.body.classList.add("has-sticky-cta");
 })();
 
+/* Exit-intent lead capture (desktop only, once per session) */
+(function () {
+  if (window.matchMedia("(pointer: coarse)").matches) return;
+  if (window.sessionStorage.getItem("ehiveExitSeen")) return;
+  var path = location.pathname;
+  var skip =
+    path.indexOf("clarity-scorecard") !== -1 ||
+    path.indexOf("brand-check") !== -1 ||
+    path.indexOf("book.html") !== -1 ||
+    path.indexOf("thank-you") !== -1 ||
+    path.indexOf("login") !== -1;
+  if (skip) return;
+
+  var overlay = null,
+    lastFocus = null;
+  function close() {
+    if (!overlay) return;
+    overlay.classList.remove("on");
+    document.body.style.overflow = "";
+    var el = overlay;
+    setTimeout(function () {
+      if (el && el.parentNode) el.parentNode.removeChild(el);
+    }, 200);
+    overlay = null;
+    document.removeEventListener("keydown", onKey);
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+  function onKey(e) {
+    if (e.key === "Escape") close();
+  }
+  function open() {
+    if (overlay) return;
+    window.sessionStorage.setItem("ehiveExitSeen", "1");
+    lastFocus = document.activeElement;
+    overlay = document.createElement("div");
+    overlay.className = "exit-overlay";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    overlay.setAttribute("aria-label", "Get clarity before you go");
+    overlay.innerHTML =
+      "<div class='exit-card'>" +
+      "<button class='exit-close' aria-label='Close'>&times;</button>" +
+      "<p class='exit-eyebrow'>Not ready to apply?</p>" +
+      "<h2>Get clarity in 2 minutes</h2>" +
+      "<p>The Clarity Scorecard shows you exactly where to focus next. No pitch, no spam.</p>" +
+      "<div class='exit-actions'>" +
+      "<a class='btn btn-primary' href='clarity-scorecard.html'>Take the Scorecard</a>" +
+      "<a class='btn btn-ghost' href='book.html?product=consulting'>Book a free call</a>" +
+      "</div></div>";
+    document.body.appendChild(overlay);
+    document.body.style.overflow = "hidden";
+    overlay.querySelector(".exit-close").addEventListener("click", close);
+    overlay.addEventListener("click", function (e) {
+      if (e.target === overlay) close();
+    });
+    document.addEventListener("keydown", onKey);
+    requestAnimationFrame(function () {
+      overlay.classList.add("on");
+    });
+  }
+  document.addEventListener("mouseout", function (e) {
+    if (e.clientY < 8 && !window.sessionStorage.getItem("ehiveExitSeen")) {
+      open();
+    }
+  });
+})();
+
 /* PWA: register the service worker so the site is installable from any page
    (Add to Home Screen / Install app). Harmless if sw.js is unavailable. */
 if ("serviceWorker" in navigator && location.protocol === "https:") {
