@@ -49,6 +49,31 @@ const FORM_META: Record<
     intro:
       "Thank you for applying to join eHive. Our team will review your application and be in touch within a few days. We're glad you're here.",
   },
+  "partner-enquiry": {
+    label: "Partner enquiry",
+    subject: "We've received your partnership enquiry — eHive",
+    intro:
+      "Thank you for your interest in partnering with eHive. We partner with a select few, so every enquiry is read personally — someone from the partnerships team will be in touch.",
+  },
+  "franchise-enquiry": {
+    label: "Franchise / operator enquiry",
+    subject: "We've received your franchise enquiry — eHive",
+    intro:
+      "Thank you for your interest in bringing eHive to your market. We're selective about who leads a chapter, so we'll review your background and market carefully and be in touch.",
+  },
+  contact: {
+    label: "Contact enquiry",
+    subject: "We've received your message — eHive",
+    intro:
+      "Thanks for getting in touch with eHive. We've received your message and the right person on the team will reply personally.",
+  },
+};
+
+/* Which enquiry types route to a dedicated owner when one is configured.
+   Falls back to the general lead inbox (env.leadNotifyEmail) otherwise. */
+const OWNER_ENV: Record<string, string | undefined> = {
+  "partner-enquiry": env.partnersNotifyEmail,
+  "franchise-enquiry": env.franchiseNotifyEmail,
 };
 
 const GENERIC = {
@@ -246,8 +271,8 @@ export async function notifyLead(input: {
   let confirmSent = false;
   const errors: string[] = [];
 
-  // 1) Notify the business.
-  const notifyTo = env.leadNotifyEmail;
+  // 1) Notify the business — routed to a dedicated desk when configured.
+  const notifyTo = OWNER_ENV[input.form] || env.leadNotifyEmail;
   if (notifyTo) {
     const ownerHtml = shell(`
       <p style="margin:0 0 4px;color:#b8862e;font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:700">New lead · ${esc(meta.label)}</p>

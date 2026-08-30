@@ -59,6 +59,10 @@ export const env = {
   // Where new-lead notifications are sent. Falls back to OWNER_EMAIL.
   leadNotifyEmail:
     process.env.LEAD_NOTIFY_EMAIL ?? process.env.OWNER_EMAIL ?? "",
+  // Optional dedicated desks for partner / franchise enquiries. When unset,
+  // those enquiries fall back to the general lead inbox above.
+  partnersNotifyEmail: process.env.PARTNERS_NOTIFY_EMAIL ?? undefined,
+  franchiseNotifyEmail: process.env.FRANCHISE_NOTIFY_EMAIL ?? undefined,
   // Public base URL for absolute links in emails (e.g. the portal button).
   publicUrl: (
     process.env.PUBLIC_URL ??

@@ -1772,6 +1772,60 @@ body.has-sticky-cta {
   grid-column: 1 / -1;
 }
 
+/* ---- website enquiry forms (partner / franchise / contact) ---- */
+.eh-enquiry {
+  max-width: 760px;
+  margin-top: 1.75rem;
+}
+.eh-enquiry textarea.gs-input {
+  min-height: 120px;
+  resize: vertical;
+}
+.gs-opt {
+  color: var(--h-muted);
+  font-weight: 400;
+  font-size: 0.85em;
+}
+.gs-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+.gs-alt {
+  font-size: 0.9rem;
+  color: var(--h-muted);
+}
+.gs-alt a,
+.gs-err a {
+  color: var(--h-coral);
+  text-decoration: underline;
+}
+.gs-err {
+  display: none;
+  margin: 1rem 0 0;
+  color: #b23a32;
+  font-size: 0.9rem;
+}
+.gs-ok {
+  border: 1px solid var(--h-line);
+  border-left: 3px solid var(--h-coral);
+  border-radius: 12px;
+  padding: 1.5rem 1.75rem;
+  margin-top: 1.75rem;
+  max-width: 760px;
+  background: var(--h-cream, #f8f6f0);
+}
+.gs-ok-title {
+  font-family: "Archivo", system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 1.3rem;
+  margin: 0 0 0.5rem;
+}
+.eh-v2 .gs-ok {
+  background: #fff;
+}
+
 .gs-nav {
   display: flex;
   justify-content: space-between;

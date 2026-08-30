@@ -24,6 +24,7 @@ import {
 } from "./queries/member-admin";
 import { computeOnboarding } from "./queries/onboarding";
 import { recordAnalyticsEvent } from "./queries/analytics";
+import { notifyLead } from "./lib/lead-mail";
 import { ONBOARDING_MANUAL_KEYS } from "@contracts/constants";
 import { paymentsEnabled, getPaymentProvider } from "./lib/payments";
 import { applyLifecycleTransition } from "./lib/lifecycle";
@@ -386,6 +387,20 @@ export const circleRouter = createRouter({
         userId: ctx.user.id,
         properties: { tierRequested: input.tierRequested, gateMode },
       });
+      // Confirm to the applicant and notify the admissions inbox (best-effort:
+      // email failure must never fail the application itself).
+      void notifyLead({
+        form: "membership-application",
+        email: ctx.user.email ?? null,
+        payload: {
+          name: input.name,
+          company: input.company,
+          tier: input.tierRequested,
+          stage: input.stage,
+          revenue: input.revenue,
+        },
+        sourcePage: "portal/apply",
+      }).catch(err => console.error("application confirmation email failed:", err));
       return { ok: true };
     }),
 
