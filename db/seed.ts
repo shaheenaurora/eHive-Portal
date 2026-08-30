@@ -564,11 +564,11 @@ async function seed() {
   /* -------------------------------- offers ------------------------------- */
   await db.insert(schema.offers).values([
     {
-      vertical: "setup",
-      title: "Member rate: mainland LLC formation",
+      vertical: "consulting",
+      title: "Member rate: business setup advisory",
       description:
-        "Circle members get the full mainland formation package — licence, establishment card, two visas — at a fixed member rate.",
-      ctaUrl: "/business-setup.html",
+        "Circle members get a structured advisory sprint on mainland, free-zone and visa structuring — plus introductions to vetted operators.",
+      ctaUrl: "/consulting.html",
       tierGate: "horizon",
     },
     {
@@ -588,11 +588,11 @@ async function seed() {
       tierGate: "vanguard",
     },
     {
-      vertical: "setup",
+      vertical: "consulting",
       title: "Free zone vs mainland — 1:1 advisory call",
       description:
-        "A 45-minute structuring call with the setup team before you commit. For Horizon members evaluating a move.",
-      ctaUrl: "/get-started.html?door=business",
+        "A 45-minute structuring call before you commit. For Horizon members evaluating a UAE setup.",
+      ctaUrl: "/book.html?product=setup-advisory",
       tierGate: "horizon",
     },
   ]);
@@ -662,16 +662,20 @@ async function seed() {
   /* --------------------------------- leads ------------------------------- */
   await db.insert(schema.leads).values([
     {
-      form: "get-started",
+      form: "clarity-scorecard",
       email: "huda@maisonh.ae",
       payload: JSON.stringify({
-        form: "get-started",
-        door: "circle",
-        detail: "ascent",
+        form: "clarity-scorecard",
         name: "Huda Al Mansoori",
         email: "huda@maisonh.ae",
+        total: 58,
+        domains: [
+          { key: "Strategy", pct: 50 },
+          { key: "Operations", pct: 60 },
+          { key: "Finance", pct: 55 },
+        ],
       }),
-      sourcePage: "get-started.html",
+      sourcePage: "clarity-scorecard.html",
     },
     {
       form: "booking",

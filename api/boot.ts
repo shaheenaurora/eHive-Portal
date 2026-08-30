@@ -29,6 +29,7 @@ import {
   notifyLead,
   sendInvoiceReady,
 } from "./lib/lead-mail";
+import { mailProvider } from "./lib/mailer";
 import { activateMembership } from "./queries/circle";
 import {
   createInvoiceFromPayment,
@@ -491,9 +492,12 @@ app.get("/insights/:slug", async c => {
   <a class="brand" href="/index.html" aria-label="eHive — home"><img src="/assets/ehive-wordmark.png" alt="eHive" width="146" height="26"></a>
   <button class="nav-toggle" id="navToggle" aria-expanded="false" aria-controls="navMenu" aria-label="Menu"><span></span><span></span><span></span></button>
   <ul class="nav-links" id="navMenu">
-    <li><a href="/business-setup.html">Business Setup</a></li><li><a href="/consulting.html">Consulting</a></li>
-    <li><a href="/circle.html">eHive Circle</a></li><li><a href="/insights.html">Insights</a></li>
-    <li><a class="btn btn-primary btn-sm" href="/get-started.html">Get Started</a></li>
+    <li><a href="/consulting.html">Consulting</a></li>
+    <li><a href="/circle.html">eHive Circle</a></li>
+    <li><a href="/clarity-scorecard.html">Clarity Scorecard</a></li>
+    <li><a href="/brand-check.html">Brand Check</a></li>
+    <li><a href="/insights.html">Insights</a></li>
+    <li><a href="/login.html">Login</a></li>
   </ul>
 </nav></header>
 <main id="main"><section class="light art-page"><div class="art-wrap">
@@ -505,7 +509,7 @@ app.get("/insights/:slug", async c => {
     <div class="art-body">${esc(row.body ?? "")}</div>
     <div class="art-cta">
       <b>Think this applies to your business?</b>
-      <p style="margin:.4rem 0 0">The clearest next step is a short, honest look at what's actually holding your business up. <a href="/get-started.html">Start a conversation →</a></p>
+      <p style="margin:.4rem 0 0">The clearest next step is a short, honest look at what's actually holding your business up. <a href="/clarity-scorecard.html">Take the Clarity Scorecard →</a></p>
     </div>
   </article>
   <a class="art-back" href="/insights.html">← All insights</a>
@@ -1018,7 +1022,12 @@ app.get("/api/health", async c => {
     db = "down";
     console.error("health check: DB ping failed", err);
   }
-  return c.json({ status: "ok", db, timestamp: new Date().toISOString() });
+  return c.json({
+    status: "ok",
+    db,
+    mail: mailProvider() ?? "not-configured",
+    timestamp: new Date().toISOString(),
+  });
 });
 
 /* Readiness probe (distinct from the liveness /api/health above): 200 only when
@@ -1031,14 +1040,6 @@ app.get("/api/ready", async c => {
   } catch {
     return c.json({ ready: false }, 503);
   }
-});
-
-/* Prometheus-compatible metrics endpoint. No authentication by design — it
-   exposes only process counters and DB reachability, suitable for scraping by
-   Railway/Render/Fly monitoring or an external Prometheus instance. */
-app.get("/metrics", async c => {
-  const body = await renderMetrics();
-  return c.text(body, 200, { "content-type": "text/plain; version=0.0.4" });
 });
 
 /* Prometheus-style metrics (text exposition, no external dependency). Enough for
@@ -1085,7 +1086,6 @@ app.all("/api/*", c => c.json({ error: "Not Found" }, 404));
    whatever domain the app is served from. App routes are kept out of the index. */
 const SITEMAP_PAGES = [
   "",
-  "business-setup.html",
   "consulting.html",
   "consulting-clarity-sprint.html",
   "consulting-strategy-sprint.html",
@@ -1095,7 +1095,7 @@ const SITEMAP_PAGES = [
   "consulting-momentum90.html",
   "circle.html",
   "clarity-scorecard.html",
-  "get-started.html",
+  "brand-check.html",
   "book.html",
   "about.html",
   "insights.html",
@@ -1201,6 +1201,19 @@ if (env.isProduction) {
     "../public/thank-you.html"
   );
   app.get("/thank-you", c => c.html(fs.readFileSync(thankYouPath, "utf-8")));
+
+  /* Retired marketing pages — permanent redirects so old links/bookmarks/email
+     CTAs send traffic to the current doors instead of 404s or stale content. */
+  app.get("/business-setup.html", c =>
+    c.redirect("/consulting.html", 301)
+  );
+  app.get("/business-setup", c => c.redirect("/consulting.html", 301));
+  app.get("/get-started.html", c =>
+    c.redirect("/clarity-scorecard.html", 301)
+  );
+  app.get("/get-started", c =>
+    c.redirect("/clarity-scorecard.html", 301)
+  );
 
   /* Marketing site: served straight from source (public/). No build-time copy —
      bulk copies race on this filesystem. Bundle assets (portal-*.js/css) fall

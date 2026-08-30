@@ -1255,7 +1255,7 @@ body.loaded .h-reveal.in {
 
 /* ==========================================================================
    Interior page components + legacy compatibility
-   Used by get-started.html, book.html and the apps.js interactive layer.
+   Used by book.html and the apps.js interactive layer.
    ========================================================================== */
 
 /* ---- legacy variable aliases (apps.min.css expects these) ---- */
@@ -1537,8 +1537,7 @@ body.has-sticky-cta {
 }
 
 /* ---- forms ---- */
-.h-label,
-.gs-label {
+.h-label {
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
@@ -1549,10 +1548,7 @@ body.has-sticky-cta {
 
 .h-input,
 .h-select,
-.h-textarea,
-.gs-input,
-.gs-select,
-.gs-area {
+.h-textarea {
   width: 100%;
   padding: 0.95rem 1rem;
   border: 1px solid var(--h-line-2);
@@ -1568,26 +1564,19 @@ body.has-sticky-cta {
 
 .h-input:focus,
 .h-select:focus,
-.h-textarea:focus,
-.gs-input:focus,
-.gs-select:focus,
-.gs-area:focus {
+.h-textarea:focus {
   outline: none;
   border-color: var(--h-coral);
   box-shadow: 0 0 0 3px var(--h-coral-soft);
 }
 
 .h-input::placeholder,
-.h-textarea::placeholder,
-.gs-input::placeholder,
-.gs-area::placeholder {
+.h-textarea::placeholder {
   color: var(--h-muted-2);
 }
 
 .h-input.err,
-.gs-input.err,
-.h-textarea.err,
-.gs-area.err {
+.h-textarea.err {
   border-color: var(--h-coral);
 }
 
@@ -1604,155 +1593,13 @@ body.has-sticky-cta {
   display: block;
 }
 
-/* ---- get-started wizard ---- */
-.gs-wrap {
-  display: grid;
-  grid-template-columns: 1fr 340px;
-  gap: 2.5rem;
-  align-items: start;
-}
-
-@media (max-width: 960px) {
-  .gs-wrap {
-    grid-template-columns: 1fr;
-  }
-}
-
-.gs-step {
-  display: none;
-  animation: step-in 0.35s var(--h-ease) both;
-}
-
-.gs-step.active {
-  display: block;
-}
-
-@keyframes step-in {
-  from {
-    opacity: 0;
-    transform: translateX(16px);
-  }
-
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
+/* ---- shared form card + grid (apply, enquiries, booking) ---- */
 .wizard {
   background: var(--h-paper);
   border: 1px solid var(--h-line);
   border-radius: var(--h-radius);
   padding: clamp(1.5rem, 4vw, 2.5rem);
   box-shadow: var(--h-shadow);
-}
-
-.gs-progress {
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--h-muted-2);
-  margin-bottom: 0.8rem;
-}
-
-.gs-dots {
-  display: flex;
-  gap: 0.45rem;
-  margin-bottom: 1.2rem;
-}
-
-.gs-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--h-line-2);
-  transition: background 0.3s;
-}
-
-.gs-dot.on {
-  background: var(--h-coral);
-}
-
-.gs-title {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
-  font-size: clamp(1.3rem, 2.8vw, 1.8rem);
-  margin-bottom: 1.5rem;
-  line-height: 1.15;
-}
-
-.gs-paths {
-  display: grid;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
-}
-
-.gs-path {
-  display: flex;
-  align-items: center;
-  gap: 0.9rem;
-  width: 100%;
-  text-align: left;
-  padding: 1rem 1.2rem;
-  border: 1.5px solid var(--h-line);
-  border-radius: 12px;
-  background: var(--h-paper);
-  color: var(--h-navy);
-  font: inherit;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.25s var(--h-ease);
-}
-
-.gs-path:hover {
-  border-color: var(--h-coral);
-  background: var(--h-coral-soft);
-  transform: translateX(4px);
-}
-
-.gs-path.active {
-  border-color: var(--h-coral);
-  background: var(--h-coral-soft);
-}
-
-.gs-path .arr {
-  margin-left: auto;
-  color: var(--h-coral);
-  transition: transform 0.25s;
-}
-
-.gs-path:hover .arr {
-  transform: translateX(4px);
-}
-
-.gs-mark {
-  width: 18px;
-  height: 18px;
-  flex: none;
-  border: 2px solid var(--h-coral);
-}
-
-.mk-sq {
-  border-radius: 4px;
-}
-
-.mk-dia {
-  transform: rotate(45deg);
-  border-radius: 2px;
-}
-
-.mk-cir {
-  border-radius: 50%;
-}
-
-.mk-dash {
-  border: 0;
-  border-top: 3px solid var(--h-coral);
-  height: 0;
-  margin-top: 8px;
-  margin-bottom: 8px;
 }
 
 .gs-fields {
@@ -1826,59 +1673,7 @@ body.has-sticky-cta {
   background: #fff;
 }
 
-.gs-nav {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.gs-next,
-.gs-back,
-.gs-retry {
-  font-family: "Hanken Grotesk", system-ui, sans-serif;
-  font-weight: 700;
-  font-size: 0.92rem;
-  padding: 0.85rem 1.5rem;
-  border-radius: 8px;
-  border: 1.5px solid transparent;
-  cursor: pointer;
-  transition: all 0.25s var(--h-ease);
-}
-
-.gs-next {
-  background: var(--h-coral);
-  color: #fff;
-}
-
-.gs-next:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.gs-next:not(:disabled):hover {
-  background: var(--h-coral-2);
-  transform: translateY(-2px);
-}
-
-.gs-back,
-.gs-retry {
-  background: transparent;
-  color: var(--h-navy);
-  border-color: var(--h-line-2);
-}
-
-.gs-back:hover,
-.gs-retry:hover {
-  border-color: var(--h-navy);
-  background: rgba(11, 21, 38, 0.03);
-}
-
-.gs-done {
-  text-align: center;
-  padding: 1rem 0 0.5rem;
-}
-
+/* ---- booking confirmation + notes ---- */
 .gs-check {
   width: 52px;
   height: 52px;
@@ -1938,7 +1733,6 @@ body.has-sticky-cta {
   color: var(--h-muted-2);
   margin-top: 1rem;
 }
-
 /* ---- right-rail cards ---- */
 .h-rail-card {
   background: var(--h-paper);

@@ -18,6 +18,8 @@ import { listCadences } from "../queries/cadence";
 import { computeChapterHealth } from "../queries/health";
 import { renewalStage } from "@contracts/constants";
 import { tryLifecycleTransition } from "./lifecycle";
+import { sendScorecardFollowUp } from "./lead-mail";
+import { buildScorecardReport } from "../../src/lib/scorecard";
 
 const DAILY_MARKER = "scheduler:lastDaily";
 
@@ -337,6 +339,61 @@ async function jobDunning(now = new Date()): Promise<void> {
   if (nudged) console.log(`[scheduler] dunning: ${nudged} reminder(s) sent`);
 }
 
+/**
+ * Scorecard nurture — send a personalised follow-up to clarity-scorecard leads
+ * at day 3 and day 10. Only sends once per lead per stage.
+ */
+async function jobScorecardFollowUp(now = new Date()): Promise<void> {
+  const db = getDb();
+  const day3 = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+  const day10 = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000);
+  const leads = await db
+    .select()
+    .from(schema.leads)
+    .where(
+      and(
+        eq(schema.leads.form, "clarity-scorecard"),
+        isNotNull(schema.leads.email),
+        lte(schema.leads.createdAt, day3)
+      )
+    );
+  let sent = 0;
+  for (const l of leads) {
+    if (!l.email) continue;
+    const ageDays = Math.floor(
+      (now.getTime() - new Date(l.createdAt).getTime()) /
+        (24 * 60 * 60 * 1000)
+    );
+    const stage = ageDays >= 10 ? "follow_up_2" : "follow_up_1";
+    const markerKey = `scorecard-followup:${l.id}:${stage}`;
+    if (await getMarker(markerKey)) continue;
+    const payload = (() => {
+      try {
+        return JSON.parse(l.payload ?? "{}");
+      } catch {
+        return {};
+      }
+    })();
+    const report = buildScorecardReport(payload);
+    if (!report) continue;
+    const r = await sendScorecardFollowUp({
+      email: l.email,
+      name: typeof payload.name === "string" ? payload.name : null,
+      total: report.total,
+      recommendationProduct: report.recommendation.product,
+      recommendationWhy: report.recommendation.why,
+      stage,
+    });
+    if (r.ok) {
+      await setMarker(markerKey, now.toISOString());
+      sent++;
+    } else {
+      console.warn(`[scheduler] scorecard follow-up failed for lead ${l.id}:`, r.error);
+    }
+  }
+  if (sent) console.log(`[scheduler] scorecard follow-up: ${sent} email(s) sent`);
+}
+
 /** Run all daily jobs at most once per UTC day. */
 /**
  * Atomically claim today's daily pass for THIS process. A single conditional
@@ -379,6 +436,7 @@ export async function runDailyJobs(now = new Date()): Promise<boolean> {
   await safe("cadence-reminders", () => jobCadenceReminders(now));
   await safe("role-terms", () => jobRoleTerms(now));
   await safe("health-threshold", () => jobHealthThreshold());
+  await safe("scorecard-follow-up", () => jobScorecardFollowUp(now));
   await safe("kpi-snapshots", async () => {
     const { captureKpiSnapshots } = await import("../queries/kpi-snapshots");
     await captureKpiSnapshots(now);

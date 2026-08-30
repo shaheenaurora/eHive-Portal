@@ -205,7 +205,7 @@ export default function AdminOffers() {
                 className="eh-input"
                 value={edit.ctaUrl}
                 onChange={e => setEdit({ ...edit, ctaUrl: e.target.value })}
-                placeholder="/business-setup.html"
+                placeholder="/consulting.html"
               />
             </Field>
             <button

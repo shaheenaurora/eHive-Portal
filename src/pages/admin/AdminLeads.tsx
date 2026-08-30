@@ -58,7 +58,7 @@ export default function AdminLeads() {
       <PageHead
         eyebrow="Pipeline"
         title="Leads"
-        sub="Every website enquiry — Get Started, bookings, the calculator and the Clarity Scorecard — with a light CRM to work them."
+        sub="Every website enquiry — bookings, the Brand Check and the Clarity Scorecard — with a light CRM to work them."
       />
 
       <div className="eh-tabs">
@@ -491,9 +491,7 @@ function leadName(l: { payload: string | null }): string | null {
 const FORM_LABELS: Record<string, string> = {
   "clarity-scorecard": "Clarity Scorecard",
   "brand-check": "Brand Check",
-  "get-started": "Get Started",
   booking: "Booking",
-  "calculator-breakdown": "Setup calculator",
   newsletter: "Newsletter",
 };
 function formLabel(f: string): string {
@@ -603,23 +601,7 @@ function leadHighlight(l: LeadRow): ReactNode {
     return (
       [pick("company"), pick("industry")].filter(Boolean).join(" · ") || "—"
     );
-  if (l.form === "get-started")
-    return (
-      [
-        pick("door"),
-        pick("product_or_tier") ?? pick("detail"),
-        pick("question"),
-      ]
-        .filter(Boolean)
-        .join(" · ") || "—"
-    );
   if (l.form === "booking")
     return [pick("product"), pick("when")].filter(Boolean).join(" · ") || "—";
-  if (l.form === "calculator-breakdown") {
-    const e = d.estimate as Record<string, unknown> | undefined;
-    return e
-      ? `${e.jurisdiction ?? ""} · AED ${e.low ?? "?"}–${e.high ?? "?"}`.trim()
-      : "—";
-  }
   return pick("detail") ?? pick("question") ?? "—";
 }

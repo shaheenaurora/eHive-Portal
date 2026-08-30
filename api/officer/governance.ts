@@ -10,6 +10,8 @@ import { notify } from "../queries/circle";
 import {
   MEETING_AGENDA_TEMPLATES,
   seatToChapterRole,
+  CHAPTER_TERM_LIMIT_CONSECUTIVE,
+  CHAPTER_ROLE_LABEL,
 } from "@contracts/constants";
 import { requireOfficer, assertChapterOwner, assertRoles } from "./shared";
 
@@ -164,6 +166,22 @@ export const officerGovernanceRouter = createRouter({
           .update(schema.elections)
           .set({ status: "voting", opensAt: new Date() })
           .where(eq(schema.elections.id, e.id));
+        const chapterMembers = await db
+          .select({ id: schema.members.id })
+          .from(schema.members)
+          .where(
+            and(
+              eq(schema.members.homeChapterId, e.chapterId),
+              eq(schema.members.status, "active")
+            )
+          );
+        for (const m of chapterMembers) {
+          void notify(
+            m.id,
+            `Voting is now open for ${e.seat}. Cast your ballot before the election closes. 🗳️`,
+            "governance"
+          ).catch(() => {});
+        }
         return { ok: true };
       }
       if (input.status === "closed") {
@@ -172,7 +190,12 @@ export const officerGovernanceRouter = createRouter({
             await db
               .select({ n: sql<number>`count(*)` })
               .from(schema.members)
-              .where(eq(schema.members.homeChapterId, e.chapterId))
+              .where(
+                and(
+                  eq(schema.members.homeChapterId, e.chapterId),
+                  eq(schema.members.status, "active")
+                )
+              )
           ).at(0)?.n ?? 0;
         const turnout =
           (
@@ -239,43 +262,82 @@ export const officerGovernanceRouter = createRouter({
             };
         }
         let assigned = false;
+        let termLimited = false;
         if (winner) {
           const { role, title } = seatToChapterRole(e.seat);
-          await db
-            .update(schema.chapterRoles)
-            .set({ status: "ended", termEnd: new Date() })
-            .where(
-              and(
-                eq(schema.chapterRoles.chapterId, e.chapterId),
-                eq(schema.chapterRoles.role, role),
-                eq(schema.chapterRoles.status, "active")
-              )
-            );
-          await db.insert(schema.chapterRoles).values({
-            chapterId: e.chapterId,
-            memberId: winner.memberId,
-            role,
-            title,
-            electionId: e.id,
-            termStart: new Date(),
-            status: "active",
-            appointedBy: `Election #${e.id}`,
-          });
-          assigned = true;
-          try {
-            await notify(
-              winner.memberId,
-              `You've been elected ${e.seat} — congratulations. Your term starts now. 🗳️`,
-              "governance"
-            );
-          } catch {
-            /* non-fatal */
+          const priorTerms =
+            Number(
+              (
+                await db
+                  .select({ n: sql<number>`count(*)` })
+                  .from(schema.chapterRoles)
+                  .where(
+                    and(
+                      eq(schema.chapterRoles.chapterId, e.chapterId),
+                      eq(schema.chapterRoles.role, role),
+                      eq(schema.chapterRoles.memberId, winner.memberId)
+                    )
+                  )
+              ).at(0)?.n
+            ) || 0;
+          termLimited =
+            role !== "other" && priorTerms >= CHAPTER_TERM_LIMIT_CONSECUTIVE;
+          if (!termLimited) {
+            await db
+              .update(schema.chapterRoles)
+              .set({ status: "ended", termEnd: new Date() })
+              .where(
+                and(
+                  eq(schema.chapterRoles.chapterId, e.chapterId),
+                  eq(schema.chapterRoles.role, role),
+                  eq(schema.chapterRoles.status, "active")
+                )
+              );
+            await db.insert(schema.chapterRoles).values({
+              chapterId: e.chapterId,
+              memberId: winner.memberId,
+              role,
+              title,
+              electionId: e.id,
+              termStart: new Date(),
+              status: "active",
+              appointedBy: `Election #${e.id}`,
+            });
+            assigned = true;
+            try {
+              await notify(
+                winner.memberId,
+                `You've been elected ${e.seat} — congratulations. Your term starts now. 🗳️`,
+                "governance"
+              );
+            } catch {
+              /* non-fatal */
+            }
+            await audit(ctx.user, "officer.election.seat.filled", {
+              type: "member",
+              id: winner.memberId,
+              detail: `${e.seat} (${role}) @ chapter #${e.chapterId} · election #${e.id}`,
+            });
           }
-          await audit(ctx.user, "officer.election.seat.filled", {
-            type: "member",
-            id: winner.memberId,
-            detail: `${e.seat} (${role}) @ chapter #${e.chapterId} · election #${e.id}`,
-          });
+        }
+        const resultMsg = tied
+          ? `Election for ${e.seat} closed in a tie. The board will schedule a run-off.`
+          : termLimited
+            ? `Election for ${e.seat} closed, but the winner has reached the term limit — the board will decide the next step.`
+            : winner
+              ? `Election for ${e.seat} closed — ${winner.name} was elected.`
+              : `Election for ${e.seat} closed with no winner.`;
+        const chapterMembers = await db
+          .select({ id: schema.members.id })
+          .from(schema.members)
+          .where(
+            and(
+              eq(schema.members.homeChapterId, e.chapterId),
+              eq(schema.members.status, "active")
+            )
+          );
+        for (const m of chapterMembers) {
+          void notify(m.id, resultMsg, "governance").catch(() => {});
         }
         return {
           ok: true,
@@ -286,6 +348,8 @@ export const officerGovernanceRouter = createRouter({
           seat: e.seat,
           winner,
           assigned,
+          tied,
+          termLimited,
         };
       }
       await db
@@ -426,6 +490,24 @@ export const officerGovernanceRouter = createRouter({
         id: mo.id,
         detail: `${status} · yes ${yes} · no ${no}`,
       });
+      const voters = await db
+        .select({ memberId: schema.motionVotes.memberId })
+        .from(schema.motionVotes)
+        .where(eq(schema.motionVotes.motionId, mo.id));
+      const voterIds = new Set(voters.map(v => v.memberId));
+      const chapterMembers = await db
+        .select({ id: schema.members.id })
+        .from(schema.members)
+        .where(
+          and(
+            eq(schema.members.homeChapterId, chapterId),
+            eq(schema.members.status, "active")
+          )
+        );
+      const msg = `Motion "${mo.title}" has closed — ${status} (yes ${yes}, no ${no}).`;
+      for (const m of chapterMembers) {
+        void notify(m.id, msg, "governance").catch(() => {});
+      }
       return { ok: true, status, yes, no };
     }),
 

@@ -13,23 +13,11 @@ const FORM_META: Record<
     intro:
       "Thanks for subscribing to the eHive Journal. You'll be among the first to get our essays on building, scaling and running businesses in the UAE.",
   },
-  "get-started": {
-    label: "Get Started enquiry",
-    subject: "We've received your enquiry — eHive",
-    intro:
-      "Thanks for reaching out. We've received your enquiry and a member of the eHive team will get back to you within one working day.",
-  },
   booking: {
     label: "Session booking request",
     subject: "Your eHive session request",
     intro:
       "Thanks for booking time with eHive. We've received your request and will confirm the slot by email shortly — you'll get a calendar invite once it's locked in.",
-  },
-  "calculator-breakdown": {
-    label: "Business-setup estimate",
-    subject: "Your UAE business setup estimate — eHive",
-    intro:
-      "Thanks for using our business-setup calculator. Your estimate is summarised below — reply to this email and we'll help you turn it into a concrete plan.",
   },
   "clarity-scorecard": {
     label: "Clarity Scorecard",

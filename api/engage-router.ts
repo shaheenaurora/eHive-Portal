@@ -1421,6 +1421,14 @@ export const engageRouter = createRouter({
           code: "FORBIDDEN",
           message: "Not your home chapter",
         });
+      if (
+        member.status !== "active" ||
+        (member.dormancyStage ?? "active") !== "active"
+      )
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only Active members can vote",
+        });
       const cand = (
         await db
           .select()

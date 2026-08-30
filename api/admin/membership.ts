@@ -25,6 +25,7 @@ import { kycQueue, getKyc, reviewKyc } from "../queries/kyc";
 import { pipelineReport } from "../queries/reports";
 import { audit } from "../lib/audit";
 import { recordAnalyticsEvent } from "../queries/analytics";
+import { sendMail } from "../lib/mailer";
 import { tierRank, type MemberLifecycle, type Tier } from "@contracts/constants";
 import {
   TIER,
@@ -202,6 +203,36 @@ export const membershipRouter = createRouter({
         type: "application",
         id: input.id,
       });
+
+      if (input.status === "rejected" && app.email) {
+        const firstName = (app.name ?? "").split(" ")[0];
+        try {
+          await sendMail({
+            to: app.email,
+            subject: "An update on your eHive application",
+            html: `<div style="margin:0;padding:24px;background:#F3F1EA;font-family:'Hanken Grotesk',Arial,sans-serif">
+              <div style="max-width:520px;margin:0 auto;background:#FBFAF6;border:1px solid #D8D2C4;border-radius:6px;overflow:hidden">
+                <div style="background:#16264C;padding:18px 24px">
+                  <span style="color:#FBFAF6;font-family:Archivo,Arial,sans-serif;font-weight:800;font-size:19px;letter-spacing:-.01em">eHive</span>
+                  <span style="color:#DA3A22;font-weight:800">.</span>
+                </div>
+                <div style="padding:26px 24px;color:#141312">
+                  <p style="margin:0 0 14px;font-size:17px;color:#141312">Hi ${firstName || "there"},</p>
+                  <p style="margin:0 0 22px;font-size:16px;line-height:1.55;color:#141312">Thank you for your interest in eHive Circle. After careful review, we won't be able to offer you membership at this time.</p>
+                  ${input.note ? `<p style="margin:0 0 22px;font-size:16px;line-height:1.55;color:#141312"><strong>Note:</strong> ${input.note.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c])}</p>` : ""}
+                  <p style="margin:0 0 22px;font-size:16px;line-height:1.55;color:#141312">We genuinely appreciate the time you took to apply, and we welcome you to stay connected through our public events and insights.</p>
+                </div>
+                <div style="padding:16px 24px;border-top:1px solid #E4DECF;color:#8A8578;font-size:12px;line-height:1.5">
+                  eHive · Dubai, UAE · <a href="https://ehiveglobal.com" style="color:#DA3A22;text-decoration:none">ehiveglobal.com</a>
+                </div>
+              </div>
+            </div>`,
+          });
+        } catch {
+          /* email failure is non-fatal */
+        }
+      }
+
       return { ok: true };
     }),
 
