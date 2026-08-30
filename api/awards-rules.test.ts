@@ -91,7 +91,7 @@ describe("fairness window", () => {
     expect(isInFairnessWindow(win, new Date("2026-07-20T00:00:00Z"))).toBe(false);
   });
   it("returns the eligibility date 45 days after the win", () => {
-    const eligible = fairnessEligibilityDate(win, win);
+    const eligible = fairnessEligibilityDate(win);
     expect(eligible).toEqual(new Date("2026-07-16T00:00:00Z"));
   });
 });

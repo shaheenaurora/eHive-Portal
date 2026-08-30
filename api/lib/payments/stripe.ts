@@ -55,6 +55,7 @@ export class StripeProvider implements PaymentProvider {
         status: s.payment_status === "paid" ? "paid" : "failed",
         userId: s.metadata?.userId ? Number(s.metadata.userId) : undefined,
         tier: (s.metadata?.tier as Tier) || undefined,
+        amount: s.amount_total ?? undefined,
       };
     }
     if (

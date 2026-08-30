@@ -48,7 +48,7 @@ import { rateLimit } from "./lib/rate-limit";
 import { escapeHtml } from "./lib/html";
 import { integrationApp } from "./integrations";
 import { recordAnalyticsEvent } from "./queries/analytics";
-import { incrementRequests, incrementErrors, renderMetrics } from "./lib/metrics";
+import { incrementRequests, incrementErrors } from "./lib/metrics";
 import { buildScorecardReport } from "../src/lib/scorecard";
 import { getSchedulerStatus } from "./lib/scheduler";
 import { readdirSync, readFileSync } from "node:fs";
@@ -799,6 +799,17 @@ app.post("/api/payments/webhook", async c => {
           webhookTier: result.tier,
         });
         return c.json({ ok: false, error: "tier mismatch" }, 400);
+      }
+      // Defence-in-depth: the amount was fixed server-side at checkout, so a
+      // settled amount that disagrees with the stored record means tampering or
+      // a gateway misconfiguration — never activate on it.
+      if (result.amount != null && record.amount !== result.amount) {
+        logger.error("webhook: amount mismatch", {
+          providerRef: result.providerRef,
+          recordAmount: record.amount,
+          webhookAmount: result.amount,
+        });
+        return c.json({ ok: false, error: "amount mismatch" }, 400);
       }
       // Compare-and-swap: only the first concurrent webhook flips pending→paid.
       // The unique index on (provider, providerRef) is the backstop; this WHERE

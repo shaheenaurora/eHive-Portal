@@ -76,8 +76,7 @@ export function validateNomineeForCategory(
 /** The earliest date a member can be nominated again after a win, based on the
  *  fairness window. Returns null if there is no prior win date. */
 export function fairnessEligibilityDate(
-  lastWonAt: Date | string | null | undefined,
-  now: Date = new Date()
+  lastWonAt: Date | string | null | undefined
 ): Date | null {
   if (!lastWonAt) return null;
   const d = new Date(lastWonAt);
@@ -90,7 +89,7 @@ export function isInFairnessWindow(
   lastWonAt: Date | string | null | undefined,
   now: Date = new Date()
 ): boolean {
-  const eligible = fairnessEligibilityDate(lastWonAt, now);
+  const eligible = fairnessEligibilityDate(lastWonAt);
   if (!eligible) return false;
   return now.getTime() < eligible.getTime();
 }
