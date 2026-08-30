@@ -23,6 +23,8 @@ import {
   EVENT_CHECKIN_OPENS_BEFORE_MS,
   EVENT_CHECKIN_CLOSES_AFTER_MS,
   BUDDY_CHECKIN_DAYS,
+  seatToChapterRole,
+  CHAPTER_TERM_LIMIT_CONSECUTIVE,
 } from "@contracts/constants";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -1395,6 +1397,29 @@ export const engageRouter = createRouter({
           code: "FORBIDDEN",
           message: "Only Active members can stand for election",
         });
+      const { role } = seatToChapterRole(e.seat);
+      if (role !== "other") {
+        const priorTerms =
+          Number(
+            (
+              await db
+                .select({ n: sql<number>`count(*)` })
+                .from(schema.chapterRoles)
+                .where(
+                  and(
+                    eq(schema.chapterRoles.chapterId, e.chapterId),
+                    eq(schema.chapterRoles.role, role),
+                    eq(schema.chapterRoles.memberId, member.id)
+                  )
+                )
+            ).at(0)?.n
+          ) || 0;
+        if (priorTerms >= CHAPTER_TERM_LIMIT_CONSECUTIVE)
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: `You've already served the maximum consecutive terms allowed for ${e.seat}.`,
+          });
+      }
       const dup = await db
         .select()
         .from(schema.candidates)

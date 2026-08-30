@@ -9,7 +9,7 @@
  * pass so a container restart can't double-run it, and each job only acts on
  * rows that still need acting on.
  */
-import { and, eq, isNotNull, isNull, lte, ne } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, lte, ne, sql } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "../queries/connection";
 import { evaluateDormancy, notify } from "../queries/circle";
@@ -21,6 +21,14 @@ import { tryLifecycleTransition } from "./lifecycle";
 import { sendScorecardFollowUp } from "./lead-mail";
 import { buildScorecardReport } from "../../src/lib/scorecard";
 import { logger } from "./log";
+import {
+  evaluateFranchiseReadiness,
+  readinessScore,
+} from "./franchise-readiness";
+import { audit } from "./audit";
+
+/** System actor used for scheduler-driven audit rows. */
+const SYSTEM_ACTOR = { id: 0, email: "system@ehive.global" };
 
 const DAILY_MARKER = "scheduler:lastDaily";
 
@@ -308,6 +316,124 @@ async function jobHealthThreshold(): Promise<void> {
 }
 
 /**
+ * FR-02 — automatically promote provisional chapters that satisfy the franchise
+ * readiness checklist. Runs once per day; idempotent because the query only
+ * targets `provisional` chapters and the update changes their status.
+ */
+async function jobFranchiseReadiness(now = new Date()): Promise<void> {
+  const db = getDb();
+  const provisional = await db
+    .select()
+    .from(schema.chapters)
+    .where(eq(schema.chapters.status, "provisional"));
+  let promoted = 0;
+  for (const chapter of provisional) {
+    const [[memberRow], roles, budgetRows, cadenceRows] = await Promise.all([
+      db
+        .select({ n: sql<number>`count(*)` })
+        .from(schema.members)
+        .where(eq(schema.members.homeChapterId, chapter.id)),
+      db
+        .select({ role: schema.chapterRoles.role })
+        .from(schema.chapterRoles)
+        .where(
+          and(
+            eq(schema.chapterRoles.chapterId, chapter.id),
+            eq(schema.chapterRoles.status, "active")
+          )
+        ),
+      db
+        .select({ amount: schema.chapterBudgets.amount })
+        .from(schema.chapterBudgets)
+        .where(
+          and(
+            eq(schema.chapterBudgets.chapterId, chapter.id),
+            eq(schema.chapterBudgets.status, "approved"),
+            eq(schema.chapterBudgets.kind, "allocation")
+          )
+        ),
+      db
+        .select({ id: schema.cadences.id })
+        .from(schema.cadences)
+        .where(
+          and(
+            eq(schema.cadences.chapterId, chapter.id),
+            eq(schema.cadences.active, 1)
+          )
+        ),
+    ]);
+
+    const items = evaluateFranchiseReadiness({
+      status: chapter.status,
+      charterDate: chapter.charterDate,
+      zoneId: chapter.zoneId,
+      memberCount: Number(memberRow?.n ?? 0),
+      activeRoleKeys: roles.map(r => r.role),
+      approvedBudgetAed: budgetRows.reduce(
+        (sum, r) => sum + (r.amount ?? 0),
+        0
+      ),
+      activeCadenceCount: cadenceRows.length,
+    });
+    const score = readinessScore(items);
+    if (!score.ready) continue;
+
+    const charterDate = chapter.charterDate ?? now;
+    await db
+      .update(schema.chapters)
+      .set({ status: "chartered", charterDate })
+      .where(eq(schema.chapters.id, chapter.id));
+
+    await audit(SYSTEM_ACTOR, "chapter.charter.auto", {
+      type: "chapter",
+      id: chapter.id,
+      detail: `${chapter.name} → chartered (readiness ${score.percent}%)`,
+    });
+
+    // Notify country / national directors responsible for this chapter.
+    let countryId: number | null = null;
+    if (chapter.zoneId) {
+      const zone = (
+        await db
+          .select()
+          .from(schema.orgUnits)
+          .where(eq(schema.orgUnits.id, chapter.zoneId))
+          .limit(1)
+      ).at(0);
+      if (zone?.parentId) {
+        const region = (
+          await db
+            .select()
+            .from(schema.orgUnits)
+            .where(eq(schema.orgUnits.id, zone.parentId))
+            .limit(1)
+        ).at(0);
+        if (region?.parentId) countryId = region.parentId;
+      }
+    }
+    const directors = countryId
+      ? await db
+          .select({ memberId: schema.unitRoles.memberId })
+          .from(schema.unitRoles)
+          .where(
+            and(
+              eq(schema.unitRoles.level, "country"),
+              eq(schema.unitRoles.unitId, countryId),
+              sql`${schema.unitRoles.role} in ('country_director','national_director','National Director','Country Director')`
+            )
+          )
+      : [];
+    const msg = `${chapter.name} has met all franchise readiness requirements and been automatically granted a charter.`;
+    for (const d of directors) {
+      notify(d.memberId, msg, "governance").catch(() => {});
+    }
+    promoted++;
+  }
+  if (promoted)
+    logger.info(`scheduler franchise readiness: ${promoted} chapter(s) chartered`, { promoted });
+}
+
+/**
  * Dunning — nudge members with a still-pending membership payment. A payment
  * that's sat "pending" for 3+ days gets a reminder, then a follow-up every 7
  * days, up to 3 nudges total (a per-payment marker counts them) so we recover
@@ -458,6 +584,7 @@ export async function runDailyJobs(now = new Date()): Promise<boolean> {
   await safe("cadence-reminders", () => jobCadenceReminders(now));
   await safe("role-terms", () => jobRoleTerms(now));
   await safe("health-threshold", () => jobHealthThreshold());
+  await safe("franchise-readiness", () => jobFranchiseReadiness(now));
   await safe("scorecard-follow-up", () => jobScorecardFollowUp(now));
   await safe("kpi-snapshots", async () => {
     const { captureKpiSnapshots } = await import("../queries/kpi-snapshots");

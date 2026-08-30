@@ -27,11 +27,17 @@ describe("evaluateFranchiseReadiness", () => {
     });
   });
 
-  it("fails when the chapter is not chartered or mature", () => {
+  it("allows provisional chapters to qualify for charter", () => {
     const items = evaluateFranchiseReadiness({ ...base, status: "provisional" });
     const chartered = items.find(i => i.key === "chartered");
-    expect(chartered?.ok).toBe(false);
-    expect(chartered?.detail).toContain("provisional");
+    expect(chartered?.ok).toBe(true);
+  });
+
+  it("fails when the chapter is too early (seed) or distressed (at_risk)", () => {
+    const seed = evaluateFranchiseReadiness({ ...base, status: "seed" });
+    expect(seed.find(i => i.key === "chartered")?.ok).toBe(false);
+    const atRisk = evaluateFranchiseReadiness({ ...base, status: "at_risk" });
+    expect(atRisk.find(i => i.key === "chartered")?.ok).toBe(false);
   });
 
   it("fails when required officers are missing", () => {

@@ -55,13 +55,18 @@ export function evaluateFranchiseReadiness(
   return [
     {
       key: "chartered",
-      label: "Chartered or mature status",
-      ok: input.status === "chartered" || input.status === "mature",
+      label: "Eligible chapter status",
+      ok:
+        input.status === "provisional" ||
+        input.status === "chartered" ||
+        input.status === "mature",
       required: true,
       detail:
-        input.status === "chartered" || input.status === "mature"
+        input.status === "provisional" ||
+        input.status === "chartered" ||
+        input.status === "mature"
           ? `Status: ${input.status}`
-          : `Status: ${input.status} — must reach chartered before franchise launch`,
+          : `Status: ${input.status} — must reach provisional/chartered before franchise launch`,
     },
     {
       key: "charter_date",
