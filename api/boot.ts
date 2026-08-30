@@ -46,6 +46,7 @@ import { integrationApp } from "./integrations";
 import { recordAnalyticsEvent } from "./queries/analytics";
 import { incrementRequests, incrementErrors, renderMetrics } from "./lib/metrics";
 import { buildScorecardReport } from "../src/lib/scorecard";
+import { getSchedulerStatus } from "./lib/scheduler";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
@@ -1015,10 +1016,17 @@ app.get("/api/health", async c => {
     db = "down";
     logger.error("health check: DB ping failed", { error: err });
   }
+  const sched = getSchedulerStatus();
   return c.json({
     status: "ok",
     db,
     mail: mailProvider() ?? "not-configured",
+    scheduler: {
+      lastRunAt: sched.lastRunAt,
+      lastSuccessAt: sched.lastSuccessAt,
+      lastFailureAt: sched.lastFailureAt,
+      failures: sched.failures,
+    },
     timestamp: new Date().toISOString(),
   });
 });
@@ -1051,6 +1059,8 @@ app.get("/metrics", async c => {
     dbUp = 0;
   }
   const mem = process.memoryUsage();
+  const sched = getSchedulerStatus();
+  const ts = (d: string | null) => (d ? new Date(d).getTime() / 1000 : 0);
   const lines = [
     "# HELP ehive_up 1 if the process is serving.",
     "# TYPE ehive_up gauge",
@@ -1067,6 +1077,18 @@ app.get("/metrics", async c => {
     "# HELP ehive_process_heap_used_bytes V8 heap in use.",
     "# TYPE ehive_process_heap_used_bytes gauge",
     `ehive_process_heap_used_bytes ${mem.heapUsed}`,
+    "# HELP ehive_scheduler_last_run_seconds Unix timestamp of the last scheduler tick.",
+    "# TYPE ehive_scheduler_last_run_seconds gauge",
+    `ehive_scheduler_last_run_seconds ${ts(sched.lastRunAt)}`,
+    "# HELP ehive_scheduler_last_success_seconds Unix timestamp of the last successful daily pass.",
+    "# TYPE ehive_scheduler_last_success_seconds gauge",
+    `ehive_scheduler_last_success_seconds ${ts(sched.lastSuccessAt)}`,
+    "# HELP ehive_scheduler_last_failure_seconds Unix timestamp of the last scheduler failure.",
+    "# TYPE ehive_scheduler_last_failure_seconds gauge",
+    `ehive_scheduler_last_failure_seconds ${ts(sched.lastFailureAt)}`,
+    "# HELP ehive_scheduler_failures_total Total scheduler job failures since boot.",
+    "# TYPE ehive_scheduler_failures_total counter",
+    `ehive_scheduler_failures_total ${sched.failures}`,
   ];
   return c.text(lines.join("\n") + "\n", 200, {
     "content-type": "text/plain; version=0.0.4; charset=utf-8",

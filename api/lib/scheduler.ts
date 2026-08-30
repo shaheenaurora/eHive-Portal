@@ -24,6 +24,22 @@ import { logger } from "./log";
 
 const DAILY_MARKER = "scheduler:lastDaily";
 
+type SchedulerStatus = {
+  lastRunAt: string | null;
+  lastSuccessAt: string | null;
+  lastFailureAt: string | null;
+  failures: number;
+};
+const schedulerStatus: SchedulerStatus = {
+  lastRunAt: null,
+  lastSuccessAt: null,
+  lastFailureAt: null,
+  failures: 0,
+};
+export function getSchedulerStatus(): SchedulerStatus {
+  return { ...schedulerStatus };
+}
+
 /** UTC calendar day, e.g. "2026-07-29". */
 function todayKey(now = new Date()): string {
   return now.toISOString().slice(0, 10);
@@ -51,6 +67,8 @@ async function safe(name: string, fn: () => Promise<void>): Promise<void> {
   try {
     await fn();
   } catch (e) {
+    schedulerStatus.lastFailureAt = new Date().toISOString();
+    schedulerStatus.failures++;
     logger.error(`scheduler job "${name}" failed`, { job: name, error: String(e) });
   }
 }
@@ -430,6 +448,7 @@ async function claimDailyPass(today: string): Promise<boolean> {
 
 export async function runDailyJobs(now = new Date()): Promise<boolean> {
   const today = todayKey(now);
+  schedulerStatus.lastRunAt = now.toISOString();
   // Distributed guard: only the replica that atomically claims today runs.
   if (!(await claimDailyPass(today))) return false;
   await safe("dormancy", () => jobDormancy());
@@ -450,6 +469,7 @@ export async function runDailyJobs(now = new Date()): Promise<boolean> {
   });
   // The marker was already set to `today` by claimDailyPass (the claim IS the
   // guard), so there's nothing more to write here.
+  schedulerStatus.lastSuccessAt = new Date().toISOString();
   logger.info(`scheduler daily pass complete for ${today}`, { today });
   return true;
 }
@@ -463,9 +483,11 @@ export function startScheduler(): void {
   if (started) return;
   started = true;
   const tick = () => {
-    void runDailyJobs().catch(e =>
-      logger.error("scheduler tick failed", { error: String(e) })
-    );
+    void runDailyJobs().catch(e => {
+      schedulerStatus.lastFailureAt = new Date().toISOString();
+      schedulerStatus.failures++;
+      logger.error("scheduler tick failed", { error: String(e) });
+    });
   };
   // Give the server a moment to finish booting, then check hourly.
   bootTimer = setTimeout(tick, 30_000);
