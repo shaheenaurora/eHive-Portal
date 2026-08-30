@@ -6355,6 +6355,46 @@ a.art:hover {
   }
 }
 
+/* ---- by the numbers ---- */
+.eh-numbers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  margin-top: 1.75rem;
+}
+
+.eh-number-card {
+  text-align: center;
+  padding: 1.6rem 1rem;
+  background: var(--h-paper);
+  border: 1px solid var(--h-line);
+  border-radius: var(--h-radius);
+  box-shadow: var(--h-shadow);
+}
+
+.eh-number {
+  display: block;
+  font-family: "Archivo", system-ui, sans-serif;
+  font-size: clamp(2.2rem, 5vw, 3rem);
+  font-weight: 800;
+  line-height: 1;
+  color: var(--h-navy);
+}
+
+.eh-number-label {
+  display: block;
+  margin-top: 0.5rem;
+  color: var(--h-muted);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+@media (max-width: 480px) {
+  .eh-numbers-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .eh-section-v2.eh-full {
   /* Sections size to their content (with the generous base padding above)
      rather than forcing a full viewport each, which left large empty voids. */

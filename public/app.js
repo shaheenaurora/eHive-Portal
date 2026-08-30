@@ -2123,6 +2123,45 @@ function submitLead(payload, onOk, onErr) {
   });
 })();
 
+/* ===== Live public stats on the homepage ===== */
+(function () {
+  "use strict";
+  var stats = document.querySelectorAll("[data-stat]");
+  if (!stats.length) return;
+
+  function animate(el, value) {
+    var duration = 900;
+    var start = 0;
+    var startTime = null;
+    function step(t) {
+      if (!startTime) startTime = t;
+      var p = Math.min((t - startTime) / duration, 1);
+      el.textContent = Math.floor(p * value).toLocaleString("en-IN");
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  fetch("/api/public-stats")
+    .then(function (r) {
+      if (!r.ok) throw new Error("stats unavailable");
+      return r.json();
+    })
+    .then(function (data) {
+      stats.forEach(function (el) {
+        var key = el.getAttribute("data-stat");
+        var value = data && typeof data[key] === "number" ? data[key] : 0;
+        if (value > 0) animate(el, value);
+        else el.textContent = "0";
+      });
+    })
+    .catch(function () {
+      stats.forEach(function (el) {
+        el.textContent = "—";
+      });
+    });
+})();
+
 /* PWA: register the service worker so the site is installable from any page
    (Add to Home Screen / Install app). Harmless if sw.js is unavailable. */
 if ("serviceWorker" in navigator && location.protocol === "https:") {

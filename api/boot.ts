@@ -555,6 +555,30 @@ app.get("/api/newsletters", async c => {
   return c.json({ issues: rows });
 });
 
+/* Public network stats for the marketing site (live counts, no sensitive data). */
+app.get("/api/public-stats", async c => {
+  const db = getDb();
+  const [[chapters], [members], [countries]] = await Promise.all([
+    db
+      .select({ n: sql<number>`count(*)` })
+      .from(schema.chapters)
+      .where(sql`${schema.chapters.status} != 'seed'`),
+    db
+      .select({ n: sql<number>`count(*)` })
+      .from(schema.members)
+      .where(eq(schema.members.status, "active")),
+    db
+      .select({ n: sql<number>`count(*)` })
+      .from(schema.orgUnits)
+      .where(eq(schema.orgUnits.level, "country")),
+  ]);
+  return c.json({
+    chapters: Number(chapters?.n ?? 0),
+    members: Number(members?.n ?? 0),
+    countries: Number(countries?.n ?? 0),
+  });
+});
+
 /* Public booking API — real availability check + appointment storage. */
 
 /** Return available slots for a product across a date range (inclusive).
