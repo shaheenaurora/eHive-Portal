@@ -124,9 +124,13 @@ a {
   text-transform: uppercase;
   color: var(--h-coral);
   margin-bottom: 1rem;
-  display: flex;
+  /* inline-flex (not flex) so the eyebrow honours its section's text-align:
+     it centres inside centred sections (e.g. .h-cta-banner) and stays left
+     in left-aligned ones, instead of always hugging the left edge. */
+  display: inline-flex;
   align-items: center;
   gap: 0.8rem;
+  vertical-align: middle;
 }
 
 .h-eyebrow::before {
@@ -6768,6 +6772,15 @@ a.art:hover {
 @media (max-width: 600px) {
   .eh-hiw-v2 .eh-steps {
     grid-template-columns: 1fr;
+  }
+}
+
+/* The "Build. Belong. Become." pillars reuse the how-it-works grid but have
+   only three items, so the 4-column track left an empty column and pushed the
+   pillars off-centre under their centred heading. Give them three columns. */
+@media (min-width: 981px) {
+  .eh-hiw-v2 .eh-steps-3 {
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
