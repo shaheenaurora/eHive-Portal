@@ -24,7 +24,7 @@
       href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="home.css?v=11" />
+    <link rel="stylesheet" href="home.css?v=12" />
     <link rel="stylesheet" href="apps.min.css?v=6" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#f8f6f0" />
@@ -181,6 +181,110 @@
         </div>
       </section>
 
+      <!-- ================= FRANCHISE ENQUIRY ================= -->
+      <section class="h-section alt" id="enquire" aria-labelledby="enq-h">
+        <div class="h-wrap">
+          <p class="h-eyebrow reveal">Enquire</p>
+          <h2 class="h-h2 reveal" style="--d: 0.08s" id="enq-h">
+            Bring eHive to your city.
+          </h2>
+          <p class="h-lede reveal" style="--d: 0.12s">
+            Tell us about you and your market. We&rsquo;re selective about who
+            leads a chapter, and every enquiry is read personally.
+          </p>
+          <div class="eh-enquiry reveal" style="--d: 0.16s">
+            <form id="enquiryForm" data-form="franchise-enquiry" novalidate>
+              <div class="gs-fields">
+                <label class="gs-label" for="enqName"
+                  >Your name
+                  <input
+                    class="gs-input"
+                    id="enqName"
+                    name="name"
+                    required
+                    autocomplete="name"
+                    placeholder="Full name"
+                /></label>
+                <label class="gs-label" for="enqEmail"
+                  >Email
+                  <input
+                    class="gs-input"
+                    id="enqEmail"
+                    name="email"
+                    type="email"
+                    required
+                    autocomplete="email"
+                    placeholder="you@company.com"
+                /></label>
+                <label class="gs-label" for="enqMarket"
+                  >City / market
+                  <input
+                    class="gs-input"
+                    id="enqMarket"
+                    name="market"
+                    required
+                    placeholder="e.g. Riyadh, Bengaluru, London"
+                /></label>
+                <label class="gs-label" for="enqPhone"
+                  >Phone <span class="gs-opt">(optional)</span>
+                  <input
+                    class="gs-input"
+                    id="enqPhone"
+                    name="phone"
+                    autocomplete="tel"
+                    placeholder="+971…"
+                /></label>
+                <label class="gs-label full" for="enqMsg"
+                  >Your background — why you, why here?
+                  <textarea
+                    class="gs-input"
+                    id="enqMsg"
+                    name="background"
+                    placeholder="What you do today, your standing in the market, and why eHive."
+                  ></textarea
+                ></label>
+              </div>
+              <input
+                type="text"
+                name="company_website"
+                tabindex="-1"
+                autocomplete="off"
+                aria-hidden="true"
+                style="
+                  position: absolute;
+                  left: -9999px;
+                  width: 1px;
+                  height: 1px;
+                  opacity: 0;
+                "
+              />
+              <div class="gs-actions">
+                <button class="h-btn h-btn-primary" type="submit">
+                  Send enquiry <span class="h-arr">→</span>
+                </button>
+                <span class="gs-alt"
+                  >Prefer email?
+                  <a href="mailto:hello@ehiveglobal.com"
+                    >hello@ehiveglobal.com</a
+                  ></span
+                >
+              </div>
+              <p class="gs-err" id="enquiryErr">
+                We couldn&rsquo;t send that just now — please try again, or email
+                <a href="mailto:hello@ehiveglobal.com">hello@ehiveglobal.com</a>.
+              </p>
+            </form>
+            <div class="gs-ok" id="enquiryOk" style="display: none">
+              <p class="gs-ok-title">Thank you — your enquiry is in.</p>
+              <p style="margin: 0">
+                We&rsquo;ll review your market and background and be in touch. A
+                copy is on its way to your inbox.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- ================= FINAL CTA ================= -->
       <section class="h-section h-cta-banner" aria-labelledby="cta-h">
         <div class="h-wrap">
@@ -191,7 +295,7 @@
             Tell us about your market and we&rsquo;ll start a conversation.
           </p>
           <div class="doors reveal" style="--d: 0.18s">
-            <a class="h-btn h-btn-primary" href="contact.html"
+            <a class="h-btn h-btn-primary" href="#enquire"
               >Enquire about franchising <span class="h-arr">→</span></a
             >
             <a class="h-btn h-btn-ghost h-btn-light" href="clarity-scorecard.html"
@@ -273,5 +377,84 @@
 
     <script src="app.min.js?v=7" defer></script>
     <script src="apps.min.js?v=7" defer></script>
+    <script>
+      /* Website enquiry form → /api/lead (partner / franchise / contact).
+         Self-contained so it works regardless of the main bundle. */
+      (function () {
+        var form = document.getElementById("enquiryForm");
+        if (!form) return;
+        function show() {
+          var ok = document.getElementById("enquiryOk");
+          form.style.display = "none";
+          if (ok) {
+            ok.style.display = "block";
+            ok.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }
+        form.addEventListener("submit", function (e) {
+          e.preventDefault();
+          var hp = form.querySelector('input[name="company_website"]');
+          if (hp && hp.value.trim()) {
+            show();
+            return;
+          }
+          var em = form.querySelector('input[name="email"]');
+          var email = em ? em.value.trim() : "";
+          var at = email.indexOf("@");
+          if (!email || at < 1 || email.lastIndexOf(".") < at) {
+            if (em) {
+              em.focus();
+              em.classList.add("err");
+            }
+            return;
+          }
+          var btn = form.querySelector('button[type="submit"]');
+          var err = document.getElementById("enquiryErr");
+          if (err) err.style.display = "none";
+          if (btn) {
+            btn.disabled = true;
+            btn.dataset.t = btn.textContent;
+            btn.textContent = "Sending…";
+          }
+          var payload = {
+            form: form.getAttribute("data-form"),
+            source_page: location.pathname.split("/").pop() || "index.html",
+            timestamp: new Date().toISOString(),
+            user_agent: navigator.userAgent,
+          };
+          Array.prototype.forEach.call(form.elements, function (el) {
+            if (
+              el.name &&
+              el.name !== "company_website" &&
+              el.type !== "submit" &&
+              el.value
+            )
+              payload[el.name] = String(el.value).slice(0, 4000);
+          });
+          fetch("/api/lead", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify(payload),
+          })
+            .then(function (r) {
+              if (!r.ok) throw new Error("http");
+              return r.json();
+            })
+            .then(function () {
+              show();
+            })
+            .catch(function () {
+              if (btn) {
+                btn.disabled = false;
+                btn.textContent = btn.dataset.t || "Send enquiry";
+              }
+              if (err) err.style.display = "block";
+            });
+        });
+      })();
+    </script>
   </body>
 </html>

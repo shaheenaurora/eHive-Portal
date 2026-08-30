@@ -214,6 +214,40 @@ export default function AdminApplications() {
                   </td>
                   <td className="eh-sm eh-muted" data-label="Applied">
                     {fmtDate(a.createdAt)}
+                    {(() => {
+                      const open =
+                        a.status === "received" ||
+                        a.status === "screening" ||
+                        a.status === "interview";
+                      if (!open) return null;
+                      const days = Math.floor(
+                        (Date.now() - new Date(a.createdAt).getTime()) /
+                          86_400_000
+                      );
+                      // "Reply within five working days" ≈ 7 calendar days.
+                      if (days >= 7)
+                        return (
+                          <div style={{ marginTop: ".2rem" }}>
+                            <span
+                              style={{
+                                background: "#b23a32",
+                                color: "#fff",
+                                borderRadius: 20,
+                                padding: "1px 8px",
+                                fontSize: ".72rem",
+                                fontWeight: 600,
+                              }}
+                            >
+                              {days}d · overdue
+                            </span>
+                          </div>
+                        );
+                      return (
+                        <div className="eh-sm" style={{ marginTop: ".15rem" }}>
+                          {days === 0 ? "today" : `${days}d in queue`}
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td data-label="">
                     <span className="eh-btn ghost sm">Review →</span>
