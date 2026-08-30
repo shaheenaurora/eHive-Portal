@@ -1,6 +1,7 @@
 import nodemailer, { type Transporter } from "nodemailer";
 import { env } from "./env";
 import { maskEmail } from "./audit";
+import { logger } from "./log";
 
 /** Which transport (if any) is active. ZeptoMail's HTTPS API takes priority —
  *  it works where hosts block outbound SMTP ports. */
@@ -106,14 +107,11 @@ async function sendViaZepto(
   if (res.ok) return { ok: true };
   // Log the raw response (with recipient masked) so production logs capture
   // the full ZeptoMail rejection reason even if parsing fails.
-  console.warn(
-    "[mail] ZeptoMail rejected send to",
-    maskEmail(input.to),
-    "— status:",
-    res.status,
-    "body:",
-    bodyText.slice(0, 1000)
-  );
+  logger.warn("[mail] ZeptoMail rejected send", {
+    to: maskEmail(input.to),
+    status: res.status,
+    body: bodyText.slice(0, 1000),
+  });
   let detail = `${res.status} ${res.statusText}`;
   try {
     const j = JSON.parse(bodyText) as {
@@ -170,12 +168,10 @@ export async function sendMailDetailed(
   input: MailInput
 ): Promise<{ ok: boolean; error?: string }> {
   if (!mailEnabled()) {
-    console.warn(
-      "[mail] skipped (email not configured):",
-      input.subject,
-      "->",
-      maskEmail(input.to)
-    );
+    logger.warn("[mail] skipped (email not configured)", {
+      subject: input.subject,
+      to: maskEmail(input.to),
+    });
     return { ok: false, error: "Email is not configured." };
   }
   return deliver(input);
@@ -185,7 +181,7 @@ export async function sendMailDetailed(
  *  hiccup can't break the request that triggered it. */
 export async function sendMail(input: MailInput): Promise<boolean> {
   const r = await sendMailDetailed(input);
-  if (!r.ok) console.error("[mail] send failed:", r.error);
+  if (!r.ok) logger.error("[mail] send failed", { error: r.error });
   return r.ok;
 }
 

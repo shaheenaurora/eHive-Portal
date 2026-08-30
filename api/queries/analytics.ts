@@ -1,6 +1,7 @@
 import { eq, gte, lte, sql, and, desc } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "./connection";
+import { logger } from "../lib/log";
 
 export type AnalyticsEventName =
   | "lead_submitted"
@@ -43,7 +44,7 @@ export async function recordAnalyticsEvent(
     });
   } catch (e) {
     // Analytics must never break the user-facing action.
-    console.error("analytics event failed", event, e);
+    logger.error("analytics event failed", { event, error: e });
   }
 }
 

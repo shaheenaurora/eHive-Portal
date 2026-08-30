@@ -4,6 +4,7 @@ import type { Tier } from "@contracts/constants";
 import { getDb } from "./connection";
 import { pushToMember } from "../lib/push";
 import { applyLifecycleTransition } from "../lib/lifecycle";
+import { logger } from "../lib/log";
 
 /** The member record for a user, or null when they only have an application. */
 export async function getMemberByUserId(userId: number) {
@@ -303,7 +304,7 @@ export async function activateMembership(
   try {
     await autoPairBuddy(memberId);
   } catch (e) {
-    console.error("buddy auto-pair failed", e);
+    logger.error("buddy auto-pair failed", { error: e });
   }
   return memberId;
 }

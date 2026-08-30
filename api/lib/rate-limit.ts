@@ -6,6 +6,7 @@ import { eq, sql } from "drizzle-orm";
 import { getDb } from "../queries/connection";
 import * as schema from "@db/schema";
 import { env } from "./env";
+import { logger } from "./log";
 
 type Bucket = { count: number; resetAt: number };
 const memoryStore = new Map<string, Bucket>();
@@ -51,7 +52,7 @@ export async function rateLimit(
       .limit(1);
     return (rows[0]?.count ?? 0) <= max;
   } catch (err) {
-    console.error("rate limit db error", err);
+    logger.error("rate limit db error", { error: err });
     if (env.isProduction) return false;
     return memoryRateLimit(key, max, windowMs);
   }
@@ -65,7 +66,7 @@ export async function rateLimitReset(key: string): Promise<void> {
       .delete(schema.rateLimits)
       .where(eq(schema.rateLimits.key, key));
   } catch (err) {
-    console.error("rate limit reset db error", err);
+    logger.error("rate limit reset db error", { error: err });
   }
 }
 

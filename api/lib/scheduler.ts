@@ -20,6 +20,7 @@ import { renewalStage } from "@contracts/constants";
 import { tryLifecycleTransition } from "./lifecycle";
 import { sendScorecardFollowUp } from "./lead-mail";
 import { buildScorecardReport } from "../../src/lib/scorecard";
+import { logger } from "./log";
 
 const DAILY_MARKER = "scheduler:lastDaily";
 
@@ -50,7 +51,7 @@ async function safe(name: string, fn: () => Promise<void>): Promise<void> {
   try {
     await fn();
   } catch (e) {
-    console.error(`[scheduler] job "${name}" failed:`, e);
+    logger.error(`scheduler job "${name}" failed`, { job: name, error: String(e) });
   }
 }
 
@@ -60,9 +61,10 @@ async function safe(name: string, fn: () => Promise<void>): Promise<void> {
 async function jobDormancy(): Promise<void> {
   const { evaluated, transitions } = await evaluateDormancy();
   if (transitions)
-    console.log(
-      `[scheduler] dormancy: ${transitions} transition(s) across ${evaluated} members`
-    );
+    logger.info(`scheduler dormancy: ${transitions} transition(s) across ${evaluated} members`, {
+      transitions,
+      evaluated,
+    });
 }
 
 /**
@@ -95,7 +97,7 @@ async function jobRenewal(now = new Date()): Promise<void> {
         );
         opened++;
       } else {
-        console.log(`[scheduler] renewal window skipped: ${r.reason}`);
+        logger.info(`scheduler renewal window skipped: ${r.reason}`, { memberId: m.id, reason: r.reason });
       }
     } else if (stage === "lapse" && (lc === "renewal" || lc === "active")) {
       const r = await tryLifecycleTransition(m.id, "lapsed", {
@@ -110,14 +112,15 @@ async function jobRenewal(now = new Date()): Promise<void> {
         );
         lapsed++;
       } else {
-        console.log(`[scheduler] lapse skipped: ${r.reason}`);
+        logger.info(`scheduler lapse skipped: ${r.reason}`, { memberId: m.id, reason: r.reason });
       }
     }
   }
   if (opened || lapsed)
-    console.log(
-      `[scheduler] renewal: ${opened} window(s) opened, ${lapsed} lapsed`
-    );
+    logger.info(`scheduler renewal: ${opened} window(s) opened, ${lapsed} lapsed`, {
+      opened,
+      lapsed,
+    });
 }
 
 /**
@@ -159,7 +162,7 @@ async function jobOnboardingSlip(): Promise<void> {
     flagged++;
   }
   if (flagged)
-    console.log(`[scheduler] onboarding-slip: ${flagged} member(s) nudged`);
+    logger.info(`scheduler onboarding-slip: ${flagged} member(s) nudged`, { flagged });
 }
 
 /**
@@ -201,7 +204,7 @@ async function jobCadenceReminders(now = new Date()): Promise<void> {
     }
   }
   if (sent)
-    console.log(`[scheduler] cadence reminders: ${sent} cadence(s) nudged`);
+    logger.info(`scheduler cadence reminders: ${sent} cadence(s) nudged`, { sent });
 }
 
 /**
@@ -234,7 +237,7 @@ async function jobRoleTerms(now = new Date()): Promise<void> {
     );
     ended++;
   }
-  if (ended) console.log(`[scheduler] role terms: ${ended} ended`);
+  if (ended) logger.info(`scheduler role terms: ${ended} ended`, { ended });
 }
 
 /**
@@ -283,7 +286,7 @@ async function jobHealthThreshold(): Promise<void> {
     await setMarker(markerKey, state);
   }
   if (alerted)
-    console.log(`[scheduler] health threshold: ${alerted} chapter(s) alerted`);
+    logger.info(`scheduler health threshold: ${alerted} chapter(s) alerted`, { alerted });
 }
 
 /**
@@ -336,7 +339,7 @@ async function jobDunning(now = new Date()): Promise<void> {
     await setMarker(markerKey, `${count + 1}|${now.toISOString()}`);
     nudged++;
   }
-  if (nudged) console.log(`[scheduler] dunning: ${nudged} reminder(s) sent`);
+  if (nudged) logger.info(`scheduler dunning: ${nudged} reminder(s) sent`, { nudged });
 }
 
 /**
@@ -388,10 +391,10 @@ async function jobScorecardFollowUp(now = new Date()): Promise<void> {
       await setMarker(markerKey, now.toISOString());
       sent++;
     } else {
-      console.warn(`[scheduler] scorecard follow-up failed for lead ${l.id}:`, r.error);
+      logger.warn(`scheduler scorecard follow-up failed for lead ${l.id}`, { leadId: l.id, error: r.error });
     }
   }
-  if (sent) console.log(`[scheduler] scorecard follow-up: ${sent} email(s) sent`);
+  if (sent) logger.info(`scheduler scorecard follow-up: ${sent} email(s) sent`, { sent });
 }
 
 /** Run all daily jobs at most once per UTC day. */
@@ -447,7 +450,7 @@ export async function runDailyJobs(now = new Date()): Promise<boolean> {
   });
   // The marker was already set to `today` by claimDailyPass (the claim IS the
   // guard), so there's nothing more to write here.
-  console.log(`[scheduler] daily pass complete for ${today}`);
+  logger.info(`scheduler daily pass complete for ${today}`, { today });
   return true;
 }
 
@@ -461,13 +464,13 @@ export function startScheduler(): void {
   started = true;
   const tick = () => {
     void runDailyJobs().catch(e =>
-      console.error("[scheduler] tick failed:", e)
+      logger.error("scheduler tick failed", { error: String(e) })
     );
   };
   // Give the server a moment to finish booting, then check hourly.
   bootTimer = setTimeout(tick, 30_000);
   tickTimer = setInterval(tick, 60 * 60 * 1000);
-  console.log("[scheduler] started (hourly tick, daily pass)");
+  logger.info("scheduler started (hourly tick, daily pass)");
 }
 
 /** Stop the scheduler's timers so the process can exit cleanly on shutdown. */

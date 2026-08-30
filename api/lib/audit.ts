@@ -1,5 +1,6 @@
 import * as schema from "@db/schema";
 import { getDb } from "../queries/connection";
+import { logger } from "./log";
 import type { User } from "@db/schema";
 
 /** Mask an email address for logs/audit trails so a leaked log doesn't expose
@@ -32,6 +33,6 @@ export async function audit(
         detail: target?.detail ?? null,
       });
   } catch (e) {
-    console.error("audit write failed", e);
+    logger.error("audit write failed", { error: e });
   }
 }

@@ -37,6 +37,7 @@ import {
   unsealTotpSecret,
 } from "./lib/totp";
 import { mailEnabled } from "./lib/mailer";
+import { logger } from "./lib/log";
 import type { User } from "@db/schema";
 
 /** Server-only fields that must never be serialized to the client. */
@@ -74,7 +75,7 @@ async function issueVerification(userId: number, email: string, name: string) {
       `${env.publicUrl}/verify-email?token=${raw}`
     );
   } catch (e) {
-    console.error("verification email failed", e);
+    logger.error("verification email failed", { error: e });
   }
 }
 
@@ -287,7 +288,7 @@ export const authRouter = createRouter({
               `${env.publicUrl}/reset-password?token=${raw}`
             );
           } catch (e) {
-            console.error("reset email failed", e);
+            logger.error("reset email failed", { error: e });
           }
         }
       }
@@ -323,7 +324,7 @@ export const authRouter = createRouter({
             name: user.name,
           });
         } catch (e) {
-          console.error("password-changed email failed", e);
+          logger.error("password-changed email failed", { error: e });
         }
       }
       return { ok: true };
@@ -377,7 +378,7 @@ export const authRouter = createRouter({
           name: user.name,
         });
       } catch (e) {
-        console.error("password-changed email failed", e);
+        logger.error("password-changed email failed", { error: e });
       }
       return { ok: true };
     }),

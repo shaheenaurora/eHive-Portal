@@ -26,6 +26,7 @@ import { pipelineReport } from "../queries/reports";
 import { audit } from "../lib/audit";
 import { recordAnalyticsEvent } from "../queries/analytics";
 import { sendMail } from "../lib/mailer";
+import { logger } from "../lib/log";
 import { tierRank, type MemberLifecycle, type Tier } from "@contracts/constants";
 import {
   TIER,
@@ -185,7 +186,7 @@ export const membershipRouter = createRouter({
           try {
             await autoPairBuddy(memberId);
           } catch (e) {
-            console.error("buddy auto-pair failed", e);
+            logger.error("buddy auto-pair failed", { error: e });
           }
           await audit(ctx.user, "application.approve", {
             type: "application",

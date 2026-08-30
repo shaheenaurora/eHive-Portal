@@ -1,4 +1,4 @@
-import { installLogScrubber } from "./lib/log";
+import { installLogScrubber, logger } from "./lib/log";
 installLogScrubber();
 
 import { Hono } from "hono";
@@ -69,7 +69,7 @@ function loadInlineScriptHashes(): string[] {
       }
     }
   } catch (err) {
-    console.warn("[csp] could not compute inline script hashes:", err);
+    logger.warn("[csp] could not compute inline script hashes", { error: err });
   }
   return Array.from(hashes);
 }
@@ -196,16 +196,12 @@ app.use(async (c, next) => {
 app.onError((err, c) => {
   incrementErrors();
   if (env.isProduction) {
-    console.error(
-      JSON.stringify({
-        level: "error",
-        method: c.req.method,
-        path: c.req.path,
-        message: err.message,
-        stack: err.stack,
-        timestamp: new Date().toISOString(),
-      })
-    );
+    logger.error("request error", {
+      method: c.req.method,
+      path: c.req.path,
+      message: err.message,
+      stack: err.stack,
+    });
   }
   return c.json({ error: "Internal server error" }, 500);
 });
@@ -327,7 +323,7 @@ app.post("/api/lead", async c => {
       });
       leadId = ids.leadId;
     } catch (err) {
-      console.error("lead/scorecard transaction failed", err);
+      logger.error("lead/scorecard transaction failed", { error: err });
       return c.json({ ok: false, error: "storage failed" }, 500);
     }
   } else {
@@ -344,7 +340,7 @@ app.post("/api/lead", async c => {
         (leadRes as unknown as [{ insertId: number }])[0].insertId
       );
     } catch (err) {
-      console.error("lead insert failed", err);
+      logger.error("lead insert failed", { error: err });
       return c.json({ ok: false, error: "storage failed" }, 500);
     }
   }
@@ -376,7 +372,7 @@ app.post("/api/lead", async c => {
         })
         .where(eq(schema.scorecardResults.leadId, leadId));
     } catch (err) {
-      console.error("scorecard emailedAt update failed", err);
+      logger.error("scorecard emailedAt update failed", { error: err });
     }
   }
 
@@ -664,7 +660,7 @@ app.post("/api/bookings", async c => {
       return Number((apptRes as unknown as [{ insertId: number }])[0].insertId);
     });
   } catch (err) {
-    console.error("booking transaction failed", err);
+    logger.error("booking transaction failed", { error: err });
     return c.json({ ok: false, error: "Unable to save your booking." }, 500);
   }
 
@@ -706,7 +702,7 @@ app.post("/api/payments/webhook", async c => {
   try {
     result = await getPaymentProvider().handleWebhook(raw, signature);
   } catch (err) {
-    console.error("webhook verification failed", err);
+    logger.error("webhook verification failed", { error: err });
     return c.json({ ok: false, error: "invalid signature" }, 400);
   }
   if (!result) return c.json({ ok: true, ignored: true });
@@ -723,10 +719,9 @@ app.post("/api/payments/webhook", async c => {
 
     if (result.status === "paid") {
       if (!record) {
-        console.error(
-          "webhook: no matching payment record for",
-          result.providerRef
-        );
+        logger.error("webhook: no matching payment record", {
+          providerRef: result.providerRef,
+        });
         return c.json({ ok: false, error: "payment record not found" }, 400);
       }
       if (record.status === "paid")
@@ -735,21 +730,19 @@ app.post("/api/payments/webhook", async c => {
       // Reject if the gateway metadata disagrees, so a tampered session can't
       // activate the wrong membership.
       if (result.userId != null && record.userId !== result.userId) {
-        console.error(
-          "webhook: userId mismatch",
-          result.providerRef,
-          record.userId,
-          result.userId
-        );
+        logger.error("webhook: userId mismatch", {
+          providerRef: result.providerRef,
+          recordUserId: record.userId,
+          webhookUserId: result.userId,
+        });
         return c.json({ ok: false, error: "user mismatch" }, 400);
       }
       if (result.tier != null && record.tier !== result.tier) {
-        console.error(
-          "webhook: tier mismatch",
-          result.providerRef,
-          record.tier,
-          result.tier
-        );
+        logger.error("webhook: tier mismatch", {
+          providerRef: result.providerRef,
+          recordTier: record.tier,
+          webhookTier: result.tier,
+        });
         return c.json({ ok: false, error: "tier mismatch" }, 400);
       }
       // Compare-and-swap: only the first concurrent webhook flips pending→paid.
@@ -855,7 +848,7 @@ app.post("/api/payments/webhook", async c => {
       }
     }
   } catch (err) {
-    console.error("webhook handling failed", err);
+    logger.error("webhook handling failed", { error: err });
     return c.json({ ok: false, error: "processing failed" }, 500);
   }
   return c.json({ ok: true });
@@ -897,7 +890,7 @@ app.get("/api/admin/invoice-html", async c => {
     if (err instanceof Error && err.message.includes("not found")) {
       return c.json({ error: "Invoice not found." }, 404);
     }
-    console.error("invoice-html render failed", err);
+    logger.error("invoice-html render failed", { error: err });
     return c.json({ error: "Unable to render invoice." }, 500);
   }
 });
@@ -962,7 +955,7 @@ app.get("/api/admin/invoice-pdf", async c => {
     if (err instanceof Error && err.message.includes("not found")) {
       return c.json({ error: "Invoice not found." }, 404);
     }
-    console.error("invoice-pdf render failed", err);
+    logger.error("invoice-pdf render failed", { error: err });
     return c.json({ error: "Unable to render invoice PDF." }, 500);
   }
 });
@@ -1003,7 +996,7 @@ app.get("/api/admin/credit-note-pdf", async c => {
     if (err instanceof Error && err.message.includes("not found")) {
       return c.json({ error: "Credit note not found." }, 404);
     }
-    console.error("credit-note-pdf render failed", err);
+    logger.error("credit-note-pdf render failed", { error: err });
     return c.json({ error: "Unable to render credit note PDF." }, 500);
   }
 });
@@ -1020,7 +1013,7 @@ app.get("/api/health", async c => {
     await getDb().execute(sql`select 1`);
   } catch (err) {
     db = "down";
-    console.error("health check: DB ping failed", err);
+    logger.error("health check: DB ping failed", { error: err });
   }
   return c.json({
     status: "ok",
@@ -1157,9 +1150,9 @@ if (env.isProduction) {
   try {
     const { seedInsights } = await import("./queries/seed-insights");
     const n = await seedInsights();
-    if (n) console.log(`[seed] published ${n} insight article(s)`);
+    if (n) logger.info(`[seed] published ${n} insight article(s)`);
   } catch (e) {
-    console.error("[seedInsights] skipped:", e);
+    logger.error("[seedInsights] skipped", { error: e });
   }
 
   const { serve } = await import("@hono/node-server");
@@ -1225,7 +1218,7 @@ if (env.isProduction) {
   const port = parseInt(process.env.PORT || "3000");
   // Bind 0.0.0.0 so container platforms (Railway, Render, Fly) can route to it.
   const server = serve({ fetch: app.fetch, port, hostname: "0.0.0.0" }, () => {
-    console.log(`Server running on http://0.0.0.0:${port}/`);
+    logger.info(`Server running on http://0.0.0.0:${port}/`);
   });
 
   // Timed operations (M8): at-risk detection, renewal windows, … run in-process.
@@ -1235,7 +1228,7 @@ if (env.isProduction) {
     scheduler.startScheduler();
     stopScheduler = scheduler.stopScheduler;
   } catch (e) {
-    console.error("[scheduler] failed to start:", e);
+    logger.error("[scheduler] failed to start", { error: e });
   }
 
   // Graceful shutdown: on a platform restart/deploy (SIGTERM) or Ctrl-C
@@ -1246,9 +1239,9 @@ if (env.isProduction) {
   const shutdown = (signal: string) => {
     if (shuttingDown) return;
     shuttingDown = true;
-    console.log(`[shutdown] ${signal} received; draining…`);
+    logger.info(`[shutdown] ${signal} received; draining…`);
     const hardExit = setTimeout(() => {
-      console.error("[shutdown] drain timed out; forcing exit");
+      logger.error("[shutdown] drain timed out; forcing exit");
       process.exit(1);
     }, 10_000);
     hardExit.unref();
@@ -1258,10 +1251,10 @@ if (env.isProduction) {
         const { closePool } = await import("./queries/connection");
         await closePool();
       } catch (e) {
-        console.error("[shutdown] error closing DB pool:", e);
+        logger.error("[shutdown] error closing DB pool", { error: e });
       }
       clearTimeout(hardExit);
-      console.log("[shutdown] complete");
+      logger.info("[shutdown] complete");
       process.exit(0);
     });
   };

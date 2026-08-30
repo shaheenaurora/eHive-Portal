@@ -22,6 +22,7 @@ import {
 } from "./invoicing";
 import { sendInvoiceReady } from "../lib/lead-mail";
 import { applyLifecycleTransition } from "../lib/lifecycle";
+import { logger } from "../lib/log";
 import { paymentsEnabled, getPaymentProvider } from "../lib/payments";
 import {
   TIER_PRICE_AED,
@@ -621,7 +622,7 @@ export async function refundPayment(
           reason: `Payment #${id} refunded: ${reason}`,
         });
       } catch (e) {
-        console.error("refund lifecycle transition failed", e);
+        logger.error("refund lifecycle transition failed", { error: e });
       }
     }
   }

@@ -28,6 +28,7 @@ import { env } from "../lib/env";
 import { createAuthToken } from "../lib/tokens";
 import { sendVerifyEmail } from "../lib/auth-mail";
 import { incrementTokenVersion } from "./users";
+import { logger } from "../lib/log";
 
 export {
   type Actor,
@@ -199,7 +200,7 @@ async function writeProfile(
       );
     } catch (e) {
       // Non-fatal: the email change is persisted; verification can be resent.
-      console.error("failed to send re-verification email", e);
+      logger.error("failed to send re-verification email", { error: e });
     }
   }
 }

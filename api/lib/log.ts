@@ -32,6 +32,44 @@ export function scrub(arg: unknown): unknown {
   return arg;
 }
 
+type LogLevel = "debug" | "info" | "warn" | "error";
+
+/** Build a structured log entry. In production we emit a single JSON line so
+ *  log aggregators can index level, service, correlation id and message without
+ *  parsing free-form text. In development we pretty-print for readability. */
+function write(level: LogLevel, message: string, meta?: Record<string, unknown>) {
+  const entry = {
+    time: new Date().toISOString(),
+    level,
+    service: "ehive-portal",
+    msg: redact(message),
+    ...meta,
+  };
+  const isDev = process.env.NODE_ENV !== "production";
+  if (isDev) {
+    const color =
+      level === "error" ? "\x1b[31m"
+      : level === "warn" ? "\x1b[33m"
+      : level === "debug" ? "\x1b[90m"
+      : "\x1b[36m";
+    const extra = meta && Object.keys(meta).length ? JSON.stringify(meta, null, 2) : "";
+    // eslint-disable-next-line no-console
+    console.log(`${color}[${level.toUpperCase()}]\x1b[0m ${entry.msg}${extra ? " " + extra : ""}`);
+  } else {
+    // eslint-disable-next-line no-console
+    console.log(JSON.stringify(entry));
+  }
+}
+
+/** Structured logger with PII redaction. Use this in preference to raw
+ *  console.* so logs are consistent and searchable in production. */
+export const logger = {
+  debug: (msg: string, meta?: Record<string, unknown>) => write("debug", msg, meta),
+  info: (msg: string, meta?: Record<string, unknown>) => write("info", msg, meta),
+  warn: (msg: string, meta?: Record<string, unknown>) => write("warn", msg, meta),
+  error: (msg: string, meta?: Record<string, unknown>) => write("error", msg, meta),
+};
+
 /** Install PII-redacting wrappers around the global console methods.
  *  Call once at process startup, before other modules emit logs. */
 export function installLogScrubber(): void {

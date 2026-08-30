@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "../queries/connection";
 import * as schema from "@db/schema";
 import { env } from "./env";
+import { logger } from "./log";
 
 let ready: { publicKey: string; privateKey: string } | null = null;
 
@@ -84,6 +85,6 @@ export async function pushToMember(
       })
     );
   } catch (e) {
-    console.error("pushToMember failed", e);
+    logger.error("pushToMember failed", { error: e });
   }
 }

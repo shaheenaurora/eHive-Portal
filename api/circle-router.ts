@@ -44,6 +44,7 @@ import {
 import { getKyc, submitKyc } from "./queries/kyc";
 import { KYC_ID_TYPE_KEYS } from "@contracts/constants";
 import { hasOpenDataRequest } from "./lib/pdpl";
+import { logger } from "./lib/log";
 
 async function requireMember(userId: number) {
   const member = await getMemberByUserId(userId);
@@ -400,7 +401,7 @@ export const circleRouter = createRouter({
           revenue: input.revenue,
         },
         sourcePage: "portal/apply",
-      }).catch(err => console.error("application confirmation email failed:", err));
+      }).catch(err => logger.error("application confirmation email failed", { error: err }));
       return { ok: true };
     }),
 
@@ -919,10 +920,9 @@ export const circleRouter = createRouter({
           );
         }
       } catch (err) {
-        console.error(
-          "Failed to notify destination officers of transfer:",
-          err
-        );
+        logger.error("Failed to notify destination officers of transfer", {
+          error: err,
+        });
       }
       return { ok: true };
     }),
