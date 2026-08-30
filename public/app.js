@@ -2025,8 +2025,34 @@ function submitLead(payload, onOk, onErr) {
     document.removeEventListener("keydown", onKey);
     if (lastFocus && lastFocus.focus) lastFocus.focus();
   }
+  function focusables() {
+    return overlay
+      ? Array.prototype.slice.call(
+          overlay.querySelectorAll(
+            "button, a[href], input, textarea, select, [tabindex]:not([tabindex='-1'])"
+          )
+        ).filter(function (el) {
+          return !el.disabled && el.offsetParent !== null;
+        })
+      : [];
+  }
   function onKey(e) {
-    if (e.key === "Escape") close();
+    if (e.key === "Escape") {
+      close();
+      return;
+    }
+    if (e.key !== "Tab" || !overlay) return;
+    var links = focusables();
+    if (!links.length) return;
+    var first = links[0],
+      last = links[links.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
   }
   function open() {
     if (overlay) return;
@@ -2049,13 +2075,15 @@ function submitLead(payload, onOk, onErr) {
       "</div></div>";
     document.body.appendChild(overlay);
     document.body.style.overflow = "hidden";
-    overlay.querySelector(".exit-close").addEventListener("click", close);
+    var closeBtn = overlay.querySelector(".exit-close");
+    closeBtn.addEventListener("click", close);
     overlay.addEventListener("click", function (e) {
       if (e.target === overlay) close();
     });
     document.addEventListener("keydown", onKey);
     requestAnimationFrame(function () {
       overlay.classList.add("on");
+      closeBtn.focus();
     });
   }
   document.addEventListener("mouseout", function (e) {
