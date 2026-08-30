@@ -47,6 +47,11 @@ import {
   type ReportExpense,
   type FinanceReport,
 } from "../lib/finance-calc";
+import {
+  buildChapterPnl,
+  fiscalYearRange,
+  type ChapterPnl,
+} from "../lib/chapter-pnl";
 
 type Actor = { id: number; email: string };
 
@@ -235,6 +240,147 @@ export async function financeReportCsvString(
     filename: `ehive-finance-report-${stamp}.csv`,
     csv: financeReportCsv(report),
   };
+}
+
+/** Build a profit-and-loss statement for a single chapter and fiscal year. */
+export async function chapterPnl(
+  chapterId: number,
+  year?: number
+): Promise<ChapterPnl> {
+  const db = getDb();
+  const targetYear = year ?? new Date().getUTCFullYear();
+  const { from, to } = fiscalYearRange(targetYear);
+
+  const chapter = (
+    await db
+      .select({ id: schema.chapters.id, name: schema.chapters.name })
+      .from(schema.chapters)
+      .where(eq(schema.chapters.id, chapterId))
+      .limit(1)
+  ).at(0);
+  if (!chapter) throw new TRPCError({ code: "NOT_FOUND" });
+
+  const [allocationsBefore, expensesBefore, rawPayments, rawExpenses, rates] =
+    await Promise.all([
+      db
+        .select({ amount: schema.chapterBudgets.amount })
+        .from(schema.chapterBudgets)
+        .where(
+          and(
+            eq(schema.chapterBudgets.chapterId, chapterId),
+            eq(schema.chapterBudgets.status, "approved"),
+            eq(schema.chapterBudgets.kind, "allocation"),
+            lte(schema.chapterBudgets.createdAt, from)
+          )
+        ),
+      db
+        .select({ amount: schema.chapterBudgets.amount })
+        .from(schema.chapterBudgets)
+        .where(
+          and(
+            eq(schema.chapterBudgets.chapterId, chapterId),
+            inArray(schema.chapterBudgets.status, ["approved", "spent"]),
+            eq(schema.chapterBudgets.kind, "spend"),
+            lte(schema.chapterBudgets.createdAt, from)
+          )
+        ),
+      db
+        .select({
+          id: schema.paymentRecords.id,
+          paidAt: schema.paymentRecords.paidAt,
+          createdAt: schema.paymentRecords.createdAt,
+          payerName: schema.users.name,
+          payerEmail: schema.users.email,
+          tier: schema.paymentRecords.tier,
+          amount: schema.paymentRecords.amount,
+          currency: schema.paymentRecords.currency,
+          status: schema.paymentRecords.status,
+          refundedAmount: schema.paymentRecords.refundedAmount,
+        })
+        .from(schema.paymentRecords)
+        .leftJoin(schema.users, eq(schema.users.id, schema.paymentRecords.userId))
+        .leftJoin(
+          schema.members,
+          eq(schema.members.userId, schema.paymentRecords.userId)
+        )
+        .where(
+          and(
+            eq(schema.members.homeChapterId, chapterId),
+            inArray(schema.paymentRecords.status, [
+              "paid",
+              "partially_refunded",
+              "refunded",
+            ]),
+            gte(sql`coalesce(${schema.paymentRecords.paidAt}, ${schema.paymentRecords.createdAt})`, from),
+            lte(sql`coalesce(${schema.paymentRecords.paidAt}, ${schema.paymentRecords.createdAt})`, to)
+          )
+        )
+        .orderBy(desc(schema.paymentRecords.createdAt)),
+      db
+        .select({
+          id: schema.chapterBudgets.id,
+          createdAt: schema.chapterBudgets.createdAt,
+          label: schema.chapterBudgets.label,
+          category: schema.chapterBudgets.category,
+          amount: schema.chapterBudgets.amount,
+          status: schema.chapterBudgets.status,
+        })
+        .from(schema.chapterBudgets)
+        .where(
+          and(
+            eq(schema.chapterBudgets.chapterId, chapterId),
+            eq(schema.chapterBudgets.kind, "spend"),
+            inArray(schema.chapterBudgets.status, ["approved", "spent"]),
+            gte(schema.chapterBudgets.createdAt, from),
+            lte(schema.chapterBudgets.createdAt, to)
+          )
+        )
+        .orderBy(desc(schema.chapterBudgets.createdAt)),
+      ratesMap(),
+    ]);
+
+  const openingBalanceAed =
+    allocationsBefore.reduce((s, r) => s + (r.amount ?? 0), 0) -
+    expensesBefore.reduce((s, r) => s + (r.amount ?? 0), 0);
+
+  const payments = rawPayments.map(p => {
+    const rate = rates.get((p.currency ?? BASE_CURRENCY).toLowerCase());
+    const grossMinor =
+      rate == null || rate === FX_RATE_SCALE
+        ? p.amount
+        : convertToBaseMinor(p.amount, rate);
+    const refundMinor =
+      rate == null || rate === FX_RATE_SCALE
+        ? (p.refundedAmount ?? 0)
+        : convertToBaseMinor(p.refundedAmount ?? 0, rate);
+    return {
+      id: p.id,
+      date: new Date(p.paidAt ?? p.createdAt),
+      payerName: p.payerName,
+      payerEmail: p.payerEmail,
+      tier: p.tier,
+      amountAed: Math.round((grossMinor - refundMinor) / 100),
+      status: p.status,
+    };
+  });
+
+  const expenses = rawExpenses.map(e => ({
+    id: e.id,
+    date: new Date(e.createdAt),
+    label: e.label,
+    category: e.category,
+    amountAed: e.amount,
+    status: e.status,
+  }));
+
+  return buildChapterPnl(
+    chapter.id,
+    chapter.name,
+    targetYear,
+    openingBalanceAed,
+    payments,
+    expenses
+  );
 }
 
 export type PaymentRow = {

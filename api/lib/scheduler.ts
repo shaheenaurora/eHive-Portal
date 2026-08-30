@@ -25,6 +25,7 @@ import {
   evaluateFranchiseReadiness,
   readinessScore,
 } from "./franchise-readiness";
+import { carryForwardBudgets } from "./budget-carry-forward";
 import { audit } from "./audit";
 
 /** System actor used for scheduler-driven audit rows. */
@@ -434,6 +435,26 @@ async function jobFranchiseReadiness(now = new Date()): Promise<void> {
 }
 
 /**
+ * BRD 6.7 — carry forward unspent chapter budget allocations at the start of
+ * each calendar year. Guarded by a per-year marker so the pass only runs once.
+ */
+async function jobBudgetCarryForward(now = new Date()): Promise<void> {
+  const year = now.getUTCFullYear();
+  const markerKey = `budget-carry-forward:${year}`;
+  const already = await getMarker(markerKey);
+  if (already) return;
+
+  const result = await carryForwardBudgets(now);
+  await setMarker(markerKey, "done");
+  if (result.carried || result.skipped) {
+    logger.info(`scheduler budget carry-forward FY${year}: ${result.carried} carried, ${result.skipped} already done`, {
+      year,
+      ...result,
+    });
+  }
+}
+
+/**
  * Dunning — nudge members with a still-pending membership payment. A payment
  * that's sat "pending" for 3+ days gets a reminder, then a follow-up every 7
  * days, up to 3 nudges total (a per-payment marker counts them) so we recover
@@ -493,6 +514,7 @@ async function jobDunning(now = new Date()): Promise<void> {
 async function jobScorecardFollowUp(now = new Date()): Promise<void> {
   const db = getDb();
   const day3 = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+  const day10 = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000);
   const leads = await db
     .select()
     .from(schema.leads)
@@ -593,6 +615,7 @@ export async function runDailyJobs(now = new Date()): Promise<boolean> {
     const { evaluateKpiAlerts } = await import("../queries/kpi-alerts");
     await evaluateKpiAlerts();
   });
+  await safe("budget-carry-forward", () => jobBudgetCarryForward(now));
   // The marker was already set to `today` by claimDailyPass (the claim IS the
   // guard), so there's nothing more to write here.
   schedulerStatus.lastSuccessAt = new Date().toISOString();

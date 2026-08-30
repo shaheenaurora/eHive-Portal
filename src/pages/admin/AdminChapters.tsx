@@ -131,6 +131,11 @@ export default function AdminChapters() {
     { chapterId: readinessChapterId! },
     { retry: false, enabled: readinessChapterId !== null }
   );
+  const [pnlYear, setPnlYear] = useState<number>(new Date().getUTCFullYear());
+  const pnlQ = trpc.admin.chapterPnl.useQuery(
+    { chapterId: sel!, year: pnlYear },
+    { retry: false, enabled: sel !== null }
+  );
 
   function refresh() {
     utils.adminEngage.chaptersAdmin.invalidate();
@@ -1083,6 +1088,26 @@ export default function AdminChapters() {
             </p>
           </div>
 
+          {/* P&L — franchise-grade chapter money view */}
+          <div className="eh-between" style={{ margin: "1.25rem 0 .75rem" }}>
+            <h2 className="eh-h2" style={{ margin: 0 }}>
+              P&L · FY{pnlYear}
+            </h2>
+            <select
+              className="eh-select sm"
+              value={pnlYear}
+              onChange={e => setPnlYear(Number(e.target.value))}
+              aria-label="Fiscal year"
+            >
+              {Array.from({ length: 7 }, (_, i) => new Date().getUTCFullYear() - 3 + i).map(y => (
+                <option key={y} value={y}>
+                  FY{y}
+                </option>
+              ))}
+            </select>
+          </div>
+          <PnlPanel query={pnlQ} />
+
           {/* meetings (M3) */}
           <div className="eh-between" style={{ margin: "1.25rem 0 .75rem" }}>
             <h2 className="eh-h2" style={{ margin: 0 }}>
@@ -1381,6 +1406,112 @@ function FranchiseReadinessPanel({
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function moneyAed(n: number): string {
+  return "AED " + n.toLocaleString("en-AE", { maximumFractionDigits: 0 });
+}
+
+function PnlPanel({
+  query,
+}: {
+  query: {
+    data?: {
+      chapterId: number;
+      chapterName: string;
+      year: number;
+      openingBalanceAed: number;
+      revenue: {
+        totalAed: number;
+        byTier: { tier: string; amountAed: number; count: number }[];
+        rows: { id: number; date: Date; payerName: string | null; tier: string | null; amountAed: number; status: string }[];
+      };
+      expenses: {
+        totalAed: number;
+        byCategory: { category: string; amountAed: number }[];
+        rows: { id: number; date: Date; label: string; category: string | null; amountAed: number; status: string }[];
+      };
+      netIncomeAed: number;
+      closingBalanceAed: number;
+    };
+    isLoading: boolean;
+    isError: boolean;
+    refetch: () => void;
+  };
+}) {
+  if (query.isLoading) return <Spinner />;
+  if (query.isError)
+    return (
+      <div className="eh-card">
+        <LoadError onRetry={() => query.refetch()} />
+      </div>
+    );
+  const d = query.data;
+  if (!d) return null;
+
+  return (
+    <div className="eh-card" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <div className="eh-grid g4" style={{ gap: ".75rem" }}>
+        <ChMetric k="Opening balance" v={moneyAed(d.openingBalanceAed)} />
+        <ChMetric k="Revenue" v={moneyAed(d.revenue.totalAed)} accent="#2e7d5b" />
+        <ChMetric k="Expenses" v={moneyAed(d.expenses.totalAed)} accent="#b23a2e" />
+        <ChMetric
+          k="Net income"
+          v={moneyAed(d.netIncomeAed)}
+          accent={d.netIncomeAed >= 0 ? "#2e7d5b" : "#b23a2e"}
+        />
+      </div>
+      <div className="eh-row" style={{ justifyContent: "space-between", alignItems: "center", gap: ".5rem", flexWrap: "wrap" }}>
+        <b className="eh-sm">Closing balance</b>
+        <span className="eh-num" style={{ fontSize: "1.3rem", fontWeight: 800 }}>
+          {moneyAed(d.closingBalanceAed)}
+        </span>
+      </div>
+
+      {(d.revenue.byTier.length > 0 || d.expenses.byCategory.length > 0) && (
+        <div className="eh-grid g2" style={{ gap: ".75rem", alignItems: "start" }}>
+          {d.revenue.byTier.length > 0 && (
+            <div>
+              <div className="eh-eyebrow" style={{ marginBottom: ".4rem" }}>
+                Revenue by tier
+              </div>
+              <div className="eh-list compact">
+                {d.revenue.byTier.map(t => (
+                  <div className="row" key={t.tier}>
+                    <span className="t">{t.tier}</span>
+                    <span className="eh-num">{moneyAed(t.amountAed)}</span>
+                    <span className="eh-muted eh-sm">{t.count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {d.expenses.byCategory.length > 0 && (
+            <div>
+              <div className="eh-eyebrow" style={{ marginBottom: ".4rem" }}>
+                Expenses by category
+              </div>
+              <div className="eh-list compact">
+                {d.expenses.byCategory.map(c => (
+                  <div className="row" key={c.category}>
+                    <span className="t">{c.category}</span>
+                    <span className="eh-num">{moneyAed(c.amountAed)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {d.revenue.rows.length === 0 && d.expenses.rows.length === 0 && (
+        <Empty
+          big="No P&L activity"
+          p={`No settled revenue or approved expenses recorded for FY${d.year}.`}
+        />
+      )}
     </div>
   );
 }

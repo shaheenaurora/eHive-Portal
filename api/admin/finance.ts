@@ -20,6 +20,7 @@ import {
   expenseReceipt,
   chapterIdsForUnit,
   memberChapterForUser,
+  chapterPnl,
 } from "../queries/finance";
 import {
   listInvoices,
@@ -277,6 +278,21 @@ export const financeRouter = createRouter({
         parseReportRange(input),
         buildReportFilters(input, scope)
       );
+    }),
+
+  chapterPnl: scopedAdmin("finance")
+    .input(
+      z.object({
+        chapterId: z.number().int().positive(),
+        year: z.number().int().min(2020).optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const scope = await resolveFinanceScope(ctx.user);
+      if (!scope.isFull && !scope.chapterIds.includes(input.chapterId)) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      return chapterPnl(input.chapterId, input.year);
     }),
 
   payments: scopedAdmin("finance")
