@@ -29,6 +29,7 @@ const Governance = lazy(() => import("./pages/portal/Governance"));
 const Library = lazy(() => import("./pages/portal/Library"));
 const Offers = lazy(() => import("./pages/portal/Offers"));
 const Membership = lazy(() => import("./pages/portal/Membership"));
+const Awards = lazy(() => import("./pages/portal/Awards"));
 const Documents = lazy(() => import("./pages/portal/Documents"));
 const Certificate = lazy(() => import("./pages/portal/Certificate"));
 
@@ -97,6 +98,7 @@ export default function App() {
           <Route path="/portal/library" element={<Library />} />
           <Route path="/portal/offers" element={<Offers />} />
           <Route path="/portal/membership" element={<Membership />} />
+          <Route path="/portal/awards" element={<Awards />} />
           <Route path="/portal/documents" element={<Documents />} />
           <Route path="/portal/certificate/:kind" element={<Certificate />} />
           <Route

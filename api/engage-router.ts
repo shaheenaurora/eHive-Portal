@@ -70,8 +70,11 @@ export const engageRouter = createRouter({
         nomineeInUnit,
         nomineeAlreadyNominated,
       } = await import("./queries/awards");
-      const { nominationWindowState, validateNomineeForCategory } =
-        await import("@contracts/awards");
+      const {
+        nominationWindowState,
+        validateNomineeForCategory,
+        isInFairnessWindow,
+      } = await import("@contracts/awards");
       const open = await openCycle();
       if (!open || open.id !== input.cycleId)
         throw new TRPCError({
@@ -114,6 +117,29 @@ export const engageRouter = createRouter({
           code: "BAD_REQUEST",
           message: "That nominee isn't part of this award's chapter or region.",
         });
+      // Fairness window: a member who won any award within the last window
+      // cannot be nominated again, so recognition rotates.
+      if (input.nomineeMemberId) {
+        const lastWin = (
+          await getDb()
+            .select({ ratifiedAt: schema.awardNominations.ratifiedAt })
+            .from(schema.awardNominations)
+            .where(
+              and(
+                eq(schema.awardNominations.nomineeMemberId, input.nomineeMemberId),
+                eq(schema.awardNominations.status, "winner")
+              )
+            )
+            .orderBy(desc(schema.awardNominations.ratifiedAt))
+            .limit(1)
+        ).at(0);
+        if (isInFairnessWindow(lastWin?.ratifiedAt))
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message:
+              "This member won an award recently and is still in the fairness cooling-off window.",
+          });
+      }
       if (await alreadyNominated(input.cycleId, input.category, me.id))
         throw new TRPCError({
           code: "CONFLICT",

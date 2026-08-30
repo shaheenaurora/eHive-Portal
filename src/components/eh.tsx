@@ -870,6 +870,7 @@ export const MEMBER_NAV: NavGroup[] = [
       { to: "/portal/frp", label: "Fundraising", icon: "↗" },
       { to: "/portal/library", label: "Library", icon: "▤" },
       { to: "/portal/offers", label: "Member Offers", icon: "◇" },
+      { to: "/portal/awards", label: "Awards", icon: "★" },
     ],
   },
   {

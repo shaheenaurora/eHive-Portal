@@ -3,6 +3,8 @@ import {
   awardCategoryByKey,
   nominationWindowState,
   validateNomineeForCategory,
+  fairnessEligibilityDate,
+  isInFairnessWindow,
 } from "@contracts/awards";
 
 describe("awardCategoryByKey", () => {
@@ -73,5 +75,23 @@ describe("validateNomineeForCategory", () => {
     expect(
       validateNomineeForCategory("chapter_of_year", { nomineeChapterId: 2 }).ok
     ).toBe(true);
+  });
+});
+
+describe("fairness window", () => {
+  const win = new Date("2026-06-01T00:00:00Z");
+  it("returns null eligibility date when there is no prior win", () => {
+    expect(fairnessEligibilityDate(null)).toBeNull();
+    expect(fairnessEligibilityDate(undefined)).toBeNull();
+  });
+  it("blocks nomination within the 45-day window", () => {
+    expect(isInFairnessWindow(win, new Date("2026-06-15T00:00:00Z"))).toBe(true);
+  });
+  it("allows nomination after the window expires", () => {
+    expect(isInFairnessWindow(win, new Date("2026-07-20T00:00:00Z"))).toBe(false);
+  });
+  it("returns the eligibility date 45 days after the win", () => {
+    const eligible = fairnessEligibilityDate(win, win);
+    expect(eligible).toEqual(new Date("2026-07-16T00:00:00Z"));
   });
 });

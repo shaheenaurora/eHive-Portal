@@ -3,7 +3,7 @@
  * the client (form validation). No DB or environment access, so they're cheap to
  * unit-test.
  */
-import { AWARD_CATEGORIES } from "./constants";
+import { AWARD_CATEGORIES, AWARD_FAIRNESS_WINDOW_DAYS } from "./constants";
 
 export type AwardSubject = "member" | "chapter";
 
@@ -71,4 +71,26 @@ export function validateNomineeForCategory(
       error: `${category.label} recognises a chapter — choose a chapter.`,
     };
   return { ok: true };
+}
+
+/** The earliest date a member can be nominated again after a win, based on the
+ *  fairness window. Returns null if there is no prior win date. */
+export function fairnessEligibilityDate(
+  lastWonAt: Date | string | null | undefined,
+  now: Date = new Date()
+): Date | null {
+  if (!lastWonAt) return null;
+  const d = new Date(lastWonAt);
+  d.setDate(d.getDate() + AWARD_FAIRNESS_WINDOW_DAYS);
+  return d;
+}
+
+/** Whether a member is currently inside the fairness cooling-off window. */
+export function isInFairnessWindow(
+  lastWonAt: Date | string | null | undefined,
+  now: Date = new Date()
+): boolean {
+  const eligible = fairnessEligibilityDate(lastWonAt, now);
+  if (!eligible) return false;
+  return now.getTime() < eligible.getTime();
 }
