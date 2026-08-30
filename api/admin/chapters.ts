@@ -10,6 +10,8 @@ import {
   evaluateFranchiseReadiness,
   readinessScore,
 } from "../lib/franchise-readiness";
+import { notify } from "../queries/circle";
+import { audit } from "../lib/audit";
 
 export const chaptersRouter = createRouter({
   govAdmin: scopedAdmin("chapters").query(async () => {
@@ -146,6 +148,8 @@ export const chaptersRouter = createRouter({
       const chapter = (
         await db
           .select({
+            id: schema.chapters.id,
+            name: schema.chapters.name,
             status: schema.chapters.status,
             charterDate: schema.chapters.charterDate,
             zoneId: schema.chapters.zoneId,
@@ -204,6 +208,143 @@ export const chaptersRouter = createRouter({
         activeCadenceCount: cadenceRows.length,
       });
 
-      return { chapterId: input.chapterId, items, score: readinessScore(items) };
+      return {
+        chapterId: input.chapterId,
+        name: chapter.name,
+        status: chapter.status,
+        items,
+        score: readinessScore(items),
+      };
+    }),
+
+  /* Grant charter to a provisional chapter once it passes the franchise
+     readiness checklist. Sets charter date, promotes status, and notifies the
+     country / national directors who oversee the chapter. */
+  grantCharter: scopedAdmin("chapters")
+    .input(z.object({ chapterId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = getDb();
+      const chapter = (
+        await db
+          .select()
+          .from(schema.chapters)
+          .where(eq(schema.chapters.id, input.chapterId))
+          .limit(1)
+      ).at(0);
+      if (!chapter) throw new TRPCError({ code: "NOT_FOUND" });
+      if (chapter.status !== "provisional")
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Only provisional chapters can be granted a charter.",
+        });
+
+      const [[memberRow], roles, budgetRows, cadenceRows] = await Promise.all([
+        db
+          .select({ n: sql<number>`count(*)` })
+          .from(schema.members)
+          .where(eq(schema.members.homeChapterId, input.chapterId)),
+        db
+          .select({ role: schema.chapterRoles.role })
+          .from(schema.chapterRoles)
+          .where(
+            and(
+              eq(schema.chapterRoles.chapterId, input.chapterId),
+              eq(schema.chapterRoles.status, "active")
+            )
+          ),
+        db
+          .select({ amount: schema.chapterBudgets.amount })
+          .from(schema.chapterBudgets)
+          .where(
+            and(
+              eq(schema.chapterBudgets.chapterId, input.chapterId),
+              eq(schema.chapterBudgets.status, "approved"),
+              eq(schema.chapterBudgets.kind, "allocation")
+            )
+          ),
+        db
+          .select({ id: schema.cadences.id })
+          .from(schema.cadences)
+          .where(
+            and(
+              eq(schema.cadences.chapterId, input.chapterId),
+              eq(schema.cadences.active, 1)
+            )
+          ),
+      ]);
+
+      const items = evaluateFranchiseReadiness({
+        status: chapter.status,
+        charterDate: chapter.charterDate,
+        zoneId: chapter.zoneId,
+        memberCount: Number(memberRow?.n ?? 0),
+        activeRoleKeys: roles.map(r => r.role),
+        approvedBudgetAed: budgetRows.reduce(
+          (sum, r) => sum + (r.amount ?? 0),
+          0
+        ),
+        activeCadenceCount: cadenceRows.length,
+      });
+      const score = readinessScore(items);
+      if (!score.ready)
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `Franchise readiness is ${score.percent}%. All requirements must pass before granting a charter.`,
+        });
+
+      const now = new Date();
+      await db
+        .update(schema.chapters)
+        .set({
+          status: "chartered",
+          charterDate: chapter.charterDate ?? now,
+        })
+        .where(eq(schema.chapters.id, input.chapterId));
+
+      await audit(ctx.user, "chapter.charter.grant", {
+        type: "chapter",
+        id: input.chapterId,
+        detail: `${chapter.name} → chartered`,
+      });
+
+      // Notify country / national directors responsible for this chapter.
+      let countryId: number | null = null;
+      if (chapter.zoneId) {
+        const zone = (
+          await db
+            .select()
+            .from(schema.orgUnits)
+            .where(eq(schema.orgUnits.id, chapter.zoneId))
+            .limit(1)
+        ).at(0);
+        if (zone?.parentId) {
+          const region = (
+            await db
+              .select()
+              .from(schema.orgUnits)
+              .where(eq(schema.orgUnits.id, zone.parentId))
+              .limit(1)
+          ).at(0);
+          if (region?.parentId) countryId = region.parentId;
+        }
+      }
+      const directors = await db
+        .select({ memberId: schema.unitRoles.memberId, role: schema.unitRoles.role })
+        .from(schema.unitRoles)
+        .where(
+          and(
+            eq(schema.unitRoles.level, "country"),
+            countryId != null
+              ? eq(schema.unitRoles.unitId, countryId)
+              : sql`1=1`,
+            sql`${schema.unitRoles.role} in ('country_director','national_director','National Director','Country Director')`
+          )
+        );
+      const msg = `${chapter.name} has met all franchise readiness requirements and been granted a charter.`;
+      for (const d of directors) {
+        notify(d.memberId, msg, "governance").catch(() => {});
+      }
+
+      return { ok: true, chapterId: input.chapterId, charterDate: chapter.charterDate ?? now };
     }),
 });

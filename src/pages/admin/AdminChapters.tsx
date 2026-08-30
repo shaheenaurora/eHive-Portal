@@ -270,6 +270,15 @@ export default function AdminChapters() {
     },
     onError: e => toast(e.message),
   });
+  const grantCharter = trpc.admin.chapters.grantCharter.useMutation({
+    onSuccess: () => {
+      toast("Charter granted — chapter is now franchised.");
+      refresh();
+      setReadinessOpen(false);
+      setReadinessChapterId(null);
+    },
+    onError: e => toast(e.message),
+  });
   const saveBudget = trpc.adminEngage.saveBudget.useMutation({
     onSuccess: () => {
       toast("Budget line saved.");
@@ -1272,6 +1281,10 @@ export default function AdminChapters() {
             loading={readinessQ.isLoading}
             error={readinessQ.isError}
             onRetry={() => readinessQ.refetch()}
+            pending={grantCharter.isPending}
+            onGrant={() =>
+              readinessChapterId && grantCharter.mutate({ chapterId: readinessChapterId })
+            }
           />
         </Modal>
       )}
@@ -1284,11 +1297,21 @@ function FranchiseReadinessPanel({
   loading,
   error,
   onRetry,
+  pending,
+  onGrant,
 }: {
-  data?: { chapterId: number; items: { key: string; label: string; ok: boolean; required: boolean; detail?: string }[]; score: { passed: number; total: number; ready: boolean; percent: number } };
+  data?: {
+    chapterId: number;
+    name: string;
+    status: string;
+    items: { key: string; label: string; ok: boolean; required: boolean; detail?: string }[];
+    score: { passed: number; total: number; ready: boolean; percent: number };
+  };
   loading: boolean;
   error: boolean;
   onRetry: () => void;
+  pending: boolean;
+  onGrant: () => void;
 }) {
   if (loading) return <Spinner />;
   if (error) return <LoadError onRetry={onRetry} />;
@@ -1307,7 +1330,7 @@ function FranchiseReadinessPanel({
         }}
       >
         <div>
-          <div className="eh-eyebrow">Readiness score</div>
+          <div className="eh-eyebrow">Readiness score · {data.name}</div>
           <div
             className="eh-num"
             style={{ fontSize: "2.2rem", lineHeight: 1, fontWeight: 800 }}
@@ -1321,6 +1344,18 @@ function FranchiseReadinessPanel({
         <div className="eh-sm eh-muted">
           {data.score.passed} of {data.score.total} requirements met
         </div>
+        {data.status === "provisional" && data.score.ready && (
+          <button
+            className="eh-btn green"
+            disabled={pending}
+            onClick={onGrant}
+          >
+            {pending ? "Granting charter…" : "Grant charter"}
+          </button>
+        )}
+        {data.status !== "provisional" && (
+          <Pill color="blue">{data.status}</Pill>
+        )}
       </div>
 
       <div className="eh-grid g2" style={{ alignItems: "start" }}>
