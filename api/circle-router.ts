@@ -83,6 +83,56 @@ function requireVerified(ctx: { user: { emailVerifiedAt?: Date | null } }) {
   }
 }
 
+async function memberPolicyScopeIds(memberId: number): Promise<{
+  chapterId?: number;
+  zoneId?: number;
+  regionId?: number;
+  countryId?: number;
+}> {
+  const db = getDb();
+  const member = (
+    await db
+      .select({ homeChapterId: schema.members.homeChapterId })
+      .from(schema.members)
+      .where(eq(schema.members.id, memberId))
+      .limit(1)
+  ).at(0);
+  if (!member?.homeChapterId) return {};
+  const chapter = (
+    await db
+      .select({ zoneId: schema.chapters.zoneId })
+      .from(schema.chapters)
+      .where(eq(schema.chapters.id, member.homeChapterId))
+      .limit(1)
+  ).at(0);
+  const ids: {
+    chapterId?: number;
+    zoneId?: number;
+    regionId?: number;
+    countryId?: number;
+  } = { chapterId: member.homeChapterId };
+  if (!chapter?.zoneId) return ids;
+  ids.zoneId = chapter.zoneId;
+  const zone = (
+    await db
+      .select({ parentId: schema.orgUnits.parentId })
+      .from(schema.orgUnits)
+      .where(eq(schema.orgUnits.id, chapter.zoneId))
+      .limit(1)
+  ).at(0);
+  if (!zone?.parentId) return ids;
+  ids.regionId = zone.parentId;
+  const region = (
+    await db
+      .select({ parentId: schema.orgUnits.parentId })
+      .from(schema.orgUnits)
+      .where(eq(schema.orgUnits.id, zone.parentId))
+      .limit(1)
+  ).at(0);
+  if (region?.parentId) ids.countryId = region.parentId;
+  return ids;
+}
+
 export const circleRouter = createRouter({
   /* ---- self-serve paid join (SRS POR-MEM-03 / INT-01) ---- */
   paymentsEnabled: authedQuery.query(() => ({ enabled: paymentsEnabled() })),
@@ -1563,9 +1613,46 @@ export const circleRouter = createRouter({
       )
       .orderBy(desc(schema.govMinutes.date))
       .limit(12);
+    const scopeIds = await memberPolicyScopeIds(member.id);
+    const scopeConditions = [
+      eq(schema.policies.scope, "global"),
+      ...(scopeIds.chapterId
+        ? [
+            and(
+              eq(schema.policies.scope, "chapter"),
+              eq(schema.policies.scopeId, scopeIds.chapterId)
+            ),
+          ]
+        : []),
+      ...(scopeIds.zoneId
+        ? [
+            and(
+              eq(schema.policies.scope, "zone"),
+              eq(schema.policies.scopeId, scopeIds.zoneId)
+            ),
+          ]
+        : []),
+      ...(scopeIds.regionId
+        ? [
+            and(
+              eq(schema.policies.scope, "region"),
+              eq(schema.policies.scopeId, scopeIds.regionId)
+            ),
+          ]
+        : []),
+      ...(scopeIds.countryId
+        ? [
+            and(
+              eq(schema.policies.scope, "country"),
+              eq(schema.policies.scopeId, scopeIds.countryId)
+            ),
+          ]
+        : []),
+    ];
     const pols = await db
       .select()
       .from(schema.policies)
+      .where(or(...scopeConditions))
       .orderBy(desc(schema.policies.createdAt));
     const acks = await db
       .select()

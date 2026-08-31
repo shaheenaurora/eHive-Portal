@@ -169,6 +169,20 @@
       "when": 1788123600001,
       "tag": "0024_fiscal_year_start",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "5",
+      "when": 1788123600002,
+      "tag": "0025_franchise_onboarding",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "5",
+      "when": 1788123600003,
+      "tag": "0026_policy_scope",
+      "breakpoints": true
     }
   ]
 }

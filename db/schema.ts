@@ -644,6 +644,10 @@ export const policies = mysqlTable("policies", {
   title: varchar("title", { length: 255 }).notNull(),
   body: text("body"),
   version: int("version").notNull().default(1),
+  scope: mysqlEnum("scope", ["global", "chapter", "zone", "region", "country"])
+    .notNull()
+    .default("global"),
+  scopeId: bigint("scopeId", { mode: "number", unsigned: true }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -659,6 +663,39 @@ export const policyAcks = mysqlTable(
     uniqueIndex("policy_acks_policy_member_unique").on(t.policyId, t.memberId),
   ]
 );
+
+/* FR-03 — auditable franchisee onboarding checklist. One row per chapter per
+   readiness item so a country director or member-success owner can assign,
+   track and nudge each step. */
+export const franchiseOnboardingChecklists = mysqlTable(
+  "franchise_onboarding_checklists",
+  {
+    id: serial("id").primaryKey(),
+    chapterId: bigint("chapterId", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
+    itemKey: varchar("itemKey", { length: 64 }).notNull(),
+    label: varchar("label", { length: 255 }).notNull(),
+    status: mysqlEnum("status", ["pending", "in_progress", "done", "skipped"])
+      .notNull()
+      .default("pending"),
+    assignedMemberId: bigint("assignedMemberId", {
+      mode: "number",
+      unsigned: true,
+    }).references(() => members.id, { onDelete: "set null" }),
+    dueAt: timestamp("dueAt"),
+    completedAt: timestamp("completedAt"),
+    notes: text("notes"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+  },
+  t => [
+    uniqueIndex("ix_franchise_onboarding_chapter_key").on(t.chapterId, t.itemKey),
+    index("ix_franchise_onboarding_status").on(t.status, t.dueAt),
+  ]
+);
+export type FranchiseOnboardingItem =
+  typeof franchiseOnboardingChecklists.$inferSelect;
 
 export const libraryItems = mysqlTable("library_items", {
   id: serial("id").primaryKey(),

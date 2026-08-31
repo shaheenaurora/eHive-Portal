@@ -12,6 +12,10 @@ import {
 } from "../lib/franchise-readiness";
 import { notify } from "../queries/circle";
 import { audit } from "../lib/audit";
+import {
+  listFranchiseOnboarding,
+  updateFranchiseOnboardingItem,
+} from "../queries/franchise-onboarding";
 
 export const chaptersRouter = createRouter({
   govAdmin: scopedAdmin("chapters").query(async () => {
@@ -149,23 +153,42 @@ export const chaptersRouter = createRouter({
         title: z.string().min(2).max(255),
         body: z.string().max(50000),
         version: z.number().int().min(1).max(99).default(1),
+        scope: z
+          .enum(["global", "chapter", "zone", "region", "country"])
+          .default("global"),
+        scopeId: z.number().int().positive().optional().nullable(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = getDb();
-      if (input.id) {
-        await db
-          .update(schema.policies)
-          .set({ title: input.title, body: input.body, version: input.version })
-          .where(eq(schema.policies.id, input.id));
-        return { ok: true, id: input.id };
-      }
-      const res = await db.insert(schema.policies).values({
+      const scopeId = input.scope === "global" ? null : (input.scopeId ?? null);
+      const values = {
         title: input.title,
         body: input.body,
         version: input.version,
+        scope: input.scope,
+        scopeId,
+      };
+      if (input.id) {
+        await db
+          .update(schema.policies)
+          .set(values)
+          .where(eq(schema.policies.id, input.id));
+        await audit(ctx.user, "policy.update", {
+          type: "policy",
+          id: input.id,
+          detail: `${input.title} (${input.scope}${scopeId ? ` #${scopeId}` : ""})`,
+        });
+        return { ok: true, id: input.id };
+      }
+      const res = await db.insert(schema.policies).values(values);
+      const id = Number((res as unknown as [{ insertId: number }])[0].insertId);
+      await audit(ctx.user, "policy.create", {
+        type: "policy",
+        id,
+        detail: `${input.title} (${input.scope}${scopeId ? ` #${scopeId}` : ""})`,
       });
-      return { ok: true, id: Number(res[0].insertId) };
+      return { ok: true, id };
     }),
 
   /* ------------------------------- library -------------------------------- */
@@ -248,6 +271,38 @@ export const chaptersRouter = createRouter({
         items,
         score: readinessScore(items),
       };
+    }),
+
+  franchiseOnboarding: scopedAdmin("chapters")
+    .input(z.object({ chapterId: z.number().int().positive() }))
+    .query(async ({ input }) => {
+      const rows = await listFranchiseOnboarding(input.chapterId);
+      return { chapterId: input.chapterId, rows };
+    }),
+
+  updateFranchiseOnboardingItem: scopedAdmin("chapters")
+    .input(
+      z.object({
+        chapterId: z.number().int().positive(),
+        itemKey: z.string().min(1).max(64),
+        status: z.enum(["pending", "in_progress", "done", "skipped"]).optional(),
+        assignedMemberId: z.number().int().positive().nullable().optional(),
+        dueAt: z.coerce.date().nullable().optional(),
+        notes: z.string().max(2000).nullable().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { chapterId, itemKey, ...patch } = input;
+      await updateFranchiseOnboardingItem(chapterId, itemKey, {
+        ...patch,
+        dueAt: patch.dueAt === null ? null : patch.dueAt,
+      });
+      await audit(ctx.user, "franchise.onboarding.update", {
+        type: "chapter",
+        id: chapterId,
+        detail: `${itemKey} → ${patch.status ?? "updated"}`,
+      });
+      return { ok: true };
     }),
 
   /* Grant charter to a provisional chapter once it passes the franchise

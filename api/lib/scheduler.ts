@@ -9,7 +9,7 @@
  * pass so a container restart can't double-run it, and each job only acts on
  * rows that still need acting on.
  */
-import { and, eq, gte, inArray, isNotNull, isNull, lte, ne, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, isNotNull, isNull, lte, ne, or, sql } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "../queries/connection";
 import { evaluateDormancy, notify } from "../queries/circle";
@@ -546,6 +546,60 @@ async function jobFranchiseReadiness(now = new Date()): Promise<void> {
 }
 
 /**
+ * FR-03 — nudge owners of overdue franchise onboarding checklist items once per
+ * day. Only items that are pending/in_progress and have passed their due date
+ * (or have no due date and are still open after 14 days) are flagged.
+ */
+async function jobFranchiseOnboardingNudges(now = new Date()): Promise<void> {
+  const db = getDb();
+  const stale = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+  const rows = await db
+    .select({
+      id: schema.franchiseOnboardingChecklists.id,
+      chapterId: schema.franchiseOnboardingChecklists.chapterId,
+      label: schema.franchiseOnboardingChecklists.label,
+      assignedMemberId: schema.franchiseOnboardingChecklists.assignedMemberId,
+      dueAt: schema.franchiseOnboardingChecklists.dueAt,
+      createdAt: schema.franchiseOnboardingChecklists.createdAt,
+      chapterName: schema.chapters.name,
+    })
+    .from(schema.franchiseOnboardingChecklists)
+    .innerJoin(
+      schema.chapters,
+      eq(schema.chapters.id, schema.franchiseOnboardingChecklists.chapterId)
+    )
+    .where(
+      and(
+        inArray(schema.franchiseOnboardingChecklists.status, ["pending", "in_progress"]),
+        or(
+          lte(schema.franchiseOnboardingChecklists.dueAt, now),
+          and(
+            isNull(schema.franchiseOnboardingChecklists.dueAt),
+            lte(schema.franchiseOnboardingChecklists.createdAt, stale)
+          )
+        )
+      )
+    );
+
+  let nudged = 0;
+  for (const row of rows) {
+    const targetId = row.assignedMemberId;
+    if (!targetId) continue; // unassigned items are not nudged
+    const markerKey = `fronb:${row.id}:${now.toISOString().slice(0, 10)}`;
+    if (await getMarker(markerKey)) continue;
+    await notify(
+      targetId,
+      `"${row.label}" for ${row.chapterName} is overdue on the franchise onboarding checklist. Please update its status or move the due date.`,
+      "health"
+    );
+    await setMarker(markerKey, "sent");
+    nudged++;
+  }
+  if (nudged)
+    logger.info(`scheduler franchise onboarding nudges: ${nudged} reminder(s) sent`, { nudged });
+}
+
+/**
  * BRD 6.7 — carry forward unspent chapter budget allocations at the start of
  * each calendar year. Guarded by a per-year marker so the pass only runs once.
  */
@@ -751,6 +805,7 @@ export async function runDailyJobs(now = new Date()): Promise<boolean> {
   await safe("role-terms", () => jobRoleTerms(now));
   await safe("health-threshold", () => jobHealthThreshold());
   await safe("franchise-readiness", () => jobFranchiseReadiness(now));
+  await safe("franchise-onboarding-nudges", () => jobFranchiseOnboardingNudges(now));
   await safe("scorecard-follow-up", () => jobScorecardFollowUp(now));
   await safe("kpi-snapshots", async () => {
     const { captureKpiSnapshots } = await import("../queries/kpi-snapshots");

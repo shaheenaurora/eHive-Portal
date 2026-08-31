@@ -1317,6 +1317,13 @@ export default function AdminChapters() {
   );
 }
 
+const ONBOARDING_STATUS_LABEL: Record<string, string> = {
+  pending: "Pending",
+  in_progress: "In progress",
+  done: "Done",
+  skipped: "Skipped",
+};
+
 function FranchiseReadinessPanel({
   data,
   loading,
@@ -1338,6 +1345,15 @@ function FranchiseReadinessPanel({
   pending: boolean;
   onGrant: () => void;
 }) {
+  const onboardingQ = trpc.admin.chapters.franchiseOnboarding.useQuery(
+    { chapterId: data?.chapterId ?? 0 },
+    { enabled: !!data }
+  );
+  const updateItem = trpc.admin.chapters.updateFranchiseOnboardingItem.useMutation({
+    onSuccess: () => onboardingQ.refetch(),
+  });
+  const [edits, setEdits] = useState<Record<string, string>>({});
+
   if (loading) return <Spinner />;
   if (error) return <LoadError onRetry={onRetry} />;
   if (!data) return <Empty big="No data" p="Select a chapter to review readiness." />;
@@ -1406,6 +1422,63 @@ function FranchiseReadinessPanel({
           </div>
         ))}
       </div>
+
+      {onboardingQ.data && (
+        <div className="eh-card">
+          <div className="eh-eyebrow" style={{ marginBottom: ".75rem" }}>
+            Franchise onboarding checklist
+          </div>
+          <table className="eh-table" style={{ width: "100%", fontSize: "0.9rem" }}>
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {onboardingQ.data.rows.map(row => {
+                const current = edits[row.itemKey] ?? row.status;
+                return (
+                  <tr key={row.itemKey}>
+                    <td>{row.label}</td>
+                    <td>
+                      <select
+                        className="eh-input"
+                        value={current}
+                        onChange={e =>
+                          setEdits(prev => ({ ...prev, [row.itemKey]: e.target.value }))
+                        }
+                      >
+                        {Object.entries(ONBOARDING_STATUS_LABEL).map(([k, label]) => (
+                          <option key={k} value={k}>{label}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td style={{ textAlign: "right" }}>
+                      {current !== row.status && (
+                        <button
+                          className="eh-btn sm"
+                          disabled={updateItem.isPending}
+                          onClick={() =>
+                            updateItem.mutate({
+                              chapterId: data.chapterId,
+                              itemKey: row.itemKey,
+                              status: current as any,
+                            })
+                          }
+                        >
+                          Save
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
