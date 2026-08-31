@@ -392,7 +392,12 @@ export const financeRouter = createRouter({
   /* ---- multi-currency FX rates (admin-maintained) ---- */
   currencyRates: scopedAdmin("finance").query(() => listRates()),
   setCurrencyRate: scopedAdmin("finance")
-    .input(z.object({ code: z.string().min(2).max(8), rate: z.number() }))
+    .input(
+      z.object({
+        code: z.enum(CURRENCY_CODES as [string, ...string[]]),
+        rate: z.number(),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       if (!isFullAdmin(ctx.user)) {
         throw new TRPCError({
@@ -416,7 +421,7 @@ export const financeRouter = createRouter({
       }
     }),
   clearCurrencyRate: scopedAdmin("finance")
-    .input(z.object({ code: z.string().min(2).max(8) }))
+    .input(z.object({ code: z.enum(CURRENCY_CODES as [string, ...string[]]) }))
     .mutation(async ({ ctx, input }) => {
       if (!isFullAdmin(ctx.user)) {
         throw new TRPCError({

@@ -27,6 +27,7 @@ import { paymentsEnabled, getPaymentProvider } from "../lib/payments";
 import {
   TIER_PRICE_AED,
   REFUND_WINDOW_DAYS,
+  REFUND_GRACE_DAYS,
   BASE_CURRENCY,
   FX_RATE_SCALE,
   convertToBaseMinor,
@@ -617,9 +618,32 @@ export async function recordManualPayment(
   // Route through renewMembership so the CRM lifecycle transition, save-case
   // side effects, event log and member notification all run centrally instead
   // of writing status/lifecycleState directly here (which drifted from the
-  // lifecycle executor).
+  // lifecycle executor). If renewal fails, roll the payment and invoice back so
+  // the books don't say "paid" while the member isn't renewed.
   if (input.extendRenewal) {
-    await renewMembership(input.userId, input.note ?? "Membership renewed");
+    try {
+      await renewMembership(input.userId, input.note ?? "Membership renewed");
+    } catch (renewErr) {
+      logger.error("manual payment renewal failed; rolling back payment", {
+        paymentId,
+        error: renewErr,
+      });
+      try {
+        await withTransaction(async tx => {
+          await tx
+            .delete(schema.invoices)
+            .where(eq(schema.invoices.paymentRecordId, paymentId));
+          await tx
+            .delete(schema.paymentRecords)
+            .where(eq(schema.paymentRecords.id, paymentId));
+        });
+      } catch (rollbackErr) {
+        logger.error("manual payment rollback failed", { error: rollbackErr });
+      }
+      throw renewErr instanceof Error
+        ? renewErr
+        : new Error(String(renewErr));
+    }
   }
   await audit(actor, "finance.manual_payment", {
     type: "payment",
@@ -755,18 +779,39 @@ export async function refundPayment(
     }
 
     // A full refund of a membership or renewal payment reverts the member's
-    // entitlement: they lapse immediately so they cannot retain access for a
-    // year they did not pay for. Partial refunds leave membership intact but
-    // are recorded on the ledger.
+    // entitlement. Refunds inside the grace window lapse immediately; older
+    // refunds keep prorated access until the scheduler catches the expired
+    // renewal date, and the member is always notified.
     if (
       plan.newStatus === "refunded" &&
       (p.purpose === "membership" || p.purpose === "renewal")
     ) {
       try {
-        await applyLifecycleTransition(m.id, "lapsed", {
-          actor,
-          reason: `Payment #${id} refunded: ${reason}`,
-        });
+        const paidAt = new Date(p.paidAt ?? p.createdAt);
+        const daysSinceCharge =
+          (Date.now() - paidAt.getTime()) / (24 * 60 * 60 * 1000);
+        if (daysSinceCharge <= REFUND_GRACE_DAYS) {
+          await applyLifecycleTransition(m.id, "lapsed", {
+            actor,
+            reason: `Payment #${id} refunded within grace window: ${reason}`,
+          });
+          await notify(
+            m.id,
+            "Your membership has been cancelled following the refund. Please reach out if you have questions.",
+            "membership"
+          );
+        } else {
+          // Prorate: membership ends at the close of the period already paid for.
+          await db
+            .update(schema.members)
+            .set({ renewalAt: new Date() })
+            .where(eq(schema.members.id, m.id));
+          await notify(
+            m.id,
+            "Your refund has been processed. Your access continues until the end of your current paid period, after which your membership will lapse.",
+            "membership"
+          );
+        }
       } catch (e) {
         logger.error("refund lifecycle transition failed", { error: e });
       }

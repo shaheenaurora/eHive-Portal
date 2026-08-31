@@ -511,6 +511,10 @@ export type AwardNominationStatus = (typeof AWARD_NOMINATION_STATUSES)[number];
    stays unrenewed RENEWAL_GRACE_DAYS past it. */
 export const RENEWAL_WINDOW_DAYS = 30;
 export const RENEWAL_GRACE_DAYS = 14;
+/** Refunds of membership/renewal payments lapse access immediately only when the
+ *  refund is requested within this many days of the charge; older refunds keep
+ *  prorated access until the end of the already-paid period. */
+export const REFUND_GRACE_DAYS = 14;
 
 /** Where a membership sits relative to its renewal date (pure — testable, and
  *  shared by the scheduler and any UI countdown). */

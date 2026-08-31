@@ -61,8 +61,17 @@ export async function setRate(actor: Actor, code: string, rate: number) {
     throw new Error("Unsupported currency.");
   if (!(rate > 0) || !Number.isFinite(rate))
     throw new Error("Rate must be a positive number.");
+  const db = getDb();
+  const prior = (
+    await db
+      .select({ rateScaled: schema.currencyRates.rateScaled })
+      .from(schema.currencyRates)
+      .where(eq(schema.currencyRates.code, code))
+      .limit(1)
+  ).at(0);
+  const priorRate = prior ? Number(prior.rateScaled) / FX_RATE_SCALE : null;
   const rateScaled = Math.round(rate * FX_RATE_SCALE);
-  await getDb()
+  await db
     .insert(schema.currencyRates)
     .values({ code, rateScaled, updatedByUserId: actor.id })
     .onDuplicateKeyUpdate({
@@ -71,7 +80,9 @@ export async function setRate(actor: Actor, code: string, rate: number) {
   await audit(actor, "finance.fx.rate", {
     type: "currency",
     id: 0,
-    detail: `${code.toUpperCase()} = ${rate}`,
+    detail: `${code.toUpperCase()} = ${rate}${
+      priorRate != null ? ` (was ${priorRate})` : ""
+    }`,
   });
   return { ok: true };
 }
