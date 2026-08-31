@@ -1,0 +1,143 @@
+# eHive Portal — Deep Gap Analysis
+**Date:** 31 August 2026  
+**Scope:** Public site, member portal, admin/officer flows, finance, governance, security, operations, franchise readiness, data model.  
+**Method:** Read-only code inspection across `public/`, `src/pages/`, `api/`, `db/schema.ts`, and existing audit docs (`DEEP_AUDIT_2026_08_30.md`, `REAUDIT_2026_08_30.md`, `GAP_ANALYSIS.md`, `UX_AUDIT.md`, `FOLLOW_UP.md`).
+
+---
+
+## Executive Summary
+
+Since the last audit, the portal has made strong progress: the public site is unified on a light design system, Railway deploys are green, email delivery works, finance reports and chapter budgets are functional, franchise readiness auto-promotes provisional chapters, and governance notifications are wired. However, a deeper inspection reveals **material gaps at the conversion, operational-automation, and data-integrity layers**. The most serious issues are on the public conversion path, where the booking and scorecard flows mislead users and can lose leads. On the operational side, several scheduler/admin paths do not enforce the same guards as their officer equivalents, and foundational security controls (rate limiting, session management) have race-condition or revocation weaknesses.
+
+No actively exploitable unauthenticated critical vulnerability was found. The highest-value fixes are small, surgical changes that close conversion-breaking UX and align admin paths with the BRD.
+
+---
+
+## Cross-Cutting Themes
+
+1. **Public conversion path over-promises and under-saves.** Booking, scorecard, and brand-check flows show success before the server confirms persistence and silently swallow network failures.
+2. **Admin paths sometimes lack guards that officer paths already have.** Election quorum, budget approval, and lifecycle filtering are stricter in officer routers than in admin routers.
+3. **Scheduler jobs are operationally blind.** Failures are logged but not alerted externally; failed notification deliveries are not retried; at-risk chapters are not surfaced as status changes.
+4. **Defense-in-depth gaps remain.** Rate limiter has a read-after-update race, sessions lack per-device revocation, CSP still allows inline styles, and metrics are world-readable when unconfigured.
+5. **Franchise readiness is computed but not operationalised.** No persistent franchisee onboarding checklist, no chapter-scoped policies, and health threshold alerts do not change chapter status.
+
+---
+
+## Consolidated Gap List
+
+### P0 — Conversion / Public Site
+
+| # | Gap | Evidence | Impact | Recommended Fix |
+|---|-----|----------|--------|-----------------|
+| P0-1 | **Booking page promises a confirmed calendar invite, but only stores a request.** `book.html` says “A confirmation email with the calendar invitation.” The backend inserts `appointments` with default `status: "requested"` and sends `sendBookingConfirmation({ confirmed: false })`. The success panel shows `#bkDone` regardless of email failure. | `public/book.html:144-161`, `public/book.html:272-287`; `api/boot.ts:705-714`, `api/boot.ts:728-736`; `public/app.js:1048-1062` | Visitors believe the slot is locked; no-show risk and support load. | Rewrite copy to “booking request”; distinguish request-saved vs email-failed in `#bkDone`; add a second confirmed state once admin clicks Confirm. |
+| P0-2 | **Clarity Scorecard renders results before the lead is persisted and ignores server failures.** `renderResults(); show("results")` runs before `fetch("/api/lead")`. Network errors and `{ ok: false }` are swallowed. | `public/clarity-scorecard.html:842-877` | Data loss and misleading UX; users think their scorecard was saved. | Move `show("results")` into the fetch `.then()` only when `d.ok === true`; render a retryable error panel on failure. |
+| P0-3 | **Brand Check shows a “done” screen before the lead is sent and drops failures.** `next()` calls `submitLead()` then immediately `show("done")`; the fetch uses `.catch(() => {})`. | `public/brand-check.html:919-963` | Leads can be lost without user awareness. | Show a loading state, await the response, then show success or a retryable error panel. |
+
+### P1 — Public Site / Booking
+
+| # | Gap | Evidence | Impact | Recommended Fix |
+|---|-----|----------|--------|-----------------|
+| P1-1 | **Booking availability preview ignores product duration.** `generateAvailability` always uses 60-minute blocks even though Strategy Sprint is 480 min and Clarity Sprint is 180 min. Server-side `isSlotAvailable` uses the real duration, so preview and server can disagree. | `api/boot.ts:620-624`; `api/lib/booking.ts:68-99`, `api/lib/booking.ts:106-123` | User picks a slot then gets “no longer available” at confirm. | Pass product duration into `generateAvailability` and compute overlap with the real window. |
+| P1-2 | **Admin Confirm appointment does not re-check slot availability.** Updates status and sends email without verifying the slot is still free. | `api/router.ts:150-177` | Double-bookings for consulting sessions. | Run `isSlotAvailable` (excluding current appointment) before confirming. |
+| P1-3 | **Confirmed bookings do not generate `.ics` calendar invites.** Email promises a calendar invitation but no attachment is generated. | `public/book.html:144-161`; `api/lib/lead-mail.ts:421-426`; `src/pages/admin/AdminAppointments.tsx:165-181` | Broken promise and operational friction. | Generate `.ics` in `sendBookingConfirmation({ confirmed: true })` and attach it; add Google/Outlook links. |
+| P1-4 | **Appointment cancellation does not notify the visitor.** Admin cancel dialog explicitly warns the visitor will not be notified. | `src/pages/admin/AdminAppointments.tsx:184-211` | Visitors show up to cancelled sessions. | Add `sendBookingCancellation` and send it from `cancelAppointment`. |
+
+### P1 — Member Portal / Engagement
+
+| # | Gap | Evidence | Impact | Recommended Fix |
+|---|-----|----------|--------|-----------------|
+| P1-5 | **Onboarding completion is only enforced for deal posting.** `requireOnboardingComplete` exists but is only called in `postDeal`. Event registration, 1-2-1 logging, referrals, and pods skip it. | `api/queries/onboarding.ts:107`; `api/engage-router.ts:815`; `api/circle-router.ts:1195-1282`, `api/engage-router.ts:482-521`, `api/engage-router.ts:748-767` | Members still onboarding can participate in core workflows before finishing ML-03. | Apply `requireOnboardingComplete` to every higher-value mutation, or add onboarding-state middleware to `authedQuery`. |
+| P1-6 | **Award nomination/voting lack nominator/voter unit eligibility checks.** Scoped cycles validate the nominee belongs to the unit, but not the person nominating or voting. | `api/engage-router.ts:110-121`; `api/queries/award-voting.ts:87-151` | Cross-unit members can nominate/vote in chapter/zone/region/country cycles. | Verify nominator/voter belongs to the cycle’s unit via `homeChapterId` + org-unit hierarchy. |
+| P1-7 | **Event waitlist promotion skips eligibility re-validation.** Promotes the oldest waitlisted member without re-checking tier/chapter eligibility. | `api/queries/circle.ts:613-646` | Members whose tier dropped or chapter changed can be auto-promoted into events they no longer qualify for. | Load member + event and run `memberCanAccessEvent` before promoting; skip ineligible. |
+| P1-8 | **“Renew +1 year” button is always visible but calls the wrong mutation.** It triggers `requestMembershipChange({ type: "renew" })`, which unconditionally rejects; the correct paid path is `startRenewal`. | `src/pages/portal/Membership.tsx:401-404`; `api/circle-router.ts:672-680`, `api/circle-router.ts:132-183` | Members clicking renew get a confusing error. | Show button only when renewal is due and wire it to `startRenewal`. |
+| P1-9 | **Awards page cannot submit chapter-category nominations.** The form sends only a citation but the backend requires `nomineeChapterId`. | `src/pages/portal/Awards.tsx:208-227`; `api/engage-router.ts:92-102` | Members cannot successfully nominate a chapter. | Add a chapter dropdown for `category.subject === "chapter"` and pass `nomineeChapterId`. |
+
+### P1 — Admin / Finance / Governance
+
+| # | Gap | Evidence | Impact | Recommended Fix |
+|---|-----|----------|--------|-----------------|
+| P1-10 | **Admin election quorum uses raw home-chapter count, not active members.** Officer path correctly filters active; admin path does not. | `api/admin-engage-router.ts:1702-1708`; `api/officer/governance.ts:187-198` | False quorum/anti-quorum; elections can fail despite all active members voting. | Add `eq(schema.members.status, "active")` to the admin `memberCount` query. |
+| P1-11 | **Budget lines can be created already-approved, bypassing maker-checker.** `saveBudget` accepts `status: "approved"` on insert. | `api/admin-engage-router.ts:1904-1934` | Finance-scoped admin can directly create approved allocations/sponsorships. | Force `status: "proposed"` on create; require `decideBudgetLine` for approval. |
+| P1-12 | **Expense budget check is at proposal time only.** `decideBudgetLine` approves spends without re-checking remaining balance. | `api/queries/finance.ts:1019-1033`; `api/admin-engage-router.ts:2969-2977` | Concurrent spends can over-commit the chapter operating budget. | Re-compute `rollupBudgets` inside `decideBudgetLine` and reject if `remaining < 0`. |
+| P1-13 | **Full refund lapses member immediately without grace or proration.** `applyLifecycleTransition(m.id, "lapsed")` runs for full refunds. | `api/queries/finance.ts:761-774` | Refunded minutes after joining loses a full year; no prorated entitlement. | Add grace/proration logic and a dedicated refund/lapse email. |
+| P1-14 | **Manual payment records payment even if renewal extension fails.** `renewMembership` is called outside the transaction; failures are swallowed. | `api/queries/finance.ts:583-638`, `api/queries/finance.ts:622` | Paid-but-not-active members. | Move `renewMembership` inside the transaction or roll back on failure. |
+| P1-15 | **FX rate mutation lacks currency whitelist at router and prior-value audit.** Router accepts any 2–8 char string; audit logs new rate but not old. | `api/admin/finance.ts:395`; `api/queries/fx.ts:57-76` | Typos rejected late; prior rate lost for reconciliation. | Change router schema to `z.enum(CURRENCY_CODES)`; append prior rate to audit detail. |
+| P1-16 | **Award voting does not enforce `opensAt`/`closesAt` fairness window server-side.** `castVote` only checks `status = judging`; admin can move to judging after close date. | `api/queries/award-voting.ts:87-104`; `api/admin-engage-router.ts:2403-2454` | Votes can be cast outside the advertised window. | Enforce `opensAt <= now <= closesAt` in `castVote` and status transitions. |
+| P1-17 | **Scheduler job failures are only logged; no external alert hook.** Failures increment an in-memory counter but do not alert Sentry/Slack/PagerDuty. | `api/lib/scheduler.ts:75-82`, `api/lib/scheduler.ts:635-639` | Daily jobs can fail silently until logs are inspected. | Add optional `SENTRY_DSN` / `ALERT_WEBHOOK_URL`; post alerts from `safe()` and `tick()`. |
+| P1-18 | **Failed notification deliveries are tracked but not retried automatically.** `retryEmailDelivery()` exists but is only manual. | `api/queries/circle.ts:158-163`; `api/lib/notify-mail.ts:85-131`; `api/admin-engage-router.ts:3231-3240` | Transient email failures become permanent misses. | Add `jobRetryFailedNotifications()` to the daily scheduler. |
+| P1-19 | **Health threshold job alerts officers but never sets chapter status to `at_risk`.** Computes health and notifies, but no status change or remediation record. | `api/lib/scheduler.ts:275-317` | At-risk chapters invisible in lists/reports; no automated response. | Update `chapters.status = 'at_risk'` and open a remediation case when crossing below healthy line. |
+| P1-20 | **Public stats endpoint may count test/inactive countries.** Counts `orgUnits.level = 'country'` with no status filter. | `api/boot.ts:559-584` | Inflated social proof. | Add active/published filter or derive from chartered/mature chapters. |
+
+### P1 — Security
+
+| # | Gap | Evidence | Impact | Recommended Fix |
+|---|-----|----------|--------|-----------------|
+| P1-21 | **MySQL-backed rate limiter has a read-after-update race.** `INSERT ... ON DUPLICATE KEY UPDATE` then separate `SELECT` can read stale counts under concurrency. | `api/lib/rate-limit.ts:38-53` | Per-IP/account limits can be exceeded; brute-force/enumeration easier. | Make increment/read atomic in one statement, or switch to Redis `INCR`/`EXPIRE`. |
+| P1-22 | **Session cookies are `SameSite=Lax` with no per-device revocation.** No `__Host-` prefix; revocation is global via `tokenVersion`. | `api/lib/cookies.ts:12-16`; `api/lib/session.ts:112-114` | CSRF risk; compromised device cannot be surgically revoked. | Use `SameSite=Strict`, `__Host-eh_sid`, and a `sessions` table for per-device auth/logout. |
+
+### P2 — Public Site / Operations
+
+| # | Gap | Evidence | Impact | Recommended Fix |
+|---|-----|----------|--------|-----------------|
+| P2-1 | **CSP still allows `style-src 'unsafe-inline'`.** | `api/boot.ts:98` | XSS via injected inline styles. | Migrate to nonce-based styles or refactor inline styles to classes; remove `'unsafe-inline'`. |
+| P2-2 | **Hard-coded production domains in marketing assets and emails.** Canonical/OG URLs and scorecard follow-up CTA hard-code `ehive.global` / `ehiveglobal.com`. | `public/index.html:11-21`; `public/clarity-scorecard.html:11`; `api/lib/lead-mail.ts:353` | Wrong links on staging/white-label. | Hydrate from `env.publicUrl`; use relative paths where possible. |
+| P2-3 | **WhatsApp placeholder still surfaces “at launch” copy.** | `public/app.js:14` | Looks unfinished. | Remove chips or wire `WA_NUMBER` from env/config. |
+| P2-4 | **Scorecard follow-up CTA always routes to `clarity-scorecard`.** Ignores stored `recommendationProduct`. | `api/lib/lead-mail.ts:353` | Lower conversion, confused follow-up. | Map `recommendationProduct` to the correct booking slug. |
+| P2-5 | **No prefetch on interior pages.** Only homepage prefetches likely next pages. | `public/index.html:51-53` | Slower perceived navigation. | Add prefetch tags on pillar pages or add a service-worker cache strategy. |
+| P2-6 | **Public lead capture accepts invalid emails and duplicates non-newsletter leads.** `/api/lead` truncates to 320 chars but does not validate format; only newsletter path dedupes. | `api/boot.ts:255-409`, `api/boot.ts:334-370` | Polluted leads table. | Validate email format before insert; dedupe by `email + form` within a short window. |
+
+### P2 — Admin / Governance / Data
+
+| # | Gap | Evidence | Impact | Recommended Fix |
+|---|-----|----------|--------|-----------------|
+| P2-7 | **Org-unit leader assignment lacks eligibility checks.** Only checks duplicate role, not active status or unit membership. | `api/admin-engage-router.ts:2214-2253` | Inactive/unrelated member can be assigned to lead a unit. | Verify `members.status = 'active'` and member belongs to the unit subtree. |
+| P2-8 | **Governance seat assignment has no term-limit or overlap checks.** `assignSeat` inserts directly with optional dates. | `api/admin/chapters.ts:74-87` | Same member can hold overlapping terms or multiple seats. | Add overlap/duplicate-seat validation. |
+| P2-9 | **`grantCharter` director lookup falls back to `1=1` when `countryId` is null.** | `api/admin/chapters.ts:337-340` | Chapters without country blast every country director. | Require country or skip director notification. |
+| P2-10 | **Scheduler `jobRenewal` lapses members regardless of `status`.** Selects all members with `renewalAt` not null. | `api/lib/scheduler.ts:102-151` | Already-lapsed/suspended members reprocessed; noise and errors. | Add `eq(schema.members.status, "active")`. |
+| P2-11 | **Self-serve pause mutates `status` directly, leaving `lifecycleState` inconsistent.** | `api/circle-router.ts:665-671` | Lifecycle reporting drift. | Route through `applyLifecycleTransition(member.id, "suspended", ...)`. |
+| P2-12 | **Tier-change approval is silent.** No notification after approve/reject. | `api/admin/membership.ts:728-788` | Members must keep checking portal. | Call `notify(memberId, ...)` with decision and effective tier. |
+| P2-13 | **`chapterPnl` hardcodes calendar fiscal year.** | `api/queries/finance.ts:246-252`; `api/lib/chapter-pnl.ts:49-54` | Non-calendar fiscal years inaccurate. | Add `fiscalYearStartMonth` to chapters/org units and adjust `fiscalYearRange`. |
+
+### P2 — Security / Operations / Franchise
+
+| # | Gap | Evidence | Impact | Recommended Fix |
+|---|-----|----------|--------|-----------------|
+| P2-14 | **`/metrics` is world-readable when `METRICS_TOKEN` is unset.** | `api/boot.ts:1119-1124` | Reconnaissance aid; exposes runtime health. | Fail closed in production; require token or bind to internal interface. |
+| P2-15 | **Expense receipt uploads have no malware scan.** MIME/size checks only. | `api/queries/finance.ts:1037-1052` | Malicious PDFs/images target finance admins. | Decode and scan with ClamAV/cloud API; serve via sanitized viewer. |
+| P2-16 | **CI does not build Docker image or run image security scans.** | `.github/workflows/ci.yml:1-52` | Base-image CVEs reach deploy time. | Add Dockerfile build + Trivy/Grype scan job. |
+| P2-17 | **No persistent franchisee onboarding checklist table or workflow.** | `api/lib/franchise-readiness.ts:40-116`; `db/schema.ts:549-564` | No auditable/assignable onboarding tracking. | Add `franchiseOnboardingChecklists` table + UI + scheduler nudges. |
+| P2-18 | **Policies are global; no chapter/region-scoped distribution or RBAC templates.** | `api/admin/chapters.ts:112-136`; `api/circle-router.ts:1560-1592`; `db/schema.ts` | Chapters cannot maintain local policies; ack tracking not scoped. | Add `scope`/`scopeId` to policies or a distribution join table; filter by member chapter/role. |
+
+---
+
+## Top 10 Priority Fixes
+
+1. **P0-1 — Booking page promises confirmed slot/invite but only stores a request.** Highest conversion risk; fix copy and success-state handling.
+2. **P0-2 / P0-3 — Scorecard and Brand Check show success before persistence.** Lead-capture dead ends; state-machine fix prevents data loss.
+3. **P1-1 — Booking availability preview ignores product duration.** Conversion friction; small backend change.
+4. **P1-21 — Rate limiter read-after-update race.** Foundational security control weakness.
+5. **P1-22 — Session cookie model lacks per-device revocation.** Authentication hardening.
+6. **P1-10 — Admin election quorum counts inactive members.** Governance integrity.
+7. **P1-11 — Budget lines can be created already-approved.** Financial control bypass.
+8. **P1-5 — Onboarding gate only enforced for deal posting.** Member-journey integrity.
+9. **P1-17 / P1-18 — No external scheduler alerts or notification retries.** Operational blindness.
+10. **P1-19 — Health threshold does not set chapter `at_risk` status.** Franchise operations visibility.
+
+---
+
+## Recommended Next Sprint
+
+**Theme:** Conversion integrity + operational guardrails.
+
+1. Public conversion path fixes (P0-1, P0-2, P0-3, P1-1, P1-3, P1-4).
+2. Security hardening (P1-21, P1-22, P2-14).
+3. Admin/governance alignment (P1-10, P1-11, P1-12).
+4. Member-journey integrity (P1-5, P1-8, P1-9).
+5. Operational observability (P1-17, P1-18, P1-19).
+
+---
+
+## Verification Notes
+
+- Build and tests were not re-run for this analysis; the document is based on read-only code inspection as of commit `786d0f1`.
+- Several earlier audit claims were verified as closed: newsletter subscribers table, non-root Docker user, SIGTERM handling, horizontal-safe scheduler, `.dockerignore` exclusions, dependency audit gate, public-site design-system unification, finance budget enforcement, refund credit notes, scorecard follow-up scheduler, membership rejection email, and governance notifications.
