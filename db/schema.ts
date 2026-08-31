@@ -50,6 +50,31 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
+/* Per-device sessions for surgical revocation. The JWT only proves possession
+   of a session id; the database row is the source of truth for revocation. */
+export const userSessions = mysqlTable(
+  "user_sessions",
+  {
+    id: serial("id").primaryKey(),
+    userId: bigint("userId", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenVersion: int("tokenVersion").notNull().default(0),
+    fingerprint: varchar("fingerprint", { length: 64 }),
+    ip: varchar("ip", { length: 64 }),
+    userAgent: text("userAgent"),
+    revokedAt: timestamp("revokedAt"),
+    expiresAt: timestamp("expiresAt").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  t => [
+    index("ix_user_sessions_user").on(t.userId),
+    index("ix_user_sessions_expires").on(t.expiresAt),
+  ]
+);
+export type UserSession = typeof userSessions.$inferSelect;
+export type InsertUserSession = typeof userSessions.$inferInsert;
+
 /* ==========================================================================
    eHive Circle — community vertical (BRD §9) + website leads
    ========================================================================== */

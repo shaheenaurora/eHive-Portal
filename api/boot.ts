@@ -13,7 +13,7 @@ import { env } from "./lib/env";
 import { getDb } from "./queries/connection";
 import { withTransaction } from "./queries/transaction";
 import * as schema from "@db/schema";
-import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
+import { eq, and, desc, gte, lte, sql, inArray } from "drizzle-orm";
 import { paymentsEnabled, getPaymentProvider } from "./lib/payments";
 import {
   BOOKING_SLOTS,
@@ -563,15 +563,19 @@ app.get("/api/public-stats", async c => {
       db
         .select({ n: sql<number>`count(*)` })
         .from(schema.chapters)
-        .where(sql`${schema.chapters.status} != 'seed'`),
+        .where(
+          inArray(schema.chapters.status, ["chartered", "mature", "at_risk"])
+        ),
       db
         .select({ n: sql<number>`count(*)` })
         .from(schema.members)
         .where(eq(schema.members.status, "active")),
       db
-        .select({ n: sql<number>`count(*)` })
-        .from(schema.orgUnits)
-        .where(eq(schema.orgUnits.level, "country")),
+        .select({ n: sql<number>`count(distinct ${schema.chapters.country})` })
+        .from(schema.chapters)
+        .where(
+          inArray(schema.chapters.status, ["chartered", "mature", "at_risk"])
+        ),
     ]);
     return c.json({
       chapters: Number(chapters?.n ?? 0),

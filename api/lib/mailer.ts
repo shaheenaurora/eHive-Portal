@@ -47,12 +47,19 @@ const fromAddress = () => {
   return "";
 };
 
+export type MailAttachment = {
+  filename: string;
+  content: Buffer;
+  contentType: string;
+};
+
 export type MailInput = {
   to: string;
   subject: string;
   html: string;
   text?: string;
   replyTo?: string;
+  attachments?: MailAttachment[];
 };
 
 /** Normalize a ZeptoMail token: the API header needs just the token value, but
@@ -95,6 +102,12 @@ async function sendViaZepto(
         htmlbody: input.html,
         textbody: input.text ?? htmlToText(input.html),
         ...(input.replyTo ? { reply_to: [{ address: input.replyTo }] } : {}),
+        attachments:
+          input.attachments?.map(a => ({
+            file_name: a.filename,
+            file_type: a.contentType,
+            file_cache: a.content.toString("base64"),
+          })) ?? undefined,
       }),
     });
   } catch (err) {
@@ -150,6 +163,11 @@ async function deliver(
         text: input.text ?? htmlToText(input.html),
         html: input.html,
         replyTo: input.replyTo,
+        attachments: input.attachments?.map(a => ({
+          filename: a.filename,
+          content: a.content,
+          contentType: a.contentType,
+        })),
       });
       return { ok: true };
     } catch (err) {

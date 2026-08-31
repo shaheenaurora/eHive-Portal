@@ -1,5 +1,6 @@
 import { env } from "./env";
 import { sendMailDetailed, mailEnabled } from "./mailer";
+import { calendarLinks, generateIcs } from "./ics";
 
 /* Human labels + confirmation copy per marketing form (public/app.js, the
    clarity scorecard, etc.). Anything not listed falls back to a generic note. */
@@ -374,6 +375,7 @@ export async function sendBookingConfirmation(input: {
   phone?: string | null;
   notes?: string | null;
   confirmed: boolean;
+  scheduledAt?: Date | null;
 }): Promise<{
   ok: boolean;
   ownerSent: boolean;
@@ -418,13 +420,51 @@ export async function sendBookingConfirmation(input: {
 
   let confirmSent = false;
   const firstName = input.name.split(" ")[0];
+
+  const calendarExtras =
+    input.confirmed && input.scheduledAt
+      ? (() => {
+          const links = calendarLinks({
+            title: `${input.product} — eHive`,
+            start: input.scheduledAt,
+            durationMin: Number(input.format.match(/^(\d+)/)?.[1] ?? 60),
+            location: "eHive — Dubai, UAE (details by email)",
+            description: `Confirmed ${input.product} session with eHive.`,
+          });
+          return `
+            <p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">Add to your calendar: <a href="${links.google}" style="color:#b23a2e;text-decoration:underline">Google</a> · <a href="${links.outlook}" style="color:#b23a2e;text-decoration:underline">Outlook</a></p>
+          `;
+        })()
+      : "";
+
   const confirmHtml = shell(`
     <h1 style="margin:0 0 12px;font-family:Georgia,serif;font-size:22px;color:#101d2c;font-weight:600">${firstName ? `Thank you, ${esc(firstName)}.` : "Thank you."}</h1>
     <p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">We've received your request for a <strong style="color:#101d2c">${esc(input.product)}</strong> on <strong style="color:#101d2c">${esc(input.when)}</strong>.</p>
-    <p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">${input.confirmed ? "Your slot is confirmed and a calendar invite will follow shortly." : "A member of the team will confirm your slot within one business day and send you a calendar invitation."}</p>
+    <p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">${input.confirmed ? "Your slot is confirmed. A calendar invite (.ics) is attached." : "A member of the team will confirm your slot within one business day and send you a calendar invitation."}</p>
+    ${calendarExtras}
     <p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">If you need to reschedule, just reply to this email.</p>
     <p style="margin:20px 0 0;color:#33465e;font-size:14px;line-height:1.55">Warm regards,<br/><strong>The eHive team</strong></p>
   `);
+
+  const attachments =
+    input.confirmed && input.scheduledAt
+      ? [
+          {
+            filename: "ehive-session.ics",
+            content: generateIcs({
+              title: `${input.product} — eHive`,
+              start: input.scheduledAt,
+              durationMin: Number(input.format.match(/^(\d+)/)?.[1] ?? 60),
+              location: "eHive — Dubai, UAE (details by email)",
+              description: `Confirmed ${input.product} session with eHive.`,
+              organizer: notifyTo ? { name: "eHive", email: notifyTo } : undefined,
+              attendee: { name: input.name, email: input.email },
+            }),
+            contentType: "text/calendar; method=PUBLISH",
+          },
+        ]
+      : undefined;
+
   const r = await sendMailDetailed({
     to: input.email,
     subject: input.confirmed
@@ -432,6 +472,7 @@ export async function sendBookingConfirmation(input: {
       : `Booking request received — ${input.product}`,
     html: confirmHtml,
     replyTo: notifyTo || undefined,
+    attachments,
   });
   confirmSent = r.ok;
   if (!r.ok && r.error) errors.push(r.error);

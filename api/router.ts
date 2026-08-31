@@ -209,6 +209,7 @@ export const appRouter = createRouter({
         phone: row.phone,
         notes: row.notes,
         confirmed: true,
+        scheduledAt: row.scheduledAt,
       });
       await getDb()
         .update(schema.appointments)

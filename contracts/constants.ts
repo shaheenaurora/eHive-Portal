@@ -1,5 +1,7 @@
 export const Session = {
-  cookieName: "eh_sid",
+  // __Host- prefix requires Path=/ and Secure; it prevents a subdomain or
+  // path-level app from overriding the session cookie.
+  cookieName: "__Host-eh_sid",
   // Cookie lifetime is kept in step with the signed-token expiry (see
   // SESSION_EXPIRES_IN in api/lib/session.ts) so the cookie doesn't linger long
   // after the JWT it carries has expired.
