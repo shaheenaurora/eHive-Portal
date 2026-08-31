@@ -83,6 +83,16 @@ export const engageRouter = createRouter({
           code: "PRECONDITION_FAILED",
           message: "Nominations aren't open right now.",
         });
+      // Scoped cycles: the nominator must belong to the cycle's unit too.
+      if (
+        open.level !== "network" &&
+        open.unitId &&
+        !(await nomineeInUnit(open.level, open.unitId, { nomineeMemberId: me.id }))
+      )
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You can only nominate within your own chapter or region.",
+        });
       // Enforce the cycle's nomination window even if an admin left status "open".
       if (nominationWindowState(open.opensAt, open.closesAt) !== "open")
         throw new TRPCError({
@@ -489,6 +499,7 @@ export const engageRouter = createRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const member = await requireMember(ctx.user.id);
+      await requireOnboardingComplete(member, "logging a 1-2-1");
       const db = getDb();
       if (input.counterpartId === member.id)
         throw new TRPCError({
@@ -755,6 +766,7 @@ export const engageRouter = createRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const member = await requireMember(ctx.user.id);
+      await requireOnboardingComplete(member, "submitting a referral");
       await getDb()
         .insert(schema.referrals)
         .values({ memberId: member.id, ...input });

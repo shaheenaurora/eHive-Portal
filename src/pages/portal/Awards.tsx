@@ -22,6 +22,7 @@ export default function Awards() {
   const q = trpc.engage.awardsOpen.useQuery(undefined, { retry: false });
   const voting = trpc.engage.awardsVotingOpen.useQuery(undefined, { retry: false });
   const directory = trpc.engage.memberDirectory.useQuery(undefined, { retry: false });
+  const chapters = trpc.circle.chaptersDirectory.useQuery(undefined, { retry: false });
   const utils = trpc.useUtils();
 
   const submit = trpc.engage.submitNomination.useMutation({
@@ -81,6 +82,7 @@ export default function Awards() {
                     category={cat}
                     cycleId={q.data.cycle!.id}
                     members={directory.data ?? []}
+                    chapters={chapters.data?.chapters ?? []}
                     pending={submit.isPending}
                     onSubmit={v => submit.mutate({ cycleId: q.data.cycle!.id, category: cat.key, ...v })}
                   />
@@ -150,16 +152,19 @@ export default function Awards() {
 function NominationCard({
   category,
   members,
+  chapters,
   pending,
   onSubmit,
 }: {
   category: (typeof AWARD_CATEGORIES)[number];
   cycleId: number;
   members: { id: number; name: string; company: string | null; tier: string | null }[];
+  chapters: { id: number; name: string }[];
   pending: boolean;
   onSubmit: (v: { nomineeMemberId?: number; nomineeChapterId?: number; citation?: string }) => void;
 }) {
   const [memberId, setMemberId] = useState<number | null>(null);
+  const [chapterId, setChapterId] = useState<number | null>(null);
   const [citation, setCitation] = useState("");
   const isMember = category.subject === "member";
 
@@ -207,6 +212,20 @@ function NominationCard({
         </>
       ) : (
         <>
+          <select
+            className="eh-select"
+            value={chapterId ?? ""}
+            onChange={e => setChapterId(e.target.value ? Number(e.target.value) : null)}
+          >
+            <option value="" disabled>
+              Choose a chapter…
+            </option>
+            {chapters.map(ch => (
+              <option key={ch.id} value={ch.id}>
+                {ch.name}
+              </option>
+            ))}
+          </select>
           <textarea
             className="eh-input"
             rows={2}
@@ -216,13 +235,14 @@ function NominationCard({
           />
           <button
             className="eh-btn gold sm"
-            disabled={pending}
+            disabled={pending || chapterId == null}
             onClick={() => {
-              onSubmit({ citation });
+              onSubmit({ nomineeChapterId: chapterId ?? undefined, citation });
+              setChapterId(null);
               setCitation("");
             }}
           >
-            {pending ? "Submitting…" : "Nominate my chapter"}
+            {pending ? "Submitting…" : "Nominate chapter"}
           </button>
         </>
       )}

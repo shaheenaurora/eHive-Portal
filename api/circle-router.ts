@@ -22,7 +22,10 @@ import {
   tierChangeHistory,
   type FieldChange,
 } from "./queries/member-admin";
-import { computeOnboarding } from "./queries/onboarding";
+import {
+  computeOnboarding,
+  requireOnboardingComplete,
+} from "./queries/onboarding";
 import { recordAnalyticsEvent } from "./queries/analytics";
 import { notifyLead } from "./lib/lead-mail";
 import { ONBOARDING_MANUAL_KEYS } from "@contracts/constants";
@@ -1194,6 +1197,7 @@ export const circleRouter = createRouter({
     .input(z.object({ eventId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const member = await requireMember(ctx.user.id);
+      await requireOnboardingComplete(member, "registering for events");
       const db = getDb();
       const ev = (
         await db

@@ -1,6 +1,7 @@
 import { eq, and, asc, sql, gte, isNull } from "drizzle-orm";
 import * as schema from "@db/schema";
 import type { Tier } from "@contracts/constants";
+import { memberCanAccessEvent } from "@contracts/constants";
 import { getDb } from "./connection";
 import { pushToMember } from "../lib/push";
 import { applyLifecycleTransition } from "../lib/lifecycle";
@@ -609,26 +610,9 @@ export function newCheckinCode(): string {
   return s.slice(0, 4) + "-" + s.slice(4);
 }
 
-/** BRD 6.4 — promote the longest-waiting member when a seat frees up. */
+/** BRD 6.4 — promote the longest-waiting eligible member when a seat frees up. */
 export async function promoteWaitlist(eventId: number) {
   const db = getDb();
-  const next = await db
-    .select()
-    .from(schema.eventRegs)
-    .where(
-      and(
-        eq(schema.eventRegs.eventId, eventId),
-        eq(schema.eventRegs.status, "waitlisted")
-      )
-    )
-    .orderBy(asc(schema.eventRegs.createdAt))
-    .limit(1);
-  const reg = next.at(0);
-  if (!reg) return;
-  await db
-    .update(schema.eventRegs)
-    .set({ status: "registered", checkinCode: newCheckinCode() })
-    .where(eq(schema.eventRegs.id, reg.id));
   const ev = (
     await db
       .select()
@@ -638,9 +622,45 @@ export async function promoteWaitlist(eventId: number) {
       )
       .limit(1)
   ).at(0);
-  await notify(
-    reg.memberId,
-    `A seat opened up — you're registered for ${ev?.title ?? "the event"}.`,
-    "event"
-  );
+  if (!ev) return;
+
+  // Check up to 10 waitlisted members in FIFO order and promote the first one
+  // that still qualifies for the event.
+  const waitlist = await db
+    .select()
+    .from(schema.eventRegs)
+    .where(
+      and(
+        eq(schema.eventRegs.eventId, eventId),
+        eq(schema.eventRegs.status, "waitlisted")
+      )
+    )
+    .orderBy(asc(schema.eventRegs.createdAt))
+    .limit(10);
+  for (const reg of waitlist) {
+    const member = (
+      await db
+        .select()
+        .from(schema.members)
+        .where(eq(schema.members.id, reg.memberId))
+        .limit(1)
+    ).at(0);
+    if (!member) continue;
+    if (
+      !memberCanAccessEvent(member.tier, ev) ||
+      (ev.chapterId && ev.chapterId !== member.homeChapterId)
+    ) {
+      continue;
+    }
+    await db
+      .update(schema.eventRegs)
+      .set({ status: "registered", checkinCode: newCheckinCode() })
+      .where(eq(schema.eventRegs.id, reg.id));
+    await notify(
+      reg.memberId,
+      `A seat opened up — you're registered for ${ev.title ?? "the event"}.`,
+      "event"
+    );
+    return;
+  }
 }
