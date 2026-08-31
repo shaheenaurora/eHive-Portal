@@ -46,10 +46,14 @@ export type ChapterPnl = {
   closingBalanceAed: number;
 };
 
-export function fiscalYearRange(year: number): { from: Date; to: Date } {
+export function fiscalYearRange(
+  year: number,
+  startMonth = 1
+): { from: Date; to: Date } {
+  const month = Math.max(1, Math.min(12, startMonth));
   return {
-    from: new Date(`${year}-01-01T00:00:00.000Z`),
-    to: new Date(`${year}-12-31T23:59:59.999Z`),
+    from: new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0)),
+    to: new Date(Date.UTC(year + 1, month - 1, 1, 0, 0, 0, -1)),
   };
 }
 

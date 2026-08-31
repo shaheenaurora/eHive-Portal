@@ -7,10 +7,16 @@ import {
 } from "./lib/chapter-pnl";
 
 describe("fiscalYearRange", () => {
-  it("returns the calendar-year bounds", () => {
+  it("returns the calendar-year bounds by default", () => {
     const r = fiscalYearRange(2026);
     expect(r.from.toISOString()).toBe("2026-01-01T00:00:00.000Z");
     expect(r.to.toISOString()).toBe("2026-12-31T23:59:59.999Z");
+  });
+
+  it("shifts the fiscal year when startMonth is not January", () => {
+    const r = fiscalYearRange(2026, 4);
+    expect(r.from.toISOString()).toBe("2026-04-01T00:00:00.000Z");
+    expect(r.to.toISOString()).toBe("2027-03-31T23:59:59.999Z");
   });
 });
 

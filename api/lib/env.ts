@@ -80,6 +80,10 @@ export const env = {
   // a JSON payload, SENTRY_DSN posts a lightweight event to Sentry's store API.
   sentryDsn: process.env.SENTRY_DSN ?? "",
   alertWebhookUrl: process.env.ALERT_WEBHOOK_URL ?? "",
+  // Optional ClamAV REST endpoint for receipt malware scanning. Empty = only
+  // magic-byte validation is performed and the upload is logged as un-scanned.
+  clamavUrl: process.env.CLAMAV_URL ?? "",
+  clamavToken: process.env.CLAMAV_TOKEN ?? "",
   // API keys for the read-only integration API (/api/integrations/v1/*) that an
   // external ERP / accounting app polls. Empty = the whole integration API is
   // disabled (returns 503).

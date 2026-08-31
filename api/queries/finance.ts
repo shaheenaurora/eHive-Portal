@@ -23,6 +23,7 @@ import {
 import { sendInvoiceReady } from "../lib/lead-mail";
 import { applyLifecycleTransition } from "../lib/lifecycle";
 import { logger } from "../lib/log";
+import { scanReceipt } from "../lib/receipt-scan";
 import { paymentsEnabled, getPaymentProvider } from "../lib/payments";
 import {
   TIER_PRICE_AED,
@@ -250,16 +251,24 @@ export async function chapterPnl(
 ): Promise<ChapterPnl> {
   const db = getDb();
   const targetYear = year ?? new Date().getUTCFullYear();
-  const { from, to } = fiscalYearRange(targetYear);
 
   const chapter = (
     await db
-      .select({ id: schema.chapters.id, name: schema.chapters.name })
+      .select({
+        id: schema.chapters.id,
+        name: schema.chapters.name,
+        fiscalYearStartMonth: schema.chapters.fiscalYearStartMonth,
+      })
       .from(schema.chapters)
       .where(eq(schema.chapters.id, chapterId))
       .limit(1)
   ).at(0);
   if (!chapter) throw new TRPCError({ code: "NOT_FOUND" });
+
+  const { from, to } = fiscalYearRange(
+    targetYear,
+    chapter.fiscalYearStartMonth ?? 1
+  );
 
   const [allocationsBefore, expensesBefore, rawPayments, rawExpenses, rates] =
     await Promise.all([
@@ -1094,6 +1103,9 @@ export async function recordExpense(
         code: "BAD_REQUEST",
         message: "Receipt is too large — keep it under about 4 MB.",
       });
+    const scan = await scanReceipt(receiptData, input.receiptName);
+    if (!scan.ok)
+      throw new TRPCError({ code: "BAD_REQUEST", message: scan.reason });
   }
 
   const res = await db.insert(schema.chapterBudgets).values({

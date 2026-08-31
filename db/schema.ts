@@ -1599,6 +1599,9 @@ export const chapters = mysqlTable("chapters", {
   ])
     .notNull()
     .default("seed"),
+  fiscalYearStartMonth: int("fiscalYearStartMonth")
+    .notNull()
+    .default(1),
   charterDate: timestamp("charterDate"),
   deletedAt: timestamp("deletedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
