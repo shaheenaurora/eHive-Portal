@@ -14,6 +14,7 @@ import { getDb } from "./queries/connection";
 import {
   sendScorecardFollowUp,
   sendBookingConfirmation,
+  sendBookingCancellation,
 } from "./lib/lead-mail";
 import {
   formatGstDate,
@@ -158,6 +159,46 @@ export const appRouter = createRouter({
           .limit(1)
       ).at(0);
       if (!row) throw new Error("Appointment not found");
+      if (row.status === "confirmed") {
+        return { ok: false, error: "Appointment is already confirmed." };
+      }
+
+      const dateStr = new Date(row.scheduledAt).toLocaleDateString("en-CA", {
+        timeZone: "Asia/Dubai",
+      });
+      const timeStr = new Date(row.scheduledAt).toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+        timeZone: "Asia/Dubai",
+      });
+      const windowStart = toGstTimestamp(dateStr, "00:00");
+      const windowEnd = toGstTimestamp(dateStr, "23:59");
+      const existing = await getDb()
+        .select({
+          scheduledAt: schema.appointments.scheduledAt,
+          durationMin: schema.appointments.durationMin,
+          status: schema.appointments.status,
+        })
+        .from(schema.appointments)
+        .where(
+          and(
+            eq(schema.appointments.status, "confirmed"),
+            gte(schema.appointments.scheduledAt, windowStart),
+            lte(schema.appointments.scheduledAt, windowEnd),
+            sql`${schema.appointments.id} != ${input.id}`
+          )
+        );
+      if (
+        !isSlotAvailable(existing, dateStr, timeStr, row.durationMin || 60)
+      ) {
+        return {
+          ok: false,
+          error:
+            "That slot is no longer available. Please reschedule to a different time.",
+        };
+      }
+
       const when = `${formatGstDate(row.scheduledAt)} · ${formatGstTime(row.scheduledAt)} GST`;
       const emailResult = await sendBookingConfirmation({
         name: row.name,
@@ -184,11 +225,29 @@ export const appRouter = createRouter({
       })
     )
     .mutation(async ({ input }) => {
+      const row = (
+        await getDb()
+          .select()
+          .from(schema.appointments)
+          .where(eq(schema.appointments.id, input.id))
+          .limit(1)
+      ).at(0);
+      if (!row) throw new Error("Appointment not found");
+
       await getDb()
         .update(schema.appointments)
         .set({ status: "cancelled", cancelledAt: new Date() })
         .where(eq(schema.appointments.id, input.id));
-      return { ok: true };
+
+      const when = `${formatGstDate(row.scheduledAt)} · ${formatGstTime(row.scheduledAt)} GST`;
+      const emailResult = await sendBookingCancellation({
+        name: row.name,
+        email: row.email,
+        product: row.product,
+        when,
+        reason: input.reason,
+      });
+      return { ok: true, emailSent: emailResult.ok, emailError: emailResult.error || null };
     }),
 
   rescheduleAppointment: scopedAdmin("leads")

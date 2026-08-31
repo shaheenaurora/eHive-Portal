@@ -951,15 +951,30 @@
             })(),
             sections: sections,
           };
-          try {
-            fetch("/api/lead", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              keepalive: true,
-              body: JSON.stringify(payload),
-            }).catch(function () {});
-          } catch (e) {
-            /* never block the UX on lead capture */
+          return fetch("/api/lead", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            keepalive: true,
+            body: JSON.stringify(payload),
+          })
+            .then(function (r) {
+              return r.json().catch(function () {
+                return { ok: false };
+              });
+            })
+            .then(function (d) {
+              return { ok: d && d.ok === true, data: d };
+            })
+            .catch(function () {
+              return { ok: false, data: null };
+            });
+        }
+
+        function setSubmitting(busy) {
+          var btn = $("nextBtn");
+          if (btn) {
+            btn.disabled = busy;
+            btn.textContent = busy ? "Sending…" : "Continue →";
           }
         }
 
@@ -974,8 +989,18 @@
             return;
           }
           if (step === STEPS.length - 1) {
-            submitLead();
-            show("done");
+            setSubmitting(true);
+            $("stepErr").style.display = "none";
+            submitLead().then(function (result) {
+              setSubmitting(false);
+              if (result.ok) {
+                show("done");
+              } else {
+                $("stepErr").textContent =
+                  "We couldn't send your responses right now. Please check your connection and try again.";
+                $("stepErr").style.display = "block";
+              }
+            });
             return;
           }
           step++;

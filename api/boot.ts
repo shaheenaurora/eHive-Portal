@@ -619,7 +619,12 @@ app.get("/api/availability", async c => {
     );
   return c.json({
     product,
-    slots: generateAvailability(existing, fromDate, toDate),
+    slots: generateAvailability(
+      existing,
+      fromDate,
+      toDate,
+      productDurationMin(product)
+    ),
   });
 });
 

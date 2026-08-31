@@ -837,11 +837,14 @@
           $("gateErr").style.display = "none";
 
           // ---- Capture the lead + scores into the eHive Leads inbox (admin panel). ----
-          // The response tells us whether the confirmation email was actually sent, so
-          // we can give the user honest feedback instead of claiming it is on its way.
+          // Wait for the server response before declaring success so the user
+          // knows whether the scorecard was actually saved.
+          var emailNote = document.querySelector("#results .fineprint");
+          if (emailNote) {
+            emailNote.textContent = "Saving your scorecard…";
+          }
           renderResults();
           show("results");
-          var emailNote = document.querySelector("#results .fineprint");
           try {
             fetch("/api/lead", {
               method: "POST",
@@ -864,19 +867,46 @@
               }),
             })
               .then(function (r) {
-                return r.json();
+                return r.json().catch(function () {
+                  return { ok: false };
+                });
               })
               .then(function (d) {
-                if (emailNote && d && d.emailSent === false) {
-                  emailNote.textContent =
-                    "We saved your scorecard, but the confirmation email could not be sent" +
-                    (d.emailError ? " (" + d.emailError + ")" : "") +
-                    ". A team member will follow up directly.";
+                if (!d || d.ok !== true) {
+                  if (emailNote) {
+                    emailNote.textContent =
+                      "We couldn't save your scorecard right now. Please try again or contact us directly.";
+                    emailNote.style.color = "var(--h-coral, #b23a2e)";
+                  }
+                  return;
+                }
+                if (emailNote) {
+                  if (d.emailSent === false) {
+                    emailNote.textContent =
+                      "We saved your scorecard, but the confirmation email could not be sent" +
+                      (d.emailError ? " (" + d.emailError + ")" : "") +
+                      ". A team member will follow up directly.";
+                    emailNote.style.color = "";
+                  } else {
+                    emailNote.textContent =
+                      "Your scorecard is saved. A copy is on its way to your inbox.";
+                    emailNote.style.color = "";
+                  }
                 }
               })
-              .catch(function () {});
+              .catch(function () {
+                if (emailNote) {
+                  emailNote.textContent =
+                    "We couldn't save your scorecard right now. Please try again or contact us directly.";
+                  emailNote.style.color = "var(--h-coral, #b23a2e)";
+                }
+              });
           } catch (e) {
-            /* never block the UX on lead capture */
+            if (emailNote) {
+              emailNote.textContent =
+                "We couldn't save your scorecard right now. Please try again or contact us directly.";
+              emailNote.style.color = "var(--h-coral, #b23a2e)";
+            }
           }
         });
 

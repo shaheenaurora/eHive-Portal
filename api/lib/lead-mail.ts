@@ -443,3 +443,31 @@ export async function sendBookingConfirmation(input: {
     error: errors.length ? errors.join("; ") : undefined,
   };
 }
+
+/** Send a booking cancellation notice to the visitor. */
+export async function sendBookingCancellation(input: {
+  name: string;
+  email: string;
+  product: string;
+  when: string;
+  reason?: string | null;
+}): Promise<{ ok: boolean; error?: string }> {
+  if (!mailEnabled()) {
+    return { ok: false, error: "Email is not configured." };
+  }
+  const firstName = input.name.split(" ")[0];
+  const html = shell(`
+    <h1 style="margin:0 0 12px;font-family:Georgia,serif;font-size:22px;color:#101d2c;font-weight:600">${firstName ? `Hi ${esc(firstName)},` : "Hi,"}</h1>
+    <p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">Your <strong style="color:#101d2c">${esc(input.product)}</strong> on <strong style="color:#101d2c">${esc(input.when)}</strong> has been cancelled.</p>
+    ${input.reason ? `<p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">Reason: ${esc(input.reason)}</p>` : ""}
+    <p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">If you'd like to reschedule, just reply to this email or book a new time.</p>
+    <p style="margin:20px 0 0;color:#33465e;font-size:14px;line-height:1.55">Warm regards,<br/><strong>The eHive team</strong></p>
+  `);
+  const r = await sendMailDetailed({
+    to: input.email,
+    subject: `Cancelled — ${input.product}`,
+    html,
+    replyTo: env.leadNotifyEmail || undefined,
+  });
+  return { ok: r.ok, error: r.error };
+}

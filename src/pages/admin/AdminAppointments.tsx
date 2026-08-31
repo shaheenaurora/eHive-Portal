@@ -183,8 +183,12 @@ function ConfirmButton({ id, onDone }: { id: number; onDone: () => void }) {
 
 function CancelButton({ id, onDone }: { id: number; onDone: () => void }) {
   const m = trpc.cancelAppointment.useMutation({
-    onSuccess: () => {
-      toast("Appointment cancelled.");
+    onSuccess: r => {
+      toast(
+        r.emailSent
+          ? "Appointment cancelled — visitor notified."
+          : "Appointment cancelled — visitor notification failed."
+      );
       onDone();
     },
     onError: e => toast(e.message),
@@ -197,7 +201,7 @@ function CancelButton({ id, onDone }: { id: number; onDone: () => void }) {
         if (
           await confirmDialog({
             title: "Cancel appointment?",
-            body: "The visitor will not be notified automatically.",
+            body: "The visitor will be notified by email.",
             danger: true,
           })
         ) {

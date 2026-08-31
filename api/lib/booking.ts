@@ -64,11 +64,14 @@ export type ExistingSlot = {
 /**
  * Build the availability grid for a date range. A slot is unavailable if it
  * falls on a weekend or overlaps an existing non-cancelled appointment.
+ * `durationMin` is the length of the product being booked, so a long session
+ * (e.g. 480 min) correctly blocks overlapping slots.
  */
 export function generateAvailability(
   existing: ExistingSlot[],
   fromDate: string,
-  toDate: string
+  toDate: string,
+  durationMin = 60
 ): { date: string; time: string; available: boolean }[] {
   const results: { date: string; time: string; available: boolean }[] = [];
   const start = new Date(`${fromDate}T00:00:00${GST_OFFSET}`);
@@ -80,7 +83,7 @@ export function generateAvailability(
     if (isWeekend(dateStr)) continue;
     for (const time of BOOKING_SLOTS) {
       const slotStart = toGstTimestamp(dateStr, time);
-      const slotEnd = new Date(slotStart.getTime() + 60 * 60 * 1000);
+      const slotEnd = new Date(slotStart.getTime() + durationMin * 60 * 1000);
       const taken = existing.some(appt => {
         if (appt.status === "cancelled") return false;
         const aStart = new Date(appt.scheduledAt);
