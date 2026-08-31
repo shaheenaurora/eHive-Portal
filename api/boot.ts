@@ -55,6 +55,33 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function isValidEmail(value: string): boolean {
+  return EMAIL_REGEX.test(value.trim());
+}
+
+async function findRecentLead(
+  email: string,
+  form: string,
+  windowMs = 60 * 60 * 1000
+): Promise<{ id: number } | undefined> {
+  const cutoff = new Date(Date.now() - windowMs);
+  return (
+    await getDb()
+      .select({ id: schema.leads.id })
+      .from(schema.leads)
+      .where(
+        and(
+          eq(schema.leads.form, form),
+          eq(schema.leads.email, email.trim().toLowerCase()),
+          gte(schema.leads.createdAt, cutoff)
+        )
+      )
+      .orderBy(desc(schema.leads.createdAt))
+      .limit(1)
+  )[0];
+}
+
 /** CSP hashes for the inline <script> blocks in the static marketing HTML files.
  *  Computed once at startup so we can drop 'unsafe-inline' from script-src. */
 function loadInlineScriptHashes(): string[] {
@@ -278,10 +305,20 @@ app.post("/api/lead", async c => {
   }
   const email =
     typeof body.email === "string" ? body.email.slice(0, 320) : null;
+  if (email && !isValidEmail(email)) {
+    return c.json({ ok: false, error: "invalid email address" }, 400);
+  }
   const sourcePage =
     typeof body.source_page === "string"
       ? body.source_page.slice(0, 255)
       : null;
+  // De-duplicate rapid re-submissions of the same form+email within an hour.
+  if (email && body.form) {
+    const duplicate = await findRecentLead(email, String(body.form));
+    if (duplicate) {
+      return c.json({ ok: true, leadId: duplicate.id, emailSent: false });
+    }
+  }
   let leadId: number | undefined;
   // Persist Clarity Scorecard results in the same transaction as the lead so
   // the two records are always consistent.
@@ -1124,9 +1161,13 @@ app.get("/api/ready", async c => {
 
 /* Prometheus-style metrics (text exposition, no external dependency). Enough for
    an ops dashboard: process uptime/memory, resident event-loop info, and a DB-up
-   gauge. Guard with METRICS_TOKEN when set (Bearer) so it isn't world-readable. */
+   gauge. In production METRICS_TOKEN is required (Bearer); in other environments
+   it is optional but still checked when set. */
 app.get("/metrics", async c => {
   const token = process.env.METRICS_TOKEN;
+  if (env.isProduction && !token) {
+    return c.text("metrics disabled", 401);
+  }
   if (token) {
     const auth = c.req.header("authorization") ?? "";
     if (auth !== `Bearer ${token}`) return c.text("unauthorized", 401);

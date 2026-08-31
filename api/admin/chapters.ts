@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, or, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import * as schema from "@db/schema";
 import { getDb } from "../queries/connection";
@@ -82,7 +82,40 @@ export const chaptersRouter = createRouter({
       })
     )
     .mutation(async ({ input }) => {
-      const res = await getDb().insert(schema.govRoles).values(input);
+      const db = getDb();
+      // Prevent the same member holding overlapping terms or one seat being
+      // double-booked in the same governance body.
+      const existing = await db
+        .select()
+        .from(schema.govRoles)
+        .where(
+          and(
+            eq(schema.govRoles.bodyId, input.bodyId),
+            or(
+              eq(schema.govRoles.memberId, input.memberId),
+              eq(schema.govRoles.seat, input.seat)
+            )
+          )
+        );
+      const newStart = input.termStart?.getTime() ?? -Infinity;
+      const newEnd = input.termEnd?.getTime() ?? Infinity;
+      for (const r of existing) {
+        const exStart = r.termStart ? new Date(r.termStart).getTime() : -Infinity;
+        const exEnd = r.termEnd ? new Date(r.termEnd).getTime() : Infinity;
+        if (newStart < exEnd && newEnd > exStart) {
+          if (r.memberId === input.memberId) {
+            throw new TRPCError({
+              code: "CONFLICT",
+              message: "This member already holds an overlapping term in this body.",
+            });
+          }
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: `The seat "${input.seat}" is already filled for the requested term.`,
+          });
+        }
+      }
+      const res = await db.insert(schema.govRoles).values(input);
       return { ok: true, id: Number(res[0].insertId) };
     }),
 
@@ -328,18 +361,18 @@ export const chaptersRouter = createRouter({
           if (region?.parentId) countryId = region.parentId;
         }
       }
-      const directors = await db
-        .select({ memberId: schema.unitRoles.memberId, role: schema.unitRoles.role })
-        .from(schema.unitRoles)
-        .where(
-          and(
-            eq(schema.unitRoles.level, "country"),
-            countryId != null
-              ? eq(schema.unitRoles.unitId, countryId)
-              : sql`1=1`,
-            sql`${schema.unitRoles.role} in ('country_director','national_director','National Director','Country Director')`
-          )
-        );
+      const directors = countryId
+        ? await db
+            .select({ memberId: schema.unitRoles.memberId, role: schema.unitRoles.role })
+            .from(schema.unitRoles)
+            .where(
+              and(
+                eq(schema.unitRoles.level, "country"),
+                eq(schema.unitRoles.unitId, countryId),
+                sql`${schema.unitRoles.role} in ('country_director','national_director','National Director','Country Director')`
+              )
+            )
+        : [];
       const msg = `${chapter.name} has met all franchise readiness requirements and been granted a charter.`;
       for (const d of directors) {
         notify(d.memberId, msg, "governance").catch(() => {});

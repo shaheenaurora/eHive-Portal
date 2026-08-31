@@ -666,12 +666,13 @@ export const circleRouter = createRouter({
           reason: input.note || "Member cancelled their membership.",
         });
       } else if (input.type === "pause") {
-        // A voluntary pause is a temporary access hold, not a CRM lifecycle
-        // move (there is no "paused" lifecycle state), so only status changes.
-        await db
-          .update(schema.members)
-          .set({ status: "paused" })
-          .where(eq(schema.members.id, member.id));
+        // Route a voluntary pause through the lifecycle executor as a suspended
+        // state so lifecycleState and access status stay coherent (suspended →
+        // paused). The member can self-reinstate later or admin can lift it.
+        await applyLifecycleTransition(member.id, "suspended", {
+          actor: ctx.user,
+          reason: input.note || "Member paused their membership.",
+        });
       } else if (input.type === "renew") {
         // Renewal must be paid for. The only legitimate path is startRenewal
         // (Stripe checkout) followed by webhook confirmation. Reject the free

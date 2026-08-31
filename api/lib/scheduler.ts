@@ -160,7 +160,12 @@ async function jobRenewal(now = new Date()): Promise<void> {
   const rows = await db
     .select()
     .from(schema.members)
-    .where(isNotNull(schema.members.renewalAt));
+    .where(
+      and(
+        isNotNull(schema.members.renewalAt),
+        eq(schema.members.status, "active")
+      )
+    );
   let opened = 0,
     lapsed = 0;
   for (const m of rows) {

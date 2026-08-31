@@ -785,6 +785,15 @@ export const membershipRouter = createRouter({
         id: m.id,
         detail: `${req.fromTier ?? m.tier} → ${req.toTier ?? "?"}`,
       });
+      const decisionText =
+        input.decision === "approve"
+          ? `approved — your tier is now ${req.toTier ?? m.tier}.`
+          : `not approved at this time${input.note ? `: ${input.note}` : ""}.`;
+      await notify(
+        m.id,
+        `Your tier change request has been ${decisionText}`,
+        "membership"
+      );
       return { ok: true };
     }),
 

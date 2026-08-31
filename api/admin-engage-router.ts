@@ -2253,6 +2253,68 @@ export const adminEngageRouter = createRouter({
           code: "CONFLICT",
           message: "That member already holds this role here.",
         });
+
+      // Eligibility: active member whose chapter rolls up to this unit.
+      const member = (
+        await db
+          .select({
+            status: schema.members.status,
+            homeChapterId: schema.members.homeChapterId,
+          })
+          .from(schema.members)
+          .where(eq(schema.members.id, input.memberId))
+          .limit(1)
+      ).at(0);
+      if (!member || member.status !== "active") {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Leader must be an active member.",
+        });
+      }
+      if (!member.homeChapterId) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Member is not assigned to a chapter in this unit.",
+        });
+      }
+      const chapter = (
+        await db
+          .select({ zoneId: schema.chapters.zoneId })
+          .from(schema.chapters)
+          .where(eq(schema.chapters.id, member.homeChapterId))
+          .limit(1)
+      ).at(0);
+      let expectedUnitId: number | null | undefined;
+      if (input.level === "zone") {
+        expectedUnitId = chapter?.zoneId;
+      } else if (chapter?.zoneId) {
+        const zone = (
+          await db
+            .select({ parentId: schema.orgUnits.parentId })
+            .from(schema.orgUnits)
+            .where(eq(schema.orgUnits.id, chapter.zoneId))
+            .limit(1)
+        ).at(0);
+        if (input.level === "region") {
+          expectedUnitId = zone?.parentId;
+        } else if (zone?.parentId) {
+          const region = (
+            await db
+              .select({ parentId: schema.orgUnits.parentId })
+              .from(schema.orgUnits)
+              .where(eq(schema.orgUnits.id, zone.parentId))
+              .limit(1)
+          ).at(0);
+          expectedUnitId = region?.parentId;
+        }
+      }
+      if (expectedUnitId !== input.unitId) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Member's chapter is not in this unit's subtree.",
+        });
+      }
+
       await db.insert(schema.unitRoles).values({
         unitId: input.unitId,
         level: input.level,
