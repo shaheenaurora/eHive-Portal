@@ -76,6 +76,10 @@ export const env = {
   // Regional API host: api.zeptomail.com (default), api.zeptomail.eu, etc.
   zeptoApiUrl:
     process.env.ZEPTOMAIL_API_URL ?? "https://api.zeptomail.com/v1.1/email",
+  // Operational alerting. Either or both can be set; ALERT_WEBHOOK_URL receives
+  // a JSON payload, SENTRY_DSN posts a lightweight event to Sentry's store API.
+  sentryDsn: process.env.SENTRY_DSN ?? "",
+  alertWebhookUrl: process.env.ALERT_WEBHOOK_URL ?? "",
   // API keys for the read-only integration API (/api/integrations/v1/*) that an
   // external ERP / accounting app polls. Empty = the whole integration API is
   // disabled (returns 503).

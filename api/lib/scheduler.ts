@@ -9,7 +9,7 @@
  * pass so a container restart can't double-run it, and each job only acts on
  * rows that still need acting on.
  */
-import { and, eq, isNotNull, isNull, lte, ne, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, isNotNull, isNull, lte, ne, sql } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "../queries/connection";
 import { evaluateDormancy, notify } from "../queries/circle";
@@ -27,6 +27,9 @@ import {
 } from "./franchise-readiness";
 import { carryForwardBudgets } from "./budget-carry-forward";
 import { audit } from "./audit";
+import { retryEmailDelivery } from "./notify-mail";
+import { env } from "./env";
+import { randomUUID } from "node:crypto";
 
 /** System actor used for scheduler-driven audit rows. */
 const SYSTEM_ACTOR = { id: 0, email: "system@ehive.global" };
@@ -47,6 +50,58 @@ const schedulerStatus: SchedulerStatus = {
 };
 export function getSchedulerStatus(): SchedulerStatus {
   return { ...schedulerStatus };
+}
+
+/** Best-effort operational alert when a scheduled job fails. Posts to the
+ *  configured webhook and/or Sentry so silent failures don't hide in logs. */
+async function alertScheduler(job: string, error: unknown): Promise<void> {
+  const message = error instanceof Error ? error.message : String(error);
+  const payload = {
+    source: "ehive-scheduler",
+    job,
+    error: message,
+    time: new Date().toISOString(),
+  };
+
+  if (env.alertWebhookUrl) {
+    try {
+      await fetch(env.alertWebhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    } catch {
+      /* alerting must not break the scheduler */
+    }
+  }
+
+  if (env.sentryDsn) {
+    try {
+      const parsed = new URL(env.sentryDsn);
+      const key = parsed.username;
+      const projectId = parsed.pathname.replace(/^\//, "");
+      if (key && projectId) {
+        const event = {
+          event_id: randomUUID().replace(/-/g, ""),
+          timestamp: new Date().toISOString(),
+          platform: "node",
+          level: "error",
+          message: `Scheduler job "${job}" failed: ${message}`,
+          extra: payload,
+        };
+        await fetch(`https://${parsed.host}/api/${projectId}/store/`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Sentry-Auth": `Sentry sentry_version=7,sentry_client=ehive-scheduler/1.0,sentry_key=${key}`,
+          },
+          body: JSON.stringify(event),
+        });
+      }
+    } catch {
+      /* best-effort: don't crash if Sentry is unreachable */
+    }
+  }
 }
 
 /** UTC calendar day, e.g. "2026-07-29". */
@@ -79,6 +134,7 @@ async function safe(name: string, fn: () => Promise<void>): Promise<void> {
     schedulerStatus.lastFailureAt = new Date().toISOString();
     schedulerStatus.failures++;
     logger.error(`scheduler job "${name}" failed`, { job: name, error: String(e) });
+    await alertScheduler(name, e);
   }
 }
 
@@ -269,13 +325,15 @@ async function jobRoleTerms(now = new Date()): Promise<void> {
 
 /**
  * CH-06 — when a chapter's health index drops below the healthy line, alert its
- * officers with a remediation prompt. Fires once on the transition into
- * "below" (and re-arms once it recovers), so it doesn't repeat daily.
+ * officers, mark the chapter `at_risk`, and open a remediation case. Fires once
+ * on the transition into "below" (and re-arms once it recovers), so it doesn't
+ * repeat daily. The alert/case are resolved when health climbs back above the
+ * watch band.
  */
 async function jobHealthThreshold(): Promise<void> {
   const db = getDb();
   const chapters = await db
-    .select({ id: schema.chapters.id, name: schema.chapters.name })
+    .select({ id: schema.chapters.id, name: schema.chapters.name, status: schema.chapters.status })
     .from(schema.chapters)
     .where(isNull(schema.chapters.deletedAt));
   let alerted = 0;
@@ -308,7 +366,55 @@ async function jobHealthThreshold(): Promise<void> {
           "health"
         );
       }
+      // Surface at-risk status for franchise operations and reporting.
+      if (ch.status !== "at_risk") {
+        await db
+          .update(schema.chapters)
+          .set({ status: "at_risk" })
+          .where(eq(schema.chapters.id, ch.id));
+        await audit(SYSTEM_ACTOR, "chapter.status", {
+          type: "chapter",
+          id: ch.id,
+          detail: `${ch.name} marked at_risk (health index ${total})`,
+        });
+      }
+      // Open a single remediation case per chapter while at-risk.
+      const existing = await db
+        .select({ id: schema.kpiAlerts.id })
+        .from(schema.kpiAlerts)
+        .where(
+          and(
+            eq(schema.kpiAlerts.scope, "chapter"),
+            eq(schema.kpiAlerts.scopeId, ch.id),
+            eq(schema.kpiAlerts.metric, "chapter_health"),
+            inArray(schema.kpiAlerts.status, ["open", "acknowledged"])
+          )
+        )
+        .limit(1);
+      if (!existing.length) {
+        await db.insert(schema.kpiAlerts).values({
+          scope: "chapter",
+          scopeId: ch.id,
+          metric: "chapter_health",
+          severity: "red",
+          status: "open",
+          message: `${ch.name} health index ${total} is below the healthy line. Remediation plan required.`,
+        });
+      }
       alerted++;
+    } else {
+      // Health recovered — resolve any open chapter-health case for this chapter.
+      await db
+        .update(schema.kpiAlerts)
+        .set({ status: "resolved", resolvedAt: new Date() })
+        .where(
+          and(
+            eq(schema.kpiAlerts.scope, "chapter"),
+            eq(schema.kpiAlerts.scopeId, ch.id),
+            eq(schema.kpiAlerts.metric, "chapter_health"),
+            inArray(schema.kpiAlerts.status, ["open", "acknowledged"])
+          )
+        );
     }
     await setMarker(markerKey, state);
   }
@@ -447,10 +553,7 @@ async function jobBudgetCarryForward(now = new Date()): Promise<void> {
   const result = await carryForwardBudgets(now);
   await setMarker(markerKey, "done");
   if (result.carried || result.skipped) {
-    logger.info(`scheduler budget carry-forward FY${year}: ${result.carried} carried, ${result.skipped} already done`, {
-      year,
-      ...result,
-    });
+    logger.info(`scheduler budget carry-forward FY${year}: ${result.carried} carried, ${result.skipped} already done`, result);
   }
 }
 
@@ -508,13 +611,49 @@ async function jobDunning(now = new Date()): Promise<void> {
 }
 
 /**
+ * BRD 6.3 — retry failed/bounced email deliveries that may have been transient.
+ * Bounded: only the last 7 days, max 3 prior attempts, up to 100 per run so the
+ * daily pass can't be swamped by a bad provider week.
+ */
+async function jobRetryFailedNotifications(now = new Date()): Promise<void> {
+  const db = getDb();
+  const cutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const rows = await db
+    .select({ id: schema.notificationDeliveries.id })
+    .from(schema.notificationDeliveries)
+    .where(
+      and(
+        inArray(schema.notificationDeliveries.status, ["failed", "bounced"]),
+        lte(schema.notificationDeliveries.retryCount, 3),
+        gte(schema.notificationDeliveries.createdAt, cutoff)
+      )
+    )
+    .orderBy(schema.notificationDeliveries.createdAt)
+    .limit(100);
+
+  let retried = 0;
+  for (const row of rows) {
+    try {
+      await retryEmailDelivery(row.id);
+      retried++;
+    } catch (e) {
+      logger.warn(`scheduler notification retry failed for delivery ${row.id}`, {
+        deliveryId: row.id,
+        error: String(e),
+      });
+    }
+  }
+  if (retried)
+    logger.info(`scheduler notification retries: ${retried} delivery(s) re-attempted`, { retried });
+}
+
+/**
  * Scorecard nurture — send a personalised follow-up to clarity-scorecard leads
  * at day 3 and day 10. Only sends once per lead per stage.
  */
 async function jobScorecardFollowUp(now = new Date()): Promise<void> {
   const db = getDb();
   const day3 = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
-  const day10 = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000);
   const leads = await db
     .select()
     .from(schema.leads)
@@ -601,6 +740,7 @@ export async function runDailyJobs(now = new Date()): Promise<boolean> {
   await safe("dormancy", () => jobDormancy());
   await safe("renewal", () => jobRenewal(now));
   await safe("dunning", () => jobDunning(now));
+  await safe("notification-retries", () => jobRetryFailedNotifications(now));
   await safe("onboarding-slip", () => jobOnboardingSlip());
   await safe("cadence-reminders", () => jobCadenceReminders(now));
   await safe("role-terms", () => jobRoleTerms(now));
@@ -636,6 +776,7 @@ export function startScheduler(): void {
       schedulerStatus.lastFailureAt = new Date().toISOString();
       schedulerStatus.failures++;
       logger.error("scheduler tick failed", { error: String(e) });
+      void alertScheduler("tick", e);
     });
   };
   // Give the server a moment to finish booting, then check hourly.

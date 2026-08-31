@@ -1,4 +1,4 @@
-import { eq, and, lt, isNull, sql } from "drizzle-orm";
+import { eq, and, lt, sql } from "drizzle-orm";
 import { getDb } from "./connection";
 import * as schema from "@db/schema";
 
@@ -75,7 +75,7 @@ export async function pruneExpiredUserSessions(
   return (res as unknown as [{ affectedRows: number }])[0]?.affectedRows ?? 0;
 }
 
-export async function isSessionValid(
+export function isSessionValid(
   session: schema.UserSession,
   userTokenVersion: number
 ): boolean {
