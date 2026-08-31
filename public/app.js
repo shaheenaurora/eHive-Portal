@@ -11,7 +11,7 @@
    the user keeps their summary and is told the request was not sent.      */
 var FORM_ENDPOINT = "/api/lead";
 var PORTAL_LIVE = true; /* portal is live at /portal */
-var WA_NUMBER = null; /* e.g. "9715XXXXXXXX" once the WhatsApp line exists */
+var WA_NUMBER = null; /* WhatsApp line disabled until a number is provisioned */
 
 /* ---- launch date (single source of truth) -------------------------------
    1 Oct 2026, 00:00 Gulf Standard Time. Used by countdowns and launch copy. */
