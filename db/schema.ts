@@ -761,6 +761,8 @@ export const paymentRecords = mysqlTable(
     // Funds-settlement time. Used for revenue recognition; may differ from createdAt
     // when a checkout spans a period end or an async payment settles later.
     paidAt: timestamp("paidAt"),
+    // Optional idempotency key for offline/manual payment recording.
+    idempotencyKey: varchar("idempotencyKey", { length: 64 }),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt")
       .defaultNow()
@@ -771,6 +773,9 @@ export const paymentRecords = mysqlTable(
     uniqueIndex("payment_records_provider_ref_unique").on(
       t.provider,
       t.providerRef
+    ),
+    uniqueIndex("payment_records_idempotency_key_unique").on(
+      t.idempotencyKey
     ),
   ]
 );
@@ -2090,6 +2095,7 @@ export const memberSaveCases = mysqlTable("member_save_cases", {
   resolution: text("resolution"),
   openedAt: timestamp("openedAt").defaultNow().notNull(),
   closedAt: timestamp("closedAt"),
+  dueAt: timestamp("dueAt"),
   updatedAt: timestamp("updatedAt")
     .defaultNow()
     .notNull()

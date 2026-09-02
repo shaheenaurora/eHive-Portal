@@ -12,6 +12,7 @@ import {
   quarterStart,
 } from "./queries/circle";
 import { requireOnboardingComplete } from "./queries/onboarding";
+import { requireKycVerified } from "./queries/kyc";
 import { getVapidPublicKey } from "./lib/push";
 import {
   tierRank,
@@ -825,6 +826,7 @@ export const engageRouter = createRouter({
     .mutation(async ({ ctx, input }) => {
       const member = await requireMember(ctx.user.id);
       await requireOnboardingComplete(member, "posting a deal");
+      await requireKycVerified(member.id);
       const db = getDb();
       if (tierRank(member.tier) < tierRank("ascent"))
         throw new TRPCError({

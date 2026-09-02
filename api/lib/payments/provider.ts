@@ -36,4 +36,9 @@ export interface PaymentProvider {
   /** Refund a captured payment. Omit amountMinor for a full refund, or pass a
    *  smaller value (in minor units, e.g. fils) for a partial refund. */
   refund(providerRef: string, amountMinor?: number): Promise<void>;
+  /** Retrieve a checkout session by provider ref so the scheduler can reconcile
+   *  payments that never received a webhook. */
+  retrieveCheckoutSession(
+    providerRef: string
+  ): Promise<{ status: "paid" | "failed"; amount?: number } | null>;
 }

@@ -33,7 +33,7 @@ import {
   FX_RATE_SCALE,
   convertToBaseMinor,
 } from "@contracts/constants";
-import { ratesMap } from "./fx";
+import { loadRates, requireRate } from "./fx";
 import {
   summarizePayments,
   rollupBudgets,
@@ -186,7 +186,7 @@ export async function financeReport(
     expConds.push(inArray(schema.chapterBudgets.chapterId, scopedChapterIds));
   }
 
-  const [rawPays, expenses, rates] = await Promise.all([
+  const [rawPays, expenses, { rates, updatedAt }] = await Promise.all([
     db
       .select({
         amount: schema.paymentRecords.amount,
@@ -212,13 +212,14 @@ export async function financeReport(
       })
       .from(schema.chapterBudgets)
       .where(and(...expConds)),
-    ratesMap(),
+    loadRates(),
   ]);
   // FX-normalise every payment to the base currency before aggregating, so a
   // mixed-currency ledger reports in one number (chapter expenses are AED-only).
   const pays = rawPays.map(p => {
-    const rate = rates.get((p.currency ?? BASE_CURRENCY).toLowerCase());
-    if (rate == null || rate === FX_RATE_SCALE) return p;
+    const code = (p.currency ?? BASE_CURRENCY).toLowerCase();
+    const rate = requireRate(code, rates, updatedAt);
+    if (rate === FX_RATE_SCALE) return p;
     return {
       ...p,
       amount: convertToBaseMinor(p.amount, rate),
@@ -270,7 +271,7 @@ export async function chapterPnl(
     chapter.fiscalYearStartMonth ?? 1
   );
 
-  const [allocationsBefore, expensesBefore, rawPayments, rawExpenses, rates] =
+  const [allocationsBefore, expensesBefore, rawPayments, rawExpenses, { rates, updatedAt }] =
     await Promise.all([
       db
         .select({ amount: schema.chapterBudgets.amount })
@@ -346,7 +347,7 @@ export async function chapterPnl(
           )
         )
         .orderBy(desc(schema.chapterBudgets.createdAt)),
-      ratesMap(),
+      loadRates(),
     ]);
 
   const openingBalanceAed =
@@ -354,13 +355,12 @@ export async function chapterPnl(
     expensesBefore.reduce((s, r) => s + (r.amount ?? 0), 0);
 
   const payments = rawPayments.map(p => {
-    const rate = rates.get((p.currency ?? BASE_CURRENCY).toLowerCase());
+    const code = (p.currency ?? BASE_CURRENCY).toLowerCase();
+    const rate = requireRate(code, rates, updatedAt);
     const grossMinor =
-      rate == null || rate === FX_RATE_SCALE
-        ? p.amount
-        : convertToBaseMinor(p.amount, rate);
+      rate === FX_RATE_SCALE ? p.amount : convertToBaseMinor(p.amount, rate);
     const refundMinor =
-      rate == null || rate === FX_RATE_SCALE
+      rate === FX_RATE_SCALE
         ? (p.refundedAmount ?? 0)
         : convertToBaseMinor(p.refundedAmount ?? 0, rate);
     return {
@@ -537,10 +537,49 @@ export async function recordManualPayment(
     extendRenewal?: boolean;
     /** Currency the amount is denominated in (default base/AED). */
     currency?: string;
+    /** Optional idempotency key to prevent duplicate manual payment records. */
+    idempotencyKey?: string;
   }
 ) {
   const currency = (input.currency ?? BASE_CURRENCY).toLowerCase();
   const db = getDb();
+
+  // Idempotency: reject a duplicate key, and also guard against rapid double-submits.
+  if (input.idempotencyKey?.trim()) {
+    const existingKey = await db
+      .select({ id: schema.paymentRecords.id })
+      .from(schema.paymentRecords)
+      .where(eq(schema.paymentRecords.idempotencyKey, input.idempotencyKey.trim()))
+      .limit(1);
+    if (existingKey.length) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "A manual payment with this idempotency key already exists.",
+      });
+    }
+  }
+  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+  const duplicate = await db
+    .select({ id: schema.paymentRecords.id })
+    .from(schema.paymentRecords)
+    .where(
+      and(
+        eq(schema.paymentRecords.userId, input.userId),
+        eq(schema.paymentRecords.amount, Math.round(input.amount * 100)),
+        eq(schema.paymentRecords.currency, currency),
+        eq(schema.paymentRecords.purpose, input.purpose),
+        eq(schema.paymentRecords.status, "paid"),
+        gte(schema.paymentRecords.createdAt, fiveMinutesAgo)
+      )
+    )
+    .limit(1);
+  if (duplicate.length) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "Duplicate manual payment detected.",
+    });
+  }
+
   const user = (
     await db
       .select()
@@ -602,6 +641,7 @@ export async function recordManualPayment(
       status: "paid",
       paidAt: now,
       note: input.note ?? null,
+      idempotencyKey: input.idempotencyKey?.trim() ?? null,
     });
     const paymentId = Number(
       (res as unknown as { insertId?: number }).insertId ?? 0

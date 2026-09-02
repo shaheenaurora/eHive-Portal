@@ -6,6 +6,7 @@ import { getDb } from "../queries/connection";
 import { createRouter, authedQuery } from "../middleware";
 import { audit } from "../lib/audit";
 import { chapterEventBudgetRemaining } from "../lib/chapter-budget";
+import { autoMarkCadenceForEvent } from "../queries/cadence";
 import { EVENT_KIND, AUDIENCE, TIER, resolveAudience } from "../admin/shared";
 import { requireOfficer, assertChapterOwner, assertRoles } from "./shared";
 
@@ -244,22 +245,19 @@ export const officerEventsRouter = createRouter({
         "Event management requires VP Programming or President."
       );
       const db = getDb();
-      await assertChapterOwner(
-        (
-          await db
-            .select()
-            .from(schema.events)
-            .where(
-              and(
-                eq(schema.events.id, input.eventId),
-                isNull(schema.events.deletedAt)
-              )
+      const event = (
+        await db
+          .select()
+          .from(schema.events)
+          .where(
+            and(
+              eq(schema.events.id, input.eventId),
+              isNull(schema.events.deletedAt)
             )
-            .limit(1)
-        ).at(0),
-        chapterId,
-        "event"
-      );
+          )
+          .limit(1)
+      ).at(0);
+      await assertChapterOwner(event, chapterId, "event");
       const rows = await db
         .select()
         .from(schema.eventRegs)
@@ -280,6 +278,11 @@ export const officerEventsRouter = createRouter({
         .update(schema.eventRegs)
         .set({ status: input.status })
         .where(eq(schema.eventRegs.id, reg.id));
+      if (input.status === "attended" && event) {
+        autoMarkCadenceForEvent(chapterId, event.kind, event.startsAt).catch(
+          () => {}
+        );
+      }
       return { ok: true };
     }),
 });

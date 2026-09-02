@@ -9,7 +9,7 @@
  * pass so a container restart can't double-run it, and each job only acts on
  * rows that still need acting on.
  */
-import { and, eq, gte, inArray, isNotNull, isNull, lte, ne, or, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, isNotNull, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "../queries/connection";
 import { evaluateDormancy, notify } from "../queries/circle";
@@ -28,6 +28,7 @@ import {
 import { carryForwardBudgets } from "./budget-carry-forward";
 import { audit } from "./audit";
 import { retryEmailDelivery } from "./notify-mail";
+import { paymentsEnabled, getPaymentProvider } from "./payments";
 import { env } from "./env";
 import { randomUUID } from "node:crypto";
 
@@ -175,7 +176,8 @@ async function jobRenewal(now = new Date()): Promise<void> {
     if (stage === "window" && lc === "active") {
       const r = await tryLifecycleTransition(m.id, "renewal", {
         reason: "Renewal window opened",
-        audit: false,
+        actor: SYSTEM_ACTOR,
+        audit: true,
       });
       if (r.ok) {
         await notify(
@@ -190,7 +192,8 @@ async function jobRenewal(now = new Date()): Promise<void> {
     } else if (stage === "lapse" && (lc === "renewal" || lc === "active")) {
       const r = await tryLifecycleTransition(m.id, "lapsed", {
         reason: "Renewal window closed without payment",
-        audit: false,
+        actor: SYSTEM_ACTOR,
+        audit: true,
       });
       if (r.ok) {
         await notify(
@@ -335,22 +338,46 @@ async function jobRoleTerms(now = new Date()): Promise<void> {
  * repeat daily. The alert/case are resolved when health climbs back above the
  * watch band.
  */
-async function jobHealthThreshold(): Promise<void> {
+async function jobHealthThreshold(now = new Date()): Promise<void> {
   const db = getDb();
   const chapters = await db
     .select({ id: schema.chapters.id, name: schema.chapters.name, status: schema.chapters.status })
     .from(schema.chapters)
     .where(isNull(schema.chapters.deletedAt));
   let alerted = 0;
+  const dayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
   for (const ch of chapters) {
     let total: number, below: boolean;
+    let h: Awaited<ReturnType<typeof computeChapterHealth>>;
     try {
-      const h = await computeChapterHealth(ch.id);
+      h = await computeChapterHealth(ch.id);
       total = h.total;
       below = h.band === "below";
     } catch {
       continue;
     }
+    // Persist the daily health snapshot so KPI trends and alerting have data.
+    await db
+      .delete(schema.healthSnapshots)
+      .where(
+        and(
+          eq(schema.healthSnapshots.chapterId, ch.id),
+          gte(schema.healthSnapshots.createdAt, dayStart),
+          lt(schema.healthSnapshots.createdAt, dayEnd)
+        )
+      );
+    await db.insert(schema.healthSnapshots).values({
+      chapterId: ch.id,
+      total: h.total,
+      retention: h.components.retention,
+      engagement: h.components.engagement,
+      growth: h.components.growth,
+      programme: h.components.programme,
+      leadership: h.components.leadership,
+      governance: h.components.governance,
+      memberCount: h.memberCount,
+    });
     const markerKey = `health:${ch.id}`;
     const state = below ? "below" : "ok";
     if ((await getMarker(markerKey)) === state) continue; // no change since last pass
@@ -502,9 +529,10 @@ async function jobFranchiseReadiness(now = new Date()): Promise<void> {
       detail: `${chapter.name} → chartered (readiness ${score.percent}%)`,
     });
 
-    // Notify country / national directors responsible for this chapter.
-    let countryId: number | null = null;
+    // Notify all leaders in the chapter's ancestor chain (zone → region → country).
+    const ancestorIds: number[] = [];
     if (chapter.zoneId) {
+      ancestorIds.push(chapter.zoneId);
       const zone = (
         await db
           .select()
@@ -513,6 +541,7 @@ async function jobFranchiseReadiness(now = new Date()): Promise<void> {
           .limit(1)
       ).at(0);
       if (zone?.parentId) {
+        ancestorIds.push(zone.parentId);
         const region = (
           await db
             .select()
@@ -520,23 +549,22 @@ async function jobFranchiseReadiness(now = new Date()): Promise<void> {
             .where(eq(schema.orgUnits.id, zone.parentId))
             .limit(1)
         ).at(0);
-        if (region?.parentId) countryId = region.parentId;
+        if (region?.parentId) ancestorIds.push(region.parentId);
       }
     }
-    const directors = countryId
+    const leaders = ancestorIds.length
       ? await db
-          .select({ memberId: schema.unitRoles.memberId })
+          .select({ memberId: schema.unitRoles.memberId, level: schema.unitRoles.level })
           .from(schema.unitRoles)
           .where(
             and(
-              eq(schema.unitRoles.level, "country"),
-              eq(schema.unitRoles.unitId, countryId),
-              sql`${schema.unitRoles.role} in ('country_director','national_director','National Director','Country Director')`
+              inArray(schema.unitRoles.unitId, ancestorIds),
+              sql`${schema.unitRoles.role} in ('zone_director','region_director','country_director','national_director','National Director','Country Director','Region Director','Zone Director')`
             )
           )
       : [];
     const msg = `${chapter.name} has met all franchise readiness requirements and been automatically granted a charter.`;
-    for (const d of directors) {
+    for (const d of leaders) {
       notify(d.memberId, msg, "governance").catch(() => {});
     }
     promoted++;
@@ -670,6 +698,68 @@ async function jobDunning(now = new Date()): Promise<void> {
 }
 
 /**
+ * OPS-P0-2 — reconcile pending Stripe payments that may have missed a webhook.
+ * Polls records older than 1 hour once per day and flips status to paid/failed.
+ */
+async function jobReconcilePayments(now = new Date()): Promise<void> {
+  if (!paymentsEnabled()) return;
+  const provider = getPaymentProvider();
+  if (provider.name !== "stripe" || !("retrieveCheckoutSession" in provider)) return;
+
+  const db = getDb();
+  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+  const pending = await db
+    .select({
+      id: schema.paymentRecords.id,
+      providerRef: schema.paymentRecords.providerRef,
+      userId: schema.paymentRecords.userId,
+      amount: schema.paymentRecords.amount,
+    })
+    .from(schema.paymentRecords)
+    .where(
+      and(
+        eq(schema.paymentRecords.status, "pending"),
+        eq(schema.paymentRecords.provider, "stripe"),
+        isNotNull(schema.paymentRecords.providerRef),
+        lte(schema.paymentRecords.createdAt, oneHourAgo)
+      )
+    );
+
+  let reconciled = 0;
+  for (const p of pending) {
+    if (!p.providerRef) continue;
+    try {
+      const result = await provider.retrieveCheckoutSession(p.providerRef);
+      if (!result) continue; // gateway still pending
+      const status = result.status;
+      if (status !== "paid" && status !== "failed") continue;
+      await db
+        .update(schema.paymentRecords)
+        .set({
+          status,
+          paidAt: status === "paid" ? new Date() : undefined,
+        })
+        .where(eq(schema.paymentRecords.id, p.id));
+      await audit(SYSTEM_ACTOR, "payment.reconcile", {
+        type: "payment",
+        id: p.id,
+        detail: `Reconciled to ${status} via retrieveCheckoutSession`,
+      });
+      reconciled++;
+    } catch (e) {
+      logger.warn(`scheduler payment reconciliation failed for ${p.id}`, {
+        paymentId: p.id,
+        error: String(e),
+      });
+    }
+  }
+  if (reconciled)
+    logger.info(`scheduler payment reconciliation: ${reconciled} record(s) updated`, {
+      reconciled,
+    });
+}
+
+/**
  * BRD 6.3 — retry failed/bounced email deliveries that may have been transient.
  * Bounded: only the last 7 days, max 3 prior attempts, up to 100 per run so the
  * daily pass can't be swamped by a bad provider week.
@@ -799,6 +889,7 @@ export async function runDailyJobs(now = new Date()): Promise<boolean> {
   await safe("dormancy", () => jobDormancy());
   await safe("renewal", () => jobRenewal(now));
   await safe("dunning", () => jobDunning(now));
+  await safe("payment-reconciliation", () => jobReconcilePayments(now));
   await safe("notification-retries", () => jobRetryFailedNotifications(now));
   await safe("onboarding-slip", () => jobOnboardingSlip());
   await safe("cadence-reminders", () => jobCadenceReminders(now));

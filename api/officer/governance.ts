@@ -7,6 +7,7 @@ import { getDb } from "../queries/connection";
 import { createRouter, authedQuery } from "../middleware";
 import { audit } from "../lib/audit";
 import { notify } from "../queries/circle";
+import { autoMarkCadenceForMeeting } from "../queries/cadence";
 import {
   MEETING_AGENDA_TEMPLATES,
   seatToChapterRole,
@@ -590,17 +591,14 @@ export const officerGovernanceRouter = createRouter({
       );
       const db = getDb();
       const { id, scheduledAt, ...rest } = input;
-      await assertChapterOwner(
-        (
-          await db
-            .select()
-            .from(schema.meetings)
-            .where(eq(schema.meetings.id, id))
-            .limit(1)
-        ).at(0),
-        chapterId,
-        "meeting"
-      );
+      const meeting = (
+        await db
+          .select()
+          .from(schema.meetings)
+          .where(eq(schema.meetings.id, id))
+          .limit(1)
+      ).at(0);
+      await assertChapterOwner(meeting, chapterId, "meeting");
       const patch: Partial<typeof schema.meetings.$inferInsert> = { ...rest };
       if (scheduledAt !== undefined)
         patch.scheduledAt = scheduledAt ? new Date(scheduledAt) : null;
@@ -608,6 +606,9 @@ export const officerGovernanceRouter = createRouter({
         .update(schema.meetings)
         .set(patch)
         .where(eq(schema.meetings.id, id));
+      if (input.status === "held" && meeting) {
+        autoMarkCadenceForMeeting(chapterId, meeting.kind).catch(() => {});
+      }
       await audit(ctx.user, "officer.meeting.save", {
         type: "meeting",
         id,

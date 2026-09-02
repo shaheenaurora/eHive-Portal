@@ -82,4 +82,20 @@ export class StripeProvider implements PaymentProvider {
         ...(amountMinor != null ? { amount: Math.round(amountMinor) } : {}),
       });
   }
+
+  async retrieveCheckoutSession(providerRef: string) {
+    const session = await this.stripe.checkout.sessions.retrieve(providerRef);
+    if (session.payment_status === "paid") {
+      return { status: "paid" as const, amount: session.amount_total ?? undefined };
+    }
+    if (
+      session.payment_status === "unpaid" &&
+      (session.status === "expired" || session.status === "open")
+    ) {
+      // Still pending; don't flip the record yet.
+      return null;
+    }
+    // Anything else (no_payment_required, canceled, etc.) is treated as failed.
+    return { status: "failed" as const };
+  }
 }

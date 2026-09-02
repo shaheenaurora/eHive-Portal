@@ -403,38 +403,33 @@ textarea:focus-visible,
     min-width: 0;
     max-width: 100vw;
   }
-  .eh-card > .eh-table,
   .eh-card > .eh-scroll-x {
     display: block;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
-  .eh-card > .eh-table {
-    white-space: nowrap;
-  }
   .eh-page-head {
     align-items: flex-start;
   }
 
-  /* Responsive data tables: a table marked .stack collapses to one card per
-     row on phones, each cell labelled by its column header — no more sideways
-     scrolling to reach tier/status/score. */
-  .eh-table.stack {
+  /* Responsive data tables: all admin tables collapse to one card per row on
+     phones, each cell labelled by its column header — no more sideways scroll. */
+  .eh-table {
     display: block;
     white-space: normal;
     overflow: visible;
   }
-  .eh-table.stack thead {
+  .eh-table thead {
     position: absolute;
     width: 1px;
     height: 1px;
     overflow: hidden;
     clip: rect(0 0 0 0);
   }
-  .eh-table.stack tbody {
+  .eh-table tbody {
     display: block;
   }
-  .eh-table.stack tr {
+  .eh-table tr {
     display: block;
     border: 1px solid var(--eh-line-2);
     border-radius: 12px;
@@ -442,10 +437,10 @@ textarea:focus-visible,
     margin: 0.6rem 0;
     background: var(--eh-card);
   }
-  .eh-table.stack tr.click:hover td {
+  .eh-table tr.click:hover td {
     background: transparent;
   }
-  .eh-table.stack td {
+  .eh-table td {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -455,10 +450,10 @@ textarea:focus-visible,
     text-align: left;
     white-space: normal;
   }
-  .eh-table.stack td:last-child {
+  .eh-table td:last-child {
     border-bottom: none;
   }
-  .eh-table.stack td[data-label]::before {
+  .eh-table td[data-label]::before {
     content: attr(data-label);
     font-weight: 700;
     color: var(--eh-mut);
@@ -469,10 +464,10 @@ textarea:focus-visible,
     flex: 0 0 auto;
   }
   /* Cells with no data-label (action buttons) take the full row width. */
-  .eh-table.stack td:not([data-label]) {
+  .eh-table td:not([data-label]) {
     justify-content: flex-end;
   }
-  .eh-table.stack td:empty {
+  .eh-table td:empty {
     display: none;
   }
 }
@@ -542,6 +537,13 @@ textarea:focus-visible,
 .eh-span2 {
   grid-column: span 2;
   min-width: 0;
+}
+@media (max-width: 480px) {
+  .eh-grid.g2,
+  .eh-grid.g3,
+  .eh-grid.g4 {
+    grid-template-columns: 1fr;
+  }
 }
 @media (max-width: 720px) {
   .eh-span2 {

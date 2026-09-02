@@ -799,11 +799,15 @@ function NotifBell() {
       {open && (
         <div
           className="eh-card"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Notifications"
           style={{
             position: "absolute",
             right: 0,
             top: "2.5rem",
             width: 340,
+            maxWidth: "calc(100vw - 2rem)",
             maxHeight: 420,
             overflowY: "auto",
             animation: "eh-pop .18s ease-out",

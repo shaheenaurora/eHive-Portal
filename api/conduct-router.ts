@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, inArray, isNull, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "./queries/connection";
 import {
@@ -13,6 +13,7 @@ import { getMemberByUserId, notify } from "./queries/circle";
 import { audit } from "./lib/audit";
 import { applyLifecycleTransition } from "./lib/lifecycle";
 import { CONDUCT_SEVERITIES, CONDUCT_STATUSES } from "@contracts/constants";
+import { requireOfficer, assertRoles } from "./officer/shared";
 
 const SEVERITY = z.enum(CONDUCT_SEVERITIES);
 const STATUS = z.enum(CONDUCT_STATUSES);
@@ -116,6 +117,84 @@ export const conductRouter = createRouter({
         detail: input.detail ?? null,
       });
       return { ok: true };
+    }),
+
+  /* ---- officer: raise a conduct case for the officer's chapter (XC-04) ---- */
+  createCase: authedQuery
+    .input(
+      z.object({
+        category: z.string().min(1).max(64),
+        severity: SEVERITY.optional(),
+        summary: z.string().min(3).max(255),
+        detail: z.string().max(5000).optional(),
+        subjectMemberId: z.number().int().positive().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { chapterId, roleKeys, member } = await requireOfficer(ctx.user.id);
+      assertRoles(
+        roleKeys,
+        ["president", "vp_membership", "secretary"],
+        "Raising conduct cases requires President, VP Membership or Secretary."
+      );
+      const db = getDb();
+      if (input.subjectMemberId) {
+        const subject = await db
+          .select({ homeChapterId: schema.members.homeChapterId })
+          .from(schema.members)
+          .where(eq(schema.members.id, input.subjectMemberId))
+          .limit(1);
+        if (!subject.length || subject[0].homeChapterId !== chapterId) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "The subject must be a member of your chapter.",
+          });
+        }
+      }
+      const caseId = (
+        await db.insert(schema.conductCases).values({
+          reporterMemberId: member.id,
+          subjectMemberId: input.subjectMemberId ?? null,
+          chapterId,
+          category: input.category,
+          severity: input.severity ?? "moderate",
+          summary: input.summary,
+          detail: input.detail ?? null,
+        })
+      )[0].insertId;
+      await audit(ctx.user, "conduct.create", {
+        type: "conduct_case",
+        id: Number(caseId),
+        detail: input.summary,
+      });
+      // Notify chapter president and VP Membership so safeguarding is not siloed.
+      const officers = await db
+        .select({ memberId: schema.chapterRoles.memberId })
+        .from(schema.chapterRoles)
+        .where(
+          and(
+            eq(schema.chapterRoles.chapterId, chapterId),
+            eq(schema.chapterRoles.status, "active"),
+            sql`${schema.chapterRoles.role} in ('president','vp_membership')`
+          )
+        );
+      for (const o of officers) {
+        if (o.memberId !== member.id) {
+          notify(
+            o.memberId,
+            `A new conduct case has been raised in your chapter: ${input.summary}`,
+            "conduct"
+          ).catch(() => {});
+        }
+      }
+      if (input.subjectMemberId) {
+        notify(
+          input.subjectMemberId,
+          "A conduct matter has been raised involving you. A chapter officer will be in touch.",
+          "conduct"
+        ).catch(() => {});
+      }
+      return { ok: true, id: Number(caseId) };
     }),
 
   /* ---- member: my own (non-anonymous) reports ---- */

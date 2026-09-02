@@ -14,6 +14,12 @@ import {
   recordCadence,
   reopenCadence,
 } from "./queries/cadence";
+import {
+  listSaveCasesForChapter,
+  requireSaveCaseInChapter,
+  updateSaveCase,
+  closeSaveCase,
+} from "./queries/saves";
 import { audit } from "./lib/audit";
 import { safeUrl } from "./lib/url";
 import {
@@ -493,6 +499,66 @@ const officerCoreRouter = createRouter({
     const { chapterId } = await requireOfficer(ctx.user.id);
     return listChangeRequests({ chapterId });
   }),
+
+  /* ---- Save Playbook: chapter officers can see and work at-risk cases ---- */
+  saveCases: authedQuery.query(async ({ ctx }) => {
+    const { chapterId } = await requireOfficer(ctx.user.id);
+    return listSaveCasesForChapter(chapterId);
+  }),
+
+  saveCaseDetail: authedQuery
+    .input(z.object({ id: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      const { chapterId } = await requireOfficer(ctx.user.id);
+      await requireSaveCaseInChapter(input.id, chapterId);
+      const rows = await listSaveCasesForChapter(chapterId, { status: "all" });
+      return rows.find(r => r.id === input.id) ?? null;
+    }),
+
+  updateSaveCase: authedQuery
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        ownerUserId: z.number().int().positive().nullable().optional(),
+        stepsMask: z.number().int().min(0).optional(),
+        notes: z.string().max(4000).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { chapterId } = await requireOfficer(ctx.user.id);
+      await requireSaveCaseInChapter(input.id, chapterId);
+      await updateSaveCase(input.id, {
+        ownerUserId: input.ownerUserId,
+        stepsMask: input.stepsMask,
+        notes: input.notes,
+      });
+      await audit(ctx.user, "officer.save_case.update", {
+        type: "saveCase",
+        id: input.id,
+        detail: `steps=${input.stepsMask ?? "-"}`,
+      });
+      return { ok: true };
+    }),
+
+  closeSaveCase: authedQuery
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        outcome: z.enum(["saved", "lost"]),
+        resolution: z.string().max(2000).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { chapterId } = await requireOfficer(ctx.user.id);
+      await requireSaveCaseInChapter(input.id, chapterId);
+      const memberId = await closeSaveCase(input.id, input.outcome, input.resolution);
+      await audit(ctx.user, "officer.save_case.close", {
+        type: "saveCase",
+        id: input.id,
+        detail: `${input.outcome}${input.resolution ? ` — ${input.resolution}` : ""}`,
+      });
+      return { ok: true, memberId };
+    }),
 
   /** Incoming chapter-transfer requests awaiting the destination officers' review. */
   chapterTransfers: authedQuery.query(async ({ ctx }) => {

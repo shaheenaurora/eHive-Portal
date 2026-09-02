@@ -350,7 +350,7 @@ export default function Apply() {
                 payment clears. Secure checkout, cancel anytime.
               </p>
               <button
-                className="eh-btn gold"
+                className="eh-btn ghost"
                 type="button"
                 style={{ width: "100%" }}
                 disabled={checkout.isPending || !consent}
@@ -358,7 +358,7 @@ export default function Apply() {
               >
                 {checkout.isPending
                   ? "Redirecting…"
-                  : `Join & pay — ${TIER_PRICE[tier as never]}`}
+                  : `Or pay now to skip the queue — ${TIER_PRICE[tier as never]}`}
               </button>
               {!consent && (
                 <div className="eh-muted eh-sm eh-mt">

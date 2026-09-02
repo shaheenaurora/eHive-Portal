@@ -31,6 +31,7 @@ import { notifyLead } from "./lib/lead-mail";
 import { ONBOARDING_MANUAL_KEYS } from "@contracts/constants";
 import { paymentsEnabled, getPaymentProvider } from "./lib/payments";
 import { applyLifecycleTransition } from "./lib/lifecycle";
+import { audit } from "./lib/audit";
 import {
   tierRank,
   TIER_PRICE_AED,
@@ -44,7 +45,7 @@ import {
   cpdTotal,
   membershipValidThrough,
 } from "./lib/member-docs";
-import { getKyc, submitKyc } from "./queries/kyc";
+import { getKyc, submitKyc, requireKycVerified } from "./queries/kyc";
 import { KYC_ID_TYPE_KEYS } from "@contracts/constants";
 import { hasOpenDataRequest } from "./lib/pdpl";
 import { logger } from "./lib/log";
@@ -633,7 +634,7 @@ export const circleRouter = createRouter({
   requestMembershipChange: authedQuery
     .input(
       z.object({
-        type: z.enum(["upgrade", "downgrade", "pause", "cancel", "renew"]),
+        type: z.enum(["upgrade", "downgrade", "pause", "cancel", "renew", "resume"]),
         toTier: z.enum(["horizon", "ascent", "vanguard", "zenith"]).optional(),
         note: z.string().max(500).optional(),
       })
@@ -698,14 +699,16 @@ export const circleRouter = createRouter({
       }
 
       // Self-serve actions (the member's own right): applied immediately.
-      await db.insert(schema.membershipEvents).values({
-        memberId: member.id,
-        type: input.type,
-        fromTier: member.tier,
-        toTier: member.tier,
-        note: input.note,
-        status: "applied",
-      });
+      if (input.type === "cancel" || input.type === "pause" || input.type === "renew") {
+        await db.insert(schema.membershipEvents).values({
+          memberId: member.id,
+          type: input.type,
+          fromTier: member.tier,
+          toTier: member.tier,
+          note: input.note,
+          status: "applied",
+        });
+      }
       if (input.type === "cancel") {
         // Route a self-cancel through the lifecycle executor (→ lapsed) so the
         // CRM lifecycle and access status stay coherent (cancelled) instead of
@@ -722,6 +725,35 @@ export const circleRouter = createRouter({
         await applyLifecycleTransition(member.id, "suspended", {
           actor: ctx.user,
           reason: input.note || "Member paused their membership.",
+        });
+      } else if (input.type === "resume") {
+        // Only a voluntary self-pause can be self-resumed. Suspensions from
+        // conduct, KYC rejection, or admin action must be lifted by an officer.
+        const latestPause = await db
+          .select()
+          .from(schema.membershipEvents)
+          .where(
+            and(
+              eq(schema.membershipEvents.memberId, member.id),
+              eq(schema.membershipEvents.type, "pause"),
+              eq(schema.membershipEvents.status, "applied")
+            )
+          )
+          .orderBy(desc(schema.membershipEvents.createdAt))
+          .limit(1);
+        const isVoluntary =
+          latestPause.length &&
+          (latestPause[0].note ?? "").startsWith("Member paused their membership");
+        if (member.lifecycleState !== "suspended" || !isVoluntary) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message:
+              "Your membership cannot be self-resumed. Please contact chapter leadership.",
+          });
+        }
+        await applyLifecycleTransition(member.id, "active", {
+          actor: ctx.user,
+          reason: input.note || "Member resumed their membership.",
         });
       } else if (input.type === "renew") {
         // Renewal must be paid for. The only legitimate path is startRenewal
@@ -1127,6 +1159,7 @@ export const circleRouter = createRouter({
     .input(z.object({ podId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const member = await requireMember(ctx.user.id);
+      await requireKycVerified(member.id);
       const db = getDb();
       const row = (
         await db
@@ -1148,6 +1181,39 @@ export const circleRouter = createRouter({
           .set({ confidentialityAt: new Date() })
           .where(eq(schema.podMembers.id, row.id));
       return { ok: true };
+    }),
+
+  /* ---- member: request a mentor from chapter leadership (ML-03) ---- */
+  requestMentor: authedQuery
+    .input(z.object({ note: z.string().max(500).optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const member = await requireMember(ctx.user.id);
+      if (!member.homeChapterId)
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "You must belong to a chapter to request a mentor.",
+        });
+      const db = getDb();
+      const officers = await db
+        .select({ memberId: schema.chapterRoles.memberId, role: schema.chapterRoles.role })
+        .from(schema.chapterRoles)
+        .where(
+          and(
+            eq(schema.chapterRoles.chapterId, member.homeChapterId),
+            eq(schema.chapterRoles.status, "active"),
+            sql`${schema.chapterRoles.role} in ('vp_learning','president')`
+          )
+        );
+      const msg = `${ctx.user.name ?? "A member"} has requested a mentor${input.note ? `: ${input.note}` : "."}`;
+      for (const o of officers) {
+        notify(o.memberId, msg, "connect").catch(() => {});
+      }
+      await audit({ id: ctx.user.id, email: ctx.user.email }, "member.mentor.request", {
+        type: "member",
+        id: member.id,
+        detail: input.note ?? "Mentor requested",
+      });
+      return { ok: true, notified: officers.length };
     }),
 
   completeActionItem: authedQuery
@@ -1249,6 +1315,7 @@ export const circleRouter = createRouter({
     .mutation(async ({ ctx, input }) => {
       const member = await requireMember(ctx.user.id);
       await requireOnboardingComplete(member, "registering for events");
+      await requireKycVerified(member.id);
       const db = getDb();
       const ev = (
         await db
