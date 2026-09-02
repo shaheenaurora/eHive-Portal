@@ -9,7 +9,7 @@
  * pass so a container restart can't double-run it, and each job only acts on
  * rows that still need acting on.
  */
-import { and, eq, isNotNull, isNull, lte, ne, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, lte, ne, sql } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "../queries/connection";
 import { evaluateDormancy, notify } from "../queries/circle";
@@ -18,7 +18,7 @@ import { listCadences } from "../queries/cadence";
 import { computeChapterHealth } from "../queries/health";
 import { renewalStage, RENEWAL_WINDOW_DAYS } from "@contracts/constants";
 import { tryLifecycleTransition } from "./lifecycle";
-import { sendScorecardFollowUp } from "./lead-mail";
+import { sendScorecardFollowUp, sendLeadSlaAlert } from "./lead-mail";
 import { buildScorecardReport } from "../../src/lib/scorecard";
 import { logger } from "./log";
 import {
@@ -550,6 +550,58 @@ async function jobScorecardFollowUp(now = new Date()): Promise<void> {
   if (sent) logger.info(`scheduler scorecard follow-up: ${sent} email(s) sent`, { sent });
 }
 
+/** SLA nudge (G9) — a high-value enquiry (partner / franchise) still sitting in
+ *  "new" past the SLA gets one alert to its owning desk so it isn't forgotten.
+ *  A per-lead marker means each lead is nudged once, not every day. */
+const LEAD_SLA_HOURS = 24;
+async function jobLeadSla(now = new Date()): Promise<void> {
+  const db = getDb();
+  const cutoff = new Date(now.getTime() - LEAD_SLA_HOURS * 60 * 60 * 1000);
+  const stale = await db
+    .select()
+    .from(schema.leads)
+    .where(
+      and(
+        inArray(schema.leads.form, ["partner-enquiry", "franchise-enquiry"]),
+        eq(schema.leads.status, "new"),
+        lte(schema.leads.createdAt, cutoff)
+      )
+    );
+  let alerted = 0;
+  for (const l of stale) {
+    const markerKey = `lead-sla:${l.id}`;
+    if (await getMarker(markerKey)) continue;
+    const ageHours = Math.floor(
+      (now.getTime() - new Date(l.createdAt).getTime()) / (60 * 60 * 1000)
+    );
+    const payload = (() => {
+      try {
+        return JSON.parse(l.payload ?? "{}") as Record<string, unknown>;
+      } catch {
+        return {};
+      }
+    })();
+    const r = await sendLeadSlaAlert({
+      leadId: l.id,
+      form: l.form,
+      email: l.email,
+      payload,
+      ageHours,
+    });
+    if (r.ok) {
+      await setMarker(markerKey, now.toISOString());
+      alerted++;
+    } else {
+      logger.warn(`scheduler lead-sla alert failed for lead ${l.id}`, {
+        leadId: l.id,
+        error: r.error,
+      });
+    }
+  }
+  if (alerted)
+    logger.info(`scheduler lead-sla: ${alerted} alert(s) sent`, { alerted });
+}
+
 /** Run all daily jobs at most once per UTC day. */
 /**
  * Atomically claim today's daily pass for THIS process. A single conditional
@@ -595,6 +647,7 @@ export async function runDailyJobs(now = new Date()): Promise<boolean> {
   await safe("health-threshold", () => jobHealthThreshold());
   await safe("franchise-readiness", () => jobFranchiseReadiness(now));
   await safe("scorecard-follow-up", () => jobScorecardFollowUp(now));
+  await safe("lead-sla", () => jobLeadSla(now));
   await safe("kpi-snapshots", async () => {
     const { captureKpiSnapshots } = await import("../queries/kpi-snapshots");
     await captureKpiSnapshots(now);

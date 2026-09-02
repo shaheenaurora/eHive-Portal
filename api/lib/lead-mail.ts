@@ -314,6 +314,36 @@ export async function notifyLead(input: {
   };
 }
 
+/** Alert the owning desk that a high-value enquiry is still un-actioned past its
+ *  SLA. High-intent leads convert best with a fast reply, so a lead sitting in
+ *  "new" gets one nudge to the partner/franchise inbox. */
+export async function sendLeadSlaAlert(input: {
+  leadId: number;
+  form: string;
+  email: string | null;
+  payload: Record<string, unknown>;
+  ageHours: number;
+}): Promise<{ ok: boolean; error?: string }> {
+  if (!mailEnabled()) return { ok: false, error: "Email is not configured." };
+  const meta = FORM_META[input.form] ?? GENERIC;
+  const notifyTo = OWNER_ENV[input.form] || env.leadNotifyEmail;
+  if (!notifyTo) return { ok: false, error: "No owner inbox configured." };
+  const rows = fieldRows(input.payload);
+  const html = shell(`
+    <p style="margin:0 0 4px;color:#b23b2e;font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:700">Action needed · still un-actioned</p>
+    <h1 style="margin:0 0 12px;font-family:Georgia,serif;font-size:20px;color:#101d2c;font-weight:600">${esc(meta.label)} waiting ${input.ageHours}h</h1>
+    <p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">This enquiry is still marked “new” ${input.ageHours} hours after it came in. High-intent enquiries convert best with a fast, personal reply — please reach out, or update its status in the admin console so it stops chasing you.</p>
+    <table style="width:100%;border-collapse:collapse;background:#faf7f1;border-radius:10px">${rows}</table>
+    ${input.email ? `<p style="margin:16px 0 0;color:#8a97a6;font-size:12px">Reply to: ${esc(input.email)}</p>` : ""}
+  `);
+  return sendMailDetailed({
+    to: notifyTo,
+    subject: `Un-actioned ${meta.label} (${input.ageHours}h) — eHive`,
+    html,
+    replyTo: input.email || undefined,
+  });
+}
+
 /** Send a personalised follow-up to a scorecard submission based on its stored
  *  recommendation. Updates the caller with delivery status so the admin UI can
  *  reflect whether the nurture email actually left the server. */
