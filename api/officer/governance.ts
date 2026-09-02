@@ -11,7 +11,27 @@ import {
   MEETING_AGENDA_TEMPLATES,
   seatToChapterRole,
   CHAPTER_TERM_LIMIT_CONSECUTIVE,
+  MOTION_QUORUM_PCT_DEFAULT,
+  resolveMotionOutcome,
 } from "@contracts/constants";
+
+/** Configured motion quorum (percent of eligible members) — an app_config
+ *  override if present, otherwise the default. Clamped to 1–100. */
+async function motionQuorumPct(
+  db: ReturnType<typeof getDb>
+): Promise<number> {
+  const row = (
+    await db
+      .select({ value: schema.appConfig.value })
+      .from(schema.appConfig)
+      .where(eq(schema.appConfig.key, "governance:motion_quorum_pct"))
+      .limit(1)
+  ).at(0);
+  const pct = Number(row?.value);
+  if (!Number.isFinite(pct) || pct < 1 || pct > 100)
+    return MOTION_QUORUM_PCT_DEFAULT;
+  return pct;
+}
 import { requireOfficer, assertChapterOwner, assertRoles } from "./shared";
 
 export const officerGovernanceRouter = createRouter({
@@ -477,18 +497,12 @@ export const officerGovernanceRouter = createRouter({
         .from(schema.motionVotes)
         .where(eq(schema.motionVotes.motionId, mo.id))
         .groupBy(schema.motionVotes.choice);
-      const yes = votes.find(v => v.choice === "yes")?.n ?? 0;
-      const no = votes.find(v => v.choice === "no")?.n ?? 0;
-      const status = yes > no ? "passed" : "rejected";
-      await db
-        .update(schema.motions)
-        .set({ status, closesAt: new Date() })
-        .where(eq(schema.motions.id, mo.id));
-      await audit(ctx.user, "officer.motion.close", {
-        type: "motion",
-        id: mo.id,
-        detail: `${status} · yes ${yes} · no ${no}`,
-      });
+      const yes = Number(votes.find(v => v.choice === "yes")?.n ?? 0);
+      const no = Number(votes.find(v => v.choice === "no")?.n ?? 0);
+      const abstain = Number(votes.find(v => v.choice === "abstain")?.n ?? 0);
+      const turnout = yes + no + abstain;
+      // Eligible voters = active members of the chapter. Fetched before the
+      // result is decided so quorum can gate it, and reused for notifications.
       const chapterMembers = await db
         .select({ id: schema.members.id })
         .from(schema.members)
@@ -498,11 +512,44 @@ export const officerGovernanceRouter = createRouter({
             eq(schema.members.status, "active")
           )
         );
-      const msg = `Motion "${mo.title}" has closed — ${status} (yes ${yes}, no ${no}).`;
+      const eligible = chapterMembers.length;
+      const quorumPct = await motionQuorumPct(db);
+      // Below quorum a motion carries no mandate — it "fails" rather than being
+      // recorded as passed or rejected on a handful of votes.
+      const { status, quorumMet } = resolveMotionOutcome({
+        yes,
+        no,
+        abstain,
+        eligible,
+        quorumPct,
+      });
+      await db
+        .update(schema.motions)
+        .set({ status, closesAt: new Date() })
+        .where(eq(schema.motions.id, mo.id));
+      await audit(ctx.user, "officer.motion.close", {
+        type: "motion",
+        id: mo.id,
+        detail: `${status} · yes ${yes} · no ${no} · abstain ${abstain} · turnout ${turnout}/${eligible} (quorum ${quorumPct}%)`,
+      });
+      const quorumNote = quorumMet
+        ? ""
+        : ` Quorum was not met (${turnout}/${eligible} voted, ${quorumPct}% needed).`;
+      const msg = `Motion "${mo.title}" has closed — ${status} (yes ${yes}, no ${no}).${quorumNote}`;
       for (const m of chapterMembers) {
         void notify(m.id, msg, "governance").catch(() => {});
       }
-      return { ok: true, status, yes, no };
+      return {
+        ok: true,
+        status,
+        yes,
+        no,
+        abstain,
+        turnout,
+        eligible,
+        quorumPct,
+        quorumMet,
+      };
     }),
 
   /* -------------------------------- meetings -------------------------------- */

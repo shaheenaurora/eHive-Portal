@@ -1,0 +1,1 @@
+ALTER TABLE `motions` MODIFY COLUMN `status` enum('open','passed','rejected','failed') NOT NULL DEFAULT 'open';

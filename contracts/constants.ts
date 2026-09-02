@@ -1009,7 +1009,38 @@ export const HEALTH_BAND_COLOR: Record<HealthBand, "green" | "gold" | "red"> = {
 };
 
 export const ELECTION_STATUSES = ["open", "voting", "closed"] as const;
-export const MOTION_STATUSES = ["open", "passed", "rejected"] as const;
+export const MOTION_STATUSES = [
+  "open",
+  "passed",
+  "rejected",
+  "failed",
+] as const;
+/** Default share of eligible (active) chapter members that must cast a vote for
+ *  a motion's result to count. Overridable per chapter via the app_config key
+ *  `governance:motion_quorum_pct`. Below quorum a closed motion is "failed",
+ *  not passed/rejected. */
+export const MOTION_QUORUM_PCT_DEFAULT = 50;
+
+/** Resolve a closed motion's outcome. Below quorum the result is "failed" (no
+ *  mandate); at/above quorum it's a simple majority of yes vs no. Pure so it can
+ *  be unit-tested without a database. */
+export function resolveMotionOutcome(input: {
+  yes: number;
+  no: number;
+  abstain: number;
+  eligible: number;
+  quorumPct: number;
+}): { status: "passed" | "rejected" | "failed"; turnout: number; quorumMet: boolean } {
+  const turnout = input.yes + input.no + input.abstain;
+  const quorumMet =
+    input.eligible > 0 && (turnout / input.eligible) * 100 >= input.quorumPct;
+  const status = !quorumMet
+    ? "failed"
+    : input.yes > input.no
+      ? "passed"
+      : "rejected";
+  return { status, turnout, quorumMet };
+}
 export const BUDGET_KINDS = ["allocation", "sponsorship", "spend"] as const;
 export const BUDGET_STATUSES = [
   "proposed",

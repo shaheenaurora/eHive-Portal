@@ -1858,7 +1858,7 @@ export const motions = mysqlTable(
       .references(() => chapters.id, { onDelete: "cascade" }),
     title: varchar("title", { length: 255 }).notNull(),
     body: text("body"),
-    status: mysqlEnum("status", ["open", "passed", "rejected"])
+    status: mysqlEnum("status", ["open", "passed", "rejected", "failed"])
       .notNull()
       .default("open"),
     closesAt: timestamp("closesAt"),
