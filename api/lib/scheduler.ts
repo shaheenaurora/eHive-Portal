@@ -602,6 +602,37 @@ async function jobLeadSla(now = new Date()): Promise<void> {
     logger.info(`scheduler lead-sla: ${alerted} alert(s) sent`, { alerted });
 }
 
+/** Data retention (G10) — anonymise PII on leads older than the configured
+ *  window. Disabled unless an admin sets a positive number of days in the
+ *  app_config key `retention:lead_pii_days`, so a deploy never silently destroys
+ *  data; the analytics row (form, status, dates) is kept, only the personal
+ *  fields are cleared. Idempotent: only rows that still carry an email are
+ *  touched. */
+async function jobRetention(now = new Date()): Promise<void> {
+  const raw = await getMarker("retention:lead_pii_days");
+  const days = Number(raw);
+  if (!Number.isFinite(days) || days <= 0) return; // policy not set → no-op
+  const cutoff = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+  const res = await getDb()
+    .update(schema.leads)
+    .set({ email: null, payload: null })
+    .where(
+      and(
+        lte(schema.leads.createdAt, cutoff),
+        isNotNull(schema.leads.email)
+      )
+    );
+  const n =
+    (res as unknown as { affectedRows?: number }).affectedRows ??
+    (res as unknown as [{ affectedRows?: number }])[0]?.affectedRows ??
+    0;
+  if (n)
+    logger.info(
+      `scheduler retention: anonymised PII on ${n} lead(s) older than ${days}d`,
+      { anonymised: n, days }
+    );
+}
+
 /** Run all daily jobs at most once per UTC day. */
 /**
  * Atomically claim today's daily pass for THIS process. A single conditional
@@ -648,6 +679,7 @@ export async function runDailyJobs(now = new Date()): Promise<boolean> {
   await safe("franchise-readiness", () => jobFranchiseReadiness(now));
   await safe("scorecard-follow-up", () => jobScorecardFollowUp(now));
   await safe("lead-sla", () => jobLeadSla(now));
+  await safe("retention", () => jobRetention(now));
   await safe("kpi-snapshots", async () => {
     const { captureKpiSnapshots } = await import("../queries/kpi-snapshots");
     await captureKpiSnapshots(now);
