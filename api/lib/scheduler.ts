@@ -16,7 +16,7 @@ import { evaluateDormancy, notify } from "../queries/circle";
 import { computeOnboarding } from "../queries/onboarding";
 import { listCadences } from "../queries/cadence";
 import { computeChapterHealth } from "../queries/health";
-import { renewalStage } from "@contracts/constants";
+import { renewalStage, RENEWAL_WINDOW_DAYS } from "@contracts/constants";
 import { tryLifecycleTransition } from "./lifecycle";
 import { sendScorecardFollowUp } from "./lead-mail";
 import { buildScorecardReport } from "../../src/lib/scorecard";
@@ -100,10 +100,20 @@ async function jobDormancy(): Promise<void> {
  */
 async function jobRenewal(now = new Date()): Promise<void> {
   const db = getDb();
+  // Only members whose renewal date is at or inside the window horizon can
+  // change stage today; everyone renewing further out is "none" and would be
+  // skipped anyway. Narrowing here in SQL keeps the pass O(due) instead of
+  // O(all members) as the membership base grows.
+  const horizon = new Date(now.getTime() + RENEWAL_WINDOW_DAYS * 86_400_000);
   const rows = await db
     .select()
     .from(schema.members)
-    .where(isNotNull(schema.members.renewalAt));
+    .where(
+      and(
+        isNotNull(schema.members.renewalAt),
+        lte(schema.members.renewalAt, horizon)
+      )
+    );
   let opened = 0,
     lapsed = 0;
   for (const m of rows) {

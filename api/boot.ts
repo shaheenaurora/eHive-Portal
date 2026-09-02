@@ -1339,13 +1339,13 @@ if (env.isProduction) {
   // requests finish, then close the DB pool. A hard timeout guarantees exit if
   // draining stalls.
   let shuttingDown = false;
-  const shutdown = (signal: string) => {
+  const shutdown = (signal: string, code = 0) => {
     if (shuttingDown) return;
     shuttingDown = true;
     logger.info(`[shutdown] ${signal} received; draining…`);
     const hardExit = setTimeout(() => {
       logger.error("[shutdown] drain timed out; forcing exit");
-      process.exit(1);
+      process.exit(code || 1);
     }, 10_000);
     hardExit.unref();
     stopScheduler?.();
@@ -1358,9 +1358,29 @@ if (env.isProduction) {
       }
       clearTimeout(hardExit);
       logger.info("[shutdown] complete");
-      process.exit(0);
+      process.exit(code);
     });
   };
   process.on("SIGTERM", () => shutdown("SIGTERM"));
   process.on("SIGINT", () => shutdown("SIGINT"));
+
+  // Last-resort crash visibility (gap G4). Without these, an unhandled rejection
+  // or uncaught exception is invisible and (for exceptions) leaves Node in an
+  // undefined state. We always log with full stack; an uncaught exception then
+  // drains and exits non-zero so the platform restarts a clean process rather
+  // than serving from corrupted state. A rejection is logged but not fatal.
+  process.on("unhandledRejection", (reason: unknown) => {
+    logger.error("[fatal] unhandled promise rejection", {
+      error:
+        reason instanceof Error
+          ? (reason.stack ?? reason.message)
+          : String(reason),
+    });
+  });
+  process.on("uncaughtException", (err: Error) => {
+    logger.error("[fatal] uncaught exception", {
+      error: err.stack ?? err.message,
+    });
+    shutdown("uncaughtException", 1);
+  });
 }
