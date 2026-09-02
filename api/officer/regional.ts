@@ -384,7 +384,11 @@ export const officerRegionalRouter = createRouter({
           .where(eq(schema.chapterBudgets.id, input.budgetId))
           .limit(1)
       ).at(0);
-      if (!budget) throw new TRPCError({ code: "NOT_FOUND", message: "Budget line not found." });
+      if (!budget)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Budget line not found.",
+        });
       if (!chapterIds.includes(budget.chapterId))
         throw new TRPCError({
           code: "FORBIDDEN",
@@ -407,7 +411,10 @@ export const officerRegionalRouter = createRouter({
       });
       // Notify chapter president and treasurer.
       const officers = await db
-        .select({ memberId: schema.chapterRoles.memberId, role: schema.chapterRoles.role })
+        .select({
+          memberId: schema.chapterRoles.memberId,
+          role: schema.chapterRoles.role,
+        })
         .from(schema.chapterRoles)
         .where(
           and(

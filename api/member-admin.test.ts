@@ -131,9 +131,9 @@ describe("tier-change business rules", () => {
 
   it("blocks self-serve zenith requests", () => {
     const m = member("vanguard", 100);
-    expect(
-      canChangeTier(m, "zenith", [], { isSelfServe: true }).ok
-    ).toBe(false);
+    expect(canChangeTier(m, "zenith", [], { isSelfServe: true }).ok).toBe(
+      false
+    );
   });
 
   it("blocks downgrade within the upgrade cooldown", () => {

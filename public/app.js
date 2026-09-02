@@ -123,7 +123,11 @@ function submitLead(payload, onOk, onErr) {
 
   /* ---- current-page indicator ---- */
   var here = location.pathname.split("/").pop() || "index.html";
-  if (here === "" || location.pathname === "/" || location.pathname === "/index.html")
+  if (
+    here === "" ||
+    location.pathname === "/" ||
+    location.pathname === "/index.html"
+  )
     here = "index.html";
   document.querySelectorAll(".nav-links a").forEach(function (a) {
     a.removeAttribute("aria-current");
@@ -249,10 +253,15 @@ function submitLead(payload, onOk, onErr) {
       document
         .querySelectorAll(".h-hero .h-reveal, .h-trust .h-reveal")
         .forEach(function (el) {
-          setTimeout(function () {
-            el.classList.add("in");
-            hio.unobserve(el);
-          }, 300 + (parseFloat(getComputedStyle(el).getPropertyValue("--d")) || 0) * 1000);
+          setTimeout(
+            function () {
+              el.classList.add("in");
+              hio.unobserve(el);
+            },
+            300 +
+              (parseFloat(getComputedStyle(el).getPropertyValue("--d")) || 0) *
+                1000
+          );
         });
     } else {
       hReveals.forEach(function (el) {
@@ -260,11 +269,9 @@ function submitLead(payload, onOk, onErr) {
       });
     }
     setTimeout(function () {
-      document
-        .querySelectorAll(".h-reveal:not(.in)")
-        .forEach(function (el) {
-          el.classList.add("in");
-        });
+      document.querySelectorAll(".h-reveal:not(.in)").forEach(function (el) {
+        el.classList.add("in");
+      });
     }, 3000);
   }
 
@@ -401,7 +408,9 @@ function submitLead(payload, onOk, onErr) {
   (function () {
     var banners = document.querySelectorAll(".h-img-banner img");
     if (!banners.length) return;
-    var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
     if (reduceMotion) return;
     var io = new IntersectionObserver(
       function (entries) {
@@ -423,7 +432,8 @@ function submitLead(payload, onOk, onErr) {
         var winH = window.innerHeight;
         var progress = (winH - rect.top) / (winH + rect.height);
         var shift = (progress - 0.5) * 18; // +/- 9px
-        img.style.transform = "scale(1.12) translateY(" + shift.toFixed(2) + "px)";
+        img.style.transform =
+          "scale(1.12) translateY(" + shift.toFixed(2) + "px)";
       });
     }
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -1267,7 +1277,8 @@ function submitLead(payload, onOk, onErr) {
     document.body.appendChild(progress);
     function updateProgress() {
       var scrollTop = window.scrollY || document.documentElement.scrollTop;
-      var docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      var docHeight =
+        document.documentElement.scrollHeight - window.innerHeight;
       var pct = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
       progress.style.width = pct + "%";
     }
@@ -1471,10 +1482,16 @@ function submitLead(payload, onOk, onErr) {
           document
             .querySelectorAll(".eh-hero-v2 .eh-reveal")
             .forEach(function (el) {
-              setTimeout(function () {
-                el.classList.add("in");
-                ehIo.unobserve(el);
-              }, 200 + (parseFloat(getComputedStyle(el).getPropertyValue("--d")) || 0) * 1000);
+              setTimeout(
+                function () {
+                  el.classList.add("in");
+                  ehIo.unobserve(el);
+                },
+                200 +
+                  (parseFloat(getComputedStyle(el).getPropertyValue("--d")) ||
+                    0) *
+                    1000
+              );
             });
         } else {
           ehReveals.forEach(function (el) {
@@ -1586,9 +1603,17 @@ function submitLead(payload, onOk, onErr) {
               if (dist < threshold) {
                 var alpha = (1 - dist / threshold) * 0.18;
                 var zAvg = (projected[a].z + projected[b].z) / 2;
-                alpha *= 0.6 + 0.4 * ((zAvg + Math.min(sW, sH) * SPHERE_R) / (Math.min(sW, sH) * SPHERE_R * 2));
-                var color = projected[a].gold || projected[b].gold ? GOLD_COLOR : SPHERE_COLOR;
-                sCtx.strokeStyle = "rgba(" + color + "," + alpha.toFixed(3) + ")";
+                alpha *=
+                  0.6 +
+                  0.4 *
+                    ((zAvg + Math.min(sW, sH) * SPHERE_R) /
+                      (Math.min(sW, sH) * SPHERE_R * 2));
+                var color =
+                  projected[a].gold || projected[b].gold
+                    ? GOLD_COLOR
+                    : SPHERE_COLOR;
+                sCtx.strokeStyle =
+                  "rgba(" + color + "," + alpha.toFixed(3) + ")";
                 sCtx.beginPath();
                 sCtx.moveTo(projected[a].x, projected[a].y);
                 sCtx.lineTo(projected[b].x, projected[b].y);
@@ -1610,7 +1635,11 @@ function submitLead(payload, onOk, onErr) {
               sCtx.shadowBlur = 6;
             }
             sCtx.fillStyle =
-              "rgba(" + (p.gold ? GOLD_COLOR : SPHERE_COLOR) + "," + glow.toFixed(2) + ")";
+              "rgba(" +
+              (p.gold ? GOLD_COLOR : SPHERE_COLOR) +
+              "," +
+              glow.toFixed(2) +
+              ")";
             sCtx.beginPath();
             sCtx.arc(p.x, p.y, rr, 0, Math.PI * 2);
             sCtx.fill();
@@ -1679,9 +1708,7 @@ function submitLead(payload, onOk, onErr) {
 
       /* ---- cursor spotlight on dark v2 sections ---- */
       if (!isTouch) {
-        var darkSections = document.querySelectorAll(
-          ".eh-section-v2.eh-dark"
-        );
+        var darkSections = document.querySelectorAll(".eh-section-v2.eh-dark");
         darkSections.forEach(function (sec) {
           sec.addEventListener("pointermove", function (e) {
             var rect = sec.getBoundingClientRect();
@@ -2057,13 +2084,15 @@ function submitLead(payload, onOk, onErr) {
   }
   function focusables() {
     return overlay
-      ? Array.prototype.slice.call(
-          overlay.querySelectorAll(
-            "button, a[href], input, textarea, select, [tabindex]:not([tabindex='-1'])"
+      ? Array.prototype.slice
+          .call(
+            overlay.querySelectorAll(
+              "button, a[href], input, textarea, select, [tabindex]:not([tabindex='-1'])"
+            )
           )
-        ).filter(function (el) {
-          return !el.disabled && el.offsetParent !== null;
-        })
+          .filter(function (el) {
+            return !el.disabled && el.offsetParent !== null;
+          })
       : [];
   }
   function onKey(e) {

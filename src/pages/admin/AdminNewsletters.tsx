@@ -21,11 +21,23 @@ function csvCell(v: string | number): string {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-function subscribersCsv(rows: { email: string; name: string | null; status: string; createdAt: Date }[]): string {
+function subscribersCsv(
+  rows: {
+    email: string;
+    name: string | null;
+    status: string;
+    createdAt: Date;
+  }[]
+): string {
   const lines = ["Email,Name,Status,Subscribed"];
   for (const r of rows) {
     lines.push(
-      [csvCell(r.email), csvCell(r.name ?? ""), csvCell(r.status), csvCell(fmtDate(r.createdAt))].join(",")
+      [
+        csvCell(r.email),
+        csvCell(r.name ?? ""),
+        csvCell(r.status),
+        csvCell(fmtDate(r.createdAt)),
+      ].join(",")
     );
   }
   return lines.join("\n");
@@ -114,7 +126,9 @@ export default function AdminNewsletters() {
       {tab === "archive" && (
         <>
           <div className="eh-between eh-mb">
-            <span className="eh-muted eh-sm">{q.data?.length ?? 0} issue(s)</span>
+            <span className="eh-muted eh-sm">
+              {q.data?.length ?? 0} issue(s)
+            </span>
             <button
               className="eh-btn gold"
               onClick={() => setEdit({ title: "", issue: "", url: "" })}
@@ -223,7 +237,9 @@ export default function AdminNewsletters() {
                       </div>
                     </div>
                     <div className="eh-row" style={{ gap: ".5rem" }}>
-                      <Pill color={s.status === "subscribed" ? "green" : "grey"}>
+                      <Pill
+                        color={s.status === "subscribed" ? "green" : "grey"}
+                      >
                         {s.status}
                       </Pill>
                       <button
@@ -239,7 +255,9 @@ export default function AdminNewsletters() {
                           })
                         }
                       >
-                        {s.status === "subscribed" ? "Unsubscribe" : "Resubscribe"}
+                        {s.status === "subscribed"
+                          ? "Unsubscribe"
+                          : "Resubscribe"}
                       </button>
                     </div>
                   </div>

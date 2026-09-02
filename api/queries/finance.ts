@@ -271,84 +271,95 @@ export async function chapterPnl(
     chapter.fiscalYearStartMonth ?? 1
   );
 
-  const [allocationsBefore, expensesBefore, rawPayments, rawExpenses, { rates, updatedAt }] =
-    await Promise.all([
-      db
-        .select({ amount: schema.chapterBudgets.amount })
-        .from(schema.chapterBudgets)
-        .where(
-          and(
-            eq(schema.chapterBudgets.chapterId, chapterId),
-            eq(schema.chapterBudgets.status, "approved"),
-            eq(schema.chapterBudgets.kind, "allocation"),
-            lte(schema.chapterBudgets.createdAt, from)
-          )
-        ),
-      db
-        .select({ amount: schema.chapterBudgets.amount })
-        .from(schema.chapterBudgets)
-        .where(
-          and(
-            eq(schema.chapterBudgets.chapterId, chapterId),
-            inArray(schema.chapterBudgets.status, ["approved", "spent"]),
-            eq(schema.chapterBudgets.kind, "spend"),
-            lte(schema.chapterBudgets.createdAt, from)
-          )
-        ),
-      db
-        .select({
-          id: schema.paymentRecords.id,
-          paidAt: schema.paymentRecords.paidAt,
-          createdAt: schema.paymentRecords.createdAt,
-          payerName: schema.users.name,
-          payerEmail: schema.users.email,
-          tier: schema.paymentRecords.tier,
-          amount: schema.paymentRecords.amount,
-          currency: schema.paymentRecords.currency,
-          status: schema.paymentRecords.status,
-          refundedAmount: schema.paymentRecords.refundedAmount,
-        })
-        .from(schema.paymentRecords)
-        .leftJoin(schema.users, eq(schema.users.id, schema.paymentRecords.userId))
-        .leftJoin(
-          schema.members,
-          eq(schema.members.userId, schema.paymentRecords.userId)
+  const [
+    allocationsBefore,
+    expensesBefore,
+    rawPayments,
+    rawExpenses,
+    { rates, updatedAt },
+  ] = await Promise.all([
+    db
+      .select({ amount: schema.chapterBudgets.amount })
+      .from(schema.chapterBudgets)
+      .where(
+        and(
+          eq(schema.chapterBudgets.chapterId, chapterId),
+          eq(schema.chapterBudgets.status, "approved"),
+          eq(schema.chapterBudgets.kind, "allocation"),
+          lte(schema.chapterBudgets.createdAt, from)
         )
-        .where(
-          and(
-            eq(schema.members.homeChapterId, chapterId),
-            inArray(schema.paymentRecords.status, [
-              "paid",
-              "partially_refunded",
-              "refunded",
-            ]),
-            gte(sql`coalesce(${schema.paymentRecords.paidAt}, ${schema.paymentRecords.createdAt})`, from),
-            lte(sql`coalesce(${schema.paymentRecords.paidAt}, ${schema.paymentRecords.createdAt})`, to)
-          )
+      ),
+    db
+      .select({ amount: schema.chapterBudgets.amount })
+      .from(schema.chapterBudgets)
+      .where(
+        and(
+          eq(schema.chapterBudgets.chapterId, chapterId),
+          inArray(schema.chapterBudgets.status, ["approved", "spent"]),
+          eq(schema.chapterBudgets.kind, "spend"),
+          lte(schema.chapterBudgets.createdAt, from)
         )
-        .orderBy(desc(schema.paymentRecords.createdAt)),
-      db
-        .select({
-          id: schema.chapterBudgets.id,
-          createdAt: schema.chapterBudgets.createdAt,
-          label: schema.chapterBudgets.label,
-          category: schema.chapterBudgets.category,
-          amount: schema.chapterBudgets.amount,
-          status: schema.chapterBudgets.status,
-        })
-        .from(schema.chapterBudgets)
-        .where(
-          and(
-            eq(schema.chapterBudgets.chapterId, chapterId),
-            eq(schema.chapterBudgets.kind, "spend"),
-            inArray(schema.chapterBudgets.status, ["approved", "spent"]),
-            gte(schema.chapterBudgets.createdAt, from),
-            lte(schema.chapterBudgets.createdAt, to)
+      ),
+    db
+      .select({
+        id: schema.paymentRecords.id,
+        paidAt: schema.paymentRecords.paidAt,
+        createdAt: schema.paymentRecords.createdAt,
+        payerName: schema.users.name,
+        payerEmail: schema.users.email,
+        tier: schema.paymentRecords.tier,
+        amount: schema.paymentRecords.amount,
+        currency: schema.paymentRecords.currency,
+        status: schema.paymentRecords.status,
+        refundedAmount: schema.paymentRecords.refundedAmount,
+      })
+      .from(schema.paymentRecords)
+      .leftJoin(schema.users, eq(schema.users.id, schema.paymentRecords.userId))
+      .leftJoin(
+        schema.members,
+        eq(schema.members.userId, schema.paymentRecords.userId)
+      )
+      .where(
+        and(
+          eq(schema.members.homeChapterId, chapterId),
+          inArray(schema.paymentRecords.status, [
+            "paid",
+            "partially_refunded",
+            "refunded",
+          ]),
+          gte(
+            sql`coalesce(${schema.paymentRecords.paidAt}, ${schema.paymentRecords.createdAt})`,
+            from
+          ),
+          lte(
+            sql`coalesce(${schema.paymentRecords.paidAt}, ${schema.paymentRecords.createdAt})`,
+            to
           )
         )
-        .orderBy(desc(schema.chapterBudgets.createdAt)),
-      loadRates(),
-    ]);
+      )
+      .orderBy(desc(schema.paymentRecords.createdAt)),
+    db
+      .select({
+        id: schema.chapterBudgets.id,
+        createdAt: schema.chapterBudgets.createdAt,
+        label: schema.chapterBudgets.label,
+        category: schema.chapterBudgets.category,
+        amount: schema.chapterBudgets.amount,
+        status: schema.chapterBudgets.status,
+      })
+      .from(schema.chapterBudgets)
+      .where(
+        and(
+          eq(schema.chapterBudgets.chapterId, chapterId),
+          eq(schema.chapterBudgets.kind, "spend"),
+          inArray(schema.chapterBudgets.status, ["approved", "spent"]),
+          gte(schema.chapterBudgets.createdAt, from),
+          lte(schema.chapterBudgets.createdAt, to)
+        )
+      )
+      .orderBy(desc(schema.chapterBudgets.createdAt)),
+    loadRates(),
+  ]);
 
   const openingBalanceAed =
     allocationsBefore.reduce((s, r) => s + (r.amount ?? 0), 0) -
@@ -549,7 +560,9 @@ export async function recordManualPayment(
     const existingKey = await db
       .select({ id: schema.paymentRecords.id })
       .from(schema.paymentRecords)
-      .where(eq(schema.paymentRecords.idempotencyKey, input.idempotencyKey.trim()))
+      .where(
+        eq(schema.paymentRecords.idempotencyKey, input.idempotencyKey.trim())
+      )
       .limit(1);
     if (existingKey.length) {
       throw new TRPCError({
@@ -689,9 +702,7 @@ export async function recordManualPayment(
       } catch (rollbackErr) {
         logger.error("manual payment rollback failed", { error: rollbackErr });
       }
-      throw renewErr instanceof Error
-        ? renewErr
-        : new Error(String(renewErr));
+      throw renewErr instanceof Error ? renewErr : new Error(String(renewErr));
     }
   }
   await audit(actor, "finance.manual_payment", {
@@ -1060,7 +1071,8 @@ export async function expenseReceipt(
       .limit(1)
   ).at(0);
   if (!row?.data) return null;
-  const mime = row.data.match(/^data:([^;]+);base64,/)?.[1] ?? "application/pdf";
+  const mime =
+    row.data.match(/^data:([^;]+);base64,/)?.[1] ?? "application/pdf";
   return { name: row.name ?? "receipt", data: row.data, mime };
 }
 

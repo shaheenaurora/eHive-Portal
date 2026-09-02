@@ -467,7 +467,9 @@ export async function sendBookingConfirmation(input: {
               durationMin: Number(input.format.match(/^(\d+)/)?.[1] ?? 60),
               location: "eHive — Dubai, UAE (details by email)",
               description: `Confirmed ${input.product} session with eHive.`,
-              organizer: notifyTo ? { name: "eHive", email: notifyTo } : undefined,
+              organizer: notifyTo
+                ? { name: "eHive", email: notifyTo }
+                : undefined,
               attendee: { name: input.name, email: input.email },
             }),
             contentType: "text/calendar; method=PUBLISH",

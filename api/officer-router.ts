@@ -551,7 +551,11 @@ const officerCoreRouter = createRouter({
     .mutation(async ({ ctx, input }) => {
       const { chapterId } = await requireOfficer(ctx.user.id);
       await requireSaveCaseInChapter(input.id, chapterId);
-      const memberId = await closeSaveCase(input.id, input.outcome, input.resolution);
+      const memberId = await closeSaveCase(
+        input.id,
+        input.outcome,
+        input.resolution
+      );
       await audit(ctx.user, "officer.save_case.close", {
         type: "saveCase",
         id: input.id,

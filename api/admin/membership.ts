@@ -27,7 +27,11 @@ import { audit } from "../lib/audit";
 import { recordAnalyticsEvent } from "../queries/analytics";
 import { sendMail } from "../lib/mailer";
 import { logger } from "../lib/log";
-import { tierRank, type MemberLifecycle, type Tier } from "@contracts/constants";
+import {
+  tierRank,
+  type MemberLifecycle,
+  type Tier,
+} from "@contracts/constants";
 import {
   TIER,
   idInput,
@@ -120,7 +124,10 @@ export const membershipRouter = createRouter({
 
       if (input.chapterId) {
         const chapter = await db
-          .select({ id: schema.chapters.id, deletedAt: schema.chapters.deletedAt })
+          .select({
+            id: schema.chapters.id,
+            deletedAt: schema.chapters.deletedAt,
+          })
           .from(schema.chapters)
           .where(eq(schema.chapters.id, input.chapterId))
           .limit(1);
@@ -220,7 +227,7 @@ export const membershipRouter = createRouter({
                 <div style="padding:26px 24px;color:#141312">
                   <p style="margin:0 0 14px;font-size:17px;color:#141312">Hi ${firstName || "there"},</p>
                   <p style="margin:0 0 22px;font-size:16px;line-height:1.55;color:#141312">Thank you for your interest in eHive Circle. After careful review, we won't be able to offer you membership at this time.</p>
-                  ${input.note ? `<p style="margin:0 0 22px;font-size:16px;line-height:1.55;color:#141312"><strong>Note:</strong> ${input.note.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c] as string)}</p>` : ""}
+                  ${input.note ? `<p style="margin:0 0 22px;font-size:16px;line-height:1.55;color:#141312"><strong>Note:</strong> ${input.note.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string)}</p>` : ""}
                   <p style="margin:0 0 22px;font-size:16px;line-height:1.55;color:#141312">We genuinely appreciate the time you took to apply, and we welcome you to stay connected through our public events and insights.</p>
                 </div>
                 <div style="padding:16px 24px;border-top:1px solid #E4DECF;color:#8A8578;font-size:12px;line-height:1.5">
@@ -676,7 +683,10 @@ export const membershipRouter = createRouter({
       const history = await tierChangeHistory(m.id);
       const check = canChangeTier(m, input.tier, history);
       if (!check.ok) {
-        throw new TRPCError({ code: "PRECONDITION_FAILED", message: check.reason });
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: check.reason,
+        });
       }
       const type =
         tierRank(input.tier) > tierRank(m.tier) ? "upgrade" : "downgrade";
@@ -764,7 +774,10 @@ export const membershipRouter = createRouter({
         const history = await tierChangeHistory(m.id);
         const check = canChangeTier(m, req.toTier, history);
         if (!check.ok) {
-          throw new TRPCError({ code: "PRECONDITION_FAILED", message: check.reason });
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: check.reason,
+          });
         }
         await db
           .update(schema.members)

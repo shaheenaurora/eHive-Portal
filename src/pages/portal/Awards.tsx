@@ -20,9 +20,15 @@ import {
 export default function Awards() {
   useDocumentTitle("Awards & Recognition");
   const q = trpc.engage.awardsOpen.useQuery(undefined, { retry: false });
-  const voting = trpc.engage.awardsVotingOpen.useQuery(undefined, { retry: false });
-  const directory = trpc.engage.memberDirectory.useQuery(undefined, { retry: false });
-  const chapters = trpc.circle.chaptersDirectory.useQuery(undefined, { retry: false });
+  const voting = trpc.engage.awardsVotingOpen.useQuery(undefined, {
+    retry: false,
+  });
+  const directory = trpc.engage.memberDirectory.useQuery(undefined, {
+    retry: false,
+  });
+  const chapters = trpc.circle.chaptersDirectory.useQuery(undefined, {
+    retry: false,
+  });
   const utils = trpc.useUtils();
 
   const submit = trpc.engage.submitNomination.useMutation({
@@ -42,7 +48,6 @@ export default function Awards() {
     onError: e => toast(e.message),
   });
 
-
   return (
     <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif>
       <PageHead
@@ -52,9 +57,7 @@ export default function Awards() {
       />
 
       {q.isLoading && <Spinner />}
-      {q.isError && (
-        <LoadError what="awards" onRetry={() => q.refetch()} />
-      )}
+      {q.isError && <LoadError what="awards" onRetry={() => q.refetch()} />}
       {q.data && (
         <>
           {q.data.cycle ? (
@@ -62,11 +65,14 @@ export default function Awards() {
               <div className="eh-between" style={{ alignItems: "flex-start" }}>
                 <div>
                   <div className="eh-eyebrow">
-                    Nominations open · {AWARD_LEVEL_LABEL[q.data.cycle.level] ?? q.data.cycle.level}
+                    Nominations open ·{" "}
+                    {AWARD_LEVEL_LABEL[q.data.cycle.level] ??
+                      q.data.cycle.level}
                   </div>
                   <h2 style={{ margin: ".2rem 0 0" }}>{q.data.cycle.name}</h2>
                   <p className="eh-sm eh-muted" style={{ margin: ".3rem 0 0" }}>
-                    Pick a category below and nominate someone who deserves recognition.
+                    Pick a category below and nominate someone who deserves
+                    recognition.
                   </p>
                 </div>
                 <Pill color="green">Open</Pill>
@@ -84,7 +90,13 @@ export default function Awards() {
                     members={directory.data ?? []}
                     chapters={chapters.data?.chapters ?? []}
                     pending={submit.isPending}
-                    onSubmit={v => submit.mutate({ cycleId: q.data.cycle!.id, category: cat.key, ...v })}
+                    onSubmit={v =>
+                      submit.mutate({
+                        cycleId: q.data.cycle!.id,
+                        category: cat.key,
+                        ...v,
+                      })
+                    }
                   />
                 ))}
               </div>
@@ -108,7 +120,7 @@ export default function Awards() {
                   <VotingCycle
                     key={cycle.id}
                     cycle={cycle}
-                    onVote={(nominationId) =>
+                    onVote={nominationId =>
                       castVote.mutate({ cycleId: cycle.id, nominationId })
                     }
                     pending={castVote.isPending}
@@ -125,16 +137,28 @@ export default function Awards() {
               </div>
               <div className="eh-grid g2">
                 {q.data.winners.map(w => (
-                  <div className="eh-card" key={w.id} style={{ borderLeft: "3px solid var(--eh-gold, #b8862e)" }}>
-                    <div className="eh-row" style={{ justifyContent: "space-between", gap: ".5rem" }}>
+                  <div
+                    className="eh-card"
+                    key={w.id}
+                    style={{ borderLeft: "3px solid var(--eh-gold, #b8862e)" }}
+                  >
+                    <div
+                      className="eh-row"
+                      style={{ justifyContent: "space-between", gap: ".5rem" }}
+                    >
                       <b>{AWARD_CATEGORY_LABEL[w.category] ?? w.category}</b>
                       <Pill color="gold">Winner</Pill>
                     </div>
                     <div style={{ marginTop: ".35rem" }}>
-                      {w.nomineeName ?? w.nomineeChapterName ?? "Unknown nominee"}
+                      {w.nomineeName ??
+                        w.nomineeChapterName ??
+                        "Unknown nominee"}
                     </div>
                     {w.citation && (
-                      <div className="eh-sm eh-muted" style={{ marginTop: ".35rem" }}>
+                      <div
+                        className="eh-sm eh-muted"
+                        style={{ marginTop: ".35rem" }}
+                      >
                         “{w.citation}”
                       </div>
                     )}
@@ -158,10 +182,19 @@ function NominationCard({
 }: {
   category: (typeof AWARD_CATEGORIES)[number];
   cycleId: number;
-  members: { id: number; name: string; company: string | null; tier: string | null }[];
+  members: {
+    id: number;
+    name: string;
+    company: string | null;
+    tier: string | null;
+  }[];
   chapters: { id: number; name: string }[];
   pending: boolean;
-  onSubmit: (v: { nomineeMemberId?: number; nomineeChapterId?: number; citation?: string }) => void;
+  onSubmit: (v: {
+    nomineeMemberId?: number;
+    nomineeChapterId?: number;
+    citation?: string;
+  }) => void;
 }) {
   const [memberId, setMemberId] = useState<number | null>(null);
   const [chapterId, setChapterId] = useState<number | null>(null);
@@ -169,7 +202,10 @@ function NominationCard({
   const isMember = category.subject === "member";
 
   return (
-    <div className="eh-card" style={{ display: "flex", flexDirection: "column", gap: ".75rem" }}>
+    <div
+      className="eh-card"
+      style={{ display: "flex", flexDirection: "column", gap: ".75rem" }}
+    >
       <div>
         <b>{category.label}</b>
         <div className="eh-sm eh-muted">{category.blurb}</div>
@@ -180,14 +216,17 @@ function NominationCard({
           <select
             className="eh-select"
             value={memberId ?? ""}
-            onChange={e => setMemberId(e.target.value ? Number(e.target.value) : null)}
+            onChange={e =>
+              setMemberId(e.target.value ? Number(e.target.value) : null)
+            }
           >
             <option value="" disabled>
               Choose a member…
             </option>
             {members.map(m => (
               <option key={m.id} value={m.id}>
-                {m.name}{m.company ? ` · ${m.company}` : ""}
+                {m.name}
+                {m.company ? ` · ${m.company}` : ""}
               </option>
             ))}
           </select>
@@ -215,7 +254,9 @@ function NominationCard({
           <select
             className="eh-select"
             value={chapterId ?? ""}
-            onChange={e => setChapterId(e.target.value ? Number(e.target.value) : null)}
+            onChange={e =>
+              setChapterId(e.target.value ? Number(e.target.value) : null)
+            }
           >
             <option value="" disabled>
               Choose a chapter…
@@ -287,7 +328,8 @@ function VotingCycle({
                   <span>
                     {n.nomineeName ?? n.nomineeChapterName ?? "Nominee"}
                     <span className="eh-muted eh-sm">
-                      {" "}· {AWARD_CATEGORY_LABEL[n.category] ?? n.category}
+                      {" "}
+                      · {AWARD_CATEGORY_LABEL[n.category] ?? n.category}
                     </span>
                   </span>
                   <button
@@ -295,7 +337,11 @@ function VotingCycle({
                     disabled={pending || voted || myVote != null}
                     onClick={() => onVote(n.nominationId)}
                   >
-                    {voted ? "Voted" : myVote != null ? "Already voted" : "Vote"}
+                    {voted
+                      ? "Voted"
+                      : myVote != null
+                        ? "Already voted"
+                        : "Vote"}
                   </button>
                 </div>
               );

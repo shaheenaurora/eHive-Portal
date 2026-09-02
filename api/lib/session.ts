@@ -180,7 +180,9 @@ export async function sessionClearCookie(
   });
 }
 
-export async function revokeSessionFromHeaders(headers: Headers): Promise<void> {
+export async function revokeSessionFromHeaders(
+  headers: Headers
+): Promise<void> {
   const cookies = cookie.parse(headers.get("cookie") || "");
   const token = cookies[Session.cookieName];
   if (!token) return;

@@ -10,14 +10,16 @@ export async function createUserSession(input: {
   userAgent?: string;
   expiresAt: Date;
 }): Promise<schema.UserSession> {
-  const res = await getDb().insert(schema.userSessions).values({
-    userId: input.userId,
-    tokenVersion: input.tokenVersion,
-    fingerprint: input.fingerprint ?? null,
-    ip: input.ip ?? null,
-    userAgent: input.userAgent ?? null,
-    expiresAt: input.expiresAt,
-  });
+  const res = await getDb()
+    .insert(schema.userSessions)
+    .values({
+      userId: input.userId,
+      tokenVersion: input.tokenVersion,
+      fingerprint: input.fingerprint ?? null,
+      ip: input.ip ?? null,
+      userAgent: input.userAgent ?? null,
+      expiresAt: input.expiresAt,
+    });
   const id = Number((res as unknown as [{ insertId: number }])[0].insertId);
   const row = (
     await getDb()

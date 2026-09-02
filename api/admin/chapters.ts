@@ -104,13 +104,16 @@ export const chaptersRouter = createRouter({
       const newStart = input.termStart?.getTime() ?? -Infinity;
       const newEnd = input.termEnd?.getTime() ?? Infinity;
       for (const r of existing) {
-        const exStart = r.termStart ? new Date(r.termStart).getTime() : -Infinity;
+        const exStart = r.termStart
+          ? new Date(r.termStart).getTime()
+          : -Infinity;
         const exEnd = r.termEnd ? new Date(r.termEnd).getTime() : Infinity;
         if (newStart < exEnd && newEnd > exStart) {
           if (r.memberId === input.memberId) {
             throw new TRPCError({
               code: "CONFLICT",
-              message: "This member already holds an overlapping term in this body.",
+              message:
+                "This member already holds an overlapping term in this body.",
             });
           }
           throw new TRPCError({
@@ -285,7 +288,9 @@ export const chaptersRouter = createRouter({
       z.object({
         chapterId: z.number().int().positive(),
         itemKey: z.string().min(1).max(64),
-        status: z.enum(["pending", "in_progress", "done", "skipped"]).optional(),
+        status: z
+          .enum(["pending", "in_progress", "done", "skipped"])
+          .optional(),
         assignedMemberId: z.number().int().positive().nullable().optional(),
         dueAt: z.coerce.date().nullable().optional(),
         notes: z.string().max(2000).nullable().optional(),
@@ -418,7 +423,10 @@ export const chaptersRouter = createRouter({
       }
       const directors = countryId
         ? await db
-            .select({ memberId: schema.unitRoles.memberId, role: schema.unitRoles.role })
+            .select({
+              memberId: schema.unitRoles.memberId,
+              role: schema.unitRoles.role,
+            })
             .from(schema.unitRoles)
             .where(
               and(
@@ -433,6 +441,10 @@ export const chaptersRouter = createRouter({
         notify(d.memberId, msg, "governance").catch(() => {});
       }
 
-      return { ok: true, chapterId: input.chapterId, charterDate: chapter.charterDate ?? now };
+      return {
+        ok: true,
+        chapterId: input.chapterId,
+        charterDate: chapter.charterDate ?? now,
+      };
     }),
 });

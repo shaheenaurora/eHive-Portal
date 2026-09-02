@@ -1,11 +1,7 @@
 import { CHAPTER_ROLE_LABEL } from "@contracts/constants";
 
 export type ChapterStatus =
-  | "seed"
-  | "provisional"
-  | "chartered"
-  | "mature"
-  | "at_risk";
+  "seed" | "provisional" | "chartered" | "mature" | "at_risk";
 
 export type FranchiseChecklistInput = {
   status: ChapterStatus;
@@ -82,7 +78,9 @@ export function evaluateFranchiseReadiness(
       label: "Zone / org unit assigned",
       ok: input.zoneId != null,
       required: true,
-      detail: input.zoneId ? "Zone assigned" : "Chapter is not linked to a zone/region",
+      detail: input.zoneId
+        ? "Zone assigned"
+        : "Chapter is not linked to a zone/region",
     },
     {
       key: "member_count",

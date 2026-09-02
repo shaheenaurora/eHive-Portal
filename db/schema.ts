@@ -687,10 +687,16 @@ export const franchiseOnboardingChecklists = mysqlTable(
     completedAt: timestamp("completedAt"),
     notes: text("notes"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
   },
   t => [
-    uniqueIndex("ix_franchise_onboarding_chapter_key").on(t.chapterId, t.itemKey),
+    uniqueIndex("ix_franchise_onboarding_chapter_key").on(
+      t.chapterId,
+      t.itemKey
+    ),
     index("ix_franchise_onboarding_status").on(t.status, t.dueAt),
   ]
 );
@@ -774,9 +780,7 @@ export const paymentRecords = mysqlTable(
       t.provider,
       t.providerRef
     ),
-    uniqueIndex("payment_records_idempotency_key_unique").on(
-      t.idempotencyKey
-    ),
+    uniqueIndex("payment_records_idempotency_key_unique").on(t.idempotencyKey),
   ]
 );
 
@@ -1641,9 +1645,7 @@ export const chapters = mysqlTable("chapters", {
   ])
     .notNull()
     .default("seed"),
-  fiscalYearStartMonth: int("fiscalYearStartMonth")
-    .notNull()
-    .default(1),
+  fiscalYearStartMonth: int("fiscalYearStartMonth").notNull().default(1),
   charterDate: timestamp("charterDate"),
   deletedAt: timestamp("deletedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

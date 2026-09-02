@@ -399,14 +399,15 @@ export default function Membership() {
             </div>
             <div className="eh-row eh-mt">
               {member.renewalAt &&
-                renewalStage(new Date(member.renewalAt), new Date()) !== "none" && (
-                <button
-                  className="eh-btn ghost sm"
-                  onClick={() => setConfirm({ type: "renew" })}
-                >
-                  Renew +1 year
-                </button>
-              )}
+                renewalStage(new Date(member.renewalAt), new Date()) !==
+                  "none" && (
+                  <button
+                    className="eh-btn ghost sm"
+                    onClick={() => setConfirm({ type: "renew" })}
+                  >
+                    Renew +1 year
+                  </button>
+                )}
               {member.status === "active" && (
                 <button
                   className="eh-btn ghost sm"
@@ -899,9 +900,7 @@ export default function Membership() {
                 (CONFIRM_COPY[confirm.type].danger ? " danger" : " gold")
               }
               disabled={
-                confirm.type === "renew"
-                  ? renew.isPending
-                  : change.isPending
+                confirm.type === "renew" ? renew.isPending : change.isPending
               }
               onClick={() => {
                 if (confirm.type === "renew") {

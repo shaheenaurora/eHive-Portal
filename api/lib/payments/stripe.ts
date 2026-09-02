@@ -86,7 +86,10 @@ export class StripeProvider implements PaymentProvider {
   async retrieveCheckoutSession(providerRef: string) {
     const session = await this.stripe.checkout.sessions.retrieve(providerRef);
     if (session.payment_status === "paid") {
-      return { status: "paid" as const, amount: session.amount_total ?? undefined };
+      return {
+        status: "paid" as const,
+        amount: session.amount_total ?? undefined,
+      };
     }
     if (
       session.payment_status === "unpaid" &&

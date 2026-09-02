@@ -88,7 +88,9 @@ export const engageRouter = createRouter({
       if (
         open.level !== "network" &&
         open.unitId &&
-        !(await nomineeInUnit(open.level, open.unitId, { nomineeMemberId: me.id }))
+        !(await nomineeInUnit(open.level, open.unitId, {
+          nomineeMemberId: me.id,
+        }))
       )
         throw new TRPCError({
           code: "FORBIDDEN",
@@ -139,7 +141,10 @@ export const engageRouter = createRouter({
             .from(schema.awardNominations)
             .where(
               and(
-                eq(schema.awardNominations.nomineeMemberId, input.nomineeMemberId),
+                eq(
+                  schema.awardNominations.nomineeMemberId,
+                  input.nomineeMemberId
+                ),
                 eq(schema.awardNominations.status, "winner")
               )
             )

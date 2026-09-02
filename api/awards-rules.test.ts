@@ -85,10 +85,14 @@ describe("fairness window", () => {
     expect(fairnessEligibilityDate(undefined)).toBeNull();
   });
   it("blocks nomination within the 45-day window", () => {
-    expect(isInFairnessWindow(win, new Date("2026-06-15T00:00:00Z"))).toBe(true);
+    expect(isInFairnessWindow(win, new Date("2026-06-15T00:00:00Z"))).toBe(
+      true
+    );
   });
   it("allows nomination after the window expires", () => {
-    expect(isInFairnessWindow(win, new Date("2026-07-20T00:00:00Z"))).toBe(false);
+    expect(isInFairnessWindow(win, new Date("2026-07-20T00:00:00Z"))).toBe(
+      false
+    );
   });
   it("returns the eligibility date 45 days after the win", () => {
     const eligible = fairnessEligibilityDate(win);

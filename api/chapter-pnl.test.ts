@@ -62,12 +62,42 @@ describe("buildChapterPnl", () => {
       2026,
       1000,
       [
-        { id: 1, date: new Date("2026-03-01"), payerName: "A", payerEmail: "a@x.com", tier: "founder", amountAed: 2000, status: "paid" },
-        { id: 2, date: new Date("2026-04-01"), payerName: "B", payerEmail: "b@x.com", tier: "founder", amountAed: 1000, status: "paid" },
+        {
+          id: 1,
+          date: new Date("2026-03-01"),
+          payerName: "A",
+          payerEmail: "a@x.com",
+          tier: "founder",
+          amountAed: 2000,
+          status: "paid",
+        },
+        {
+          id: 2,
+          date: new Date("2026-04-01"),
+          payerName: "B",
+          payerEmail: "b@x.com",
+          tier: "founder",
+          amountAed: 1000,
+          status: "paid",
+        },
       ],
       [
-        { id: 3, date: new Date("2026-05-01"), label: "Venue", category: "venue", amountAed: 500, status: "spent" },
-        { id: 4, date: new Date("2026-06-01"), label: "Catering", category: "catering", amountAed: 800, status: "approved" },
+        {
+          id: 3,
+          date: new Date("2026-05-01"),
+          label: "Venue",
+          category: "venue",
+          amountAed: 500,
+          status: "spent",
+        },
+        {
+          id: 4,
+          date: new Date("2026-06-01"),
+          label: "Catering",
+          category: "catering",
+          amountAed: 800,
+          status: "approved",
+        },
       ]
     );
     expect(pnl.chapterId).toBe(1);
@@ -78,7 +108,9 @@ describe("buildChapterPnl", () => {
     expect(pnl.expenses.totalAed).toBe(1300);
     expect(pnl.netIncomeAed).toBe(1700);
     expect(pnl.closingBalanceAed).toBe(2700);
-    expect(pnl.revenue.byTier).toEqual([{ tier: "founder", amountAed: 3000, count: 2 }]);
+    expect(pnl.revenue.byTier).toEqual([
+      { tier: "founder", amountAed: 3000, count: 2 },
+    ]);
     expect(pnl.expenses.byCategory).toEqual([
       { category: "catering", amountAed: 800 },
       { category: "venue", amountAed: 500 },

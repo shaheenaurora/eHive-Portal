@@ -108,12 +108,15 @@ export async function carryForwardBudgets(
         status: "approved",
         note: `Year-end surplus automatically carried forward into FY${currentYear}`,
       });
-      logger.info(`budget carry-forward: ${chapter.name} FY${previousYear} → FY${currentYear} AED ${surplus}`, {
-        chapterId: chapter.id,
-        fromYear: previousYear,
-        toYear: currentYear,
-        amount: surplus,
-      });
+      logger.info(
+        `budget carry-forward: ${chapter.name} FY${previousYear} → FY${currentYear} AED ${surplus}`,
+        {
+          chapterId: chapter.id,
+          fromYear: previousYear,
+          toYear: currentYear,
+          amount: surplus,
+        }
+      );
       carried++;
     }
   }

@@ -953,7 +953,10 @@
           };
           return fetch("/api/lead", {
             method: "POST",
-            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
             keepalive: true,
             body: JSON.stringify(payload),
           })

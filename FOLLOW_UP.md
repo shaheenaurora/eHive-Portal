@@ -7,12 +7,14 @@ This document tracks the gaps from `GAP_ANALYSIS.md` that are intentionally defe
 **Gap:** CSP currently allows inline styles (`'unsafe-inline'`) because the React/Tailwind SPA and several static marketing pages inject styles at runtime through `style` attributes and `<style>` blocks.
 
 **Why deferred:** Removing `'unsafe-inline'` requires either:
+
 - Nonces generated per request (difficult with a Vite-built SPA served as static files), or
 - A full audit and migration of all inline `style` attributes in ~300+ React components and public HTML/JS to CSS classes.
 
 Either approach is a large, high-risk UI refactor that should be done in a dedicated branch with visual regression testing.
 
 **Recommended plan:**
+
 1. Introduce a request-time nonce for server-rendered marketing pages and move their inline `<style>` blocks to external CSS or nonced blocks.
 2. Audit the portal bundle for inline `style` props using an ESLint rule (`react/forbid-dom-props` or custom).
 3. Migrate static inline styles to Tailwind utility classes or scoped CSS modules.
@@ -24,6 +26,7 @@ Either approach is a large, high-risk UI refactor that should be done in a dedic
 ## 2. Franchise readiness — UI and advanced workflows
 
 **What already exists (partial implementation):**
+
 - Org-unit hierarchy (`org_units`, `unit_roles`) and regional officer roles.
 - Regional officer router with chapter overview, detail, council meetings, and finance reports (`api/officer/regional.ts`).
 - Chapter budget, expenses, and event budget remaining logic (`api/lib/chapter-budget.ts`, `api/officer/finance.ts`).
@@ -31,6 +34,7 @@ Either approach is a large, high-risk UI refactor that should be done in a dedic
 - Franchise readiness checklist backend: `api/lib/franchise-readiness.ts` + `admin.chapters.franchiseReadiness` tRPC endpoint + tests.
 
 **Remaining work:**
+
 1. **Admin UI for readiness:** Surface the `admin.chapters.franchiseReadiness` score in `AdminChapters.tsx` (e.g., a per-chapter readiness badge and a detail drawer showing the checklist).
 2. **Chapter P&L statement:** Build a dedicated chapter P&L view that rolls up membership revenue (from `paymentRecords` joined through `members.homeChapterId`), expenses (`chapterBudgets` spend rows), invoices, and credit notes.
 3. **Budget carry-forward:** Add year-end logic to copy unspent approved allocations into the next fiscal year's opening balance.
@@ -47,6 +51,7 @@ Either approach is a large, high-risk UI refactor that should be done in a dedic
 **Why deferred:** A full redesign with animations, WebGL/Canvas interactions, and revised information architecture is a product-design project that should be specced separately.
 
 **Recommended plan:**
+
 1. Audit each public page against a design system and consolidate colours/typography.
 2. Replace hero images with CSS gradients or smaller, art-directed imagery.
 3. Add scroll-triggered reveal animations (e.g., Intersection Observer + CSS transitions) for sections and CTAs.

@@ -28,7 +28,10 @@ describe("evaluateFranchiseReadiness", () => {
   });
 
   it("allows provisional chapters to qualify for charter", () => {
-    const items = evaluateFranchiseReadiness({ ...base, status: "provisional" });
+    const items = evaluateFranchiseReadiness({
+      ...base,
+      status: "provisional",
+    });
     const chartered = items.find(i => i.key === "chartered");
     expect(chartered?.ok).toBe(true);
   });
@@ -65,7 +68,10 @@ describe("evaluateFranchiseReadiness", () => {
   });
 
   it("fails without active cadences", () => {
-    const items = evaluateFranchiseReadiness({ ...base, activeCadenceCount: 0 });
+    const items = evaluateFranchiseReadiness({
+      ...base,
+      activeCadenceCount: 0,
+    });
     expect(items.find(i => i.key === "cadence")?.ok).toBe(false);
   });
 

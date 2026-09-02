@@ -31,7 +31,10 @@ async function pickSaveCaseOwner(
   if (!chapterId) return null;
   const db = getDb();
   const roles = await db
-    .select({ memberId: schema.chapterRoles.memberId, role: schema.chapterRoles.role })
+    .select({
+      memberId: schema.chapterRoles.memberId,
+      role: schema.chapterRoles.role,
+    })
     .from(schema.chapterRoles)
     .where(
       and(
@@ -221,10 +224,7 @@ export async function listSaveCasesForChapter(
 }
 
 /** Verify a save case belongs to the given chapter. Returns the case or throws. */
-export async function requireSaveCaseInChapter(
-  id: number,
-  chapterId: number
-) {
+export async function requireSaveCaseInChapter(id: number, chapterId: number) {
   const db = getDb();
   const row = await db
     .select({
@@ -241,7 +241,8 @@ export async function requireSaveCaseInChapter(
     .where(eq(schema.memberSaveCases.id, id))
     .limit(1);
   const c = row.at(0);
-  if (!c) throw new TRPCError({ code: "NOT_FOUND", message: "Save case not found." });
+  if (!c)
+    throw new TRPCError({ code: "NOT_FOUND", message: "Save case not found." });
   const caseChapterId = c.chapterId;
   if (caseChapterId !== chapterId) {
     throw new TRPCError({

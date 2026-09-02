@@ -189,9 +189,7 @@ export const appRouter = createRouter({
             sql`${schema.appointments.id} != ${input.id}`
           )
         );
-      if (
-        !isSlotAvailable(existing, dateStr, timeStr, row.durationMin || 60)
-      ) {
+      if (!isSlotAvailable(existing, dateStr, timeStr, row.durationMin || 60)) {
         return {
           ok: false,
           error:
@@ -248,7 +246,11 @@ export const appRouter = createRouter({
         when,
         reason: input.reason,
       });
-      return { ok: true, emailSent: emailResult.ok, emailError: emailResult.error || null };
+      return {
+        ok: true,
+        emailSent: emailResult.ok,
+        emailError: emailResult.error || null,
+      };
     }),
 
   rescheduleAppointment: scopedAdmin("leads")

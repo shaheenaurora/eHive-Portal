@@ -77,7 +77,11 @@ export async function tierChangeHistory(memberId: number) {
     .where(
       and(
         eq(schema.membershipEvents.memberId, memberId),
-        inArray(schema.membershipEvents.type, ["upgrade", "downgrade", "approved"])
+        inArray(schema.membershipEvents.type, [
+          "upgrade",
+          "downgrade",
+          "approved",
+        ])
       )
     )
     .orderBy(desc(schema.membershipEvents.createdAt));

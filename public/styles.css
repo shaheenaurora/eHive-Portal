@@ -1,4 +1,4 @@
-@import url('tokens.css');
+@import url("tokens.css");
 
 :root {
   /* ---- eHive design tokens (2026 launch system) ---- */
@@ -7659,7 +7659,9 @@ body.has-sticky-cta {
   font-size: 1.6rem;
   line-height: 36px;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 .exit-close:hover,
 .exit-close:focus {

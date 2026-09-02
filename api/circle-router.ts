@@ -455,7 +455,9 @@ export const circleRouter = createRouter({
           revenue: input.revenue,
         },
         sourcePage: "portal/apply",
-      }).catch(err => logger.error("application confirmation email failed", { error: err }));
+      }).catch(err =>
+        logger.error("application confirmation email failed", { error: err })
+      );
       return { ok: true };
     }),
 
@@ -634,7 +636,14 @@ export const circleRouter = createRouter({
   requestMembershipChange: authedQuery
     .input(
       z.object({
-        type: z.enum(["upgrade", "downgrade", "pause", "cancel", "renew", "resume"]),
+        type: z.enum([
+          "upgrade",
+          "downgrade",
+          "pause",
+          "cancel",
+          "renew",
+          "resume",
+        ]),
         toTier: z.enum(["horizon", "ascent", "vanguard", "zenith"]).optional(),
         note: z.string().max(500).optional(),
       })
@@ -699,7 +708,11 @@ export const circleRouter = createRouter({
       }
 
       // Self-serve actions (the member's own right): applied immediately.
-      if (input.type === "cancel" || input.type === "pause" || input.type === "renew") {
+      if (
+        input.type === "cancel" ||
+        input.type === "pause" ||
+        input.type === "renew"
+      ) {
         await db.insert(schema.membershipEvents).values({
           memberId: member.id,
           type: input.type,
@@ -743,7 +756,9 @@ export const circleRouter = createRouter({
           .limit(1);
         const isVoluntary =
           latestPause.length &&
-          (latestPause[0].note ?? "").startsWith("Member paused their membership");
+          (latestPause[0].note ?? "").startsWith(
+            "Member paused their membership"
+          );
         if (member.lifecycleState !== "suspended" || !isVoluntary) {
           throw new TRPCError({
             code: "PRECONDITION_FAILED",
@@ -1195,7 +1210,10 @@ export const circleRouter = createRouter({
         });
       const db = getDb();
       const officers = await db
-        .select({ memberId: schema.chapterRoles.memberId, role: schema.chapterRoles.role })
+        .select({
+          memberId: schema.chapterRoles.memberId,
+          role: schema.chapterRoles.role,
+        })
         .from(schema.chapterRoles)
         .where(
           and(
@@ -1208,11 +1226,15 @@ export const circleRouter = createRouter({
       for (const o of officers) {
         notify(o.memberId, msg, "connect").catch(() => {});
       }
-      await audit({ id: ctx.user.id, email: ctx.user.email }, "member.mentor.request", {
-        type: "member",
-        id: member.id,
-        detail: input.note ?? "Mentor requested",
-      });
+      await audit(
+        { id: ctx.user.id, email: ctx.user.email },
+        "member.mentor.request",
+        {
+          type: "member",
+          id: member.id,
+          detail: input.note ?? "Mentor requested",
+        }
+      );
       return { ok: true, notified: officers.length };
     }),
 

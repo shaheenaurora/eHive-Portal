@@ -152,16 +152,22 @@ export async function awardRulePoints(
 /** In-portal notification (BRD 6.3 — email/WhatsApp dispatch is a platform dependency). */
 export async function notify(memberId: number, text: string, kind = "info") {
   const db = getDb();
-  const res = await db.insert(schema.notifications).values({ memberId, text, kind });
-  const notificationId = Number((res as unknown as { insertId?: number }).insertId ?? 0);
+  const res = await db
+    .insert(schema.notifications)
+    .values({ memberId, text, kind });
+  const notificationId = Number(
+    (res as unknown as { insertId?: number }).insertId ?? 0
+  );
 
   // Create delivery tracking rows for each outbound channel.
-  const [emailDelivery] = await db.insert(schema.notificationDeliveries).values({
-    notificationId,
-    memberId,
-    channel: "email",
-    status: "pending",
-  });
+  const [emailDelivery] = await db
+    .insert(schema.notificationDeliveries)
+    .values({
+      notificationId,
+      memberId,
+      channel: "email",
+      status: "pending",
+    });
 
   // Fire a matching web push (fire-and-forget; never blocks the in-app notify).
   void pushToMember(
@@ -174,7 +180,12 @@ export async function notify(memberId: number, text: string, kind = "info") {
   // but keep errors from propagating to the caller.
   try {
     const { emailNotification } = await import("../lib/notify-mail");
-    await emailNotification(memberId, text, kind, Number((emailDelivery as unknown as { insertId?: number }).insertId ?? 0));
+    await emailNotification(
+      memberId,
+      text,
+      kind,
+      Number((emailDelivery as unknown as { insertId?: number }).insertId ?? 0)
+    );
   } catch {
     /* delivery status already recorded; never breaks the triggering action */
   }

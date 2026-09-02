@@ -164,12 +164,12 @@ export default function AdminOrg() {
     level: string;
   } | null>(null);
   const [leaderFor, setLeaderFor] = useState<Unit | null>(null);
-  const [edit, setEdit] = useState<
-    (Unit & { code: string | null }) | null
-  >(null);
-  const [move, setMove] = useState<
-    (Unit & { code: string | null }) | null
-  >(null);
+  const [edit, setEdit] = useState<(Unit & { code: string | null }) | null>(
+    null
+  );
+  const [move, setMove] = useState<(Unit & { code: string | null }) | null>(
+    null
+  );
 
   const create = trpc.adminEngage.createOrgUnit.useMutation({
     onSuccess: () => {
@@ -333,7 +333,12 @@ export default function AdminOrg() {
               <button
                 className="eh-btn ghost sm"
                 onClick={() =>
-                  setEdit({ id: c.id, name: c.name, code: c.code, level: "country" })
+                  setEdit({
+                    id: c.id,
+                    name: c.name,
+                    code: c.code,
+                    level: "country",
+                  })
                 }
               >
                 Edit
@@ -341,7 +346,12 @@ export default function AdminOrg() {
               <button
                 className="eh-btn ghost sm"
                 onClick={() =>
-                  setMove({ id: c.id, name: c.name, code: c.code, level: "country" })
+                  setMove({
+                    id: c.id,
+                    name: c.name,
+                    code: c.code,
+                    level: "country",
+                  })
                 }
               >
                 Move
@@ -349,7 +359,12 @@ export default function AdminOrg() {
               <button
                 className="eh-btn ghost sm danger"
                 onClick={() =>
-                  onDeleteUnit({ id: c.id, name: c.name, code: c.code, level: "country" })
+                  onDeleteUnit({
+                    id: c.id,
+                    name: c.name,
+                    code: c.code,
+                    level: "country",
+                  })
                 }
               >
                 Delete
@@ -411,7 +426,12 @@ export default function AdminOrg() {
                   <button
                     className="eh-btn ghost sm"
                     onClick={() =>
-                      setEdit({ id: r.id, name: r.name, code: r.code, level: "region" })
+                      setEdit({
+                        id: r.id,
+                        name: r.name,
+                        code: r.code,
+                        level: "region",
+                      })
                     }
                   >
                     Edit
@@ -419,7 +439,12 @@ export default function AdminOrg() {
                   <button
                     className="eh-btn ghost sm"
                     onClick={() =>
-                      setMove({ id: r.id, name: r.name, code: r.code, level: "region" })
+                      setMove({
+                        id: r.id,
+                        name: r.name,
+                        code: r.code,
+                        level: "region",
+                      })
                     }
                   >
                     Move
@@ -427,7 +452,12 @@ export default function AdminOrg() {
                   <button
                     className="eh-btn ghost sm danger"
                     onClick={() =>
-                      onDeleteUnit({ id: r.id, name: r.name, code: r.code, level: "region" })
+                      onDeleteUnit({
+                        id: r.id,
+                        name: r.name,
+                        code: r.code,
+                        level: "region",
+                      })
                     }
                   >
                     Delete
@@ -493,7 +523,12 @@ export default function AdminOrg() {
                       <button
                         className="eh-btn ghost sm"
                         onClick={() =>
-                          setEdit({ id: z.id, name: z.name, code: z.code, level: "zone" })
+                          setEdit({
+                            id: z.id,
+                            name: z.name,
+                            code: z.code,
+                            level: "zone",
+                          })
                         }
                       >
                         Edit
@@ -501,7 +536,12 @@ export default function AdminOrg() {
                       <button
                         className="eh-btn ghost sm"
                         onClick={() =>
-                          setMove({ id: z.id, name: z.name, code: z.code, level: "zone" })
+                          setMove({
+                            id: z.id,
+                            name: z.name,
+                            code: z.code,
+                            level: "zone",
+                          })
                         }
                       >
                         Move
@@ -509,7 +549,12 @@ export default function AdminOrg() {
                       <button
                         className="eh-btn ghost sm danger"
                         onClick={() =>
-                          onDeleteUnit({ id: z.id, name: z.name, code: z.code, level: "zone" })
+                          onDeleteUnit({
+                            id: z.id,
+                            name: z.name,
+                            code: z.code,
+                            level: "zone",
+                          })
                         }
                       >
                         Delete
@@ -1115,7 +1160,13 @@ function AddUnit({
         disabled={pending || name.trim().length < 2}
         onClick={() => onSubmit(name, code || undefined)}
       >
-        {pending ? (isEdit ? "Saving…" : "Creating…") : isEdit ? "Save changes" : `Create ${level}`}
+        {pending
+          ? isEdit
+            ? "Saving…"
+            : "Creating…"
+          : isEdit
+            ? "Save changes"
+            : `Create ${level}`}
       </button>
     </>
   );
@@ -1136,11 +1187,17 @@ function MoveUnitModal({
 }) {
   const validParents: { id: number; name: string; level: string }[] = [];
   if (unit.level === "region") {
-    validParents.push(...units.map(c => ({ id: c.id, name: c.name, level: "country" })));
+    validParents.push(
+      ...units.map(c => ({ id: c.id, name: c.name, level: "country" }))
+    );
   } else if (unit.level === "zone") {
     for (const c of units) {
       for (const r of c.regions) {
-        validParents.push({ id: r.id, name: `${c.name} → ${r.name}`, level: "region" });
+        validParents.push({
+          id: r.id,
+          name: `${c.name} → ${r.name}`,
+          level: "region",
+        });
       }
     }
   }
@@ -1154,7 +1211,9 @@ function MoveUnitModal({
         <select
           className="eh-select"
           value={parentId ?? ""}
-          onChange={e => setParentId(e.target.value ? Number(e.target.value) : null)}
+          onChange={e =>
+            setParentId(e.target.value ? Number(e.target.value) : null)
+          }
         >
           <option value="" disabled>
             Select {unit.level === "region" ? "country" : "region"}…

@@ -220,9 +220,7 @@ export const conductRouter = createRouter({
     .query(async ({ ctx, input }) => {
       const db = getDb();
       const scope = await actorConductChapterScope(ctx.user);
-      const baseFilter = scope.full
-        ? null
-        : caseScopeFilter(scope.chapterIds);
+      const baseFilter = scope.full ? null : caseScopeFilter(scope.chapterIds);
       let query = db.select().from(schema.conductCases);
       if (input?.status) {
         query = query.where(
@@ -281,7 +279,8 @@ export const conductRouter = createRouter({
           .where(eq(schema.conductCases.id, input.id))
           .limit(1)
       ).at(0);
-      if (!c) throw new TRPCError({ code: "NOT_FOUND", message: "Case not found" });
+      if (!c)
+        throw new TRPCError({ code: "NOT_FOUND", message: "Case not found" });
       const scope = await actorConductChapterScope(ctx.user);
       if (
         !scope.full &&
@@ -299,7 +298,10 @@ export const conductRouter = createRouter({
       if (input.status) patch.status = input.status;
       if (input.severity) patch.severity = input.severity;
       if (input.resolution !== undefined) patch.resolution = input.resolution;
-      await db.update(schema.conductCases).set(patch).where(eq(schema.conductCases.id, input.id));
+      await db
+        .update(schema.conductCases)
+        .set(patch)
+        .where(eq(schema.conductCases.id, input.id));
       await audit(ctx.user, "conduct.update", {
         type: "conduct_case",
         id: input.id,

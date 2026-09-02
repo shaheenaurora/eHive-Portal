@@ -9,7 +9,19 @@
  * pass so a container restart can't double-run it, and each job only acts on
  * rows that still need acting on.
  */
-import { and, eq, gte, inArray, isNotNull, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
+import {
+  and,
+  eq,
+  gte,
+  inArray,
+  isNotNull,
+  isNull,
+  lt,
+  lte,
+  ne,
+  or,
+  sql,
+} from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "../queries/connection";
 import { evaluateDormancy, notify } from "../queries/circle";
@@ -134,7 +146,10 @@ async function safe(name: string, fn: () => Promise<void>): Promise<void> {
   } catch (e) {
     schedulerStatus.lastFailureAt = new Date().toISOString();
     schedulerStatus.failures++;
-    logger.error(`scheduler job "${name}" failed`, { job: name, error: String(e) });
+    logger.error(`scheduler job "${name}" failed`, {
+      job: name,
+      error: String(e),
+    });
     await alertScheduler(name, e);
   }
 }
@@ -145,10 +160,13 @@ async function safe(name: string, fn: () => Promise<void>): Promise<void> {
 async function jobDormancy(): Promise<void> {
   const { evaluated, transitions } = await evaluateDormancy();
   if (transitions)
-    logger.info(`scheduler dormancy: ${transitions} transition(s) across ${evaluated} members`, {
-      transitions,
-      evaluated,
-    });
+    logger.info(
+      `scheduler dormancy: ${transitions} transition(s) across ${evaluated} members`,
+      {
+        transitions,
+        evaluated,
+      }
+    );
 }
 
 /**
@@ -187,7 +205,10 @@ async function jobRenewal(now = new Date()): Promise<void> {
         );
         opened++;
       } else {
-        logger.info(`scheduler renewal window skipped: ${r.reason}`, { memberId: m.id, reason: r.reason });
+        logger.info(`scheduler renewal window skipped: ${r.reason}`, {
+          memberId: m.id,
+          reason: r.reason,
+        });
       }
     } else if (stage === "lapse" && (lc === "renewal" || lc === "active")) {
       const r = await tryLifecycleTransition(m.id, "lapsed", {
@@ -203,15 +224,21 @@ async function jobRenewal(now = new Date()): Promise<void> {
         );
         lapsed++;
       } else {
-        logger.info(`scheduler lapse skipped: ${r.reason}`, { memberId: m.id, reason: r.reason });
+        logger.info(`scheduler lapse skipped: ${r.reason}`, {
+          memberId: m.id,
+          reason: r.reason,
+        });
       }
     }
   }
   if (opened || lapsed)
-    logger.info(`scheduler renewal: ${opened} window(s) opened, ${lapsed} lapsed`, {
-      opened,
-      lapsed,
-    });
+    logger.info(
+      `scheduler renewal: ${opened} window(s) opened, ${lapsed} lapsed`,
+      {
+        opened,
+        lapsed,
+      }
+    );
 }
 
 /**
@@ -253,7 +280,9 @@ async function jobOnboardingSlip(): Promise<void> {
     flagged++;
   }
   if (flagged)
-    logger.info(`scheduler onboarding-slip: ${flagged} member(s) nudged`, { flagged });
+    logger.info(`scheduler onboarding-slip: ${flagged} member(s) nudged`, {
+      flagged,
+    });
 }
 
 /**
@@ -295,7 +324,9 @@ async function jobCadenceReminders(now = new Date()): Promise<void> {
     }
   }
   if (sent)
-    logger.info(`scheduler cadence reminders: ${sent} cadence(s) nudged`, { sent });
+    logger.info(`scheduler cadence reminders: ${sent} cadence(s) nudged`, {
+      sent,
+    });
 }
 
 /**
@@ -341,11 +372,17 @@ async function jobRoleTerms(now = new Date()): Promise<void> {
 async function jobHealthThreshold(now = new Date()): Promise<void> {
   const db = getDb();
   const chapters = await db
-    .select({ id: schema.chapters.id, name: schema.chapters.name, status: schema.chapters.status })
+    .select({
+      id: schema.chapters.id,
+      name: schema.chapters.name,
+      status: schema.chapters.status,
+    })
     .from(schema.chapters)
     .where(isNull(schema.chapters.deletedAt));
   let alerted = 0;
-  const dayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const dayStart = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  );
   const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
   for (const ch of chapters) {
     let total: number, below: boolean;
@@ -451,7 +488,9 @@ async function jobHealthThreshold(now = new Date()): Promise<void> {
     await setMarker(markerKey, state);
   }
   if (alerted)
-    logger.info(`scheduler health threshold: ${alerted} chapter(s) alerted`, { alerted });
+    logger.info(`scheduler health threshold: ${alerted} chapter(s) alerted`, {
+      alerted,
+    });
 }
 
 /**
@@ -554,7 +593,10 @@ async function jobFranchiseReadiness(now = new Date()): Promise<void> {
     }
     const leaders = ancestorIds.length
       ? await db
-          .select({ memberId: schema.unitRoles.memberId, level: schema.unitRoles.level })
+          .select({
+            memberId: schema.unitRoles.memberId,
+            level: schema.unitRoles.level,
+          })
           .from(schema.unitRoles)
           .where(
             and(
@@ -570,7 +612,10 @@ async function jobFranchiseReadiness(now = new Date()): Promise<void> {
     promoted++;
   }
   if (promoted)
-    logger.info(`scheduler franchise readiness: ${promoted} chapter(s) chartered`, { promoted });
+    logger.info(
+      `scheduler franchise readiness: ${promoted} chapter(s) chartered`,
+      { promoted }
+    );
 }
 
 /**
@@ -598,7 +643,10 @@ async function jobFranchiseOnboardingNudges(now = new Date()): Promise<void> {
     )
     .where(
       and(
-        inArray(schema.franchiseOnboardingChecklists.status, ["pending", "in_progress"]),
+        inArray(schema.franchiseOnboardingChecklists.status, [
+          "pending",
+          "in_progress",
+        ]),
         or(
           lte(schema.franchiseOnboardingChecklists.dueAt, now),
           and(
@@ -624,7 +672,10 @@ async function jobFranchiseOnboardingNudges(now = new Date()): Promise<void> {
     nudged++;
   }
   if (nudged)
-    logger.info(`scheduler franchise onboarding nudges: ${nudged} reminder(s) sent`, { nudged });
+    logger.info(
+      `scheduler franchise onboarding nudges: ${nudged} reminder(s) sent`,
+      { nudged }
+    );
 }
 
 /**
@@ -640,7 +691,10 @@ async function jobBudgetCarryForward(now = new Date()): Promise<void> {
   const result = await carryForwardBudgets(now);
   await setMarker(markerKey, "done");
   if (result.carried || result.skipped) {
-    logger.info(`scheduler budget carry-forward FY${year}: ${result.carried} carried, ${result.skipped} already done`, result);
+    logger.info(
+      `scheduler budget carry-forward FY${year}: ${result.carried} carried, ${result.skipped} already done`,
+      result
+    );
   }
 }
 
@@ -694,7 +748,8 @@ async function jobDunning(now = new Date()): Promise<void> {
     await setMarker(markerKey, `${count + 1}|${now.toISOString()}`);
     nudged++;
   }
-  if (nudged) logger.info(`scheduler dunning: ${nudged} reminder(s) sent`, { nudged });
+  if (nudged)
+    logger.info(`scheduler dunning: ${nudged} reminder(s) sent`, { nudged });
 }
 
 /**
@@ -704,7 +759,8 @@ async function jobDunning(now = new Date()): Promise<void> {
 async function jobReconcilePayments(now = new Date()): Promise<void> {
   if (!paymentsEnabled()) return;
   const provider = getPaymentProvider();
-  if (provider.name !== "stripe" || !("retrieveCheckoutSession" in provider)) return;
+  if (provider.name !== "stripe" || !("retrieveCheckoutSession" in provider))
+    return;
 
   const db = getDb();
   const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
@@ -754,9 +810,12 @@ async function jobReconcilePayments(now = new Date()): Promise<void> {
     }
   }
   if (reconciled)
-    logger.info(`scheduler payment reconciliation: ${reconciled} record(s) updated`, {
-      reconciled,
-    });
+    logger.info(
+      `scheduler payment reconciliation: ${reconciled} record(s) updated`,
+      {
+        reconciled,
+      }
+    );
 }
 
 /**
@@ -786,14 +845,20 @@ async function jobRetryFailedNotifications(now = new Date()): Promise<void> {
       await retryEmailDelivery(row.id);
       retried++;
     } catch (e) {
-      logger.warn(`scheduler notification retry failed for delivery ${row.id}`, {
-        deliveryId: row.id,
-        error: String(e),
-      });
+      logger.warn(
+        `scheduler notification retry failed for delivery ${row.id}`,
+        {
+          deliveryId: row.id,
+          error: String(e),
+        }
+      );
     }
   }
   if (retried)
-    logger.info(`scheduler notification retries: ${retried} delivery(s) re-attempted`, { retried });
+    logger.info(
+      `scheduler notification retries: ${retried} delivery(s) re-attempted`,
+      { retried }
+    );
 }
 
 /**
@@ -817,8 +882,7 @@ async function jobScorecardFollowUp(now = new Date()): Promise<void> {
   for (const l of leads) {
     if (!l.email) continue;
     const ageDays = Math.floor(
-      (now.getTime() - new Date(l.createdAt).getTime()) /
-        (24 * 60 * 60 * 1000)
+      (now.getTime() - new Date(l.createdAt).getTime()) / (24 * 60 * 60 * 1000)
     );
     const stage = ageDays >= 10 ? "follow_up_2" : "follow_up_1";
     const markerKey = `scorecard-followup:${l.id}:${stage}`;
@@ -844,10 +908,16 @@ async function jobScorecardFollowUp(now = new Date()): Promise<void> {
       await setMarker(markerKey, now.toISOString());
       sent++;
     } else {
-      logger.warn(`scheduler scorecard follow-up failed for lead ${l.id}`, { leadId: l.id, error: r.error });
+      logger.warn(`scheduler scorecard follow-up failed for lead ${l.id}`, {
+        leadId: l.id,
+        error: r.error,
+      });
     }
   }
-  if (sent) logger.info(`scheduler scorecard follow-up: ${sent} email(s) sent`, { sent });
+  if (sent)
+    logger.info(`scheduler scorecard follow-up: ${sent} email(s) sent`, {
+      sent,
+    });
 }
 
 /** Run all daily jobs at most once per UTC day. */
@@ -896,7 +966,9 @@ export async function runDailyJobs(now = new Date()): Promise<boolean> {
   await safe("role-terms", () => jobRoleTerms(now));
   await safe("health-threshold", () => jobHealthThreshold());
   await safe("franchise-readiness", () => jobFranchiseReadiness(now));
-  await safe("franchise-onboarding-nudges", () => jobFranchiseOnboardingNudges(now));
+  await safe("franchise-onboarding-nudges", () =>
+    jobFranchiseOnboardingNudges(now)
+  );
   await safe("scorecard-follow-up", () => jobScorecardFollowUp(now));
   await safe("kpi-snapshots", async () => {
     const { captureKpiSnapshots } = await import("../queries/kpi-snapshots");

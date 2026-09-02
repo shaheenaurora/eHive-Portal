@@ -91,7 +91,10 @@ export async function emailNotification(
   try {
     if (!mailEnabled()) {
       if (deliveryId)
-        await markDelivery(deliveryId, { status: "failed", error: "Mail not enabled" });
+        await markDelivery(deliveryId, {
+          status: "failed",
+          error: "Mail not enabled",
+        });
       return;
     }
     const row = (
@@ -147,7 +150,10 @@ export async function retryEmailDelivery(deliveryId: number): Promise<void> {
       .from(schema.notificationDeliveries)
       .innerJoin(
         schema.notifications,
-        eq(schema.notifications.id, schema.notificationDeliveries.notificationId)
+        eq(
+          schema.notifications.id,
+          schema.notificationDeliveries.notificationId
+        )
       )
       .where(eq(schema.notificationDeliveries.id, deliveryId))
       .limit(1)
@@ -158,5 +164,10 @@ export async function retryEmailDelivery(deliveryId: number): Promise<void> {
     .update(schema.notificationDeliveries)
     .set({ retryCount: (row.retryCount ?? 0) + 1 })
     .where(eq(schema.notificationDeliveries.id, deliveryId));
-  await emailNotification(row.memberId, row.text ?? "", row.kind ?? "info", deliveryId);
+  await emailNotification(
+    row.memberId,
+    row.text ?? "",
+    row.kind ?? "info",
+    deliveryId
+  );
 }

@@ -6,7 +6,9 @@ describe("tRPC per-user rate limiting helpers", () => {
   it("builds stable keys per type and user", () => {
     expect(trpcRateLimitKey("mutation", 7)).toBe("trpc:mutation:user:7");
     expect(trpcRateLimitKey("query", 42)).toBe("trpc:query:user:42");
-    expect(trpcRateLimitKey("subscription", 1)).toBe("trpc:subscription:user:1");
+    expect(trpcRateLimitKey("subscription", 1)).toBe(
+      "trpc:subscription:user:1"
+    );
   });
 
   it("uses distinct namespaces for query vs mutation", () => {
