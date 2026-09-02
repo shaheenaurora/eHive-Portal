@@ -55,6 +55,48 @@ export type MailInput = {
   replyTo?: string;
 };
 
+/* ---- live delivery health ----
+ * ZeptoMail has no cheap "ping" that doesn't spend a credit, so instead of a
+ * synthetic probe we track the outcome of real sends. The first hard rejection
+ * (e.g. credit exhausted, unverified sender, auth) flips the health check red so
+ * /api/health surfaces the outage — the exact failure mode that was previously
+ * invisible. A subsequent success clears it. */
+type MailHealth = {
+  lastOkAt: number | null;
+  lastFailAt: number | null;
+  lastError: string | null;
+  lastVia: MailProvider | "smtp-fallback" | null;
+  consecutiveFails: number;
+};
+const health: MailHealth = {
+  lastOkAt: null,
+  lastFailAt: null,
+  lastError: null,
+  lastVia: null,
+  consecutiveFails: 0,
+};
+function recordSendResult(
+  ok: boolean,
+  via: MailHealth["lastVia"],
+  error?: string
+): void {
+  const now = Date.now();
+  health.lastVia = via;
+  if (ok) {
+    health.lastOkAt = now;
+    health.lastError = null;
+    health.consecutiveFails = 0;
+  } else {
+    health.lastFailAt = now;
+    health.lastError = error ?? "unknown";
+    health.consecutiveFails++;
+  }
+}
+/** Snapshot of live delivery health for the admin panel / health endpoint. */
+export function mailHealth(): Readonly<MailHealth> {
+  return { ...health };
+}
+
 /** Normalize a ZeptoMail token: the API header needs just the token value, but
  *  users often paste the whole `Zoho-enczapikey …` string. Strip the prefix and
  *  whitespace so either form works. */
@@ -134,32 +176,77 @@ async function sendViaZepto(
   return { ok: false, error: `ZeptoMail: ${detail}` };
 }
 
+/** Send via the configured SMTP relay (also the fallback for ZeptoMail). */
+async function sendViaSmtp(
+  input: MailInput
+): Promise<{ ok: boolean; error?: string }> {
+  const from = fromAddress() || env.smtpUser || "";
+  if (!from)
+    return { ok: false, error: "Set MAIL_FROM or SMTP_USER for the sender." };
+  try {
+    await getTransport().sendMail({
+      from: `eHive <${from}>`,
+      to: input.to,
+      subject: input.subject,
+      text: input.text ?? htmlToText(input.html),
+      html: input.html,
+      replyTo: input.replyTo,
+    });
+    return { ok: true };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
 /** Single delivery path used by both sendMail and the admin test send. Routes
- *  to ZeptoMail when configured, otherwise SMTP. Returns the real error text. */
+ *  to ZeptoMail when configured, otherwise SMTP. When ZeptoMail is primary and
+ *  rejects a send (credit exhausted, transient 5xx, unverified sender…) and SMTP
+ *  is also configured, the message is retried over SMTP so a single-provider
+ *  outage doesn't silently drop transactional mail. Records the outcome so the
+ *  health check reflects live delivery state. */
 async function deliver(
   input: MailInput
 ): Promise<{ ok: boolean; error?: string }> {
   const provider = mailProvider();
-  if (provider === "zeptomail") return sendViaZepto(input);
-  if (provider === "smtp") {
-    try {
-      await getTransport().sendMail({
-        from: `eHive <${fromAddress()}>`,
-        to: input.to,
-        subject: input.subject,
-        text: input.text ?? htmlToText(input.html),
-        html: input.html,
-        replyTo: input.replyTo,
-      });
-      return { ok: true };
-    } catch (err) {
-      return {
-        ok: false,
-        error: err instanceof Error ? err.message : String(err),
-      };
-    }
+  if (!provider) {
+    const r = { ok: false, error: "No email transport configured." };
+    recordSendResult(false, null, r.error);
+    return r;
   }
-  return { ok: false, error: "No email transport configured." };
+  if (provider === "smtp") {
+    const r = await sendViaSmtp(input);
+    recordSendResult(r.ok, "smtp", r.error);
+    return r;
+  }
+  // provider === "zeptomail"
+  const primary = await sendViaZepto(input);
+  if (primary.ok) {
+    recordSendResult(true, "zeptomail");
+    return primary;
+  }
+  // Primary rejected — fall back to SMTP if it's independently configured.
+  if (smtpConfigured()) {
+    logger.warn("[mail] ZeptoMail rejected — falling back to SMTP", {
+      to: maskEmail(input.to),
+      error: primary.error,
+    });
+    const fallback = await sendViaSmtp(input);
+    if (fallback.ok) {
+      recordSendResult(true, "smtp-fallback");
+      return fallback;
+    }
+    const combined = {
+      ok: false,
+      error: `${primary.error} (SMTP fallback also failed: ${fallback.error})`,
+    };
+    recordSendResult(false, "smtp-fallback", combined.error);
+    return combined;
+  }
+  recordSendResult(false, "zeptomail", primary.error);
+  return primary;
 }
 
 /** Send one email and return the real transport result (including any error
@@ -194,14 +281,23 @@ function htmlToText(html: string): string {
 }
 
 /** Lightweight transport verification for health checks. Does not send email.
- *  ZeptoMail is reported OK when configured; SMTP is verified with a short
- *  timeout so a misconfigured relay does not hang the liveness probe. */
+ *  If a recent real send hard-failed (e.g. ZeptoMail credit exhausted), that is
+ *  reported as unhealthy — this is what makes an ongoing delivery outage visible
+ *  on /api/health instead of silently dropping mail. SMTP is additionally probed
+ *  with a short-timeout connection verify so a misconfigured relay is caught even
+ *  before the first send. */
 export async function verifyMailTransport(): Promise<{
   ok: boolean;
   error?: string;
 }> {
   const provider = mailProvider();
   if (!provider) return { ok: false, error: "No email transport configured." };
+  // A live delivery failure trumps any static "configured" signal.
+  if (health.consecutiveFails > 0)
+    return {
+      ok: false,
+      error: `Last ${health.consecutiveFails} send(s) failed: ${health.lastError ?? "unknown"}`,
+    };
   if (provider === "zeptomail") return { ok: true };
   try {
     await Promise.race([
@@ -235,6 +331,16 @@ export function mailStatus() {
     user: env.smtpUser || null,
     from: env.mailFrom || env.smtpUser || null,
     notifyTo: env.leadNotifyEmail || null,
+    fallback: provider === "zeptomail" && smtpConfigured() ? "smtp" : null,
+    health: {
+      lastOkAt: health.lastOkAt ? new Date(health.lastOkAt).toISOString() : null,
+      lastFailAt: health.lastFailAt
+        ? new Date(health.lastFailAt).toISOString()
+        : null,
+      lastError: health.lastError,
+      lastVia: health.lastVia,
+      consecutiveFails: health.consecutiveFails,
+    },
   };
 }
 

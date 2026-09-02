@@ -28,6 +28,14 @@ import {
 } from "@contracts/constants";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** True for a MySQL duplicate-key (unique constraint) violation. Lets a racing
+ *  second vote be caught at the DB and mapped to a clean CONFLICT rather than
+ *  landing a duplicate row. */
+function isDuplicateKeyError(err: unknown): boolean {
+  const e = err as { code?: string; errno?: number };
+  return e?.code === "ER_DUP_ENTRY" || e?.errno === 1062;
+}
 /** The 30-day buddy check-in can't be completed in the first few weeks — it
  *  opens a short grace window before day 30 so it lands around the real mark. */
 const BUDDY_CHECKIN_OPENS_AFTER_DAYS = BUDDY_CHECKIN_DAYS - 5; // day 25
@@ -1512,13 +1520,27 @@ export const engageRouter = createRouter({
           code: "CONFLICT",
           message: "Ballot already cast",
         });
-      // secret ballot: choice without identity; participation recorded separately
-      await db
-        .insert(schema.ballots)
-        .values({ electionId: e.id, candidateId: cand.id });
-      await db
-        .insert(schema.ballotRoll)
-        .values({ electionId: e.id, memberId: member.id });
+      // Secret ballot: choice without identity; participation recorded
+      // separately. Both writes go in one transaction so they can't desync, and
+      // the participation row goes first — its unique (electionId, memberId)
+      // index rejects a concurrent double-submit before any ballot is counted.
+      await db.transaction(async tx => {
+        try {
+          await tx
+            .insert(schema.ballotRoll)
+            .values({ electionId: e.id, memberId: member.id });
+        } catch (err) {
+          if (isDuplicateKeyError(err))
+            throw new TRPCError({
+              code: "CONFLICT",
+              message: "Ballot already cast",
+            });
+          throw err;
+        }
+        await tx
+          .insert(schema.ballots)
+          .values({ electionId: e.id, candidateId: cand.id });
+      });
       return { ok: true };
     }),
 
@@ -1569,9 +1591,22 @@ export const engageRouter = createRouter({
           code: "CONFLICT",
           message: "One member, one vote",
         });
-      await db
-        .insert(schema.motionVotes)
-        .values({ motionId: mo.id, memberId: member.id, choice: input.choice });
+      // The unique (motionId, memberId) index is the real guard: a concurrent
+      // double-submit that slips past the check above is rejected here.
+      try {
+        await db.insert(schema.motionVotes).values({
+          motionId: mo.id,
+          memberId: member.id,
+          choice: input.choice,
+        });
+      } catch (err) {
+        if (isDuplicateKeyError(err))
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "One member, one vote",
+          });
+        throw err;
+      }
       return { ok: true };
     }),
 });
