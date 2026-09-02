@@ -1099,7 +1099,10 @@ export default function AdminChapters() {
               onChange={e => setPnlYear(Number(e.target.value))}
               aria-label="Fiscal year"
             >
-              {Array.from({ length: 7 }, (_, i) => new Date().getUTCFullYear() - 3 + i).map(y => (
+              {Array.from(
+                { length: 7 },
+                (_, i) => new Date().getUTCFullYear() - 3 + i
+              ).map(y => (
                 <option key={y} value={y}>
                   FY{y}
                 </option>
@@ -1165,7 +1168,9 @@ export default function AdminChapters() {
             </h2>
           </div>
           <div className="eh-card">
-            {activity.isError && <LoadError onRetry={() => activity.refetch()} />}
+            {activity.isError && (
+              <LoadError onRetry={() => activity.refetch()} />
+            )}
             {activity.isLoading && <Spinner />}
             {activity.data && activity.data.length === 0 && (
               <Empty
@@ -1308,7 +1313,8 @@ export default function AdminChapters() {
             onRetry={() => readinessQ.refetch()}
             pending={grantCharter.isPending}
             onGrant={() =>
-              readinessChapterId && grantCharter.mutate({ chapterId: readinessChapterId })
+              readinessChapterId &&
+              grantCharter.mutate({ chapterId: readinessChapterId })
             }
           />
         </Modal>
@@ -1317,12 +1323,13 @@ export default function AdminChapters() {
   );
 }
 
-const ONBOARDING_STATUS_LABEL: Record<string, string> = {
+const ONBOARDING_STATUS_LABEL = {
   pending: "Pending",
   in_progress: "In progress",
   done: "Done",
   skipped: "Skipped",
-};
+} as const;
+type OnboardingStatus = keyof typeof ONBOARDING_STATUS_LABEL;
 
 function FranchiseReadinessPanel({
   data,
@@ -1336,7 +1343,13 @@ function FranchiseReadinessPanel({
     chapterId: number;
     name: string;
     status: string;
-    items: { key: string; label: string; ok: boolean; required: boolean; detail?: string }[];
+    items: {
+      key: string;
+      label: string;
+      ok: boolean;
+      required: boolean;
+      detail?: string;
+    }[];
     score: { passed: number; total: number; ready: boolean; percent: number };
   };
   loading: boolean;
@@ -1349,14 +1362,16 @@ function FranchiseReadinessPanel({
     { chapterId: data?.chapterId ?? 0 },
     { enabled: !!data }
   );
-  const updateItem = trpc.admin.chapters.updateFranchiseOnboardingItem.useMutation({
-    onSuccess: () => onboardingQ.refetch(),
-  });
-  const [edits, setEdits] = useState<Record<string, string>>({});
+  const updateItem =
+    trpc.admin.chapters.updateFranchiseOnboardingItem.useMutation({
+      onSuccess: () => onboardingQ.refetch(),
+    });
+  const [edits, setEdits] = useState<Record<string, OnboardingStatus>>({});
 
   if (loading) return <Spinner />;
   if (error) return <LoadError onRetry={onRetry} />;
-  if (!data) return <Empty big="No data" p="Select a chapter to review readiness." />;
+  if (!data)
+    return <Empty big="No data" p="Select a chapter to review readiness." />;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
@@ -1386,11 +1401,7 @@ function FranchiseReadinessPanel({
           {data.score.passed} of {data.score.total} requirements met
         </div>
         {data.status === "provisional" && data.score.ready && (
-          <button
-            className="eh-btn green"
-            disabled={pending}
-            onClick={onGrant}
-          >
+          <button className="eh-btn green" disabled={pending} onClick={onGrant}>
             {pending ? "Granting charter…" : "Grant charter"}
           </button>
         )}
@@ -1408,7 +1419,10 @@ function FranchiseReadinessPanel({
               borderLeft: `3px solid ${item.ok ? "var(--eh-good, #2e7d5b)" : "var(--eh-red, #b23a2e)"}`,
             }}
           >
-            <div className="eh-row" style={{ justifyContent: "space-between", gap: ".5rem" }}>
+            <div
+              className="eh-row"
+              style={{ justifyContent: "space-between", gap: ".5rem" }}
+            >
               <b className="eh-sm">{item.label}</b>
               <Pill color={item.ok ? "green" : "red"}>
                 {item.ok ? "Done" : "Open"}
@@ -1428,7 +1442,10 @@ function FranchiseReadinessPanel({
           <div className="eh-eyebrow" style={{ marginBottom: ".75rem" }}>
             Franchise onboarding checklist
           </div>
-          <table className="eh-table" style={{ width: "100%", fontSize: "0.9rem" }}>
+          <table
+            className="eh-table"
+            style={{ width: "100%", fontSize: "0.9rem" }}
+          >
             <thead>
               <tr>
                 <th>Item</th>
@@ -1447,12 +1464,19 @@ function FranchiseReadinessPanel({
                         className="eh-input"
                         value={current}
                         onChange={e =>
-                          setEdits(prev => ({ ...prev, [row.itemKey]: e.target.value }))
+                          setEdits(prev => ({
+                            ...prev,
+                            [row.itemKey]: e.target.value as OnboardingStatus,
+                          }))
                         }
                       >
-                        {Object.entries(ONBOARDING_STATUS_LABEL).map(([k, label]) => (
-                          <option key={k} value={k}>{label}</option>
-                        ))}
+                        {Object.entries(ONBOARDING_STATUS_LABEL).map(
+                          ([k, label]) => (
+                            <option key={k} value={k}>
+                              {label}
+                            </option>
+                          )
+                        )}
                       </select>
                     </td>
                     <td style={{ textAlign: "right" }}>
@@ -1464,7 +1488,7 @@ function FranchiseReadinessPanel({
                             updateItem.mutate({
                               chapterId: data.chapterId,
                               itemKey: row.itemKey,
-                              status: current as any,
+                              status: current,
                             })
                           }
                         >
@@ -1499,12 +1523,26 @@ function PnlPanel({
       revenue: {
         totalAed: number;
         byTier: { tier: string; amountAed: number; count: number }[];
-        rows: { id: number; date: Date; payerName: string | null; tier: string | null; amountAed: number; status: string }[];
+        rows: {
+          id: number;
+          date: Date;
+          payerName: string | null;
+          tier: string | null;
+          amountAed: number;
+          status: string;
+        }[];
       };
       expenses: {
         totalAed: number;
         byCategory: { category: string; amountAed: number }[];
-        rows: { id: number; date: Date; label: string; category: string | null; amountAed: number; status: string }[];
+        rows: {
+          id: number;
+          date: Date;
+          label: string;
+          category: string | null;
+          amountAed: number;
+          status: string;
+        }[];
       };
       netIncomeAed: number;
       closingBalanceAed: number;
@@ -1525,26 +1563,51 @@ function PnlPanel({
   if (!d) return null;
 
   return (
-    <div className="eh-card" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+    <div
+      className="eh-card"
+      style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+    >
       <div className="eh-grid g4" style={{ gap: ".75rem" }}>
         <ChMetric k="Opening balance" v={moneyAed(d.openingBalanceAed)} />
-        <ChMetric k="Revenue" v={moneyAed(d.revenue.totalAed)} accent="#2e7d5b" />
-        <ChMetric k="Expenses" v={moneyAed(d.expenses.totalAed)} accent="#b23a2e" />
+        <ChMetric
+          k="Revenue"
+          v={moneyAed(d.revenue.totalAed)}
+          accent="#2e7d5b"
+        />
+        <ChMetric
+          k="Expenses"
+          v={moneyAed(d.expenses.totalAed)}
+          accent="#b23a2e"
+        />
         <ChMetric
           k="Net income"
           v={moneyAed(d.netIncomeAed)}
           accent={d.netIncomeAed >= 0 ? "#2e7d5b" : "#b23a2e"}
         />
       </div>
-      <div className="eh-row" style={{ justifyContent: "space-between", alignItems: "center", gap: ".5rem", flexWrap: "wrap" }}>
+      <div
+        className="eh-row"
+        style={{
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: ".5rem",
+          flexWrap: "wrap",
+        }}
+      >
         <b className="eh-sm">Closing balance</b>
-        <span className="eh-num" style={{ fontSize: "1.3rem", fontWeight: 800 }}>
+        <span
+          className="eh-num"
+          style={{ fontSize: "1.3rem", fontWeight: 800 }}
+        >
           {moneyAed(d.closingBalanceAed)}
         </span>
       </div>
 
       {(d.revenue.byTier.length > 0 || d.expenses.byCategory.length > 0) && (
-        <div className="eh-grid g2" style={{ gap: ".75rem", alignItems: "start" }}>
+        <div
+          className="eh-grid g2"
+          style={{ gap: ".75rem", alignItems: "start" }}
+        >
           {d.revenue.byTier.length > 0 && (
             <div>
               <div className="eh-eyebrow" style={{ marginBottom: ".4rem" }}>

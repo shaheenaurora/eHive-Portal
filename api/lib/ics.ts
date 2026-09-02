@@ -23,7 +23,7 @@ function icsEscape(s: string): string {
 function foldLine(line: string): string {
   if (line.length <= 75) return line;
   const out: string[] = [];
-  let head = line.slice(0, 75);
+  const head = line.slice(0, 75);
   let tail = line.slice(75);
   out.push(head);
   while (tail.length) {
@@ -54,7 +54,7 @@ export function generateIcs(opts: {
   const lines: string[] = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    'PRODID:-//eHive//EN',
+    "PRODID:-//eHive//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",
@@ -72,7 +72,9 @@ export function generateIcs(opts: {
     lines.push(buildLine("LOCATION", opts.location));
   }
   if (opts.organizer) {
-    const cn = opts.organizer.name ? `;CN=${icsEscape(opts.organizer.name)}` : "";
+    const cn = opts.organizer.name
+      ? `;CN=${icsEscape(opts.organizer.name)}`
+      : "";
     lines.push(foldLine(`ORGANIZER${cn}:mailto:${opts.organizer.email}`));
   }
   if (opts.attendee) {
@@ -102,9 +104,7 @@ export function calendarLinks(opts: {
   const text = encodeURIComponent(opts.title);
   const details = encodeURIComponent(opts.description ?? "");
   const location = encodeURIComponent(opts.location ?? "");
-  const google =
-    `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${dates}&details=${details}&location=${location}`;
-  const outlook =
-    `https://outlook.live.com/calendar/0/deeplink/compose?subject=${text}&startdt=${encodeURIComponent(fmt(opts.start))}&enddt=${encodeURIComponent(fmt(end))}&body=${details}&location=${location}`;
+  const google = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${dates}&details=${details}&location=${location}`;
+  const outlook = `https://outlook.live.com/calendar/0/deeplink/compose?subject=${text}&startdt=${encodeURIComponent(fmt(opts.start))}&enddt=${encodeURIComponent(fmt(end))}&body=${details}&location=${location}`;
   return { google, outlook };
 }

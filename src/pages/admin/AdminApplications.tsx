@@ -17,7 +17,11 @@ import {
 import { fmtDate } from "@/lib/ehf";
 import { APPLICATION_STATUSES, TIERS, TIER_LABEL } from "@contracts/constants";
 
-const GATE_MODES: { value: "open" | "muslim_only" | "values_gated"; label: string; hint: string }[] = [
+const GATE_MODES: {
+  value: "open" | "muslim_only" | "values_gated";
+  label: string;
+  hint: string;
+}[] = [
   { value: "open", label: "Open", hint: "No affirmation required." },
   {
     value: "muslim_only",
@@ -54,7 +58,9 @@ function GateModeControl() {
         value={q.data?.mode ?? "open"}
         disabled={q.isLoading || m.isPending}
         onChange={e =>
-          m.mutate({ mode: e.target.value as "open" | "muslim_only" | "values_gated" })
+          m.mutate({
+            mode: e.target.value as "open" | "muslim_only" | "values_gated",
+          })
         }
       >
         {GATE_MODES.map(g => (
@@ -332,7 +338,10 @@ export default function AdminApplications() {
                 {sel.affirmationNote && (
                   <div className="row" style={{ alignItems: "flex-start" }}>
                     <span className="d">Note</span>
-                    <span className="eh-sm" style={{ maxWidth: 360, lineHeight: 1.6 }}>
+                    <span
+                      className="eh-sm"
+                      style={{ maxWidth: 360, lineHeight: 1.6 }}
+                    >
                       {sel.affirmationNote}
                     </span>
                   </div>

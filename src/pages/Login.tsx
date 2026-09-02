@@ -187,7 +187,9 @@ export default function Login() {
                     type="button"
                     className="eh-btn ghost sm"
                     onClick={() => setShowPassword(v => !v)}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
                   >
                     {showPassword ? "Hide" : "Show"}
                   </button>
@@ -339,7 +341,8 @@ export default function Login() {
                 setMode("register");
               }}
               style={{
-                background: mode === "register" ? "rgba(184,134,46,0.15)" : "none",
+                background:
+                  mode === "register" ? "rgba(184,134,46,0.15)" : "none",
                 border: "none",
                 color: mode === "register" ? "var(--eh-gold-2)" : "#9aa7b6",
                 cursor: "pointer",
