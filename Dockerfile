@@ -20,6 +20,10 @@ WORKDIR /app
 ENV NODE_ENV=production
 EXPOSE 3000
 
+# Apply available Debian security updates so the production image doesn't ship
+# with known HIGH/CRITICAL CVEs in base OS packages.
+RUN apt-get update && apt-get upgrade -y && apt-get clean && rm -rf /var/lib/apt/lists/*
+
 # Copy only the compiled output and the production dependency manifest.
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json /app/package-lock.json ./
