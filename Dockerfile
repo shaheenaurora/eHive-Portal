@@ -1,7 +1,7 @@
 # eHive Circle — full-stack portal (marketing site + member/admin SPA + tRPC API)
 # Multi-stage build: compile in the builder stage, then copy only the runtime
 # artifacts into a slim production image.
-FROM node:20-slim AS builder
+FROM node:22-slim AS builder
 WORKDIR /app
 
 # Install dependencies (dev deps required for the Vite/esbuild/TypeScript build).
@@ -15,7 +15,7 @@ COPY . .
 RUN npm run build
 
 # ------------------------------------------------------------------------------
-FROM node:20-slim AS runner
+FROM node:22-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 EXPOSE 3000
