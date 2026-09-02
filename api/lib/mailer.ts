@@ -303,10 +303,7 @@ export async function verifyMailTransport(): Promise<{
     await Promise.race([
       getTransport().verify(),
       new Promise<never>((_, reject) =>
-        setTimeout(
-          () => reject(new Error("SMTP verify timeout")),
-          5000
-        )
+        setTimeout(() => reject(new Error("SMTP verify timeout")), 5000)
       ),
     ]);
     return { ok: true };
@@ -333,7 +330,9 @@ export function mailStatus() {
     notifyTo: env.leadNotifyEmail || null,
     fallback: provider === "zeptomail" && smtpConfigured() ? "smtp" : null,
     health: {
-      lastOkAt: health.lastOkAt ? new Date(health.lastOkAt).toISOString() : null,
+      lastOkAt: health.lastOkAt
+        ? new Date(health.lastOkAt).toISOString()
+        : null,
       lastFailAt: health.lastFailAt
         ? new Date(health.lastFailAt).toISOString()
         : null,

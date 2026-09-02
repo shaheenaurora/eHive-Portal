@@ -17,7 +17,9 @@ describe("public site + ops routes", () => {
       configured: expect.any(Boolean),
       ok: expect.any(Boolean),
     });
-    expect(body.mail.provider === null || typeof body.mail.provider === "string").toBe(true);
+    expect(
+      body.mail.provider === null || typeof body.mail.provider === "string"
+    ).toBe(true);
     expect(body.scheduler).toHaveProperty("lastRunAt");
   });
 

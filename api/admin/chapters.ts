@@ -329,7 +329,10 @@ export const chaptersRouter = createRouter({
         }
       }
       const directors = await db
-        .select({ memberId: schema.unitRoles.memberId, role: schema.unitRoles.role })
+        .select({
+          memberId: schema.unitRoles.memberId,
+          role: schema.unitRoles.role,
+        })
         .from(schema.unitRoles)
         .where(
           and(
@@ -345,6 +348,10 @@ export const chaptersRouter = createRouter({
         notify(d.memberId, msg, "governance").catch(() => {});
       }
 
-      return { ok: true, chapterId: input.chapterId, charterDate: chapter.charterDate ?? now };
+      return {
+        ok: true,
+        chapterId: input.chapterId,
+        charterDate: chapter.charterDate ?? now,
+      };
     }),
 });

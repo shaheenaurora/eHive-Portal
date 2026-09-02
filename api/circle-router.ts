@@ -401,7 +401,9 @@ export const circleRouter = createRouter({
           revenue: input.revenue,
         },
         sourcePage: "portal/apply",
-      }).catch(err => logger.error("application confirmation email failed", { error: err }));
+      }).catch(err =>
+        logger.error("application confirmation email failed", { error: err })
+      );
       return { ok: true };
     }),
 

@@ -101,14 +101,21 @@ export function canChangeTier(
   member: { status: string; tier: string; createdAt: Date },
   toTier: string,
   history: { type: string; toTier: string | null; createdAt: Date }[],
-  opts: { minTenureDays?: number; upgradeCooldownDays?: number; isSelfServe?: boolean } = {}
+  opts: {
+    minTenureDays?: number;
+    upgradeCooldownDays?: number;
+    isSelfServe?: boolean;
+  } = {}
 ): { ok: true } | { ok: false; reason: string } {
   const minTenureDays = opts.minTenureDays ?? 90;
   const upgradeCooldownDays = opts.upgradeCooldownDays ?? 30;
   const isSelfServe = opts.isSelfServe ?? false;
 
   if (member.status !== "active") {
-    return { ok: false, reason: "Tier changes are only allowed for active members." };
+    return {
+      ok: false,
+      reason: "Tier changes are only allowed for active members.",
+    };
   }
   if (toTier === member.tier) {
     return { ok: false, reason: "That's already the current tier." };
@@ -119,7 +126,9 @@ export function canChangeTier(
 
   // Find when the member entered the current tier.
   const tierEvents = history
-    .filter(h => ["upgrade", "downgrade", "approved"].includes(h.type) && h.toTier)
+    .filter(
+      h => ["upgrade", "downgrade", "approved"].includes(h.type) && h.toTier
+    )
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   const currentTierEvent = tierEvents.find(h => h.toTier === member.tier);
   const tierSince = currentTierEvent?.createdAt ?? member.createdAt;
@@ -134,7 +143,11 @@ export function canChangeTier(
   }
 
   // Prevent gaming the system by upgrading then immediately downgrading.
-  const lastUpgrade = tierEvents.find(h => h.type === "upgrade" || (h.type === "approved" && tierRank(h.toTier!) > tierRank(member.tier)));
+  const lastUpgrade = tierEvents.find(
+    h =>
+      h.type === "upgrade" ||
+      (h.type === "approved" && tierRank(h.toTier!) > tierRank(member.tier))
+  );
   if (lastUpgrade && tierRank(toTier) < tierRank(member.tier)) {
     const daysSinceUpgrade = Math.floor(
       (Date.now() - lastUpgrade.createdAt.getTime()) / (1000 * 60 * 60 * 24)

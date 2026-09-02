@@ -1140,7 +1140,9 @@ export default function AdminChapters() {
             </h2>
           </div>
           <div className="eh-card">
-            {activity.isError && <LoadError onRetry={() => activity.refetch()} />}
+            {activity.isError && (
+              <LoadError onRetry={() => activity.refetch()} />
+            )}
             {activity.isLoading && <Spinner />}
             {activity.data && activity.data.length === 0 && (
               <Empty
@@ -1283,7 +1285,8 @@ export default function AdminChapters() {
             onRetry={() => readinessQ.refetch()}
             pending={grantCharter.isPending}
             onGrant={() =>
-              readinessChapterId && grantCharter.mutate({ chapterId: readinessChapterId })
+              readinessChapterId &&
+              grantCharter.mutate({ chapterId: readinessChapterId })
             }
           />
         </Modal>
@@ -1304,7 +1307,13 @@ function FranchiseReadinessPanel({
     chapterId: number;
     name: string;
     status: string;
-    items: { key: string; label: string; ok: boolean; required: boolean; detail?: string }[];
+    items: {
+      key: string;
+      label: string;
+      ok: boolean;
+      required: boolean;
+      detail?: string;
+    }[];
     score: { passed: number; total: number; ready: boolean; percent: number };
   };
   loading: boolean;
@@ -1315,7 +1324,8 @@ function FranchiseReadinessPanel({
 }) {
   if (loading) return <Spinner />;
   if (error) return <LoadError onRetry={onRetry} />;
-  if (!data) return <Empty big="No data" p="Select a chapter to review readiness." />;
+  if (!data)
+    return <Empty big="No data" p="Select a chapter to review readiness." />;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
@@ -1345,11 +1355,7 @@ function FranchiseReadinessPanel({
           {data.score.passed} of {data.score.total} requirements met
         </div>
         {data.status === "provisional" && data.score.ready && (
-          <button
-            className="eh-btn green"
-            disabled={pending}
-            onClick={onGrant}
-          >
+          <button className="eh-btn green" disabled={pending} onClick={onGrant}>
             {pending ? "Granting charter…" : "Grant charter"}
           </button>
         )}
@@ -1367,7 +1373,10 @@ function FranchiseReadinessPanel({
               borderLeft: `3px solid ${item.ok ? "var(--eh-good, #2e7d5b)" : "var(--eh-red, #b23a2e)"}`,
             }}
           >
-            <div className="eh-row" style={{ justifyContent: "space-between", gap: ".5rem" }}>
+            <div
+              className="eh-row"
+              style={{ justifyContent: "space-between", gap: ".5rem" }}
+            >
               <b className="eh-sm">{item.label}</b>
               <Pill color={item.ok ? "green" : "red"}>
                 {item.ok ? "Done" : "Open"}

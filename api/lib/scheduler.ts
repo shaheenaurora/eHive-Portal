@@ -77,7 +77,10 @@ async function safe(name: string, fn: () => Promise<void>): Promise<void> {
   } catch (e) {
     schedulerStatus.lastFailureAt = new Date().toISOString();
     schedulerStatus.failures++;
-    logger.error(`scheduler job "${name}" failed`, { job: name, error: String(e) });
+    logger.error(`scheduler job "${name}" failed`, {
+      job: name,
+      error: String(e),
+    });
   }
 }
 
@@ -87,10 +90,13 @@ async function safe(name: string, fn: () => Promise<void>): Promise<void> {
 async function jobDormancy(): Promise<void> {
   const { evaluated, transitions } = await evaluateDormancy();
   if (transitions)
-    logger.info(`scheduler dormancy: ${transitions} transition(s) across ${evaluated} members`, {
-      transitions,
-      evaluated,
-    });
+    logger.info(
+      `scheduler dormancy: ${transitions} transition(s) across ${evaluated} members`,
+      {
+        transitions,
+        evaluated,
+      }
+    );
 }
 
 /**
@@ -133,7 +139,10 @@ async function jobRenewal(now = new Date()): Promise<void> {
         );
         opened++;
       } else {
-        logger.info(`scheduler renewal window skipped: ${r.reason}`, { memberId: m.id, reason: r.reason });
+        logger.info(`scheduler renewal window skipped: ${r.reason}`, {
+          memberId: m.id,
+          reason: r.reason,
+        });
       }
     } else if (stage === "lapse" && (lc === "renewal" || lc === "active")) {
       const r = await tryLifecycleTransition(m.id, "lapsed", {
@@ -148,15 +157,21 @@ async function jobRenewal(now = new Date()): Promise<void> {
         );
         lapsed++;
       } else {
-        logger.info(`scheduler lapse skipped: ${r.reason}`, { memberId: m.id, reason: r.reason });
+        logger.info(`scheduler lapse skipped: ${r.reason}`, {
+          memberId: m.id,
+          reason: r.reason,
+        });
       }
     }
   }
   if (opened || lapsed)
-    logger.info(`scheduler renewal: ${opened} window(s) opened, ${lapsed} lapsed`, {
-      opened,
-      lapsed,
-    });
+    logger.info(
+      `scheduler renewal: ${opened} window(s) opened, ${lapsed} lapsed`,
+      {
+        opened,
+        lapsed,
+      }
+    );
 }
 
 /**
@@ -198,7 +213,9 @@ async function jobOnboardingSlip(): Promise<void> {
     flagged++;
   }
   if (flagged)
-    logger.info(`scheduler onboarding-slip: ${flagged} member(s) nudged`, { flagged });
+    logger.info(`scheduler onboarding-slip: ${flagged} member(s) nudged`, {
+      flagged,
+    });
 }
 
 /**
@@ -240,7 +257,9 @@ async function jobCadenceReminders(now = new Date()): Promise<void> {
     }
   }
   if (sent)
-    logger.info(`scheduler cadence reminders: ${sent} cadence(s) nudged`, { sent });
+    logger.info(`scheduler cadence reminders: ${sent} cadence(s) nudged`, {
+      sent,
+    });
 }
 
 /**
@@ -322,7 +341,9 @@ async function jobHealthThreshold(): Promise<void> {
     await setMarker(markerKey, state);
   }
   if (alerted)
-    logger.info(`scheduler health threshold: ${alerted} chapter(s) alerted`, { alerted });
+    logger.info(`scheduler health threshold: ${alerted} chapter(s) alerted`, {
+      alerted,
+    });
 }
 
 /**
@@ -440,7 +461,10 @@ async function jobFranchiseReadiness(now = new Date()): Promise<void> {
     promoted++;
   }
   if (promoted)
-    logger.info(`scheduler franchise readiness: ${promoted} chapter(s) chartered`, { promoted });
+    logger.info(
+      `scheduler franchise readiness: ${promoted} chapter(s) chartered`,
+      { promoted }
+    );
 }
 
 /**
@@ -493,7 +517,8 @@ async function jobDunning(now = new Date()): Promise<void> {
     await setMarker(markerKey, `${count + 1}|${now.toISOString()}`);
     nudged++;
   }
-  if (nudged) logger.info(`scheduler dunning: ${nudged} reminder(s) sent`, { nudged });
+  if (nudged)
+    logger.info(`scheduler dunning: ${nudged} reminder(s) sent`, { nudged });
 }
 
 /**
@@ -517,8 +542,7 @@ async function jobScorecardFollowUp(now = new Date()): Promise<void> {
   for (const l of leads) {
     if (!l.email) continue;
     const ageDays = Math.floor(
-      (now.getTime() - new Date(l.createdAt).getTime()) /
-        (24 * 60 * 60 * 1000)
+      (now.getTime() - new Date(l.createdAt).getTime()) / (24 * 60 * 60 * 1000)
     );
     const stage = ageDays >= 10 ? "follow_up_2" : "follow_up_1";
     const markerKey = `scorecard-followup:${l.id}:${stage}`;
@@ -544,10 +568,16 @@ async function jobScorecardFollowUp(now = new Date()): Promise<void> {
       await setMarker(markerKey, now.toISOString());
       sent++;
     } else {
-      logger.warn(`scheduler scorecard follow-up failed for lead ${l.id}`, { leadId: l.id, error: r.error });
+      logger.warn(`scheduler scorecard follow-up failed for lead ${l.id}`, {
+        leadId: l.id,
+        error: r.error,
+      });
     }
   }
-  if (sent) logger.info(`scheduler scorecard follow-up: ${sent} email(s) sent`, { sent });
+  if (sent)
+    logger.info(`scheduler scorecard follow-up: ${sent} email(s) sent`, {
+      sent,
+    });
 }
 
 /** SLA nudge (G9) — a high-value enquiry (partner / franchise) still sitting in
@@ -617,10 +647,7 @@ async function jobRetention(now = new Date()): Promise<void> {
     .update(schema.leads)
     .set({ email: null, payload: null })
     .where(
-      and(
-        lte(schema.leads.createdAt, cutoff),
-        isNotNull(schema.leads.email)
-      )
+      and(lte(schema.leads.createdAt, cutoff), isNotNull(schema.leads.email))
     );
   const n =
     (res as unknown as { affectedRows?: number }).affectedRows ??

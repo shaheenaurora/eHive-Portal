@@ -820,7 +820,8 @@ export async function expenseReceipt(
       .limit(1)
   ).at(0);
   if (!row?.data) return null;
-  const mime = row.data.match(/^data:([^;]+);base64,/)?.[1] ?? "application/pdf";
+  const mime =
+    row.data.match(/^data:([^;]+);base64,/)?.[1] ?? "application/pdf";
   return { name: row.name ?? "receipt", data: row.data, mime };
 }
 

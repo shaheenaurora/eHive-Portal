@@ -33,15 +33,15 @@ export async function recordAnalyticsEvent(
   } = {}
 ): Promise<void> {
   try {
-    await getDb().insert(schema.analyticsEvents).values({
-      event,
-      visitorId: opts.visitorId ?? null,
-      userId: opts.userId ?? null,
-      properties: opts.properties
-        ? JSON.stringify(opts.properties)
-        : null,
-      url: opts.url ?? null,
-    });
+    await getDb()
+      .insert(schema.analyticsEvents)
+      .values({
+        event,
+        visitorId: opts.visitorId ?? null,
+        userId: opts.userId ?? null,
+        properties: opts.properties ? JSON.stringify(opts.properties) : null,
+        url: opts.url ?? null,
+      });
   } catch (e) {
     // Analytics must never break the user-facing action.
     logger.error("analytics event failed", { event, error: e });
@@ -51,14 +51,12 @@ export async function recordAnalyticsEvent(
 export type FunnelRange = { from?: Date; to?: Date };
 
 /** Count each funnel event over a date range. */
-export async function funnelCounts(range?: FunnelRange): Promise<
-  Record<
-    AnalyticsEventName | "_total",
-    number
-  >
-> {
+export async function funnelCounts(
+  range?: FunnelRange
+): Promise<Record<AnalyticsEventName | "_total", number>> {
   const conds = [];
-  if (range?.from) conds.push(gte(schema.analyticsEvents.createdAt, range.from));
+  if (range?.from)
+    conds.push(gte(schema.analyticsEvents.createdAt, range.from));
   if (range?.to) conds.push(lte(schema.analyticsEvents.createdAt, range.to));
 
   const rows = await getDb()

@@ -421,7 +421,11 @@ export const systemRouter = createRouter({
       });
 
       // Prevent self-demotion from full admin to scoped admin.
-      if (input.userId === ctx.user.id && targetWasFullAdmin && !targetStillFullAdmin) {
+      if (
+        input.userId === ctx.user.id &&
+        targetWasFullAdmin &&
+        !targetStillFullAdmin
+      ) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "You can't remove your own full administrator access.",
@@ -431,10 +435,17 @@ export const systemRouter = createRouter({
       // Never leave the platform without at least one full administrator.
       if (targetWasFullAdmin && !targetStillFullAdmin) {
         const fullAdmins = await db
-          .select({ id: schema.users.id, adminScopes: schema.users.adminScopes })
+          .select({
+            id: schema.users.id,
+            adminScopes: schema.users.adminScopes,
+          })
           .from(schema.users)
           .where(eq(schema.users.role, "admin"));
-        const otherFullAdmins = fullAdmins.filter(u => u.id !== input.userId && isFullAdmin({ role: "admin", adminScopes: u.adminScopes }));
+        const otherFullAdmins = fullAdmins.filter(
+          u =>
+            u.id !== input.userId &&
+            isFullAdmin({ role: "admin", adminScopes: u.adminScopes })
+        );
         if (otherFullAdmins.length === 0) {
           throw new TRPCError({
             code: "BAD_REQUEST",

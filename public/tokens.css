@@ -29,8 +29,10 @@
   --eh-line-dark: rgba(255, 255, 255, 0.12);
 
   /* ---- typography ---- */
-  --eh-font-display: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --eh-font-body: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --eh-font-display:
+    "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --eh-font-body:
+    "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
   --eh-font-mono: "SF Mono", "Menlo", "Consolas", "Liberation Mono", monospace;
 
   /* ---- motion ---- */

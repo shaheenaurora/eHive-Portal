@@ -90,11 +90,9 @@ export const authRouter = createRouter({
     .input(
       credentials.extend({
         name: z.string().min(1).max(255),
-        consent: z
-          .boolean()
-          .refine(v => v === true, {
-            message: "You must accept the Privacy Policy and Terms.",
-          }),
+        consent: z.boolean().refine(v => v === true, {
+          message: "You must accept the Privacy Policy and Terms.",
+        }),
       })
     )
     .mutation(async ({ ctx, input }) => {

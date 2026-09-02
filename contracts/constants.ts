@@ -1030,7 +1030,11 @@ export function resolveMotionOutcome(input: {
   abstain: number;
   eligible: number;
   quorumPct: number;
-}): { status: "passed" | "rejected" | "failed"; turnout: number; quorumMet: boolean } {
+}): {
+  status: "passed" | "rejected" | "failed";
+  turnout: number;
+  quorumMet: boolean;
+} {
   const turnout = input.yes + input.no + input.abstain;
   const quorumMet =
     input.eligible > 0 && (turnout / input.eligible) * 100 >= input.quorumPct;

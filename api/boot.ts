@@ -29,11 +29,7 @@ import {
   notifyLead,
   sendInvoiceReady,
 } from "./lib/lead-mail";
-import {
-  mailProvider,
-  mailEnabled,
-  verifyMailTransport,
-} from "./lib/mailer";
+import { mailProvider, mailEnabled, verifyMailTransport } from "./lib/mailer";
 import { activateMembership } from "./queries/circle";
 import {
   createInvoiceFromPayment,
@@ -1218,8 +1214,7 @@ app.get("/robots.txt", c => {
 app.get("/sitemap.xml", async c => {
   const base = env.publicUrl;
   const staticUrls = SITEMAP_PAGES.map(
-    p =>
-      `  <url><loc>${base}/${p}</loc><changefreq>weekly</changefreq></url>`
+    p => `  <url><loc>${base}/${p}</loc><changefreq>weekly</changefreq></url>`
   );
   let articleUrls: string[] = [];
   try {
@@ -1300,16 +1295,10 @@ if (env.isProduction) {
 
   /* Retired marketing pages — permanent redirects so old links/bookmarks/email
      CTAs send traffic to the current doors instead of 404s or stale content. */
-  app.get("/business-setup.html", c =>
-    c.redirect("/consulting.html", 301)
-  );
+  app.get("/business-setup.html", c => c.redirect("/consulting.html", 301));
   app.get("/business-setup", c => c.redirect("/consulting.html", 301));
-  app.get("/get-started.html", c =>
-    c.redirect("/clarity-scorecard.html", 301)
-  );
-  app.get("/get-started", c =>
-    c.redirect("/clarity-scorecard.html", 301)
-  );
+  app.get("/get-started.html", c => c.redirect("/clarity-scorecard.html", 301));
+  app.get("/get-started", c => c.redirect("/clarity-scorecard.html", 301));
 
   /* Marketing site: served straight from source (public/). No build-time copy —
      bulk copies race on this filesystem. Bundle assets (portal-*.js/css) fall

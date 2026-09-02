@@ -19,7 +19,11 @@ export function exportUser(user: typeof schema.users.$inferSelect) {
   }
   return out as Omit<
     typeof schema.users.$inferSelect,
-    "passwordHash" | "totpSecret" | "tokenVersion" | "resetToken" | "resetTokenExpiresAt"
+    | "passwordHash"
+    | "totpSecret"
+    | "tokenVersion"
+    | "resetToken"
+    | "resetTokenExpiresAt"
   >;
 }
 

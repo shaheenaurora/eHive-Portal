@@ -2842,7 +2842,11 @@ export const adminEngageRouter = createRouter({
             .where(eq(schema.orgUnits.id, input.parentId))
             .limit(1)
         ).at(0);
-        if (!parent) throw new TRPCError({ code: "NOT_FOUND", message: "Parent unit not found." });
+        if (!parent)
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Parent unit not found.",
+          });
         if (parent.level !== expected)
           throw new TRPCError({
             code: "BAD_REQUEST",
@@ -2914,7 +2918,8 @@ export const adminEngageRouter = createRouter({
       if ((chapters.at(0)?.n ?? 0) > 0)
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: "Reassign chapters to another zone before deleting this one.",
+          message:
+            "Reassign chapters to another zone before deleting this one.",
         });
 
       await db.delete(schema.orgUnits).where(eq(schema.orgUnits.id, input.id));
@@ -3117,8 +3122,7 @@ export const adminEngageRouter = createRouter({
         .update(schema.newsletterSubscribers)
         .set({
           status: input.status,
-          unsubscribedAt:
-            input.status === "unsubscribed" ? new Date() : null,
+          unsubscribedAt: input.status === "unsubscribed" ? new Date() : null,
         })
         .where(eq(schema.newsletterSubscribers.id, input.id));
       return { ok: true };
@@ -3201,7 +3205,8 @@ export const adminEngageRouter = createRouter({
     .query(async ({ input }) => {
       const db = getDb();
       const conds = [];
-      if (input.status) conds.push(eq(schema.notificationDeliveries.status, input.status));
+      if (input.status)
+        conds.push(eq(schema.notificationDeliveries.status, input.status));
       if (input.memberId)
         conds.push(eq(schema.notificationDeliveries.memberId, input.memberId));
       const rows = await db
@@ -3215,7 +3220,10 @@ export const adminEngageRouter = createRouter({
         .from(schema.notificationDeliveries)
         .innerJoin(
           schema.notifications,
-          eq(schema.notifications.id, schema.notificationDeliveries.notificationId)
+          eq(
+            schema.notifications.id,
+            schema.notificationDeliveries.notificationId
+          )
         )
         .innerJoin(
           schema.members,

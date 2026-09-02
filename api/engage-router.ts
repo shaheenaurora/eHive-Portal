@@ -136,7 +136,10 @@ export const engageRouter = createRouter({
             .from(schema.awardNominations)
             .where(
               and(
-                eq(schema.awardNominations.nomineeMemberId, input.nomineeMemberId),
+                eq(
+                  schema.awardNominations.nomineeMemberId,
+                  input.nomineeMemberId
+                ),
                 eq(schema.awardNominations.status, "winner")
               )
             )

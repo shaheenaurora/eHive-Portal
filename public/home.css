@@ -4,7 +4,7 @@
    Shares primitive tokens with the member portal via tokens.css.
    ========================================================================== */
 
-@import url('tokens.css');
+@import url("tokens.css");
 
 :root {
   --h-cream: #f8f6f0;
@@ -216,7 +216,12 @@ a {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(120deg, transparent 30%, rgba(255, 255, 255, 0.25) 50%, transparent 70%);
+  background: linear-gradient(
+    120deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.25) 50%,
+    transparent 70%
+  );
   transform: translateX(-100%);
   transition: transform 0.6s var(--h-ease);
 }
@@ -465,10 +470,7 @@ a {
   transition:
     transform 0.8s var(--h-ease),
     box-shadow 0.8s var(--h-ease);
-  transform: translate(
-    var(--mouse-x, 0),
-    var(--mouse-y, 0)
-  );
+  transform: translate(var(--mouse-x, 0), var(--mouse-y, 0));
 }
 
 .h-hero-visual img {
@@ -476,8 +478,13 @@ a {
 }
 
 @keyframes hero-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -676,8 +683,7 @@ a {
   position: relative;
   aspect-ratio: 16/10;
   overflow: hidden;
-  background:
-    linear-gradient(135deg, var(--h-cream-2) 0%, var(--h-line) 100%);
+  background: linear-gradient(135deg, var(--h-cream-2) 0%, var(--h-line) 100%);
 }
 
 .h-card-img img {
@@ -5900,10 +5906,7 @@ a.art:hover {
 .p-hero .book-card {
   will-change: transform;
   transition: transform 0.18s var(--h-ease);
-  transform: translate(
-    var(--mouse-x, 0),
-    var(--mouse-y, 0)
-  );
+  transform: translate(var(--mouse-x, 0), var(--mouse-y, 0));
 }
 
 /* ---- split text reveal ---- */
@@ -6038,7 +6041,9 @@ a.art:hover {
   background: rgba(10, 10, 10, 0.92);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  transition: background 0.35s var(--eh-ease), border-color 0.35s var(--eh-ease);
+  transition:
+    background 0.35s var(--eh-ease),
+    border-color 0.35s var(--eh-ease);
 }
 
 .eh-v2 .h-nav.scrolled {
@@ -6109,8 +6114,11 @@ a.art:hover {
   font-weight: 600;
   font-size: 0.95rem;
   text-decoration: none;
-  transition: transform 0.25s var(--eh-ease), background 0.25s var(--eh-ease),
-    color 0.25s var(--eh-ease), box-shadow 0.25s var(--eh-ease);
+  transition:
+    transform 0.25s var(--eh-ease),
+    background 0.25s var(--eh-ease),
+    color 0.25s var(--eh-ease),
+    box-shadow 0.25s var(--eh-ease);
 }
 
 .eh-v2 .eh-btn-primary {
@@ -6517,7 +6525,9 @@ a.art:hover {
   overflow: hidden;
   text-decoration: none;
   color: var(--eh-ink);
-  transition: transform 0.45s var(--eh-ease), box-shadow 0.45s var(--eh-ease);
+  transition:
+    transform 0.45s var(--eh-ease),
+    box-shadow 0.45s var(--eh-ease);
 }
 
 .eh-pillar-card:hover {
@@ -6974,7 +6984,9 @@ a.art:hover {
 .eh-reveal {
   opacity: 0;
   transform: translateY(36px);
-  transition: opacity 0.9s var(--eh-ease), transform 0.9s var(--eh-ease);
+  transition:
+    opacity 0.9s var(--eh-ease),
+    transform 0.9s var(--eh-ease);
   transition-delay: var(--d, 0s);
 }
 
@@ -7043,7 +7055,8 @@ a.art:hover {
 /* ---- 3D tilt cards ---- */
 .eh-tilt {
   transform-style: preserve-3d;
-  transform: perspective(1000px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transform: perspective(1000px) rotateX(var(--rx, 0deg))
+    rotateY(var(--ry, 0deg));
   transition: transform 0.12s ease-out;
 }
 
@@ -7438,7 +7451,6 @@ a.art:hover {
   }
 }
 
-
 /* ==========================================================================
    Global UX polish — auto-reveal, scroll progress, banner sizing.
    Added 2026-08-27.
@@ -7451,7 +7463,11 @@ a.art:hover {
   left: 0;
   height: 3px;
   width: var(--progress, 0%);
-  background: linear-gradient(90deg, var(--eh-gold, #b8862e), var(--eh-coral, #e26a5c));
+  background: linear-gradient(
+    90deg,
+    var(--eh-gold, #b8862e),
+    var(--eh-coral, #e26a5c)
+  );
   z-index: 9999;
   pointer-events: none;
   transition: width 0.1s linear;
@@ -7536,7 +7552,9 @@ a.art:hover {
 .h-service-card,
 .h-door,
 .h-offer {
-  transition: transform 0.25s var(--h-ease, ease), box-shadow 0.25s var(--h-ease, ease);
+  transition:
+    transform 0.25s var(--h-ease, ease),
+    box-shadow 0.25s var(--h-ease, ease);
 }
 
 .h-product:hover,
@@ -7674,7 +7692,9 @@ a.art:hover {
   border-radius: var(--eh-radius);
   overflow: hidden;
   box-shadow: 0 12px 34px rgba(10, 10, 10, 0.06);
-  transition: transform 0.35s var(--eh-ease), box-shadow 0.35s var(--eh-ease);
+  transition:
+    transform 0.35s var(--eh-ease),
+    box-shadow 0.35s var(--eh-ease);
 }
 
 .eh-explore-card:hover {
@@ -7761,7 +7781,9 @@ a.art:hover {
   border: 0;
   background: rgba(10, 10, 10, 0.2);
   cursor: pointer;
-  transition: background 0.25s, transform 0.25s;
+  transition:
+    background 0.25s,
+    transform 0.25s;
 }
 
 .eh-swipe-dots button.active {

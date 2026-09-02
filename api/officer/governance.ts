@@ -17,9 +17,7 @@ import {
 
 /** Configured motion quorum (percent of eligible members) — an app_config
  *  override if present, otherwise the default. Clamped to 1–100. */
-async function motionQuorumPct(
-  db: ReturnType<typeof getDb>
-): Promise<number> {
+async function motionQuorumPct(db: ReturnType<typeof getDb>): Promise<number> {
   const row = (
     await db
       .select({ value: schema.appConfig.value })
