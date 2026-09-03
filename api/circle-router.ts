@@ -125,6 +125,10 @@ export const circleRouter = createRouter({
         status: "pending",
         purpose: "membership",
       });
+      void recordAnalyticsEvent("payment_started", {
+        userId: ctx.user.id,
+        properties: { tier: input.tier, amount, purpose: "membership" },
+      });
       return { url };
     }),
 
@@ -178,6 +182,10 @@ export const circleRouter = createRouter({
       currency: "aed",
       status: "pending",
       purpose: "renewal",
+    });
+    void recordAnalyticsEvent("payment_started", {
+      userId: ctx.user.id,
+      properties: { tier, amount, purpose: "renewal" },
     });
     return { url };
   }),

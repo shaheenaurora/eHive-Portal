@@ -908,6 +908,15 @@ app.post("/api/payments/webhook", async c => {
       ) {
         return c.json({ ok: true, duplicate: true });
       }
+      void recordAnalyticsEvent("payment_failed", {
+        userId: record.userId,
+        properties: {
+          purpose: record.purpose,
+          tier: record.tier,
+          amount: record.amount,
+          currency: record.currency,
+        },
+      });
     }
   } catch (err) {
     logger.error("webhook handling failed", { error: err });

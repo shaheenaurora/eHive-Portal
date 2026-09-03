@@ -23,7 +23,7 @@ const RAG_COLOR: Record<string, string> = {
   none: "var(--eh-line, #d8d2c4)",
 };
 const aedWhole = (n: number) => "AED " + Math.round(n).toLocaleString("en-AE");
-type Tab = "exec" | "chapters" | "atrisk" | "pipeline";
+type Tab = "exec" | "chapters" | "atrisk" | "pipeline" | "conversion";
 
 function Dot({ status }: { status: string }) {
   return (
@@ -67,6 +67,11 @@ export default function AdminReports() {
       label: "Pipeline",
       can: adminHasScope(scopes, "membership"),
     },
+    {
+      key: "conversion",
+      label: "Conversion funnel",
+      can: adminHasScope(scopes, "full"),
+    },
   ];
   const visible = TABS.filter(t => t.can);
   const [tab, setTab] = useState<Tab>(visible[0]?.key ?? "exec");
@@ -106,6 +111,7 @@ export default function AdminReports() {
           {active === "chapters" && <ChaptersTab />}
           {active === "atrisk" && <AtRiskTab />}
           {active === "pipeline" && <PipelineTab />}
+          {active === "conversion" && <ConversionTab />}
         </>
       )}
     </EhShell>
@@ -529,6 +535,132 @@ function PipelineTab() {
             </p>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+/* Acquisition→activation funnel from the analytics event stream. Answers the
+   growth questions the pipeline tab can't: where do people drop off between
+   landing and paying, and does checkout convert once started. */
+function ConversionTab() {
+  const q = trpc.admin.funnelCounts.useQuery(undefined, { retry: false });
+  const d = q.data as Record<string, number> | undefined;
+  const STEPS: [string, string][] = [
+    ["lead_submitted", "Lead captured"],
+    ["user_registered", "Account created"],
+    ["email_verified", "Email verified"],
+    ["application_submitted", "Applied"],
+    ["application_approved", "Approved"],
+    ["payment_started", "Checkout started"],
+    ["payment_succeeded", "Paid"],
+    ["member_onboarding_complete", "Onboarded"],
+  ];
+  const csv = () => {
+    if (!d) return;
+    downloadCsv(
+      "conversion-funnel",
+      [
+        ["step", "Step"],
+        ["event", "Event"],
+        ["count", "Count"],
+      ],
+      STEPS.map(([k, label]) => ({ step: label, event: k, count: d[k] ?? 0 }))
+    );
+  };
+  const top = d ? (d[STEPS[0][0]] ?? 0) : 0;
+  const maxCount = d ? Math.max(1, ...STEPS.map(([k]) => d[k] ?? 0)) : 1;
+  const pct = (n: number, base: number) =>
+    base > 0 ? Math.round((n / base) * 100) : 0;
+  return (
+    <div>
+      <Toolbar onCsv={csv} />
+      {q.isError && <LoadError onRetry={() => q.refetch()} />}
+      {q.isLoading && <Spinner />}
+      {d && (
+        <>
+          <div className="eh-card">
+            <div className="eh-eyebrow" style={{ marginBottom: ".75rem" }}>
+              Acquisition → activation · all time
+            </div>
+            <div>
+              {STEPS.map(([k, label], i) => {
+                const n = d[k] ?? 0;
+                const prev = i === 0 ? n : (d[STEPS[i - 1][0]] ?? 0);
+                return (
+                  <div
+                    key={k}
+                    style={{
+                      padding: ".55rem 0",
+                      borderBottom: "1px solid var(--eh-line)",
+                    }}
+                  >
+                    <div
+                      className="eh-row"
+                      style={{
+                        justifyContent: "space-between",
+                        marginBottom: ".35rem",
+                      }}
+                    >
+                      <span className="t">{label}</span>
+                      <span className="eh-num eh-strong">
+                        {n.toLocaleString()}
+                        {i > 0 && (
+                          <span
+                            className="eh-muted eh-sm"
+                            style={{ marginLeft: ".5rem", fontWeight: 400 }}
+                          >
+                            {pct(n, prev)}% of prev · {pct(n, top)}% of top
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        height: 8,
+                        background: "var(--eh-line)",
+                        borderRadius: 4,
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div
+                        style={{
+                          height: "100%",
+                          width: `${Math.max(2, Math.round((n / maxCount) * 100))}%`,
+                          background: "var(--eh-gold)",
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {top === 0 && (
+              <p className="eh-sm eh-muted" style={{ marginTop: ".6rem" }}>
+                No funnel events recorded yet.
+              </p>
+            )}
+          </div>
+          <div className="eh-card" style={{ marginTop: "1rem" }}>
+            <div className="eh-eyebrow" style={{ marginBottom: ".5rem" }}>
+              Checkout health
+            </div>
+            <div className="eh-list">
+              <div className="row">
+                <span className="t">Checkout completion (paid ÷ started)</span>
+                <span className="eh-num eh-strong">
+                  {pct(d.payment_succeeded ?? 0, d.payment_started ?? 0)}%
+                </span>
+              </div>
+              <div className="row">
+                <span className="t">Payments failed</span>
+                <span className="eh-num eh-strong">
+                  {(d.payment_failed ?? 0).toLocaleString()}
+                </span>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
