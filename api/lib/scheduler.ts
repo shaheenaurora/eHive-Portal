@@ -121,6 +121,7 @@ async function jobRenewal(now = new Date()): Promise<void> {
       )
     );
   let opened = 0,
+    nudged = 0,
     lapsed = 0;
   for (const m of rows) {
     if (!m.renewalAt) continue;
@@ -134,7 +135,7 @@ async function jobRenewal(now = new Date()): Promise<void> {
       if (r.ok) {
         await notify(
           m.id,
-          "Your renewal window is open — here's your year in review. Renew to keep your membership and chapter access.",
+          "Your renewal window is open — here's your year in review. Renew from your Membership page to keep your membership and chapter access.",
           "renewal"
         );
         opened++;
@@ -143,6 +144,36 @@ async function jobRenewal(now = new Date()): Promise<void> {
           memberId: m.id,
           reason: r.reason,
         });
+      }
+    } else if (stage === "window" && lc === "renewal") {
+      // Graduated reminders between window-open and lapse, so a member who
+      // missed the first notice gets a nudge at ~a week out and on the due day
+      // rather than nothing until they've already lapsed. Each fires once.
+      const daysUntil = Math.ceil(
+        (new Date(m.renewalAt).getTime() - now.getTime()) / 86_400_000
+      );
+      const nudge =
+        daysUntil <= 0
+          ? {
+              key: "due",
+              text: "Your membership renewal is due. There's a short grace period before it lapses — renew now from your Membership page to stay active and keep your chapter seat.",
+            }
+          : daysUntil <= 7
+            ? {
+                key: "week",
+                text: `Your membership renews in ${daysUntil} day${daysUntil === 1 ? "" : "s"}. Renew from your Membership page to keep your chapter access — it only takes a minute.`,
+              }
+            : null;
+      if (nudge) {
+        // Cycle-scoped marker (keyed by this renewal date) so next year's
+        // renewal sends a fresh set of reminders with no marker cleanup needed.
+        const cycle = new Date(m.renewalAt).toISOString().slice(0, 10);
+        const markerKey = `renewal-nudge:${m.id}:${cycle}:${nudge.key}`;
+        if (!(await getMarker(markerKey))) {
+          await notify(m.id, nudge.text, "renewal");
+          await setMarker(markerKey, now.toISOString());
+          nudged++;
+        }
       }
     } else if (stage === "lapse" && (lc === "renewal" || lc === "active")) {
       const r = await tryLifecycleTransition(m.id, "lapsed", {
@@ -164,11 +195,12 @@ async function jobRenewal(now = new Date()): Promise<void> {
       }
     }
   }
-  if (opened || lapsed)
+  if (opened || nudged || lapsed)
     logger.info(
-      `scheduler renewal: ${opened} window(s) opened, ${lapsed} lapsed`,
+      `scheduler renewal: ${opened} window(s) opened, ${nudged} nudged, ${lapsed} lapsed`,
       {
         opened,
+        nudged,
         lapsed,
       }
     );
