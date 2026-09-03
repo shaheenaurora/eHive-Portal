@@ -179,6 +179,10 @@ export const circleRouter = createRouter({
         status: "pending",
         purpose: "membership",
       });
+      void recordAnalyticsEvent("payment_started", {
+        userId: ctx.user.id,
+        properties: { tier: input.tier, amount, purpose: "membership" },
+      });
       return { url };
     }),
 
@@ -232,6 +236,10 @@ export const circleRouter = createRouter({
       currency: "aed",
       status: "pending",
       purpose: "renewal",
+    });
+    void recordAnalyticsEvent("payment_started", {
+      userId: ctx.user.id,
+      properties: { tier, amount, purpose: "renewal" },
     });
     return { url };
   }),
@@ -1368,61 +1376,73 @@ export const circleRouter = createRouter({
           code: "FORBIDDEN",
           message: "This event is for another chapter.",
         });
-      const existing = await db
-        .select()
-        .from(schema.eventRegs)
-        .where(
-          and(
-            eq(schema.eventRegs.eventId, ev.id),
-            eq(schema.eventRegs.memberId, member.id)
+      // Capacity is enforced inside a transaction that locks the event row, so
+      // concurrent registrations for the same event serialize — the count and
+      // the seat write can't interleave and oversell the last seat. The unique
+      // (eventId, memberId) index makes a double-tap idempotent rather than a
+      // second row.
+      return db.transaction(async tx => {
+        await tx
+          .select({ id: schema.events.id })
+          .from(schema.events)
+          .where(eq(schema.events.id, ev.id))
+          .for("update");
+        const existing = await tx
+          .select()
+          .from(schema.eventRegs)
+          .where(
+            and(
+              eq(schema.eventRegs.eventId, ev.id),
+              eq(schema.eventRegs.memberId, member.id)
+            )
           )
-        )
-        .limit(1);
-      if (existing.length && existing[0].status !== "cancelled")
-        throw new TRPCError({
-          code: "CONFLICT",
-          message: "Already registered",
-        });
-      const count = await db
-        .select({ n: sql<number>`count(*)` })
-        .from(schema.eventRegs)
-        .where(
-          and(
-            eq(schema.eventRegs.eventId, ev.id),
-            sql`${schema.eventRegs.status} in ('registered','attended')`
-          )
-        );
-      // BRD 6.4 — at capacity: join the waitlist instead of hard-failing
-      const full = (count.at(0)?.n ?? 0) >= ev.capacity;
-      if (full) {
+          .limit(1);
+        if (existing.length && existing[0].status !== "cancelled")
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Already registered",
+          });
+        const count = await tx
+          .select({ n: sql<number>`count(*)` })
+          .from(schema.eventRegs)
+          .where(
+            and(
+              eq(schema.eventRegs.eventId, ev.id),
+              sql`${schema.eventRegs.status} in ('registered','attended')`
+            )
+          );
+        // BRD 6.4 — at capacity: join the waitlist instead of hard-failing
+        const full = (count.at(0)?.n ?? 0) >= ev.capacity;
+        if (full) {
+          if (existing.length) {
+            await tx
+              .update(schema.eventRegs)
+              .set({ status: "waitlisted" })
+              .where(eq(schema.eventRegs.id, existing[0].id));
+          } else {
+            await tx.insert(schema.eventRegs).values({
+              eventId: ev.id,
+              memberId: member.id,
+              status: "waitlisted",
+            });
+          }
+          return { ok: true, waitlisted: true };
+        }
+        // points are written at QR check-in (BRD 6.4), not at registration
         if (existing.length) {
-          await db
+          await tx
             .update(schema.eventRegs)
-            .set({ status: "waitlisted" })
+            .set({ status: "registered", checkinCode: newCheckinCode() })
             .where(eq(schema.eventRegs.id, existing[0].id));
         } else {
-          await db.insert(schema.eventRegs).values({
+          await tx.insert(schema.eventRegs).values({
             eventId: ev.id,
             memberId: member.id,
-            status: "waitlisted",
+            checkinCode: newCheckinCode(),
           });
         }
-        return { ok: true, waitlisted: true };
-      }
-      // points are written at QR check-in (BRD 6.4), not at registration
-      if (existing.length) {
-        await db
-          .update(schema.eventRegs)
-          .set({ status: "registered", checkinCode: newCheckinCode() })
-          .where(eq(schema.eventRegs.id, existing[0].id));
-      } else {
-        await db.insert(schema.eventRegs).values({
-          eventId: ev.id,
-          memberId: member.id,
-          checkinCode: newCheckinCode(),
-        });
-      }
-      return { ok: true, waitlisted: false };
+        return { ok: true, waitlisted: false };
+      });
     }),
 
   cancelEventReg: authedQuery

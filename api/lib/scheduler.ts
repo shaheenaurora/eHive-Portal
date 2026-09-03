@@ -28,9 +28,9 @@ import { evaluateDormancy, notify } from "../queries/circle";
 import { computeOnboarding } from "../queries/onboarding";
 import { listCadences } from "../queries/cadence";
 import { computeChapterHealth } from "../queries/health";
-import { renewalStage } from "@contracts/constants";
+import { renewalStage, RENEWAL_WINDOW_DAYS } from "@contracts/constants";
 import { tryLifecycleTransition } from "./lifecycle";
-import { sendScorecardFollowUp } from "./lead-mail";
+import { sendScorecardFollowUp, sendLeadSlaAlert } from "./lead-mail";
 import { buildScorecardReport } from "../../src/lib/scorecard";
 import { logger } from "./log";
 import {
@@ -176,16 +176,23 @@ async function jobDormancy(): Promise<void> {
  */
 async function jobRenewal(now = new Date()): Promise<void> {
   const db = getDb();
+  // Only members whose renewal date is at or inside the window horizon can
+  // change stage today; everyone renewing further out is "none" and would be
+  // skipped anyway. Narrowing here in SQL keeps the pass O(due) instead of
+  // O(all members) as the membership base grows.
+  const horizon = new Date(now.getTime() + RENEWAL_WINDOW_DAYS * 86_400_000);
   const rows = await db
     .select()
     .from(schema.members)
     .where(
       and(
         isNotNull(schema.members.renewalAt),
+        lte(schema.members.renewalAt, horizon),
         eq(schema.members.status, "active")
       )
     );
   let opened = 0,
+    nudged = 0,
     lapsed = 0;
   for (const m of rows) {
     if (!m.renewalAt) continue;
@@ -200,7 +207,7 @@ async function jobRenewal(now = new Date()): Promise<void> {
       if (r.ok) {
         await notify(
           m.id,
-          "Your renewal window is open — here's your year in review. Renew to keep your membership and chapter access.",
+          "Your renewal window is open — here's your year in review. Renew from your Membership page to keep your membership and chapter access.",
           "renewal"
         );
         opened++;
@@ -209,6 +216,36 @@ async function jobRenewal(now = new Date()): Promise<void> {
           memberId: m.id,
           reason: r.reason,
         });
+      }
+    } else if (stage === "window" && lc === "renewal") {
+      // Graduated reminders between window-open and lapse, so a member who
+      // missed the first notice gets a nudge at ~a week out and on the due day
+      // rather than nothing until they've already lapsed. Each fires once.
+      const daysUntil = Math.ceil(
+        (new Date(m.renewalAt).getTime() - now.getTime()) / 86_400_000
+      );
+      const nudge =
+        daysUntil <= 0
+          ? {
+              key: "due",
+              text: "Your membership renewal is due. There's a short grace period before it lapses — renew now from your Membership page to stay active and keep your chapter seat.",
+            }
+          : daysUntil <= 7
+            ? {
+                key: "week",
+                text: `Your membership renews in ${daysUntil} day${daysUntil === 1 ? "" : "s"}. Renew from your Membership page to keep your chapter access — it only takes a minute.`,
+              }
+            : null;
+      if (nudge) {
+        // Cycle-scoped marker (keyed by this renewal date) so next year's
+        // renewal sends a fresh set of reminders with no marker cleanup needed.
+        const cycle = new Date(m.renewalAt).toISOString().slice(0, 10);
+        const markerKey = `renewal-nudge:${m.id}:${cycle}:${nudge.key}`;
+        if (!(await getMarker(markerKey))) {
+          await notify(m.id, nudge.text, "renewal");
+          await setMarker(markerKey, now.toISOString());
+          nudged++;
+        }
       }
     } else if (stage === "lapse" && (lc === "renewal" || lc === "active")) {
       const r = await tryLifecycleTransition(m.id, "lapsed", {
@@ -231,11 +268,12 @@ async function jobRenewal(now = new Date()): Promise<void> {
       }
     }
   }
-  if (opened || lapsed)
+  if (opened || nudged || lapsed)
     logger.info(
-      `scheduler renewal: ${opened} window(s) opened, ${lapsed} lapsed`,
+      `scheduler renewal: ${opened} window(s) opened, ${nudged} nudged, ${lapsed} lapsed`,
       {
         opened,
+        nudged,
         lapsed,
       }
     );
@@ -920,6 +958,86 @@ async function jobScorecardFollowUp(now = new Date()): Promise<void> {
     });
 }
 
+/** SLA nudge (G9) — a high-value enquiry (partner / franchise) still sitting in
+ *  "new" past the SLA gets one alert to its owning desk so it isn't forgotten.
+ *  A per-lead marker means each lead is nudged once, not every day. */
+const LEAD_SLA_HOURS = 24;
+async function jobLeadSla(now = new Date()): Promise<void> {
+  const db = getDb();
+  const cutoff = new Date(now.getTime() - LEAD_SLA_HOURS * 60 * 60 * 1000);
+  const stale = await db
+    .select()
+    .from(schema.leads)
+    .where(
+      and(
+        inArray(schema.leads.form, ["partner-enquiry", "franchise-enquiry"]),
+        eq(schema.leads.status, "new"),
+        lte(schema.leads.createdAt, cutoff)
+      )
+    );
+  let alerted = 0;
+  for (const l of stale) {
+    const markerKey = `lead-sla:${l.id}`;
+    if (await getMarker(markerKey)) continue;
+    const ageHours = Math.floor(
+      (now.getTime() - new Date(l.createdAt).getTime()) / (60 * 60 * 1000)
+    );
+    const payload = (() => {
+      try {
+        return JSON.parse(l.payload ?? "{}") as Record<string, unknown>;
+      } catch {
+        return {};
+      }
+    })();
+    const r = await sendLeadSlaAlert({
+      leadId: l.id,
+      form: l.form,
+      email: l.email,
+      payload,
+      ageHours,
+    });
+    if (r.ok) {
+      await setMarker(markerKey, now.toISOString());
+      alerted++;
+    } else {
+      logger.warn(`scheduler lead-sla alert failed for lead ${l.id}`, {
+        leadId: l.id,
+        error: r.error,
+      });
+    }
+  }
+  if (alerted)
+    logger.info(`scheduler lead-sla: ${alerted} alert(s) sent`, { alerted });
+}
+
+/** Data retention (G10) — anonymise PII on leads older than the configured
+ *  window. Disabled unless an admin sets a positive number of days in the
+ *  app_config key `retention:lead_pii_days`, so a deploy never silently destroys
+ *  data; the analytics row (form, status, dates) is kept, only the personal
+ *  fields are cleared. Idempotent: only rows that still carry an email are
+ *  touched. */
+async function jobRetention(now = new Date()): Promise<void> {
+  const raw = await getMarker("retention:lead_pii_days");
+  const days = Number(raw);
+  if (!Number.isFinite(days) || days <= 0) return; // policy not set → no-op
+  const cutoff = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+  const res = await getDb()
+    .update(schema.leads)
+    .set({ email: null, payload: null })
+    .where(
+      and(lte(schema.leads.createdAt, cutoff), isNotNull(schema.leads.email))
+    );
+  const n =
+    (res as unknown as { affectedRows?: number }).affectedRows ??
+    (res as unknown as [{ affectedRows?: number }])[0]?.affectedRows ??
+    0;
+  if (n)
+    logger.info(
+      `scheduler retention: anonymised PII on ${n} lead(s) older than ${days}d`,
+      { anonymised: n, days }
+    );
+}
+
 /** Run all daily jobs at most once per UTC day. */
 /**
  * Atomically claim today's daily pass for THIS process. A single conditional
@@ -970,6 +1088,8 @@ export async function runDailyJobs(now = new Date()): Promise<boolean> {
     jobFranchiseOnboardingNudges(now)
   );
   await safe("scorecard-follow-up", () => jobScorecardFollowUp(now));
+  await safe("lead-sla", () => jobLeadSla(now));
+  await safe("retention", () => jobRetention(now));
   await safe("kpi-snapshots", async () => {
     const { captureKpiSnapshots } = await import("../queries/kpi-snapshots");
     await captureKpiSnapshots(now);

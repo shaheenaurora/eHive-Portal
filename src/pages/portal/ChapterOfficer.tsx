@@ -314,8 +314,18 @@ function OfficerMotions({
                 </div>
               </div>
               <div className="eh-row" style={{ gap: ".3rem" }}>
-                <Pill color={m.status === "open" ? "blue" : "green"}>
-                  {m.status}
+                <Pill
+                  color={
+                    m.status === "open"
+                      ? "blue"
+                      : m.status === "passed"
+                        ? "green"
+                        : m.status === "rejected"
+                          ? "red"
+                          : "gold"
+                  }
+                >
+                  {m.status === "failed" ? "no quorum" : m.status}
                 </Pill>
                 {m.status === "open" && (
                   <button
@@ -325,7 +335,7 @@ function OfficerMotions({
                       if (
                         await confirmDialog({
                           title: "Close this motion?",
-                          body: "The motion will be marked passed or rejected based on current votes.",
+                          body: "The motion will be marked passed or rejected based on current votes — or failed if member turnout hasn't met quorum.",
                           confirmLabel: "Close motion",
                         })
                       )

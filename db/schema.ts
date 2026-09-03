@@ -512,6 +512,9 @@ export const eventRegs = mysqlTable(
     index("ix_eventregs_event_status").on(t.eventId, t.status),
     index("ix_eventregs_member").on(t.memberId),
     index("ix_eventregs_code").on(t.checkinCode),
+    // One registration row per member per event — the app upserts onto this so
+    // a double-tap can't create two seats and capacity can't be raced.
+    uniqueIndex("ux_eventregs_event_member").on(t.eventId, t.memberId),
   ]
 );
 
@@ -1907,7 +1910,11 @@ export const ballotRoll = mysqlTable(
       .references(() => members.id, { onDelete: "cascade" }), // voted — not how
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
-  t => [index("ix_ballotroll_election_member").on(t.electionId, t.memberId)]
+  // One participation record per voter per election — enforced at the DB so a
+  // double-submit can't record a member as having voted twice.
+  t => [
+    uniqueIndex("ix_ballotroll_election_member").on(t.electionId, t.memberId),
+  ]
 );
 
 /* BRD 6.7 — motions: one member, one vote */
@@ -1923,7 +1930,7 @@ export const motions = mysqlTable(
       .references(() => chapters.id, { onDelete: "cascade" }),
     title: varchar("title", { length: 255 }).notNull(),
     body: text("body"),
-    status: mysqlEnum("status", ["open", "passed", "rejected"])
+    status: mysqlEnum("status", ["open", "passed", "rejected", "failed"])
       .notNull()
       .default("open"),
     closesAt: timestamp("closesAt"),
@@ -1945,7 +1952,9 @@ export const motionVotes = mysqlTable(
     choice: mysqlEnum("choice", ["yes", "no", "abstain"]).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
-  t => [index("ix_motionvotes_motion_member").on(t.motionId, t.memberId)]
+  // BRD 6.7 "one member, one vote" enforced at the DB, not just in app code —
+  // a unique key makes concurrent double-votes impossible.
+  t => [uniqueIndex("ix_motionvotes_motion_member").on(t.motionId, t.memberId)]
 );
 
 /* BRD 6.7 — chapter budgets: allocations, sponsorships, spend approvals */

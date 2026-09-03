@@ -512,16 +512,22 @@ export async function evaluateDormancy(): Promise<{
     .select()
     .from(schema.members)
     .where(eq(schema.members.status, "active"));
+  // Tick down every paused member in one statement rather than one UPDATE each.
+  // The loop below then simply skips them (their snapshot value is still > 0).
+  await db
+    .update(schema.members)
+    .set({ exceptionPause: sql`${schema.members.exceptionPause} - 1` })
+    .where(
+      and(
+        eq(schema.members.status, "active"),
+        sql`${schema.members.exceptionPause} > 0`
+      )
+    );
   const countsByMember = await engagementCountsForMembers(all.map(m => m.id));
   let transitions = 0;
   for (const m of all) {
-    if (m.exceptionPause > 0) {
-      await db
-        .update(schema.members)
-        .set({ exceptionPause: m.exceptionPause - 1 })
-        .where(eq(schema.members.id, m.id));
-      continue;
-    }
+    // Paused this cycle — already decremented in the bulk update above.
+    if (m.exceptionPause > 0) continue;
     const cfg = cfgByTier.get(m.tier);
     const counts = countsByMember.get(m.id) ?? {
       sessions: 0,
