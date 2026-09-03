@@ -50,3 +50,21 @@ jobs:
         run: npm ci
       - name: Audit (production deps, high+)
         run: npm audit --omit=dev --audit-level=high
+
+  # Build the production image and scan it for high/critical CVEs. This catches
+  # base-image and installed-package vulnerabilities before deploy time.
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build image
+        run: docker build -t ehive-portal:ci .
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ehive-portal:ci
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          format: table

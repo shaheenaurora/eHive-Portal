@@ -1,7 +1,7 @@
 # eHive Circle — full-stack portal (marketing site + member/admin SPA + tRPC API)
 # Multi-stage build: compile in the builder stage, then copy only the runtime
 # artifacts into a slim production image.
-FROM node:20-slim AS builder
+FROM node:22-slim AS builder
 WORKDIR /app
 
 # Install dependencies (dev deps required for the Vite/esbuild/TypeScript build).
@@ -15,10 +15,14 @@ COPY . .
 RUN npm run build
 
 # ------------------------------------------------------------------------------
-FROM node:20-slim AS runner
+FROM node:22-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 EXPOSE 3000
+
+# Apply available Debian security updates so the production image doesn't ship
+# with known HIGH/CRITICAL CVEs in base OS packages.
+RUN apt-get update && apt-get upgrade -y && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Copy only the compiled output and the production dependency manifest.
 COPY --from=builder /app/dist ./dist

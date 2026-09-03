@@ -405,9 +405,27 @@ export default function AdminApplications() {
               Members are admitted into a chapter — pick one to approve.
             </p>
           )}
-          <div className="eh-row" style={{ justifyContent: "flex-end" }}>
+          <div
+            className="eh-row"
+            style={{
+              position: "sticky",
+              bottom: 0,
+              justifyContent: "space-between",
+              background: "var(--eh-card)",
+              padding: ".75rem 0",
+              borderTop: "1px solid var(--eh-border)",
+              marginTop: ".5rem",
+            }}
+          >
+            <button
+              className="eh-btn ghost"
+              disabled={setStatusMut.isPending}
+              onClick={() => setSel(null)}
+            >
+              Cancel
+            </button>
             {sel.status !== "approved" && (
-              <>
+              <div className="eh-row" style={{ gap: ".5rem" }}>
                 {sel.status === "received" && (
                   <button
                     className="eh-btn ghost"
@@ -466,7 +484,7 @@ export default function AdminApplications() {
                 >
                   Approve & create membership ✓
                 </button>
-              </>
+              </div>
             )}
             {sel.status === "approved" && (
               <Pill color="green">Approved — membership exists</Pill>

@@ -364,4 +364,73 @@ export const officerRegionalRouter = createRouter({
     const chapterIds = await regionalChapterIds(scope);
     return listExpenses({ scope: { chapterIds }, limit: 200 });
   }),
+
+  reviewChapterBudget: authedQuery
+    .input(
+      z.object({
+        budgetId: z.number().int().positive(),
+        decision: z.enum(["approve", "reject"]),
+        note: z.string().max(500).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const scope = await requireRegionalOfficer(ctx.user.id);
+      const chapterIds = await regionalChapterIds(scope);
+      const db = getDb();
+      const budget = (
+        await db
+          .select()
+          .from(schema.chapterBudgets)
+          .where(eq(schema.chapterBudgets.id, input.budgetId))
+          .limit(1)
+      ).at(0);
+      if (!budget)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Budget line not found.",
+        });
+      if (!chapterIds.includes(budget.chapterId))
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "This budget line is outside your region.",
+        });
+      if (budget.status !== "proposed")
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Only proposed budget lines can be reviewed.",
+        });
+      const nextStatus = input.decision === "approve" ? "approved" : "rejected";
+      await db
+        .update(schema.chapterBudgets)
+        .set({ status: nextStatus, note: input.note ?? budget.note })
+        .where(eq(schema.chapterBudgets.id, input.budgetId));
+      await audit(ctx.user, "regional.budget.review", {
+        type: "chapterBudget",
+        id: budget.id,
+        detail: `${input.decision}${input.note ? ` — ${input.note}` : ""}`,
+      });
+      // Notify chapter president and treasurer.
+      const officers = await db
+        .select({
+          memberId: schema.chapterRoles.memberId,
+          role: schema.chapterRoles.role,
+        })
+        .from(schema.chapterRoles)
+        .where(
+          and(
+            eq(schema.chapterRoles.chapterId, budget.chapterId),
+            eq(schema.chapterRoles.status, "active"),
+            sql`${schema.chapterRoles.role} in ('president','treasurer')`
+          )
+        );
+      const { notify } = await import("../queries/circle");
+      for (const o of officers) {
+        notify(
+          o.memberId,
+          `A regional director has ${input.decision}d a chapter budget line${input.note ? `: ${input.note}` : "."}`,
+          "governance"
+        ).catch(() => {});
+      }
+      return { ok: true, status: nextStatus };
+    }),
 });

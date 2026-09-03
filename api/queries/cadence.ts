@@ -155,6 +155,84 @@ export async function recordCadence(
   return { chapterId: cad.chapterId };
 }
 
+/** Mapping from meeting/event kinds to cadence types for auto-marking. */
+const MEETING_TO_CADENCE: Record<string, string | undefined> = {
+  chapter_meeting: "chapter_meeting",
+  board_meeting: "board_meeting",
+  huddle: "weekly_huddle",
+};
+const EVENT_TO_CADENCE: Record<string, string | undefined> = {
+  meetup: "meetup",
+  social: "meetup",
+  webinar: "meetup",
+  breakfast: "meetup",
+  lunch: "meetup",
+  dinner: "meetup",
+};
+
+/** Auto-mark a cadence as kept when a matching meeting is held. Best-effort. */
+export async function autoMarkCadenceForMeeting(
+  chapterId: number,
+  kind: string,
+  heldAt = new Date()
+): Promise<void> {
+  const cadenceType = MEETING_TO_CADENCE[kind];
+  if (!cadenceType) return;
+  await autoMarkCadenceByType(chapterId, cadenceType, heldAt);
+}
+
+/** Auto-mark a cadence as kept when a matching event runs. Best-effort. */
+export async function autoMarkCadenceForEvent(
+  chapterId: number,
+  kind: string,
+  eventAt = new Date()
+): Promise<void> {
+  const cadenceType = EVENT_TO_CADENCE[kind];
+  if (!cadenceType) return;
+  await autoMarkCadenceByType(chapterId, cadenceType, eventAt);
+}
+
+async function autoMarkCadenceByType(
+  chapterId: number,
+  cadenceType: string,
+  at: Date
+): Promise<void> {
+  const db = getDb();
+  const cad = (
+    await db
+      .select()
+      .from(schema.cadences)
+      .where(
+        and(
+          eq(schema.cadences.chapterId, chapterId),
+          eq(schema.cadences.type, cadenceType),
+          eq(schema.cadences.active, 1)
+        )
+      )
+      .limit(1)
+  ).at(0);
+  if (!cad) return;
+  const { current } = recentPeriodKeys(cad.frequency as Frequency, at, 0);
+  const existing = await db
+    .select()
+    .from(schema.cadenceLog)
+    .where(
+      and(
+        eq(schema.cadenceLog.cadenceId, cad.id),
+        eq(schema.cadenceLog.periodKey, current)
+      )
+    )
+    .limit(1);
+  if (existing.length) return; // already marked this period
+  await db.insert(schema.cadenceLog).values({
+    cadenceId: cad.id,
+    periodKey: current,
+    status: "kept",
+    note: "Auto-marked from a held meeting/event.",
+    actorMemberId: null,
+  });
+}
+
 /** Reverse a cadence mark: clear this period's log so it returns to "open". */
 export async function reopenCadence(
   cadenceId: number,

@@ -13,7 +13,7 @@ import { env } from "./lib/env";
 import { getDb } from "./queries/connection";
 import { withTransaction } from "./queries/transaction";
 import * as schema from "@db/schema";
-import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
+import { eq, and, desc, gte, lte, sql, inArray } from "drizzle-orm";
 import { paymentsEnabled, getPaymentProvider } from "./lib/payments";
 import {
   BOOKING_SLOTS,
@@ -51,38 +51,85 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 
-/** CSP hashes for the inline <script> blocks in the static marketing HTML files.
- *  Computed once at startup so we can drop 'unsafe-inline' from script-src. */
-function loadInlineScriptHashes(): string[] {
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function isValidEmail(value: string): boolean {
+  return EMAIL_REGEX.test(value.trim());
+}
+
+async function findRecentLead(
+  email: string,
+  form: string,
+  windowMs = 60 * 60 * 1000
+): Promise<{ id: number } | undefined> {
+  const cutoff = new Date(Date.now() - windowMs);
+  return (
+    await getDb()
+      .select({ id: schema.leads.id })
+      .from(schema.leads)
+      .where(
+        and(
+          eq(schema.leads.form, form),
+          eq(schema.leads.email, email.trim().toLowerCase()),
+          gte(schema.leads.createdAt, cutoff)
+        )
+      )
+      .orderBy(desc(schema.leads.createdAt))
+      .limit(1)
+  )[0];
+}
+
+type HashList = { scripts: string[]; styles: string[] };
+
+/** CSP hashes for inline <script> and <style> blocks in the static marketing
+ *  HTML files. Computed once at startup so we can drop 'unsafe-inline' from
+ *  script-src and style-src-elem; style-src-attr keeps 'unsafe-inline' because
+ *  the legacy marketing pages still use inline style="..." attributes. */
+function loadInlineHashes(): HashList {
   const dir = join(process.cwd(), "public");
-  const hashes = new Set<string>();
+  const scripts = new Set<string>();
+  const styles = new Set<string>();
   try {
     for (const file of readdirSync(dir)) {
       if (!file.endsWith(".html")) continue;
       const html = readFileSync(join(dir, file), "utf-8");
-      const re = /<script\b(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi;
+
+      const scriptRe = /<script\b(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi;
       let m: RegExpExecArray | null;
-      while ((m = re.exec(html)) !== null) {
+      while ((m = scriptRe.exec(html)) !== null) {
         const content = m[1];
         if (!content.trim()) continue;
         const hash = createHash("sha256").update(content).digest("base64");
-        hashes.add(`'sha256-${hash}'`);
+        scripts.add(`'sha256-${hash}'`);
+      }
+
+      const styleRe = /<style\b[^>]*>([\s\S]*?)<\/style>/gi;
+      while ((m = styleRe.exec(html)) !== null) {
+        const content = m[1];
+        if (!content.trim()) continue;
+        const hash = createHash("sha256").update(content).digest("base64");
+        styles.add(`'sha256-${hash}'`);
       }
     }
   } catch (err) {
-    logger.warn("[csp] could not compute inline script hashes", { error: err });
+    logger.warn("[csp] could not compute inline hashes", { error: err });
   }
-  return Array.from(hashes);
+  return { scripts: Array.from(scripts), styles: Array.from(styles) };
 }
 
-const inlineScriptHashes = loadInlineScriptHashes();
+const inlineHashes = loadInlineHashes();
 
 /** Build a CSP script-src directive that allows self, the static inline hashes,
  *  and an optional per-response nonce (used for SSR insight JSON-LD). */
 function scriptSrc(nonce?: string): string[] {
-  const src = ["'self'", ...inlineScriptHashes];
+  const src = ["'self'", ...inlineHashes.scripts];
   if (nonce) src.push(`'nonce-${nonce}'`);
   return src;
+}
+
+/** Build a CSP style-src-elem directive that allows self, Google Fonts, and the
+ *  inline <style> hashes from the marketing pages. */
+function styleSrcElem(): string[] {
+  return ["'self'", "https://fonts.googleapis.com", ...inlineHashes.styles];
 }
 
 /** Build the full CSP header value used by the global middleware, optionally
@@ -92,6 +139,8 @@ function buildCsp(nonce?: string): string {
     "default-src": "'self'",
     "script-src": scriptSrc(nonce).join(" "),
     "style-src": "'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "style-src-elem": styleSrcElem().join(" "),
+    "style-src-attr": "'unsafe-inline'",
     "font-src": "'self' https://fonts.gstatic.com",
     "img-src": "'self' data: blob: https:",
     "connect-src": "'self'",
@@ -124,10 +173,9 @@ function clientIp(c: {
 const app = new Hono<{ Bindings: HttpBindings }>();
 
 /* Baseline security headers on every response. CSP uses hashes for the static
-   inline scripts in public*.html and drops 'unsafe-inline' from script-src.
-   Styles still allow 'unsafe-inline' because Tailwind/React inject inline
-   styles at runtime. Frame options are SAMEORIGIN so the scorecard popup (a
-   same-origin iframe) keeps working. */
+   inline scripts/styles in public/*.html and drops 'unsafe-inline' from
+   script-src and style-src-elem. style-src-attr keeps 'unsafe-inline' for the
+   legacy marketing pages' inline style="..." attributes. */
 app.use(
   "*",
   secureHeaders({
@@ -135,6 +183,8 @@ app.use(
       defaultSrc: ["'self'"],
       scriptSrc: scriptSrc(),
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      styleSrcElem: styleSrcElem(),
+      styleSrcAttr: ["'unsafe-inline'"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "blob:", "https:"],
       connectSrc: ["'self'"],
@@ -274,10 +324,20 @@ app.post("/api/lead", async c => {
   }
   const email =
     typeof body.email === "string" ? body.email.slice(0, 320) : null;
+  if (email && !isValidEmail(email)) {
+    return c.json({ ok: false, error: "invalid email address" }, 400);
+  }
   const sourcePage =
     typeof body.source_page === "string"
       ? body.source_page.slice(0, 255)
       : null;
+  // De-duplicate rapid re-submissions of the same form+email within an hour.
+  if (email && body.form) {
+    const duplicate = await findRecentLead(email, String(body.form));
+    if (duplicate) {
+      return c.json({ ok: true, leadId: duplicate.id, emailSent: false });
+    }
+  }
   let leadId: number | undefined;
   // Persist Clarity Scorecard results in the same transaction as the lead so
   // the two records are always consistent.
@@ -559,15 +619,19 @@ app.get("/api/public-stats", async c => {
       db
         .select({ n: sql<number>`count(*)` })
         .from(schema.chapters)
-        .where(sql`${schema.chapters.status} != 'seed'`),
+        .where(
+          inArray(schema.chapters.status, ["chartered", "mature", "at_risk"])
+        ),
       db
         .select({ n: sql<number>`count(*)` })
         .from(schema.members)
         .where(eq(schema.members.status, "active")),
       db
-        .select({ n: sql<number>`count(*)` })
-        .from(schema.orgUnits)
-        .where(eq(schema.orgUnits.level, "country")),
+        .select({ n: sql<number>`count(distinct ${schema.chapters.country})` })
+        .from(schema.chapters)
+        .where(
+          inArray(schema.chapters.status, ["chartered", "mature", "at_risk"])
+        ),
     ]);
     return c.json({
       chapters: Number(chapters?.n ?? 0),
@@ -615,7 +679,12 @@ app.get("/api/availability", async c => {
     );
   return c.json({
     product,
-    slots: generateAvailability(existing, fromDate, toDate),
+    slots: generateAvailability(
+      existing,
+      fromDate,
+      toDate,
+      productDurationMin(product)
+    ),
   });
 });
 
@@ -1120,9 +1189,13 @@ app.get("/api/ready", async c => {
 
 /* Prometheus-style metrics (text exposition, no external dependency). Enough for
    an ops dashboard: process uptime/memory, resident event-loop info, and a DB-up
-   gauge. Guard with METRICS_TOKEN when set (Bearer) so it isn't world-readable. */
+   gauge. In production METRICS_TOKEN is required (Bearer); in other environments
+   it is optional but still checked when set. */
 app.get("/metrics", async c => {
   const token = process.env.METRICS_TOKEN;
+  if (env.isProduction && !token) {
+    return c.text("metrics disabled", 401);
+  }
   if (token) {
     const auth = c.req.header("authorization") ?? "";
     if (auth !== `Bearer ${token}`) return c.text("unauthorized", 401);

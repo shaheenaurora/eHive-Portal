@@ -61,12 +61,10 @@ function write(
             : "\x1b[36m";
     const extra =
       meta && Object.keys(meta).length ? JSON.stringify(meta, null, 2) : "";
-    // eslint-disable-next-line no-console
     console.log(
       `${color}[${level.toUpperCase()}]\x1b[0m ${entry.msg}${extra ? " " + extra : ""}`
     );
   } else {
-    // eslint-disable-next-line no-console
     console.log(JSON.stringify(entry));
   }
 }

@@ -8,7 +8,7 @@
       name="description"
       content="Take the free eHive Clarity Scorecard. Assess your business across 8 domains in 3 minutes and get a clear next move — built for Muslim entrepreneurs."
     />
-    <link rel="canonical" href="https://ehive.global/clarity-scorecard.html" />
+    <link rel="canonical" href="/clarity-scorecard.html" />
     <meta
       property="og:title"
       content="eHive Clarity Scorecard — Free 8-Domain Business Assessment"
@@ -18,14 +18,8 @@
       content="Take the free eHive Clarity Scorecard. Assess your business across 8 domains in 3 minutes and get a clear next move."
     />
     <meta property="og:type" content="website" />
-    <meta
-      property="og:url"
-      content="https://ehive.global/clarity-scorecard.html"
-    />
-    <meta
-      property="og:image"
-      content="https://ehive.global/assets/icon-512.png"
-    />
+    <meta property="og:url" content="/clarity-scorecard.html" />
+    <meta property="og:image" content="/assets/icon-512.png" />
     <meta property="og:site_name" content="eHive" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta
@@ -36,10 +30,7 @@
       name="twitter:description"
       content="Take the free eHive Clarity Scorecard. Assess your business across 8 domains in 3 minutes and get a clear next move."
     />
-    <meta
-      name="twitter:image"
-      content="https://ehive.global/assets/icon-512.png"
-    />
+    <meta name="twitter:image" content="/assets/icon-512.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -858,11 +849,14 @@
           $("gateErr").style.display = "none";
 
           // ---- Capture the lead + scores into the eHive Leads inbox (admin panel). ----
-          // The response tells us whether the confirmation email was actually sent, so
-          // we can give the user honest feedback instead of claiming it is on its way.
+          // Wait for the server response before declaring success so the user
+          // knows whether the scorecard was actually saved.
+          var emailNote = document.querySelector("#results .fineprint");
+          if (emailNote) {
+            emailNote.textContent = "Saving your scorecard…";
+          }
           renderResults();
           show("results");
-          var emailNote = document.querySelector("#results .fineprint");
           try {
             fetch("/api/lead", {
               method: "POST",
@@ -885,19 +879,46 @@
               }),
             })
               .then(function (r) {
-                return r.json();
+                return r.json().catch(function () {
+                  return { ok: false };
+                });
               })
               .then(function (d) {
-                if (emailNote && d && d.emailSent === false) {
-                  emailNote.textContent =
-                    "We saved your scorecard, but the confirmation email could not be sent" +
-                    (d.emailError ? " (" + d.emailError + ")" : "") +
-                    ". A team member will follow up directly.";
+                if (!d || d.ok !== true) {
+                  if (emailNote) {
+                    emailNote.textContent =
+                      "We couldn't save your scorecard right now. Please try again or contact us directly.";
+                    emailNote.style.color = "var(--h-coral, #b23a2e)";
+                  }
+                  return;
+                }
+                if (emailNote) {
+                  if (d.emailSent === false) {
+                    emailNote.textContent =
+                      "We saved your scorecard, but the confirmation email could not be sent" +
+                      (d.emailError ? " (" + d.emailError + ")" : "") +
+                      ". A team member will follow up directly.";
+                    emailNote.style.color = "";
+                  } else {
+                    emailNote.textContent =
+                      "Your scorecard is saved. A copy is on its way to your inbox.";
+                    emailNote.style.color = "";
+                  }
                 }
               })
-              .catch(function () {});
+              .catch(function () {
+                if (emailNote) {
+                  emailNote.textContent =
+                    "We couldn't save your scorecard right now. Please try again or contact us directly.";
+                  emailNote.style.color = "var(--h-coral, #b23a2e)";
+                }
+              });
           } catch (e) {
-            /* never block the UX on lead capture */
+            if (emailNote) {
+              emailNote.textContent =
+                "We couldn't save your scorecard right now. Please try again or contact us directly.";
+              emailNote.style.color = "var(--h-coral, #b23a2e)";
+            }
           }
         });
 

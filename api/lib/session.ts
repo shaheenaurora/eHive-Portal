@@ -6,14 +6,17 @@ import { getSessionCookieOptions } from "./cookies";
 import { Session } from "@contracts/constants";
 import { Errors } from "@contracts/errors";
 import { findUserByUnionId, ensureOwnerRole } from "../queries/users";
+import {
+  createUserSession,
+  getUserSessionById,
+  isSessionValid,
+  revokeUserSession,
+} from "../queries/sessions";
 
 const JWT_ALG = "HS256";
 
-type SessionPayload = { uid: string; tv: number };
+type SessionPayload = { uid: string; sid: number; tv: number };
 
-/** Best-effort client fingerprint for binding short-lived 2FA challenges to the
- *  same connection context. Not a substitute for device trust, but prevents a
- *  stolen challenge token from being redeemed from a wildly different client. */
 function clientFingerprint(headers: Headers): string {
   const forwarded = (headers.get("x-forwarded-for") ?? "")
     .split(",")
@@ -27,17 +30,16 @@ function clientFingerprint(headers: Headers): string {
     .slice(0, 32);
 }
 
-// 7 days for primary sessions — a bounded lifetime for a stolen cookie while
-// still avoiding weekly re-logins for active users. Sliding refresh can be
-// added later to extend this transparently.
 const SESSION_EXPIRES_IN = "7d";
+const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 export async function signSessionToken(
   uid: string,
+  sid: number,
   tokenVersion: number
 ): Promise<string> {
   const secret = new TextEncoder().encode(env.appSecret);
-  return new jose.SignJWT({ uid, tv: tokenVersion })
+  return new jose.SignJWT({ uid, sid, tv: tokenVersion })
     .setProtectedHeader({ alg: JWT_ALG })
     .setIssuedAt()
     .setExpirationTime(SESSION_EXPIRES_IN)
@@ -54,9 +56,16 @@ async function verifySessionToken(
       algorithms: [JWT_ALG],
     });
     const uid = payload.uid;
+    const sid = payload.sid;
     const tv = payload.tv;
-    if (typeof uid !== "string" || !uid || typeof tv !== "number") return null;
-    return { uid, tv };
+    if (
+      typeof uid !== "string" ||
+      !uid ||
+      typeof sid !== "number" ||
+      typeof tv !== "number"
+    )
+      return null;
+    return { uid, sid, tv };
   } catch {
     return null;
   }
@@ -64,11 +73,6 @@ async function verifySessionToken(
 
 type ChallengePayload = { twofa: number; fp: string };
 
-/** Short-lived signed token that proves a password check passed and a 2FA code
- *  is still required. Carries the userId and a client fingerprint so the
- *  challenge can't be replayed from a different IP/UA. Signed with a dedicated
- *  secret so session-key rotation does not break in-flight 2FA flows.
- */
 export async function sign2faChallenge(
   userId: number,
   headers: Headers
@@ -100,46 +104,88 @@ export async function verify2faChallenge(
   }
 }
 
-/** Resolve the current user from the session cookie, or throw if not signed in. */
 export async function authenticateRequest(headers: Headers) {
   const cookies = cookie.parse(headers.get("cookie") || "");
   const token = cookies[Session.cookieName];
   if (!token) throw Errors.forbidden("Not signed in.");
   const claim = await verifySessionToken(token);
   if (!claim) throw Errors.forbidden("Invalid or expired session.");
-  const user = await findUserByUnionId(claim.uid);
+
+  const [user, session] = await Promise.all([
+    findUserByUnionId(claim.uid),
+    getUserSessionById(claim.sid),
+  ]);
   if (!user) throw Errors.forbidden("Account not found. Please sign in again.");
+  if (!session || !isSessionValid(session, user.tokenVersion)) {
+    throw Errors.forbidden("Session revoked. Please sign in again.");
+  }
   if (user.tokenVersion !== claim.tv) {
     throw Errors.forbidden("Session revoked. Please sign in again.");
   }
   return ensureOwnerRole(user);
 }
 
-/** Serialize a Set-Cookie header value that establishes the session. */
 export async function sessionSetCookie(
   uid: string,
-  tokenVersion: number,
-  headers: Headers
+  userTokenVersion: number,
+  headers: Headers,
+  userId?: number
 ): Promise<string> {
-  const token = await signSessionToken(uid, tokenVersion);
+  if (!userId) {
+    const user = await findUserByUnionId(uid);
+    if (!user) throw new Error("User not found");
+    userId = user.id;
+  }
+  const forwarded = (headers.get("x-forwarded-for") ?? "")
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean);
+  const ip = forwarded.at(-1) ?? headers.get("x-real-ip") ?? "";
+  const ua = headers.get("user-agent") ?? "";
+  const expiresAt = new Date(Date.now() + SESSION_MAX_AGE_MS);
+  const session = await createUserSession({
+    userId,
+    tokenVersion: userTokenVersion,
+    fingerprint: clientFingerprint(headers),
+    ip,
+    userAgent: ua,
+    expiresAt,
+  });
+  const token = await signSessionToken(uid, session.id, userTokenVersion);
   const opts = getSessionCookieOptions(headers);
   return cookie.serialize(Session.cookieName, token, {
     httpOnly: opts.httpOnly,
     path: opts.path,
-    sameSite: opts.sameSite?.toLowerCase() as "lax" | "none",
+    sameSite: opts.sameSite?.toLowerCase() as "lax" | "strict" | "none",
     secure: opts.secure,
-    maxAge: Session.maxAgeMs / 1000,
+    maxAge: SESSION_MAX_AGE_MS / 1000,
   });
 }
 
-/** Serialize a Set-Cookie header value that clears the session. */
-export function sessionClearCookie(headers: Headers): string {
+export async function sessionClearCookie(
+  headers: Headers,
+  currentToken?: string
+): Promise<string> {
+  if (currentToken) {
+    const claim = await verifySessionToken(currentToken);
+    if (claim) await revokeUserSession(claim.sid);
+  }
   const opts = getSessionCookieOptions(headers);
   return cookie.serialize(Session.cookieName, "", {
     httpOnly: opts.httpOnly,
     path: opts.path,
-    sameSite: opts.sameSite?.toLowerCase() as "lax" | "none",
+    sameSite: opts.sameSite?.toLowerCase() as "lax" | "strict" | "none",
     secure: opts.secure,
     maxAge: 0,
   });
+}
+
+export async function revokeSessionFromHeaders(
+  headers: Headers
+): Promise<void> {
+  const cookies = cookie.parse(headers.get("cookie") || "");
+  const token = cookies[Session.cookieName];
+  if (!token) return;
+  const claim = await verifySessionToken(token);
+  if (claim) await revokeUserSession(claim.sid);
 }

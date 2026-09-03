@@ -1,5 +1,7 @@
 export const Session = {
-  cookieName: "eh_sid",
+  // __Host- prefix requires Path=/ and Secure; it prevents a subdomain or
+  // path-level app from overriding the session cookie.
+  cookieName: "__Host-eh_sid",
   // Cookie lifetime is kept in step with the signed-token expiry (see
   // SESSION_EXPIRES_IN in api/lib/session.ts) so the cookie doesn't linger long
   // after the JWT it carries has expired.
@@ -509,6 +511,10 @@ export type AwardNominationStatus = (typeof AWARD_NOMINATION_STATUSES)[number];
    stays unrenewed RENEWAL_GRACE_DAYS past it. */
 export const RENEWAL_WINDOW_DAYS = 30;
 export const RENEWAL_GRACE_DAYS = 14;
+/** Refunds of membership/renewal payments lapse access immediately only when the
+ *  refund is requested within this many days of the charge; older refunds keep
+ *  prorated access until the end of the already-paid period. */
+export const REFUND_GRACE_DAYS = 14;
 
 /** Where a membership sits relative to its renewal date (pure — testable, and
  *  shared by the scheduler and any UI countdown). */

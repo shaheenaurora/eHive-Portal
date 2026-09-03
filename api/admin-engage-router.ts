@@ -44,6 +44,12 @@ import {
 } from "./queries/awards";
 import { validateNomineeForCategory } from "@contracts/awards";
 import {
+  rollupBudgets,
+  fmtAedWhole,
+  type BudgetLite,
+} from "./lib/finance-calc";
+
+import {
   setCycleRubric,
   assignJudge,
   removeJudge,
@@ -1704,7 +1710,12 @@ export const adminEngageRouter = createRouter({
             await db
               .select({ n: sql<number>`count(*)` })
               .from(schema.members)
-              .where(eq(schema.members.homeChapterId, e.chapterId))
+              .where(
+                and(
+                  eq(schema.members.homeChapterId, e.chapterId),
+                  eq(schema.members.status, "active")
+                )
+              )
           ).at(0)?.n ?? 0;
         const turnout =
           (
@@ -1919,6 +1930,9 @@ export const adminEngageRouter = createRouter({
     .mutation(async ({ ctx, input }) => {
       const db = getDb();
       const { id, ...vals } = input;
+      // Force new budget lines to be proposed; approval must run through
+      // decideBudgetLine so the maker-checker threshold is enforced.
+      if (!id) vals.status = "proposed";
       if (id)
         await db
           .update(schema.chapterBudgets)
@@ -2239,6 +2253,68 @@ export const adminEngageRouter = createRouter({
           code: "CONFLICT",
           message: "That member already holds this role here.",
         });
+
+      // Eligibility: active member whose chapter rolls up to this unit.
+      const member = (
+        await db
+          .select({
+            status: schema.members.status,
+            homeChapterId: schema.members.homeChapterId,
+          })
+          .from(schema.members)
+          .where(eq(schema.members.id, input.memberId))
+          .limit(1)
+      ).at(0);
+      if (!member || member.status !== "active") {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Leader must be an active member.",
+        });
+      }
+      if (!member.homeChapterId) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Member is not assigned to a chapter in this unit.",
+        });
+      }
+      const chapter = (
+        await db
+          .select({ zoneId: schema.chapters.zoneId })
+          .from(schema.chapters)
+          .where(eq(schema.chapters.id, member.homeChapterId))
+          .limit(1)
+      ).at(0);
+      let expectedUnitId: number | null | undefined;
+      if (input.level === "zone") {
+        expectedUnitId = chapter?.zoneId;
+      } else if (chapter?.zoneId) {
+        const zone = (
+          await db
+            .select({ parentId: schema.orgUnits.parentId })
+            .from(schema.orgUnits)
+            .where(eq(schema.orgUnits.id, chapter.zoneId))
+            .limit(1)
+        ).at(0);
+        if (input.level === "region") {
+          expectedUnitId = zone?.parentId;
+        } else if (zone?.parentId) {
+          const region = (
+            await db
+              .select({ parentId: schema.orgUnits.parentId })
+              .from(schema.orgUnits)
+              .where(eq(schema.orgUnits.id, zone.parentId))
+              .limit(1)
+          ).at(0);
+          expectedUnitId = region?.parentId;
+        }
+      }
+      if (expectedUnitId !== input.unitId) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Member's chapter is not in this unit's subtree.",
+        });
+      }
+
       await db.insert(schema.unitRoles).values({
         unitId: input.unitId,
         level: input.level,
@@ -2408,27 +2484,27 @@ export const adminEngageRouter = createRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      const cycle = (
+        await getDb()
+          .select({
+            opensAt: schema.awardCycles.opensAt,
+            closesAt: schema.awardCycles.closesAt,
+          })
+          .from(schema.awardCycles)
+          .where(eq(schema.awardCycles.id, input.id))
+          .limit(1)
+      ).at(0);
+      const now = Date.now();
       if (input.status === "open") {
-        const cycle = (
-          await getDb()
-            .select({
-              opensAt: schema.awardCycles.opensAt,
-              closesAt: schema.awardCycles.closesAt,
-            })
-            .from(schema.awardCycles)
-            .where(eq(schema.awardCycles.id, input.id))
-            .limit(1)
-        ).at(0);
-        const now = Date.now();
         if (cycle?.opensAt && now < new Date(cycle.opensAt).getTime())
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: "This cycle can't open before its nomination start date.",
+            message: "This cycle can't open before its start date.",
           });
         if (cycle?.closesAt && now > new Date(cycle.closesAt).getTime())
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: "This cycle's nomination window has already closed.",
+            message: "This cycle's window has already closed.",
           });
         // Keep the single-open-cycle invariant that openCycle() relies on.
         const otherOpen = (
@@ -2442,6 +2518,18 @@ export const adminEngageRouter = createRouter({
           throw new TRPCError({
             code: "CONFLICT",
             message: "Another cycle is already open for nominations.",
+          });
+      }
+      if (input.status === "judging") {
+        if (cycle?.opensAt && now < new Date(cycle.opensAt).getTime())
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Judging can't start before the cycle's start date.",
+          });
+        if (cycle?.closesAt && now > new Date(cycle.closesAt).getTime())
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Judging can't start after the cycle's window has closed.",
           });
       }
       await updateCycleStatus(input.id, input.status);
@@ -2970,6 +3058,30 @@ export const adminEngageRouter = createRouter({
           code: "FORBIDDEN",
           message: `Spends over AED ${SPEND_APPROVAL_THRESHOLD_AED.toLocaleString()} need a full administrator (President / Director) to approve.`,
         });
+      }
+      // Re-check remaining budget at approval time so concurrent spends cannot
+      // over-commit the chapter operating budget.
+      if (input.decision === "approve" && line.kind === "spend") {
+        const budgetRows = await db
+          .select({
+            kind: schema.chapterBudgets.kind,
+            amount: schema.chapterBudgets.amount,
+            status: schema.chapterBudgets.status,
+          })
+          .from(schema.chapterBudgets)
+          .where(
+            and(
+              eq(schema.chapterBudgets.chapterId, line.chapterId),
+              sql`${schema.chapterBudgets.id} != ${line.id}`
+            )
+          );
+        const { remaining } = rollupBudgets(budgetRows as BudgetLite[]);
+        if (remaining - line.amount < 0) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: `Approving this spend would exceed the chapter's remaining operating budget (${fmtAedWhole(remaining)} AED).`,
+          });
+        }
       }
       await db
         .update(schema.chapterBudgets)

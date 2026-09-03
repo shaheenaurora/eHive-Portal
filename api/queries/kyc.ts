@@ -4,6 +4,7 @@ import * as schema from "@db/schema";
 import { getDb } from "./connection";
 import { audit } from "../lib/audit";
 import { notify } from "./circle";
+import { applyLifecycleTransition } from "../lib/lifecycle";
 
 export type Actor = { id: number; email: string };
 
@@ -56,6 +57,19 @@ export async function submitKyc(
   return { ok: true };
 }
 
+/** Require a verified KYC record before accessing gated member flows. */
+export async function requireKycVerified(memberId: number) {
+  const kyc = await getKyc(memberId);
+  if (!kyc || kyc.status !== "verified") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message:
+        "Identity verification (KYC) is required. Please complete and verify your KYC before using this feature.",
+    });
+  }
+  return kyc;
+}
+
 /** Admin verifies or rejects a member's KYC submission. */
 export async function reviewKyc(
   actor: Actor,
@@ -89,12 +103,21 @@ export async function reviewKyc(
     id: memberId,
     detail: decision + (note ? ` — ${note}` : ""),
   });
+
+  // Rejected KYC suspends the member until they resubmit and are verified.
+  if (decision === "rejected") {
+    await applyLifecycleTransition(memberId, "suspended", {
+      actor,
+      reason: note ? `KYC rejected: ${note}` : "KYC rejected",
+    });
+  }
+
   try {
     await notify(
       memberId,
       decision === "verified"
         ? "Your identity verification (KYC) has been approved. Thank you."
-        : `Your identity verification needs attention${note ? `: ${note}` : "."}. Please re-submit your details.`,
+        : `Your identity verification needs attention${note ? `: ${note}` : "."}. Please re-submit your details. Your membership access is paused until verification succeeds.`,
       "membership"
     );
   } catch {

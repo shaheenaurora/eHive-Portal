@@ -1,5 +1,6 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/mysql-core";
+import { TRPCError } from "@trpc/server";
 import * as schema from "@db/schema";
 import { getDb } from "./connection";
 import { SAVE_PLAYBOOK_STEPS, type SaveCaseStatus } from "@contracts/constants";
@@ -23,9 +24,41 @@ async function openCaseFor(memberId: number) {
   return rows.at(0);
 }
 
+/** Find the best owner for a new save case: VP Membership, then President. */
+async function pickSaveCaseOwner(
+  chapterId: number | null
+): Promise<number | null> {
+  if (!chapterId) return null;
+  const db = getDb();
+  const roles = await db
+    .select({
+      memberId: schema.chapterRoles.memberId,
+      role: schema.chapterRoles.role,
+    })
+    .from(schema.chapterRoles)
+    .where(
+      and(
+        eq(schema.chapterRoles.chapterId, chapterId),
+        eq(schema.chapterRoles.status, "active"),
+        sql`${schema.chapterRoles.role} in ('vp_membership','president')`
+      )
+    );
+  const vp = roles.find(r => r.role === "vp_membership");
+  const pres = roles.find(r => r.role === "president");
+  const chosen = vp ?? pres;
+  if (!chosen) return null;
+  const member = await db
+    .select({ userId: schema.members.userId })
+    .from(schema.members)
+    .where(eq(schema.members.id, chosen.memberId))
+    .limit(1);
+  return member.at(0)?.userId ?? null;
+}
+
 /** Open a Save Playbook case for a member — idempotent: if one is already open,
  *  it's returned untouched. Called when a member is flagged At-Risk (by the
- *  scheduler or an admin) so the intervention is always tracked, never silent. */
+ *  scheduler or an admin) so the intervention is always tracked, never silent.
+ *  Auto-assigns an owner and a 7-day SLA when the home chapter is known. */
 export async function openSaveCase(
   memberId: number,
   reason: string,
@@ -33,6 +66,9 @@ export async function openSaveCase(
 ): Promise<number> {
   const existing = await openCaseFor(memberId);
   if (existing) return existing.id;
+  const ownerUserId = await pickSaveCaseOwner(chapterId ?? null);
+  const openedAt = new Date();
+  const dueAt = new Date(openedAt.getTime() + 7 * 24 * 60 * 60 * 1000);
   const res = await getDb()
     .insert(schema.memberSaveCases)
     .values({
@@ -41,6 +77,9 @@ export async function openSaveCase(
       reason: reason.slice(0, 255),
       status: "open",
       stepsMask: 0,
+      ownerUserId,
+      openedAt,
+      dueAt,
     });
   return Number((res as unknown as { insertId?: number }).insertId ?? 0);
 }
@@ -78,6 +117,7 @@ export type SaveCaseRow = {
   resolution: string | null;
   openedAt: Date;
   closedAt: Date | null;
+  dueAt: Date | null;
   daysOpen: number;
 };
 
@@ -125,6 +165,94 @@ export async function saveCaseSummary(): Promise<{
   };
 }
 
+/** Chapter-scoped Save Playbook board for officers. */
+export async function listSaveCasesForChapter(
+  chapterId: number,
+  opts: { status?: "open" | "closed" | "all" } = {}
+): Promise<SaveCaseRow[]> {
+  const owner = alias(schema.users, "owner");
+  const wanted = opts.status ?? "open";
+  const rows = await getDb()
+    .select({
+      id: schema.memberSaveCases.id,
+      memberId: schema.memberSaveCases.memberId,
+      memberName: schema.users.name,
+      tier: schema.members.tier,
+      chapterId: schema.memberSaveCases.chapterId,
+      chapterName: schema.chapters.name,
+      status: schema.memberSaveCases.status,
+      reason: schema.memberSaveCases.reason,
+      ownerUserId: schema.memberSaveCases.ownerUserId,
+      ownerName: owner.name,
+      stepsMask: schema.memberSaveCases.stepsMask,
+      notes: schema.memberSaveCases.notes,
+      resolution: schema.memberSaveCases.resolution,
+      openedAt: schema.memberSaveCases.openedAt,
+      closedAt: schema.memberSaveCases.closedAt,
+      dueAt: schema.memberSaveCases.dueAt,
+    })
+    .from(schema.memberSaveCases)
+    .leftJoin(
+      schema.members,
+      eq(schema.members.id, schema.memberSaveCases.memberId)
+    )
+    .leftJoin(schema.users, eq(schema.users.id, schema.members.userId))
+    .leftJoin(
+      schema.chapters,
+      eq(schema.chapters.id, schema.memberSaveCases.chapterId)
+    )
+    .leftJoin(owner, eq(owner.id, schema.memberSaveCases.ownerUserId))
+    .where(
+      and(
+        eq(schema.members.homeChapterId, chapterId),
+        wanted === "all"
+          ? undefined
+          : wanted === "open"
+            ? inArray(schema.memberSaveCases.status, OPEN_STATES)
+            : sql`${schema.memberSaveCases.status} not in ('open','working')`
+      )
+    )
+    .orderBy(desc(schema.memberSaveCases.openedAt))
+    .limit(500);
+
+  return rows.map(r => ({
+    ...r,
+    stepsDone: popcount(r.stepsMask & ALL_STEPS_MASK),
+    stepsTotal: SAVE_PLAYBOOK_STEPS.length,
+    daysOpen: daysBetween(r.openedAt, r.closedAt),
+  }));
+}
+
+/** Verify a save case belongs to the given chapter. Returns the case or throws. */
+export async function requireSaveCaseInChapter(id: number, chapterId: number) {
+  const db = getDb();
+  const row = await db
+    .select({
+      id: schema.memberSaveCases.id,
+      memberId: schema.memberSaveCases.memberId,
+      chapterId: schema.memberSaveCases.chapterId,
+      status: schema.memberSaveCases.status,
+    })
+    .from(schema.memberSaveCases)
+    .leftJoin(
+      schema.members,
+      eq(schema.members.id, schema.memberSaveCases.memberId)
+    )
+    .where(eq(schema.memberSaveCases.id, id))
+    .limit(1);
+  const c = row.at(0);
+  if (!c)
+    throw new TRPCError({ code: "NOT_FOUND", message: "Save case not found." });
+  const caseChapterId = c.chapterId;
+  if (caseChapterId !== chapterId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "This save case is not in your chapter.",
+    });
+  }
+  return c;
+}
+
 /** Board of Save cases with member/chapter/owner names joined. Open-first. */
 export async function listSaveCases(
   opts: { status?: "open" | "closed" | "all" } = {}
@@ -148,6 +276,7 @@ export async function listSaveCases(
       resolution: schema.memberSaveCases.resolution,
       openedAt: schema.memberSaveCases.openedAt,
       closedAt: schema.memberSaveCases.closedAt,
+      dueAt: schema.memberSaveCases.dueAt,
     })
     .from(schema.memberSaveCases)
     .leftJoin(

@@ -20,6 +20,7 @@ import {
   expenseReceipt,
   chapterIdsForUnit,
   memberChapterForUser,
+  chapterPnl,
 } from "../queries/finance";
 import {
   listInvoices,
@@ -279,6 +280,21 @@ export const financeRouter = createRouter({
       );
     }),
 
+  chapterPnl: scopedAdmin("finance")
+    .input(
+      z.object({
+        chapterId: z.number().int().positive(),
+        year: z.number().int().min(2020).optional(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const scope = await resolveFinanceScope(ctx.user);
+      if (!scope.isFull && !scope.chapterIds.includes(input.chapterId)) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      return chapterPnl(input.chapterId, input.year);
+    }),
+
   payments: scopedAdmin("finance")
     .input(
       z
@@ -376,7 +392,12 @@ export const financeRouter = createRouter({
   /* ---- multi-currency FX rates (admin-maintained) ---- */
   currencyRates: scopedAdmin("finance").query(() => listRates()),
   setCurrencyRate: scopedAdmin("finance")
-    .input(z.object({ code: z.string().min(2).max(8), rate: z.number() }))
+    .input(
+      z.object({
+        code: z.enum(CURRENCY_CODES as [string, ...string[]]),
+        rate: z.number(),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       if (!isFullAdmin(ctx.user)) {
         throw new TRPCError({
@@ -400,7 +421,7 @@ export const financeRouter = createRouter({
       }
     }),
   clearCurrencyRate: scopedAdmin("finance")
-    .input(z.object({ code: z.string().min(2).max(8) }))
+    .input(z.object({ code: z.enum(CURRENCY_CODES as [string, ...string[]]) }))
     .mutation(async ({ ctx, input }) => {
       if (!isFullAdmin(ctx.user)) {
         throw new TRPCError({

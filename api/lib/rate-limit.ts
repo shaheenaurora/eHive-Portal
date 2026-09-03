@@ -36,20 +36,24 @@ export async function rateLimit(
   const now = Date.now();
   const resetAt = now + windowMs;
   try {
-    await getDb()
-      .insert(schema.rateLimits)
-      .values({ key, count: 1, resetAt })
-      .onDuplicateKeyUpdate({
-        set: {
-          count: sql`CASE WHEN ${schema.rateLimits.resetAt} < ${now} THEN 1 ELSE ${schema.rateLimits.count} + 1 END`,
-          resetAt: sql`CASE WHEN ${schema.rateLimits.resetAt} < ${now} THEN ${resetAt} ELSE ${schema.rateLimits.resetAt} END`,
-        },
-      });
-    const rows = await getDb()
-      .select({ count: schema.rateLimits.count })
-      .from(schema.rateLimits)
-      .where(eq(schema.rateLimits.key, key))
-      .limit(1);
+    // Run the increment and the read inside one transaction so the count we
+    // check is the one we just wrote, not a stale value from another replica.
+    const rows = await getDb().transaction(async tx => {
+      await tx
+        .insert(schema.rateLimits)
+        .values({ key, count: 1, resetAt })
+        .onDuplicateKeyUpdate({
+          set: {
+            count: sql`CASE WHEN ${schema.rateLimits.resetAt} < ${now} THEN 1 ELSE ${schema.rateLimits.count} + 1 END`,
+            resetAt: sql`CASE WHEN ${schema.rateLimits.resetAt} < ${now} THEN ${resetAt} ELSE ${schema.rateLimits.resetAt} END`,
+          },
+        });
+      return tx
+        .select({ count: schema.rateLimits.count })
+        .from(schema.rateLimits)
+        .where(eq(schema.rateLimits.key, key))
+        .limit(1);
+    });
     return (rows[0]?.count ?? 0) <= max;
   } catch (err) {
     logger.error("rate limit db error", { error: err });

@@ -50,6 +50,31 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
+/* Per-device sessions for surgical revocation. The JWT only proves possession
+   of a session id; the database row is the source of truth for revocation. */
+export const userSessions = mysqlTable(
+  "user_sessions",
+  {
+    id: serial("id").primaryKey(),
+    userId: bigint("userId", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenVersion: int("tokenVersion").notNull().default(0),
+    fingerprint: varchar("fingerprint", { length: 64 }),
+    ip: varchar("ip", { length: 64 }),
+    userAgent: text("userAgent"),
+    revokedAt: timestamp("revokedAt"),
+    expiresAt: timestamp("expiresAt").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  t => [
+    index("ix_user_sessions_user").on(t.userId),
+    index("ix_user_sessions_expires").on(t.expiresAt),
+  ]
+);
+export type UserSession = typeof userSessions.$inferSelect;
+export type InsertUserSession = typeof userSessions.$inferInsert;
+
 /* ==========================================================================
    eHive Circle — community vertical (BRD §9) + website leads
    ========================================================================== */
@@ -622,6 +647,10 @@ export const policies = mysqlTable("policies", {
   title: varchar("title", { length: 255 }).notNull(),
   body: text("body"),
   version: int("version").notNull().default(1),
+  scope: mysqlEnum("scope", ["global", "chapter", "zone", "region", "country"])
+    .notNull()
+    .default("global"),
+  scopeId: bigint("scopeId", { mode: "number", unsigned: true }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -637,6 +666,45 @@ export const policyAcks = mysqlTable(
     uniqueIndex("policy_acks_policy_member_unique").on(t.policyId, t.memberId),
   ]
 );
+
+/* FR-03 — auditable franchisee onboarding checklist. One row per chapter per
+   readiness item so a country director or member-success owner can assign,
+   track and nudge each step. */
+export const franchiseOnboardingChecklists = mysqlTable(
+  "franchise_onboarding_checklists",
+  {
+    id: serial("id").primaryKey(),
+    chapterId: bigint("chapterId", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
+    itemKey: varchar("itemKey", { length: 64 }).notNull(),
+    label: varchar("label", { length: 255 }).notNull(),
+    status: mysqlEnum("status", ["pending", "in_progress", "done", "skipped"])
+      .notNull()
+      .default("pending"),
+    assignedMemberId: bigint("assignedMemberId", {
+      mode: "number",
+      unsigned: true,
+    }).references(() => members.id, { onDelete: "set null" }),
+    dueAt: timestamp("dueAt"),
+    completedAt: timestamp("completedAt"),
+    notes: text("notes"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  t => [
+    uniqueIndex("ix_franchise_onboarding_chapter_key").on(
+      t.chapterId,
+      t.itemKey
+    ),
+    index("ix_franchise_onboarding_status").on(t.status, t.dueAt),
+  ]
+);
+export type FranchiseOnboardingItem =
+  typeof franchiseOnboardingChecklists.$inferSelect;
 
 export const libraryItems = mysqlTable("library_items", {
   id: serial("id").primaryKey(),
@@ -702,6 +770,8 @@ export const paymentRecords = mysqlTable(
     // Funds-settlement time. Used for revenue recognition; may differ from createdAt
     // when a checkout spans a period end or an async payment settles later.
     paidAt: timestamp("paidAt"),
+    // Optional idempotency key for offline/manual payment recording.
+    idempotencyKey: varchar("idempotencyKey", { length: 64 }),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt")
       .defaultNow()
@@ -713,6 +783,7 @@ export const paymentRecords = mysqlTable(
       t.provider,
       t.providerRef
     ),
+    uniqueIndex("payment_records_idempotency_key_unique").on(t.idempotencyKey),
   ]
 );
 
@@ -1577,6 +1648,7 @@ export const chapters = mysqlTable("chapters", {
   ])
     .notNull()
     .default("seed"),
+  fiscalYearStartMonth: int("fiscalYearStartMonth").notNull().default(1),
   charterDate: timestamp("charterDate"),
   deletedAt: timestamp("deletedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -2034,6 +2106,7 @@ export const memberSaveCases = mysqlTable("member_save_cases", {
   resolution: text("resolution"),
   openedAt: timestamp("openedAt").defaultNow().notNull(),
   closedAt: timestamp("closedAt"),
+  dueAt: timestamp("dueAt"),
   updatedAt: timestamp("updatedAt")
     .defaultNow()
     .notNull()

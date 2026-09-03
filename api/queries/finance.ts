@@ -23,15 +23,17 @@ import {
 import { sendInvoiceReady } from "../lib/lead-mail";
 import { applyLifecycleTransition } from "../lib/lifecycle";
 import { logger } from "../lib/log";
+import { scanReceipt } from "../lib/receipt-scan";
 import { paymentsEnabled, getPaymentProvider } from "../lib/payments";
 import {
   TIER_PRICE_AED,
   REFUND_WINDOW_DAYS,
+  REFUND_GRACE_DAYS,
   BASE_CURRENCY,
   FX_RATE_SCALE,
   convertToBaseMinor,
 } from "@contracts/constants";
-import { ratesMap } from "./fx";
+import { loadRates, requireRate } from "./fx";
 import {
   summarizePayments,
   rollupBudgets,
@@ -47,6 +49,11 @@ import {
   type ReportExpense,
   type FinanceReport,
 } from "../lib/finance-calc";
+import {
+  buildChapterPnl,
+  fiscalYearRange,
+  type ChapterPnl,
+} from "../lib/chapter-pnl";
 
 type Actor = { id: number; email: string };
 
@@ -179,7 +186,7 @@ export async function financeReport(
     expConds.push(inArray(schema.chapterBudgets.chapterId, scopedChapterIds));
   }
 
-  const [rawPays, expenses, rates] = await Promise.all([
+  const [rawPays, expenses, { rates, updatedAt }] = await Promise.all([
     db
       .select({
         amount: schema.paymentRecords.amount,
@@ -205,13 +212,14 @@ export async function financeReport(
       })
       .from(schema.chapterBudgets)
       .where(and(...expConds)),
-    ratesMap(),
+    loadRates(),
   ]);
   // FX-normalise every payment to the base currency before aggregating, so a
   // mixed-currency ledger reports in one number (chapter expenses are AED-only).
   const pays = rawPays.map(p => {
-    const rate = rates.get((p.currency ?? BASE_CURRENCY).toLowerCase());
-    if (rate == null || rate === FX_RATE_SCALE) return p;
+    const code = (p.currency ?? BASE_CURRENCY).toLowerCase();
+    const rate = requireRate(code, rates, updatedAt);
+    if (rate === FX_RATE_SCALE) return p;
     return {
       ...p,
       amount: convertToBaseMinor(p.amount, rate),
@@ -235,6 +243,165 @@ export async function financeReportCsvString(
     filename: `ehive-finance-report-${stamp}.csv`,
     csv: financeReportCsv(report),
   };
+}
+
+/** Build a profit-and-loss statement for a single chapter and fiscal year. */
+export async function chapterPnl(
+  chapterId: number,
+  year?: number
+): Promise<ChapterPnl> {
+  const db = getDb();
+  const targetYear = year ?? new Date().getUTCFullYear();
+
+  const chapter = (
+    await db
+      .select({
+        id: schema.chapters.id,
+        name: schema.chapters.name,
+        fiscalYearStartMonth: schema.chapters.fiscalYearStartMonth,
+      })
+      .from(schema.chapters)
+      .where(eq(schema.chapters.id, chapterId))
+      .limit(1)
+  ).at(0);
+  if (!chapter) throw new TRPCError({ code: "NOT_FOUND" });
+
+  const { from, to } = fiscalYearRange(
+    targetYear,
+    chapter.fiscalYearStartMonth ?? 1
+  );
+
+  const [
+    allocationsBefore,
+    expensesBefore,
+    rawPayments,
+    rawExpenses,
+    { rates, updatedAt },
+  ] = await Promise.all([
+    db
+      .select({ amount: schema.chapterBudgets.amount })
+      .from(schema.chapterBudgets)
+      .where(
+        and(
+          eq(schema.chapterBudgets.chapterId, chapterId),
+          eq(schema.chapterBudgets.status, "approved"),
+          eq(schema.chapterBudgets.kind, "allocation"),
+          lte(schema.chapterBudgets.createdAt, from)
+        )
+      ),
+    db
+      .select({ amount: schema.chapterBudgets.amount })
+      .from(schema.chapterBudgets)
+      .where(
+        and(
+          eq(schema.chapterBudgets.chapterId, chapterId),
+          inArray(schema.chapterBudgets.status, ["approved", "spent"]),
+          eq(schema.chapterBudgets.kind, "spend"),
+          lte(schema.chapterBudgets.createdAt, from)
+        )
+      ),
+    db
+      .select({
+        id: schema.paymentRecords.id,
+        paidAt: schema.paymentRecords.paidAt,
+        createdAt: schema.paymentRecords.createdAt,
+        payerName: schema.users.name,
+        payerEmail: schema.users.email,
+        tier: schema.paymentRecords.tier,
+        amount: schema.paymentRecords.amount,
+        currency: schema.paymentRecords.currency,
+        status: schema.paymentRecords.status,
+        refundedAmount: schema.paymentRecords.refundedAmount,
+      })
+      .from(schema.paymentRecords)
+      .leftJoin(schema.users, eq(schema.users.id, schema.paymentRecords.userId))
+      .leftJoin(
+        schema.members,
+        eq(schema.members.userId, schema.paymentRecords.userId)
+      )
+      .where(
+        and(
+          eq(schema.members.homeChapterId, chapterId),
+          inArray(schema.paymentRecords.status, [
+            "paid",
+            "partially_refunded",
+            "refunded",
+          ]),
+          gte(
+            sql`coalesce(${schema.paymentRecords.paidAt}, ${schema.paymentRecords.createdAt})`,
+            from
+          ),
+          lte(
+            sql`coalesce(${schema.paymentRecords.paidAt}, ${schema.paymentRecords.createdAt})`,
+            to
+          )
+        )
+      )
+      .orderBy(desc(schema.paymentRecords.createdAt)),
+    db
+      .select({
+        id: schema.chapterBudgets.id,
+        createdAt: schema.chapterBudgets.createdAt,
+        label: schema.chapterBudgets.label,
+        category: schema.chapterBudgets.category,
+        amount: schema.chapterBudgets.amount,
+        status: schema.chapterBudgets.status,
+      })
+      .from(schema.chapterBudgets)
+      .where(
+        and(
+          eq(schema.chapterBudgets.chapterId, chapterId),
+          eq(schema.chapterBudgets.kind, "spend"),
+          inArray(schema.chapterBudgets.status, ["approved", "spent"]),
+          gte(schema.chapterBudgets.createdAt, from),
+          lte(schema.chapterBudgets.createdAt, to)
+        )
+      )
+      .orderBy(desc(schema.chapterBudgets.createdAt)),
+    loadRates(),
+  ]);
+
+  const openingBalanceAed =
+    allocationsBefore.reduce((s, r) => s + (r.amount ?? 0), 0) -
+    expensesBefore.reduce((s, r) => s + (r.amount ?? 0), 0);
+
+  const payments = rawPayments.map(p => {
+    const code = (p.currency ?? BASE_CURRENCY).toLowerCase();
+    const rate = requireRate(code, rates, updatedAt);
+    const grossMinor =
+      rate === FX_RATE_SCALE ? p.amount : convertToBaseMinor(p.amount, rate);
+    const refundMinor =
+      rate === FX_RATE_SCALE
+        ? (p.refundedAmount ?? 0)
+        : convertToBaseMinor(p.refundedAmount ?? 0, rate);
+    return {
+      id: p.id,
+      date: new Date(p.paidAt ?? p.createdAt),
+      payerName: p.payerName,
+      payerEmail: p.payerEmail,
+      tier: p.tier,
+      amountAed: Math.round((grossMinor - refundMinor) / 100),
+      status: p.status,
+    };
+  });
+
+  const expenses = rawExpenses.map(e => ({
+    id: e.id,
+    date: new Date(e.createdAt),
+    label: e.label,
+    category: e.category,
+    amountAed: e.amount,
+    status: e.status,
+  }));
+
+  return buildChapterPnl(
+    chapter.id,
+    chapter.name,
+    targetYear,
+    openingBalanceAed,
+    payments,
+    expenses
+  );
 }
 
 export type PaymentRow = {
@@ -381,10 +548,51 @@ export async function recordManualPayment(
     extendRenewal?: boolean;
     /** Currency the amount is denominated in (default base/AED). */
     currency?: string;
+    /** Optional idempotency key to prevent duplicate manual payment records. */
+    idempotencyKey?: string;
   }
 ) {
   const currency = (input.currency ?? BASE_CURRENCY).toLowerCase();
   const db = getDb();
+
+  // Idempotency: reject a duplicate key, and also guard against rapid double-submits.
+  if (input.idempotencyKey?.trim()) {
+    const existingKey = await db
+      .select({ id: schema.paymentRecords.id })
+      .from(schema.paymentRecords)
+      .where(
+        eq(schema.paymentRecords.idempotencyKey, input.idempotencyKey.trim())
+      )
+      .limit(1);
+    if (existingKey.length) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "A manual payment with this idempotency key already exists.",
+      });
+    }
+  }
+  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+  const duplicate = await db
+    .select({ id: schema.paymentRecords.id })
+    .from(schema.paymentRecords)
+    .where(
+      and(
+        eq(schema.paymentRecords.userId, input.userId),
+        eq(schema.paymentRecords.amount, Math.round(input.amount * 100)),
+        eq(schema.paymentRecords.currency, currency),
+        eq(schema.paymentRecords.purpose, input.purpose),
+        eq(schema.paymentRecords.status, "paid"),
+        gte(schema.paymentRecords.createdAt, fiveMinutesAgo)
+      )
+    )
+    .limit(1);
+  if (duplicate.length) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "Duplicate manual payment detected.",
+    });
+  }
+
   const user = (
     await db
       .select()
@@ -446,6 +654,7 @@ export async function recordManualPayment(
       status: "paid",
       paidAt: now,
       note: input.note ?? null,
+      idempotencyKey: input.idempotencyKey?.trim() ?? null,
     });
     const paymentId = Number(
       (res as unknown as { insertId?: number }).insertId ?? 0
@@ -471,9 +680,30 @@ export async function recordManualPayment(
   // Route through renewMembership so the CRM lifecycle transition, save-case
   // side effects, event log and member notification all run centrally instead
   // of writing status/lifecycleState directly here (which drifted from the
-  // lifecycle executor).
+  // lifecycle executor). If renewal fails, roll the payment and invoice back so
+  // the books don't say "paid" while the member isn't renewed.
   if (input.extendRenewal) {
-    await renewMembership(input.userId, input.note ?? "Membership renewed");
+    try {
+      await renewMembership(input.userId, input.note ?? "Membership renewed");
+    } catch (renewErr) {
+      logger.error("manual payment renewal failed; rolling back payment", {
+        paymentId,
+        error: renewErr,
+      });
+      try {
+        await withTransaction(async tx => {
+          await tx
+            .delete(schema.invoices)
+            .where(eq(schema.invoices.paymentRecordId, paymentId));
+          await tx
+            .delete(schema.paymentRecords)
+            .where(eq(schema.paymentRecords.id, paymentId));
+        });
+      } catch (rollbackErr) {
+        logger.error("manual payment rollback failed", { error: rollbackErr });
+      }
+      throw renewErr instanceof Error ? renewErr : new Error(String(renewErr));
+    }
   }
   await audit(actor, "finance.manual_payment", {
     type: "payment",
@@ -609,18 +839,39 @@ export async function refundPayment(
     }
 
     // A full refund of a membership or renewal payment reverts the member's
-    // entitlement: they lapse immediately so they cannot retain access for a
-    // year they did not pay for. Partial refunds leave membership intact but
-    // are recorded on the ledger.
+    // entitlement. Refunds inside the grace window lapse immediately; older
+    // refunds keep prorated access until the scheduler catches the expired
+    // renewal date, and the member is always notified.
     if (
       plan.newStatus === "refunded" &&
       (p.purpose === "membership" || p.purpose === "renewal")
     ) {
       try {
-        await applyLifecycleTransition(m.id, "lapsed", {
-          actor,
-          reason: `Payment #${id} refunded: ${reason}`,
-        });
+        const paidAt = new Date(p.paidAt ?? p.createdAt);
+        const daysSinceCharge =
+          (Date.now() - paidAt.getTime()) / (24 * 60 * 60 * 1000);
+        if (daysSinceCharge <= REFUND_GRACE_DAYS) {
+          await applyLifecycleTransition(m.id, "lapsed", {
+            actor,
+            reason: `Payment #${id} refunded within grace window: ${reason}`,
+          });
+          await notify(
+            m.id,
+            "Your membership has been cancelled following the refund. Please reach out if you have questions.",
+            "membership"
+          );
+        } else {
+          // Prorate: membership ends at the close of the period already paid for.
+          await db
+            .update(schema.members)
+            .set({ renewalAt: new Date() })
+            .where(eq(schema.members.id, m.id));
+          await notify(
+            m.id,
+            "Your refund has been processed. Your access continues until the end of your current paid period, after which your membership will lapse.",
+            "membership"
+          );
+        }
       } catch (e) {
         logger.error("refund lifecycle transition failed", { error: e });
       }
@@ -904,6 +1155,9 @@ export async function recordExpense(
         code: "BAD_REQUEST",
         message: "Receipt is too large — keep it under about 4 MB.",
       });
+    const scan = await scanReceipt(receiptData, input.receiptName);
+    if (!scan.ok)
+      throw new TRPCError({ code: "BAD_REQUEST", message: scan.reason });
   }
 
   const res = await db.insert(schema.chapterBudgets).values({

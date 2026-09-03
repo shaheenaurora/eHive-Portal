@@ -159,15 +159,50 @@
     {
       "idx": 23,
       "version": "5",
-      "when": 1788370027144,
-      "tag": "0023_wild_guardsmen",
+      "when": 1788123600000,
+      "tag": "0023_user_sessions",
       "breakpoints": true
     },
     {
       "idx": 24,
       "version": "5",
-      "when": 1788370187229,
-      "tag": "0024_majestic_ironclad",
+      "when": 1788123600001,
+      "tag": "0024_fiscal_year_start",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "5",
+      "when": 1788123600002,
+      "tag": "0025_franchise_onboarding",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "5",
+      "when": 1788123600003,
+      "tag": "0026_policy_scope",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "5",
+      "when": 1788350338176,
+      "tag": "0027_abandoned_shadowcat",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "5",
+      "when": 1788350338177,
+      "tag": "0028_save_case_due_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "5",
+      "when": 1788416611191,
+      "tag": "0029_amused_captain_marvel",
       "breakpoints": true
     }
   ]

@@ -26,6 +26,7 @@ import {
   tierRank,
   DORMANCY_LABEL,
   memberBadges,
+  renewalStage,
 } from "@contracts/constants";
 import type { DormancyStage } from "@contracts/constants";
 
@@ -397,12 +398,16 @@ export default function Membership() {
               </div>
             </div>
             <div className="eh-row eh-mt">
-              <button
-                className="eh-btn ghost sm"
-                onClick={() => setConfirm({ type: "renew" })}
-              >
-                Renew +1 year
-              </button>
+              {member.renewalAt &&
+                renewalStage(new Date(member.renewalAt), new Date()) !==
+                  "none" && (
+                  <button
+                    className="eh-btn ghost sm"
+                    onClick={() => setConfirm({ type: "renew" })}
+                  >
+                    Renew +1 year
+                  </button>
+                )}
               {member.status === "active" && (
                 <button
                   className="eh-btn ghost sm"
@@ -894,14 +899,20 @@ export default function Membership() {
                 "eh-btn" +
                 (CONFIRM_COPY[confirm.type].danger ? " danger" : " gold")
               }
-              disabled={change.isPending}
-              onClick={() =>
-                change.mutate({
-                  type: confirm.type,
-                  toTier: confirm.toTier as never,
-                  note: note || undefined,
-                })
+              disabled={
+                confirm.type === "renew" ? renew.isPending : change.isPending
               }
+              onClick={() => {
+                if (confirm.type === "renew") {
+                  renew.mutate();
+                } else {
+                  change.mutate({
+                    type: confirm.type,
+                    toTier: confirm.toTier as never,
+                    note: note || undefined,
+                  });
+                }
+              }}
             >
               {CONFIRM_COPY[confirm.type].cta}
             </button>

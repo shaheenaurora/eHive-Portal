@@ -13,6 +13,7 @@ export default function Login() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [consent, setConsent] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -165,21 +166,34 @@ export default function Login() {
                 <span style={{ fontSize: ".8rem", color: "#c4cdd8" }}>
                   Password
                 </span>
-                <input
-                  className="eh-input"
-                  type="password"
-                  placeholder={
-                    mode === "register" ? "At least 8 characters" : "Password"
-                  }
-                  autoComplete={
-                    mode === "login" ? "current-password" : "new-password"
-                  }
-                  minLength={8}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  required
-                  aria-invalid={err ? "true" : undefined}
-                />
+                <div style={{ display: "flex", gap: ".5rem" }}>
+                  <input
+                    className="eh-input"
+                    type={showPassword ? "text" : "password"}
+                    placeholder={
+                      mode === "register" ? "At least 8 characters" : "Password"
+                    }
+                    autoComplete={
+                      mode === "login" ? "current-password" : "new-password"
+                    }
+                    minLength={8}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    required
+                    aria-invalid={err ? "true" : undefined}
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    className="eh-btn ghost sm"
+                    onClick={() => setShowPassword(v => !v)}
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
+                  >
+                    {showPassword ? "Hide" : "Show"}
+                  </button>
+                </div>
               </label>
             </>
           )}
@@ -286,32 +300,60 @@ export default function Login() {
         )}
 
         {!challenge && (
-          <p
+          <div
+            role="tablist"
+            aria-label="Authentication mode"
             style={{
               marginTop: "1.2rem",
+              display: "flex",
+              justifyContent: "center",
+              gap: ".5rem",
               fontSize: ".82rem",
               color: "#9aa7b6",
             }}
           >
-            {mode === "login" ? "New to eHive?" : "Already have an account?"}{" "}
             <button
               type="button"
+              role="tab"
+              aria-selected={mode === "login"}
               onClick={() => {
                 setErr(null);
-                setMode(mode === "login" ? "register" : "login");
+                setMode("login");
               }}
               style={{
-                background: "none",
+                background: mode === "login" ? "rgba(184,134,46,0.15)" : "none",
                 border: "none",
-                color: "var(--eh-gold-2)",
+                color: mode === "login" ? "var(--eh-gold-2)" : "#9aa7b6",
                 cursor: "pointer",
-                padding: 0,
+                padding: ".35rem .7rem",
+                borderRadius: 6,
                 font: "inherit",
               }}
             >
-              {mode === "login" ? "Create an account" : "Sign in"}
+              Sign in
             </button>
-          </p>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === "register"}
+              onClick={() => {
+                setErr(null);
+                setMode("register");
+              }}
+              style={{
+                background:
+                  mode === "register" ? "rgba(184,134,46,0.15)" : "none",
+                border: "none",
+                color: mode === "register" ? "var(--eh-gold-2)" : "#9aa7b6",
+                cursor: "pointer",
+                padding: ".35rem .7rem",
+                borderRadius: 6,
+                font: "inherit",
+              }}
+            >
+              Create an account
+            </button>
+          </div>
         )}
 
         <p style={{ marginTop: "1.4rem", fontSize: ".78rem" }}>

@@ -8,6 +8,7 @@ import {
   sessionClearCookie,
   sign2faChallenge,
   verify2faChallenge,
+  revokeSessionFromHeaders,
 } from "./lib/session";
 import {
   findUserByEmail,
@@ -18,7 +19,6 @@ import {
   markEmailVerified,
   setTotpSecret,
   setTotpEnabled,
-  incrementTokenVersion,
 } from "./queries/users";
 import { env } from "./lib/env";
 import { createAuthToken, consumeAuthToken } from "./lib/tokens";
@@ -226,8 +226,12 @@ export const authRouter = createRouter({
     }),
 
   logout: authedQuery.mutation(async ({ ctx }) => {
-    await incrementTokenVersion(ctx.user.id);
-    ctx.resHeaders.append("set-cookie", sessionClearCookie(ctx.req.headers));
+    // Revoke only this device's session; other devices stay signed in.
+    await revokeSessionFromHeaders(ctx.req.headers);
+    ctx.resHeaders.append(
+      "set-cookie",
+      await sessionClearCookie(ctx.req.headers)
+    );
     return { success: true };
   }),
 

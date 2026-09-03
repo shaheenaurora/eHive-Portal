@@ -1,8 +1,8 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "2fec5d2a-9e77-486b-8696-ffe77f2feb16",
-  "prevId": "34242bf5-c9f0-468f-984f-1893bba4535e",
+  "id": "45313e34-99b6-40bd-905d-771fc822a319",
+  "prevId": "be34ba44-4a94-4ea4-96c6-b5611ae7cb4e",
   "tables": {
     "action_items": {
       "name": "action_items",
@@ -1624,7 +1624,7 @@
         "ix_ballotroll_election_member": {
           "name": "ix_ballotroll_election_member",
           "columns": ["electionId", "memberId"],
-          "isUnique": true
+          "isUnique": false
         }
       },
       "foreignKeys": {
@@ -2626,6 +2626,14 @@
           "notNull": true,
           "autoincrement": false,
           "default": "'seed'"
+        },
+        "fiscalYearStartMonth": {
+          "name": "fiscalYearStartMonth",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
         },
         "charterDate": {
           "name": "charterDate",
@@ -3792,11 +3800,6 @@
           "name": "ix_eventregs_code",
           "columns": ["checkinCode"],
           "isUnique": false
-        },
-        "ux_eventregs_event_member": {
-          "name": "ux_eventregs_event_member",
-          "columns": ["eventId", "memberId"],
-          "isUnique": true
         }
       },
       "foreignKeys": {
@@ -4066,6 +4069,131 @@
       "compositePrimaryKeys": {
         "follow_ups_id": {
           "name": "follow_ups_id",
+          "columns": ["id"]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "franchise_onboarding_checklists": {
+      "name": "franchise_onboarding_checklists",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "chapterId": {
+          "name": "chapterId",
+          "type": "bigint unsigned",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "itemKey": {
+          "name": "itemKey",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "label": {
+          "name": "label",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "enum('pending','in_progress','done','skipped')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'pending'"
+        },
+        "assignedMemberId": {
+          "name": "assignedMemberId",
+          "type": "bigint unsigned",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "dueAt": {
+          "name": "dueAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "completedAt": {
+          "name": "completedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "ix_franchise_onboarding_chapter_key": {
+          "name": "ix_franchise_onboarding_chapter_key",
+          "columns": ["chapterId", "itemKey"],
+          "isUnique": true
+        },
+        "ix_franchise_onboarding_status": {
+          "name": "ix_franchise_onboarding_status",
+          "columns": ["status", "dueAt"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "franchise_onboarding_checklists_chapterId_chapters_id_fk": {
+          "name": "franchise_onboarding_checklists_chapterId_chapters_id_fk",
+          "tableFrom": "franchise_onboarding_checklists",
+          "tableTo": "chapters",
+          "columnsFrom": ["chapterId"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "franchise_onboarding_checklists_assignedMemberId_members_id_fk": {
+          "name": "franchise_onboarding_checklists_assignedMemberId_members_id_fk",
+          "tableFrom": "franchise_onboarding_checklists",
+          "tableTo": "members",
+          "columnsFrom": ["assignedMemberId"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "franchise_onboarding_checklists_id": {
+          "name": "franchise_onboarding_checklists_id",
           "columns": ["id"]
         }
       },
@@ -5817,6 +5945,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "dueAt": {
+          "name": "dueAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "updatedAt": {
           "name": "updatedAt",
           "type": "timestamp",
@@ -6240,7 +6375,7 @@
         "ix_motionvotes_motion_member": {
           "name": "ix_motionvotes_motion_member",
           "columns": ["motionId", "memberId"],
-          "isUnique": true
+          "isUnique": false
         }
       },
       "foreignKeys": {
@@ -7049,6 +7184,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "idempotencyKey": {
+          "name": "idempotencyKey",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "createdAt": {
           "name": "createdAt",
           "type": "timestamp",
@@ -7070,6 +7212,11 @@
         "payment_records_provider_ref_unique": {
           "name": "payment_records_provider_ref_unique",
           "columns": ["provider", "providerRef"],
+          "isUnique": true
+        },
+        "payment_records_idempotency_key_unique": {
+          "name": "payment_records_idempotency_key_unique",
+          "columns": ["idempotencyKey"],
           "isUnique": true
         }
       },
@@ -7344,6 +7491,21 @@
           "notNull": true,
           "autoincrement": false,
           "default": 1
+        },
+        "scope": {
+          "name": "scope",
+          "type": "enum('global','chapter','zone','region','country')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'global'"
+        },
+        "scopeId": {
+          "name": "scopeId",
+          "type": "bigint unsigned",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         },
         "createdAt": {
           "name": "createdAt",
@@ -8237,6 +8399,107 @@
       "compositePrimaryKeys": {
         "unit_roles_id": {
           "name": "unit_roles_id",
+          "columns": ["id"]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "user_sessions": {
+      "name": "user_sessions",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "bigint unsigned",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "tokenVersion": {
+          "name": "tokenVersion",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "fingerprint": {
+          "name": "fingerprint",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "ip": {
+          "name": "ip",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "userAgent": {
+          "name": "userAgent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "revokedAt": {
+          "name": "revokedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "expiresAt": {
+          "name": "expiresAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "ix_user_sessions_user": {
+          "name": "ix_user_sessions_user",
+          "columns": ["userId"],
+          "isUnique": false
+        },
+        "ix_user_sessions_expires": {
+          "name": "ix_user_sessions_expires",
+          "columns": ["expiresAt"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "user_sessions_userId_users_id_fk": {
+          "name": "user_sessions_userId_users_id_fk",
+          "tableFrom": "user_sessions",
+          "tableTo": "users",
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "user_sessions_id": {
+          "name": "user_sessions_id",
           "columns": ["id"]
         }
       },

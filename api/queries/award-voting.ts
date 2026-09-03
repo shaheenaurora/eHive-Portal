@@ -11,6 +11,7 @@ import * as schema from "@db/schema";
 import { getDb } from "./connection";
 import { audit } from "../lib/audit";
 import { conferVoteWinner } from "./award-records";
+import { nomineeInUnit } from "./awards";
 
 type Actor = { id: number; email: string };
 
@@ -95,6 +96,38 @@ export async function castVote(
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
       message: "Voting isn't open for this award.",
+    });
+  const now = new Date();
+  if (cycle.opensAt && now < new Date(cycle.opensAt))
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "Voting hasn't opened yet.",
+    });
+  if (cycle.closesAt && now > new Date(cycle.closesAt))
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "Voting has closed.",
+    });
+  const voterMember = (
+    await db
+      .select()
+      .from(schema.members)
+      .where(eq(schema.members.id, voter.memberId))
+      .limit(1)
+  ).at(0);
+  if (!voterMember)
+    throw new TRPCError({ code: "NOT_FOUND", message: "Member not found." });
+  // Scoped cycles: the voter must belong to the cycle's unit.
+  if (
+    cycle.level !== "network" &&
+    cycle.unitId &&
+    !(await nomineeInUnit(cycle.level, cycle.unitId, {
+      nomineeMemberId: voter.memberId,
+    }))
+  )
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "You can only vote in your own chapter or region.",
     });
   const nom = await getNomination(nominationId);
   if (!nom || nom.cycleId !== cycleId || nom.status !== "shortlisted")
