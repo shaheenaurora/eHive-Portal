@@ -62,9 +62,40 @@ jobs:
       - name: Build image
         run: docker build -t ehive-portal:ci .
       - name: Scan image with Trivy
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ehive-portal:ci
           severity: HIGH,CRITICAL
           exit-code: "1"
           format: table
+
+  # Apply every migration from an empty database against a real MySQL 8, so a
+  # migration that is valid SQL but rejected at apply time (e.g. dropping an
+  # FK-backed index — ER_DROP_INDEX_FK) fails CI here instead of at deploy.
+  migrations:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: ehive
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -uroot -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Apply migrations from empty
+        env:
+          DATABASE_URL: mysql://root:root@127.0.0.1:3306/ehive
+        run: npx drizzle-kit migrate
