@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /portal
+Disallow: /admin
+Disallow: /pods/
+Disallow: /membership
+
+Sitemap: https://ehive.global/sitemap.xml

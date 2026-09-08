@@ -47,6 +47,7 @@ import { recordAnalyticsEvent } from "./queries/analytics";
 import { incrementRequests, incrementErrors } from "./lib/metrics";
 import { buildScorecardReport } from "../src/lib/scorecard";
 import { getSchedulerStatus } from "./lib/scheduler";
+import { pickLeadOwner } from "./queries/leads";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
@@ -338,6 +339,14 @@ app.post("/api/lead", async c => {
       return c.json({ ok: true, leadId: duplicate.id, emailSent: false });
     }
   }
+  // Auto-assign a CRM owner (load-balanced across finance-scoped admins) so no
+  // enquiry sits unowned. Never let assignment failure drop the lead.
+  let leadOwnerId: number | null = null;
+  try {
+    leadOwnerId = await pickLeadOwner();
+  } catch (err) {
+    logger.warn("lead owner auto-assign failed", { error: err });
+  }
   let leadId: number | undefined;
   // Persist Clarity Scorecard results in the same transaction as the lead so
   // the two records are always consistent.
@@ -350,6 +359,7 @@ app.post("/api/lead", async c => {
           email,
           payload: JSON.stringify(body).slice(0, 60000),
           sourcePage,
+          ownerUserId: leadOwnerId,
         });
         const leadId = Number(
           (leadRes as unknown as [{ insertId: number }])[0].insertId
@@ -396,6 +406,7 @@ app.post("/api/lead", async c => {
           email,
           payload: JSON.stringify(body).slice(0, 60000),
           sourcePage,
+          ownerUserId: leadOwnerId,
         });
       leadId = Number(
         (leadRes as unknown as [{ insertId: number }])[0].insertId
@@ -755,6 +766,14 @@ app.post("/api/bookings", async c => {
 
   const when = `${formatGstDate(scheduledAt)} · ${formatGstTime(scheduledAt)} GST`;
 
+  // Auto-assign a CRM owner, same as the generic lead capture path.
+  let leadOwnerId: number | null = null;
+  try {
+    leadOwnerId = await pickLeadOwner();
+  } catch (err) {
+    logger.warn("booking lead owner auto-assign failed", { error: err });
+  }
+
   let appointmentId: number;
   try {
     appointmentId = await withTransaction(async tx => {
@@ -763,6 +782,7 @@ app.post("/api/bookings", async c => {
         email,
         payload: JSON.stringify({ ...body, when }),
         sourcePage: "book.html",
+        ownerUserId: leadOwnerId,
       });
       const leadId = Number(
         (leadRes as unknown as [{ insertId: number }])[0].insertId

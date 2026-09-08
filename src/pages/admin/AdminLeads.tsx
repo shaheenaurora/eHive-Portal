@@ -46,12 +46,29 @@ const STATUS_COLOR: Record<
 export default function AdminLeads() {
   const [q2, setQ2] = useState("");
   const [status, setStatus] = useState<LeadStatus | "">("");
+  const [due, setDue] = useState(false);
   const q = trpc.admin.leads.useQuery(
-    { q: q2 || undefined, status: (status || undefined) as never },
+    {
+      q: q2 || undefined,
+      status: due ? undefined : ((status || undefined) as never),
+      due: due || undefined,
+    },
     { retry: false }
   );
   const counts = trpc.admin.leadCounts.useQuery(undefined, { retry: false });
+  const dueCount = trpc.admin.leadDueCount.useQuery(undefined, {
+    retry: false,
+  });
   const [sel, setSel] = useState<LeadRow | null>(null);
+
+  const pickStatus = (s: LeadStatus | "") => {
+    setDue(false);
+    setStatus(s);
+  };
+  const pickDue = () => {
+    setStatus("");
+    setDue(v => !v);
+  };
 
   return (
     <EhShell groups={ADMIN_NAV} brandSub="Admin">
@@ -63,19 +80,23 @@ export default function AdminLeads() {
 
       <div className="eh-tabs">
         <button
-          className={status === "" ? "on" : ""}
-          onClick={() => setStatus("")}
+          className={status === "" && !due ? "on" : ""}
+          onClick={() => pickStatus("")}
         >
           All
           {counts.data
             ? ` · ${Object.values(counts.data).reduce((a, b) => a + (b as number), 0)}`
             : ""}
         </button>
+        <button className={due ? "on" : ""} onClick={pickDue}>
+          Follow-up due
+          {dueCount.data?.due ? ` · ${dueCount.data.due}` : ""}
+        </button>
         {LEAD_STATUSES.map(s => (
           <button
             key={s}
-            className={status === s ? "on" : ""}
-            onClick={() => setStatus(s)}
+            className={status === s && !due ? "on" : ""}
+            onClick={() => pickStatus(s)}
           >
             {LEAD_STATUS_LABEL[s]}
             {counts.data?.[s] ? ` · ${counts.data[s]}` : ""}

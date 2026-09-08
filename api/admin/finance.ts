@@ -34,6 +34,7 @@ import { listRates, setRate, clearRate } from "../queries/fx";
 import { audit } from "../lib/audit";
 import { EXPENSE_CATEGORY_KEYS, CURRENCY_CODES } from "@contracts/constants";
 import { idInput, isFullAdmin } from "./shared";
+import { countFollowUpDue, followUpDueCond } from "../queries/leads";
 
 /** Optional {from,to} ISO-date range + scoping filters for the finance report. */
 const reportRangeInput = z
@@ -183,6 +184,9 @@ export const financeRouter = createRouter({
           status: z
             .enum(["new", "contacted", "qualified", "won", "lost"])
             .optional(),
+          /* Only leads whose follow-up is overdue per the SLA
+             (new >24h, contacted >72h). */
+          due: z.boolean().optional(),
         })
         .optional()
     )
@@ -194,6 +198,7 @@ export const financeRouter = createRouter({
         conds.push(or(like(schema.leads.email, q), like(schema.leads.form, q)));
       }
       if (input?.status) conds.push(eq(schema.leads.status, input.status));
+      if (input?.due) conds.push(followUpDueCond(new Date()));
       const owner = alias(schema.users, "lead_owner");
       const rows = await db
         .select({
@@ -204,7 +209,9 @@ export const financeRouter = createRouter({
         .from(schema.leads)
         .leftJoin(owner, eq(owner.id, schema.leads.ownerUserId))
         .where(conds.length ? and(...conds) : undefined)
-        .orderBy(desc(schema.leads.createdAt))
+        .orderBy(
+          input?.due ? schema.leads.updatedAt : desc(schema.leads.createdAt)
+        )
         .limit(200);
       return rows.map(r => ({
         ...r.lead,
@@ -220,6 +227,11 @@ export const financeRouter = createRouter({
       .from(schema.leads)
       .groupBy(schema.leads.status);
     return Object.fromEntries(rows.map(r => [r.status, Number(r.n)]));
+  }),
+
+  /* How many leads are currently past their follow-up SLA. */
+  leadDueCount: scopedAdmin("finance").query(async () => {
+    return { due: await countFollowUpDue(new Date()) };
   }),
 
   /* Update a lead's CRM fields (status / owner / notes). */
