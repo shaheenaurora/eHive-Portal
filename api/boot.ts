@@ -26,9 +26,12 @@ import {
 } from "./lib/booking";
 import {
   sendBookingConfirmation,
+  sendBookingCancellation,
+  sendBookingInternalNotice,
   notifyLead,
   sendInvoiceReady,
 } from "./lib/lead-mail";
+import { signBookingToken, verifyBookingToken } from "./lib/booking-token";
 import { mailProvider, mailEnabled, verifyMailTransport } from "./lib/mailer";
 import { activateMembership } from "./queries/circle";
 import {
@@ -796,6 +799,10 @@ app.post("/api/bookings", async c => {
         scheduledAt,
         durationMin,
         leadId,
+        // Bookings are auto-confirmed: the public calendar only offers real
+        // availability, so a requested slot is valid by construction. Admin
+        // can still cancel / no-show from the appointments page.
+        status: "confirmed",
       });
       return Number((apptRes as unknown as [{ insertId: number }])[0].insertId);
     });
@@ -809,6 +816,19 @@ app.post("/api/bookings", async c => {
     properties: { product, appointmentId },
     url: "book.html",
   });
+  void recordAnalyticsEvent("booking_confirmed", {
+    visitorId: body.visitor_id as string | undefined,
+    properties: { product, appointmentId, auto: true },
+    url: "book.html",
+  });
+
+  // Self-serve manage link (reschedule/cancel without an account). Valid
+  // until 48h after the session so it survives the appointment itself.
+  const manageToken = signBookingToken(
+    appointmentId,
+    scheduledAt.getTime() + 48 * 60 * 60 * 1000
+  );
+  const manageUrl = `${env.publicUrl}/book-manage.html?a=${appointmentId}&t=${manageToken}`;
 
   const emailResult = await sendBookingConfirmation({
     name,
@@ -818,15 +838,215 @@ app.post("/api/bookings", async c => {
     format: `${durationMin}-minute session`,
     phone,
     notes,
-    confirmed: false,
+    confirmed: true,
+    scheduledAt,
+    manageUrl,
   });
 
   return c.json({
     ok: true,
     appointmentId,
     when,
+    manageUrl,
     emailSent: emailResult.confirmSent,
     emailError: emailResult.error || null,
+  });
+});
+
+/* Self-serve booking management — reschedule or cancel via the signed token
+ *  in the confirmation email. No account needed; the token IS the credential. */
+
+/** Load an appointment only if the request carries a valid manage token. */
+async function appointmentForManageRequest(aRaw: string, token: string) {
+  const id = Number(aRaw);
+  if (!Number.isInteger(id) || id <= 0)
+    return { error: "invalid link" as const };
+  if (!verifyBookingToken(token, id)) {
+    return { error: "invalid or expired link" as const };
+  }
+  const rows = await getDb()
+    .select()
+    .from(schema.appointments)
+    .where(eq(schema.appointments.id, id))
+    .limit(1);
+  const appt = rows.at(0);
+  if (!appt) return { error: "booking not found" as const };
+  return { appt };
+}
+
+app.get("/api/bookings/manage", async c => {
+  const { appt, error } = await appointmentForManageRequest(
+    c.req.query("a") ?? "",
+    c.req.query("t") ?? ""
+  );
+  if (error || !appt) {
+    return c.json({ ok: false, error: error ?? "invalid link" }, 401);
+  }
+  return c.json({
+    ok: true,
+    appointment: {
+      id: appt.id,
+      product: appt.product,
+      name: appt.name,
+      when: `${formatGstDate(appt.scheduledAt)} · ${formatGstTime(appt.scheduledAt)} GST`,
+      status: appt.status,
+      durationMin: appt.durationMin,
+    },
+  });
+});
+
+/** Body: { a, t, action: "cancel" | "reschedule", date?, time? } */
+app.post("/api/bookings/manage", async c => {
+  if (!(await rateLimit(`booking-manage:${clientIp(c)}`, 10, 10 * 60 * 1000))) {
+    return c.json(
+      { ok: false, error: "Too many attempts. Try again shortly." },
+      429
+    );
+  }
+  let body: Record<string, unknown>;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ ok: false, error: "invalid json" }, 400);
+  }
+  const { appt, error } = await appointmentForManageRequest(
+    String(body.a ?? ""),
+    String(body.t ?? "")
+  );
+  if (error || !appt) {
+    return c.json({ ok: false, error: error ?? "invalid link" }, 401);
+  }
+  const action = body.action === "reschedule" ? "reschedule" : "cancel";
+  const when = `${formatGstDate(appt.scheduledAt)} · ${formatGstTime(appt.scheduledAt)} GST`;
+  const fmt = `${appt.durationMin}-minute session`;
+  const mintToken = (scheduledAt: Date) =>
+    signBookingToken(appt.id, scheduledAt.getTime() + 48 * 60 * 60 * 1000);
+  const manageLink = (scheduledAt: Date) =>
+    `${env.publicUrl}/book-manage.html?a=${appt.id}&t=${mintToken(scheduledAt)}`;
+
+  if (appt.status === "cancelled") {
+    return c.json({ ok: true, alreadyCancelled: true });
+  }
+  if (appt.status === "no_show") {
+    return c.json(
+      {
+        ok: false,
+        error: "This session has already been marked as a no-show.",
+      },
+      409
+    );
+  }
+
+  if (action === "cancel") {
+    await getDb()
+      .update(schema.appointments)
+      .set({ status: "cancelled" })
+      .where(eq(schema.appointments.id, appt.id));
+    void recordAnalyticsEvent("booking_cancelled", {
+      properties: { product: appt.product, appointmentId: appt.id },
+      url: "book-manage.html",
+    });
+    const visitor = await sendBookingCancellation({
+      name: appt.name,
+      email: appt.email,
+      product: appt.product,
+      when,
+    });
+    void sendBookingInternalNotice({
+      subject: `Booking cancelled — ${appt.product} (${appt.name})`,
+      lines: [
+        `Name\t${appt.name}`,
+        `Email\t${appt.email}`,
+        `Was\t${when}`,
+        `Slot\treleased — available for rebooking`,
+      ],
+    });
+    return c.json({
+      ok: true,
+      cancelled: true,
+      emailSent: visitor.ok,
+      emailError: visitor.error || null,
+    });
+  }
+
+  // reschedule
+  const date =
+    typeof body.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.date)
+      ? body.date
+      : null;
+  const time =
+    typeof body.time === "string" &&
+    BOOKING_SLOTS.includes(body.time as (typeof BOOKING_SLOTS)[number])
+      ? body.time
+      : null;
+  if (!date || !time) {
+    return c.json({ ok: false, error: "Pick a new date and time slot." }, 400);
+  }
+  const scheduledAt = toGstTimestamp(date, time);
+  if (scheduledAt.getTime() < Date.now() - 15 * 60 * 1000) {
+    return c.json({ ok: false, error: "That time has already passed." }, 400);
+  }
+  // Availability re-check, excluding this appointment's own current slot.
+  const windowStart = new Date(scheduledAt.getTime() - 24 * 60 * 60 * 1000);
+  const windowEnd = new Date(scheduledAt.getTime() + 24 * 60 * 60 * 1000);
+  const existing = (
+    await getDb()
+      .select({
+        id: schema.appointments.id,
+        scheduledAt: schema.appointments.scheduledAt,
+        durationMin: schema.appointments.durationMin,
+        status: schema.appointments.status,
+      })
+      .from(schema.appointments)
+      .where(
+        and(
+          gte(schema.appointments.scheduledAt, windowStart),
+          lte(schema.appointments.scheduledAt, windowEnd)
+        )
+      )
+  ).filter(r => r.id !== appt.id);
+  if (!isSlotAvailable(existing, date, time, appt.durationMin)) {
+    return c.json(
+      { ok: false, error: "That slot is no longer available." },
+      409
+    );
+  }
+  await getDb()
+    .update(schema.appointments)
+    .set({ scheduledAt, status: "confirmed" })
+    .where(eq(schema.appointments.id, appt.id));
+  const newWhen = `${formatGstDate(scheduledAt)} · ${formatGstTime(scheduledAt)} GST`;
+  void recordAnalyticsEvent("booking_rescheduled", {
+    properties: { product: appt.product, appointmentId: appt.id },
+    url: "book-manage.html",
+  });
+  const visitor = await sendBookingConfirmation({
+    name: appt.name,
+    email: appt.email,
+    product: appt.product,
+    when: newWhen,
+    format: fmt,
+    phone: appt.phone,
+    notes: appt.notes,
+    confirmed: true,
+    scheduledAt,
+    manageUrl: manageLink(scheduledAt),
+  });
+  void sendBookingInternalNotice({
+    subject: `Booking rescheduled — ${appt.product} (${appt.name})`,
+    lines: [
+      `Name\t${appt.name}`,
+      `Email\t${appt.email}`,
+      `Was\t${when}`,
+      `Now\t${newWhen}`,
+    ],
+  });
+  return c.json({
+    ok: true,
+    when: newWhen,
+    manageUrl: manageLink(scheduledAt),
+    emailSent: visitor.confirmSent,
+    emailError: visitor.error || null,
   });
 });
 

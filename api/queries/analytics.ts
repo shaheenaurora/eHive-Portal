@@ -6,6 +6,9 @@ import { logger } from "../lib/log";
 export type AnalyticsEventName =
   | "lead_submitted"
   | "booking_requested"
+  | "booking_confirmed"
+  | "booking_cancelled"
+  | "booking_rescheduled"
   | "user_registered"
   | "email_verified"
   | "application_submitted"

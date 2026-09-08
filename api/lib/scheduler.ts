@@ -30,8 +30,14 @@ import { listCadences } from "../queries/cadence";
 import { computeChapterHealth } from "../queries/health";
 import { renewalStage, RENEWAL_WINDOW_DAYS } from "@contracts/constants";
 import { tryLifecycleTransition } from "./lifecycle";
-import { sendScorecardFollowUp, sendLeadSlaAlert } from "./lead-mail";
+import {
+  sendScorecardFollowUp,
+  sendLeadSlaAlert,
+  sendBookingReminder,
+} from "./lead-mail";
 import { buildScorecardReport } from "../../src/lib/scorecard";
+import { formatGstDate, formatGstTime } from "./booking";
+import { signBookingToken } from "./booking-token";
 import { logger } from "./log";
 import {
   evaluateFranchiseReadiness,
@@ -1010,6 +1016,69 @@ async function jobLeadSla(now = new Date()): Promise<void> {
     logger.info(`scheduler lead-sla: ${alerted} alert(s) sent`, { alerted });
 }
 
+/** Booking reminders — nudge attendees 24h and 1h before a confirmed session
+ *  so booked calls actually happen. Runs on the hourly tick; per-appointment
+ *  markers make each stage fire exactly once. */
+async function jobBookingReminders(now = new Date()): Promise<void> {
+  const db = getDb();
+  const HOUR = 60 * 60 * 1000;
+  // Hourly tick → ±30min windows catch every appointment exactly once.
+  const windows = [
+    { stage: "24h" as const, hoursBefore: 24 as const, from: 23.5, to: 24.5 },
+    { stage: "1h" as const, hoursBefore: 1 as const, from: 0.5, to: 1.5 },
+  ];
+  let sent = 0;
+  for (const w of windows) {
+    const from = new Date(now.getTime() + w.from * HOUR);
+    const to = new Date(now.getTime() + w.to * HOUR);
+    const appts = await db
+      .select()
+      .from(schema.appointments)
+      .where(
+        and(
+          eq(schema.appointments.status, "confirmed"),
+          gte(schema.appointments.scheduledAt, from),
+          lte(schema.appointments.scheduledAt, to)
+        )
+      );
+    for (const a of appts) {
+      const markerKey = `booking-reminder:${a.id}:${w.stage}`;
+      if (await getMarker(markerKey)) continue;
+      const manageUrl = `${env.publicUrl}/book-manage.html?a=${a.id}&t=${signBookingToken(
+        a.id,
+        new Date(a.scheduledAt).getTime() + 48 * HOUR
+      )}`;
+      const r = await sendBookingReminder({
+        name: a.name,
+        email: a.email,
+        product: a.product,
+        when: `${formatGstDate(a.scheduledAt)} · ${formatGstTime(a.scheduledAt)} GST`,
+        format: `${a.durationMin}-minute session`,
+        scheduledAt: new Date(a.scheduledAt),
+        hoursBefore: w.hoursBefore,
+        manageUrl,
+      });
+      if (r.ok) {
+        await setMarker(markerKey, now.toISOString());
+        sent++;
+      } else {
+        logger.warn(
+          `scheduler booking reminder failed for appointment ${a.id}`,
+          { appointmentId: a.id, error: r.error }
+        );
+      }
+    }
+  }
+  if (sent)
+    logger.info(`scheduler booking reminders: ${sent} email(s) sent`, { sent });
+}
+
+/** Hourly jobs — time-window sensitive work that must run on every tick,
+ *  independent of the once-a-day claim. */
+async function runHourlyJobs(now = new Date()): Promise<void> {
+  await safe("booking-reminders", () => jobBookingReminders(now));
+}
+
 /** Data retention (G10) — anonymise PII on leads older than the configured
  *  window. Disabled unless an admin sets a positive number of days in the
  *  app_config key `retention:lead_pii_days`, so a deploy never silently destroys
@@ -1120,6 +1189,13 @@ export function startScheduler(): void {
       schedulerStatus.failures++;
       logger.error("scheduler tick failed", { error: String(e) });
       void alertScheduler("tick", e);
+    });
+    // Hourly jobs run on every tick, independent of the daily claim — these
+    // are time-window sensitive (e.g. the 1h-before booking reminder).
+    void runHourlyJobs().catch(e => {
+      schedulerStatus.lastFailureAt = new Date().toISOString();
+      schedulerStatus.failures++;
+      logger.error("scheduler hourly jobs failed", { error: String(e) });
     });
   };
   // Give the server a moment to finish booting, then check hourly.

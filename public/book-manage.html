@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Manage your booking — eHive</title>
+    <meta
+      name="description"
+      content="Reschedule or cancel your eHive session — no sign-in needed."
+    />
+    <meta name="robots" content="noindex" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3 27 9.5v13L16 29 5 22.5v-13z' fill='none' stroke='%23DA3A22' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23DA3A22'/%3E%3C/svg%3E"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Hanken+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <meta name="theme-color" content="#f8f6f0" />
+    <style>
+      :root {
+        --ink: #101d2c;
+        --mut: #5d6f82;
+        --bg: #f8f6f0;
+        --card: #ffffff;
+        --line: #e6e0d2;
+        --red: #b23a2e;
+        --gold: #b8862e;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: "Hanken Grotesk", system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--ink);
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 1.25rem;
+      }
+      .wrap {
+        width: 100%;
+        max-width: 520px;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 2rem;
+        box-shadow: 0 10px 30px rgba(16, 29, 44, 0.06);
+      }
+      .brand {
+        display: block;
+        text-align: center;
+        margin-bottom: 1.25rem;
+      }
+      .brand img {
+        height: 34px;
+      }
+      h1 {
+        font-family: "Archivo", sans-serif;
+        font-size: 1.45rem;
+        margin: 0 0 0.35rem;
+        text-align: center;
+      }
+      .sub {
+        text-align: center;
+        color: var(--mut);
+        font-size: 0.92rem;
+        margin: 0 0 1.5rem;
+      }
+      .when {
+        text-align: center;
+        background: #faf7f1;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 0.85rem 1rem;
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+      }
+      .when .p {
+        display: block;
+        font-size: 0.75rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--gold);
+        font-weight: 700;
+        margin-bottom: 0.2rem;
+      }
+      .row {
+        display: flex;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+      }
+      button,
+      .btn {
+        flex: 1;
+        min-width: 140px;
+        border: none;
+        border-radius: 10px;
+        padding: 0.8rem 1rem;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+        text-align: center;
+        text-decoration: none;
+      }
+      .primary {
+        background: var(--ink);
+        color: #f5efe2;
+      }
+      .danger {
+        background: transparent;
+        color: var(--red);
+        border: 1.5px solid var(--red);
+      }
+      .ghost {
+        background: transparent;
+        color: var(--mut);
+        border: 1.5px solid var(--line);
+      }
+      button:disabled {
+        opacity: 0.55;
+        cursor: default;
+      }
+      .err {
+        color: var(--red);
+        font-size: 0.88rem;
+        text-align: center;
+      }
+      .ok {
+        color: #2c7a4b;
+        font-size: 0.95rem;
+        text-align: center;
+        font-weight: 600;
+      }
+      .slots {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+        gap: 0.5rem;
+        margin-top: 1rem;
+      }
+      .slot {
+        border: 1.5px solid var(--line);
+        background: #fff;
+        border-radius: 8px;
+        padding: 0.55rem 0.3rem;
+        font: inherit;
+        font-size: 0.86rem;
+        font-weight: 600;
+        cursor: pointer;
+        text-align: center;
+      }
+      .slot:hover {
+        border-color: var(--ink);
+      }
+      .slot.taken {
+        opacity: 0.35;
+        cursor: default;
+        text-decoration: line-through;
+      }
+      .day {
+        grid-column: 1 / -1;
+        font-size: 0.78rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--gold);
+        font-weight: 700;
+        margin-top: 0.6rem;
+      }
+      .hidden {
+        display: none;
+      }
+      .fine {
+        text-align: center;
+        color: var(--mut);
+        font-size: 0.8rem;
+        margin-top: 1.4rem;
+      }
+      .fine a {
+        color: var(--mut);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <a class="brand" href="/" aria-label="eHive — home">
+        <img src="/assets/ehive-wordmark.png" alt="eHive" />
+      </a>
+      <div id="loading"><p class="sub">Loading your booking…</p></div>
+
+      <div id="invalid" class="hidden">
+        <h1>Link not valid</h1>
+        <p class="sub" id="invalidMsg">
+          This manage link is invalid or has expired. If you need to change your
+          session, reply to your confirmation email or
+          <a href="/contact.html" style="color: var(--red)">contact us</a>.
+        </p>
+      </div>
+
+      <div id="detail" class="hidden">
+        <h1>Your session</h1>
+        <p class="sub" id="who"></p>
+        <div class="when">
+          <span class="p" id="prod"></span>
+          <span id="whenText"></span>
+        </div>
+        <div id="actions">
+          <div class="row">
+            <button class="primary" id="rescheduleBtn" type="button">
+              Reschedule
+            </button>
+            <button class="danger" id="cancelBtn" type="button">
+              Cancel session
+            </button>
+          </div>
+          <p class="err hidden" id="actionErr" style="margin-top: 0.9rem"></p>
+        </div>
+        <div id="picker" class="hidden">
+          <p class="sub" style="margin-bottom: 0.2rem">
+            Pick a new slot — all times Gulf Standard.
+          </p>
+          <div class="slots" id="slots"></div>
+          <p class="err hidden" id="pickErr" style="margin-top: 0.9rem"></p>
+        </div>
+        <div id="done" class="hidden">
+          <p class="ok" id="doneMsg"></p>
+        </div>
+      </div>
+
+      <p class="fine"><a href="/">← Back to eHive</a></p>
+    </main>
+
+    <script>
+      (function () {
+        var params = new URLSearchParams(location.search);
+        var a = params.get("a") || "";
+        var t = params.get("t") || "";
+        var appt = null;
+
+        var $ = function (id) {
+          return document.getElementById(id);
+        };
+        function show(id) {
+          ["loading", "invalid", "detail"].forEach(function (s) {
+            $(s).classList.add("hidden");
+          });
+          $(id).classList.remove("hidden");
+        }
+        function err(id, msg) {
+          $(id).textContent = msg;
+          $(id).classList.remove("hidden");
+        }
+
+        if (!a || !t) {
+          show("invalid");
+          return;
+        }
+
+        fetch(
+          "/api/bookings/manage?a=" +
+            encodeURIComponent(a) +
+            "&t=" +
+            encodeURIComponent(t)
+        )
+          .then(function (r) {
+            return r.json().then(function (body) {
+              if (!r.ok || !body.ok) throw new Error(body.error || "invalid");
+              appt = body.appointment;
+              $("who").textContent = "Booked for " + appt.name;
+              $("prod").textContent = appt.product;
+              $("whenText").textContent = appt.when;
+              if (appt.status === "cancelled") {
+                $("actions").classList.add("hidden");
+                $("done").classList.remove("hidden");
+                $("doneMsg").textContent = "This session has been cancelled.";
+              } else if (appt.status === "no_show") {
+                $("actions").classList.add("hidden");
+                $("done").classList.remove("hidden");
+                $("doneMsg").textContent =
+                  "This session was marked as a no-show. Please book a new time.";
+              }
+              show("detail");
+            });
+          })
+          .catch(function (e) {
+            if (e && e.message) $("invalidMsg").textContent = e.message + ".";
+            show("invalid");
+          });
+
+        $("cancelBtn").addEventListener("click", function () {
+          if (
+            !confirm(
+              "Cancel this session? The slot will be released immediately."
+            )
+          )
+            return;
+          $("cancelBtn").disabled = true;
+          fetch("/api/bookings/manage", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ a: a, t: t, action: "cancel" }),
+          })
+            .then(function (r) {
+              return r.json().then(function (body) {
+                if (!r.ok || !body.ok) throw new Error(body.error || "failed");
+                $("actions").classList.add("hidden");
+                $("picker").classList.add("hidden");
+                $("done").classList.remove("hidden");
+                $("doneMsg").textContent =
+                  "Cancelled. A confirmation email is on its way.";
+              });
+            })
+            .catch(function (e) {
+              $("cancelBtn").disabled = false;
+              err("actionErr", e.message || "Couldn't cancel — try again.");
+            });
+        });
+
+        $("rescheduleBtn").addEventListener("click", function () {
+          $("actions").classList.add("hidden");
+          $("picker").classList.remove("hidden");
+          loadSlots();
+        });
+
+        function loadSlots() {
+          var from = new Date();
+          var to = new Date(from.getTime() + 21 * 24 * 60 * 60 * 1000);
+          var f = from.toISOString().slice(0, 10);
+          var d = new Date(to.getTime());
+          var t2 = d.toISOString().slice(0, 10);
+          fetch(
+            "/api/availability?product=" +
+              encodeURIComponent(appt.product) +
+              "&from=" +
+              f +
+              "&to=" +
+              t2
+          )
+            .then(function (r) {
+              return r.json().then(function (body) {
+                if (!r.ok || !body.slots) throw new Error("load failed");
+                renderSlots(body.slots);
+              });
+            })
+            .catch(function () {
+              err("pickErr", "Couldn't load availability — try again.");
+            });
+        }
+
+        function renderSlots(slots) {
+          var box = $("slots");
+          box.innerHTML = "";
+          var lastDay = "";
+          slots.forEach(function (s) {
+            if (s.date !== lastDay) {
+              lastDay = s.date;
+              var label = new Date(s.date + "T12:00:00").toLocaleDateString(
+                "en-GB",
+                { weekday: "short", day: "numeric", month: "short" }
+              );
+              var day = document.createElement("div");
+              day.className = "day";
+              day.textContent = label;
+              box.appendChild(day);
+            }
+            var b = document.createElement("button");
+            b.type = "button";
+            b.className = "slot" + (s.available ? "" : " taken");
+            b.textContent = s.time;
+            if (s.available) {
+              b.addEventListener("click", function () {
+                pick(s.date, s.time, b);
+              });
+            }
+            box.appendChild(b);
+          });
+        }
+
+        function pick(date, time, btn) {
+          Array.prototype.forEach.call(
+            document.querySelectorAll(".slot"),
+            function (el) {
+              el.disabled = true;
+            }
+          );
+          fetch("/api/bookings/manage", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              a: a,
+              t: t,
+              action: "reschedule",
+              date: date,
+              time: time,
+            }),
+          })
+            .then(function (r) {
+              return r.json().then(function (body) {
+                if (!r.ok || !body.ok) throw new Error(body.error || "failed");
+                $("picker").classList.add("hidden");
+                $("done").classList.remove("hidden");
+                $("doneMsg").textContent =
+                  "Moved to " +
+                  body.when +
+                  ". A new confirmation email with an updated invite is on its way.";
+                $("whenText").textContent = body.when;
+                history.replaceState(null, "", body.manageUrl);
+                a = new URL(body.manageUrl).searchParams.get("a");
+                t = new URL(body.manageUrl).searchParams.get("t");
+              });
+            })
+            .catch(function (e) {
+              Array.prototype.forEach.call(
+                document.querySelectorAll(".slot"),
+                function (el) {
+                  el.disabled = false;
+                }
+              );
+              err("pickErr", e.message || "Couldn't reschedule — try again.");
+            });
+        }
+      })();
+    </script>
+  </body>
+</html>

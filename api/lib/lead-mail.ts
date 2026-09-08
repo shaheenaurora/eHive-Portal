@@ -416,6 +416,8 @@ export async function sendBookingConfirmation(input: {
   notes?: string | null;
   confirmed: boolean;
   scheduledAt?: Date | null;
+  /** Self-serve reschedule/cancel link embedded in the email + ICS. */
+  manageUrl?: string | null;
 }): Promise<{
   ok: boolean;
   ownerSent: boolean;
@@ -477,11 +479,18 @@ export async function sendBookingConfirmation(input: {
         })()
       : "";
 
+  const manageExtras = input.manageUrl
+    ? `
+            <p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">Need to reschedule or cancel? <a href="${input.manageUrl}" style="color:#b23a2e;text-decoration:underline">Manage your booking</a> — no email required.</p>
+          `
+    : "";
+
   const confirmHtml = shell(`
     <h1 style="margin:0 0 12px;font-family:Georgia,serif;font-size:22px;color:#101d2c;font-weight:600">${firstName ? `Thank you, ${esc(firstName)}.` : "Thank you."}</h1>
     <p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">We've received your request for a <strong style="color:#101d2c">${esc(input.product)}</strong> on <strong style="color:#101d2c">${esc(input.when)}</strong>.</p>
     <p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">${input.confirmed ? "Your slot is confirmed. A calendar invite (.ics) is attached." : "A member of the team will confirm your slot within one business day and send you a calendar invitation."}</p>
     ${calendarExtras}
+    ${manageExtras}
     <p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">If you need to reschedule, just reply to this email.</p>
     <p style="margin:20px 0 0;color:#33465e;font-size:14px;line-height:1.55">Warm regards,<br/><strong>The eHive team</strong></p>
   `);
@@ -496,7 +505,11 @@ export async function sendBookingConfirmation(input: {
               start: input.scheduledAt,
               durationMin: Number(input.format.match(/^(\d+)/)?.[1] ?? 60),
               location: "eHive — Dubai, UAE (details by email)",
-              description: `Confirmed ${input.product} session with eHive.`,
+              description: `Confirmed ${input.product} session with eHive.${
+                input.manageUrl
+                  ? `\nReschedule or cancel: ${input.manageUrl}`
+                  : ""
+              }`,
               organizer: notifyTo
                 ? { name: "eHive", email: notifyTo }
                 : undefined,
@@ -551,6 +564,101 @@ export async function sendBookingCancellation(input: {
     subject: `Cancelled — ${input.product}`,
     html,
     replyTo: env.leadNotifyEmail || undefined,
+  });
+  return { ok: r.ok, error: r.error };
+}
+
+/** Pre-session reminder — sent by the scheduler 24h and 1h before a confirmed
+ *  appointment so booked calls actually happen. Re-attaches the ICS invite. */
+export async function sendBookingReminder(input: {
+  name: string;
+  email: string;
+  product: string;
+  when: string;
+  format: string;
+  scheduledAt: Date;
+  hoursBefore: 24 | 1;
+  manageUrl?: string | null;
+}): Promise<{ ok: boolean; error?: string }> {
+  if (!mailEnabled()) {
+    return { ok: false, error: "Email is not configured." };
+  }
+  const durationMin = Number(input.format.match(/^(\d+)/)?.[1] ?? 60);
+  const links = calendarLinks({
+    title: `${input.product} — eHive`,
+    start: input.scheduledAt,
+    durationMin,
+    location: "eHive — Dubai, UAE (details by email)",
+    description: `Confirmed ${input.product} session with eHive.`,
+  });
+  const firstName = input.name.split(" ")[0];
+  const timing =
+    input.hoursBefore === 1
+      ? "starts in <strong>one hour</strong>"
+      : "is <strong>tomorrow</strong>";
+  const html = shell(`
+    <h1 style="margin:0 0 12px;font-family:Georgia,serif;font-size:22px;color:#101d2c;font-weight:600">${firstName ? `Hi ${esc(firstName)},` : "Hi,"}</h1>
+    <p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">A quick reminder: your <strong style="color:#101d2c">${esc(input.product)}</strong> ${timing} — <strong style="color:#101d2c">${esc(input.when)}</strong>.</p>
+    <p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">Add to your calendar: <a href="${links.google}" style="color:#b23a2e;text-decoration:underline">Google</a> · <a href="${links.outlook}" style="color:#b23a2e;text-decoration:underline">Outlook</a></p>
+    ${input.manageUrl ? `<p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">Can't make it? <a href="${input.manageUrl}" style="color:#b23a2e;text-decoration:underline">Reschedule or cancel</a>.</p>` : ""}
+    <p style="margin:20px 0 0;color:#33465e;font-size:14px;line-height:1.55">Warm regards,<br/><strong>The eHive team</strong></p>
+  `);
+  const r = await sendMailDetailed({
+    to: input.email,
+    subject:
+      input.hoursBefore === 1
+        ? `Starting in 1 hour — ${input.product}`
+        : `Tomorrow — your ${input.product}`,
+    html,
+    replyTo: env.leadNotifyEmail || undefined,
+    attachments: [
+      {
+        filename: "ehive-session.ics",
+        content: generateIcs({
+          title: `${input.product} — eHive`,
+          start: input.scheduledAt,
+          durationMin,
+          location: "eHive — Dubai, UAE (details by email)",
+          description: `Confirmed ${input.product} session with eHive.${
+            input.manageUrl ? `\nReschedule or cancel: ${input.manageUrl}` : ""
+          }`,
+          organizer: env.leadNotifyEmail
+            ? { name: "eHive", email: env.leadNotifyEmail }
+            : undefined,
+          attendee: { name: input.name, email: input.email },
+        }),
+        contentType: "text/calendar; method=PUBLISH",
+      },
+    ],
+  });
+  return { ok: r.ok, error: r.error };
+}
+
+/** Internal heads-up to the lead inbox when a booking is cancelled or moved
+ *  self-serve, so the team isn't waiting on a slot that no longer exists. */
+export async function sendBookingInternalNotice(input: {
+  subject: string;
+  lines: string[];
+}): Promise<{ ok: boolean; error?: string }> {
+  const notifyTo = env.leadNotifyEmail;
+  if (!notifyTo || !mailEnabled()) {
+    return { ok: false, error: "Email is not configured." };
+  }
+  const rows = input.lines
+    .map(
+      l =>
+        `<tr><td style="padding:6px 12px;color:#5d6f82;font-size:13px;white-space:nowrap">${esc(l.split("\t")[0])}</td><td style="padding:6px 12px;color:#101d2c;font-size:14px;font-weight:600">${esc(l.split("\t").slice(1).join("\t") || "—")}</td></tr>`
+    )
+    .join("");
+  const html = shell(`
+    <p style="margin:0 0 4px;color:#b8862e;font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:700">Booking update</p>
+    <h1 style="margin:0 0 16px;font-family:Georgia,serif;font-size:20px;color:#101d2c;font-weight:600">${esc(input.subject)}</h1>
+    <table style="width:100%;border-collapse:collapse;background:#faf7f1;border-radius:10px">${rows}</table>
+  `);
+  const r = await sendMailDetailed({
+    to: notifyTo,
+    subject: input.subject,
+    html,
   });
   return { ok: r.ok, error: r.error };
 }

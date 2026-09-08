@@ -60,4 +60,24 @@ describe("public site + ops routes", () => {
       countries: expect.any(Number),
     });
   });
+
+  it("/api/bookings/manage rejects missing or invalid tokens", async () => {
+    const missing = await app.request("/api/bookings/manage");
+    expect(missing.status).toBe(401);
+    const bad = await app.request(
+      "/api/bookings/manage?a=1&t=bogus.token.here"
+    );
+    expect(bad.status).toBe(401);
+    const badBody = (await bad.json()) as { ok: boolean };
+    expect(badBody.ok).toBe(false);
+  });
+
+  it("/api/bookings/manage POST rejects invalid tokens without touching state", async () => {
+    const res = await app.request("/api/bookings/manage", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ a: 1, t: "bogus.token.here", action: "cancel" }),
+    });
+    expect(res.status).toBe(401);
+  });
 });
