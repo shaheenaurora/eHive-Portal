@@ -31,6 +31,7 @@ type LeadRow = {
   notes: string | null;
   ownerName: string | null;
   ownerEmail: string | null;
+  invoiceId: number | null;
   invoiceNumber: string | null;
   invoiceStatus: string | null;
 };
@@ -633,9 +634,17 @@ function LeadDetail({
             Consulting invoice
           </div>
           {lead.invoiceNumber ? (
-            <p className="eh-sm" style={{ margin: ".3rem 0 0" }}>
-              {lead.invoiceNumber} · {lead.invoiceStatus}
-            </p>
+            <div style={{ marginTop: ".3rem" }}>
+              <p className="eh-sm" style={{ margin: 0 }}>
+                {lead.invoiceNumber} · {lead.invoiceStatus}
+              </p>
+              {lead.invoiceStatus === "open" && lead.invoiceId && (
+                <RecordPaymentButton
+                  invoiceId={lead.invoiceId}
+                  onDone={onSaved}
+                />
+              )}
+            </div>
           ) : (
             <LeadInvoiceForm lead={lead} onDone={onSaved} />
           )}
@@ -701,6 +710,35 @@ function LeadInvoiceForm({
         </button>
       </div>
     </div>
+  );
+}
+
+/** Settle an open consulting invoice: writes the payment record server-side
+ *  and flips the invoice to "paid" (which the pipeline report counts as
+ *  collected cash). */
+function RecordPaymentButton({
+  invoiceId,
+  onDone,
+}: {
+  invoiceId: number;
+  onDone: () => void;
+}) {
+  const pay = trpc.admin.recordInvoicePayment.useMutation({
+    onSuccess: r => {
+      toast(`Invoice ${r.invoiceNumber} marked as paid.`);
+      onDone();
+    },
+    onError: e => toast(e.message),
+  });
+  return (
+    <button
+      className="eh-btn gold"
+      style={{ marginTop: ".5rem" }}
+      disabled={pay.isPending}
+      onClick={() => pay.mutate({ invoiceId })}
+    >
+      {pay.isPending ? "Recording…" : "Record payment"}
+    </button>
   );
 }
 

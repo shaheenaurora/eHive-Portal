@@ -207,6 +207,47 @@ export async function createInvoiceForLead(
 }
 
 /**
+ * Record a manual payment settling an open (consulting) invoice. Inserts the
+ * payment record — provider "manual", purpose "consulting", referenced to the
+ * invoice number — and links it back onto the invoice, which flips to "paid".
+ * Runs inside the caller's transaction so the books can't say "paid" without
+ * a payment row, or hold a payment row while the invoice stays open.
+ */
+export async function recordPaymentForInvoice(
+  tx: Tx,
+  invoice: {
+    id: number;
+    userId: number;
+    amount: number;
+    currency: string;
+    invoiceNumber: string;
+  },
+  opts: { paidAt?: Date } = {}
+): Promise<{ paymentId: number }> {
+  const paidAt = opts.paidAt ?? new Date();
+  const res = await tx.insert(schema.paymentRecords).values({
+    userId: invoice.userId,
+    provider: "manual",
+    providerRef: invoice.invoiceNumber,
+    purpose: "consulting",
+    tier: null,
+    amount: invoice.amount,
+    currency: invoice.currency,
+    status: "paid",
+    paidAt,
+    note: `Manual settlement of invoice ${invoice.invoiceNumber}`,
+  });
+  const paymentId = Number(
+    (res as unknown as { insertId?: number }).insertId ?? 0
+  );
+  await tx
+    .update(schema.invoices)
+    .set({ status: "paid", paymentRecordId: paymentId })
+    .where(eq(schema.invoices.id, invoice.id));
+  return { paymentId };
+}
+
+/**
  * Create a credit note for a refund. If an invoice exists for the payment it is
  * linked for traceability.
  */

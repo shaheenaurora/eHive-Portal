@@ -206,6 +206,7 @@ export const financeRouter = createRouter({
           ownerName: owner.name,
           ownerEmail: owner.email,
           /* Won leads: the consulting invoice issued against them, if any. */
+          invoiceId: schema.invoices.id,
           invoiceNumber: schema.invoices.invoiceNumber,
           invoiceStatus: schema.invoices.status,
         })
@@ -221,6 +222,7 @@ export const financeRouter = createRouter({
         ...r.lead,
         ownerName: r.ownerName,
         ownerEmail: r.ownerEmail,
+        invoiceId: r.invoiceId,
         invoiceNumber: r.invoiceNumber,
         invoiceStatus: r.invoiceStatus,
       }));
@@ -328,6 +330,48 @@ export const financeRouter = createRouter({
         detail: created.invoiceNumber,
       });
       return created;
+    }),
+
+  /* Record a manual payment settling an open (consulting) invoice. Links the
+   * new payment record back onto the invoice and flips it to "paid", which is
+   * what the pipeline report counts as collected cash. */
+  recordInvoicePayment: scopedAdmin("finance")
+    .input(z.object({ invoiceId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const invoice = (
+        await getDb()
+          .select()
+          .from(schema.invoices)
+          .where(eq(schema.invoices.id, input.invoiceId))
+          .limit(1)
+      ).at(0);
+      if (!invoice)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Invoice not found.",
+        });
+      if (invoice.status !== "open")
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Invoice ${invoice.invoiceNumber} is already ${invoice.status}.`,
+        });
+      const { withTransaction } = await import("../queries/transaction");
+      const { recordPaymentForInvoice } = await import("../queries/invoicing");
+      await withTransaction(async tx =>
+        recordPaymentForInvoice(tx, {
+          id: invoice.id,
+          userId: invoice.userId,
+          amount: invoice.amount,
+          currency: invoice.currency,
+          invoiceNumber: invoice.invoiceNumber,
+        })
+      );
+      await audit(ctx.user, "invoice.payment", {
+        type: "invoice",
+        id: invoice.id,
+        detail: invoice.invoiceNumber,
+      });
+      return { ok: true, invoiceNumber: invoice.invoiceNumber };
     }),
 
   /* Consulting pipeline value: won leads vs invoiced vs paid, by product. */
