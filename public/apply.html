@@ -80,7 +80,7 @@
         </button>
         <ul class="nav-links" id="navMenu">
           <li><a href="consulting.html">Consulting</a></li>
-          <li><a href="circle.html">eHive Circle</a></li>
+          <li><a href="vanguard.html">Membership</a></li>
           <li><a href="clarity-scorecard.html">Clarity Scorecard</a></li>
           <li><a href="brand-check.html">Brand Check</a></li>
           <li><a href="insights.html">Insights</a></li>
@@ -99,10 +99,11 @@
           <div class="h-page-hero-grid">
             <div>
               <p class="h-eyebrow reveal">Apply</p>
-              <h1 id="page-h" class="reveal">Apply to join <em>eHive.</em></h1>
+              <h1 id="page-h" class="reveal">Apply for <em>founding membership.</em></h1>
               <p class="sub reveal" style="--d: 0.08s">
-                We admit members who share our standard. Tell us a little about
-                you, and we&rsquo;ll take it from there.
+                You're applying to the founding Vanguard cohort — forty seats,
+                opening 1 October. Tell us about you and your business; if
+                there's a fit, we'll be in touch to talk properly.
               </p>
               <div class="c-chips reveal" style="--d: 0.16s">
                 <span class="chip">By application</span
@@ -408,11 +409,11 @@
         <div class="h-wrap">
           <p class="h-eyebrow reveal">Received</p>
           <h2 class="reveal" id="confirm-h">
-            Thank you — we&rsquo;ve received your application.
+            Thank you — we've received your founding application.
           </h2>
           <p class="h-lede h-mx-auto reveal" style="--d: 0.12s">
-            Our team will review it and be in touch within a few days.
-            We&rsquo;re glad you&rsquo;re here.
+            We review every applicant personally and will be in touch within a
+            few days. We're glad you're here.
           </p>
           <div class="doors reveal" style="--d: 0.18s">
             <a class="h-btn h-btn-primary" href="index.html"
@@ -445,7 +446,7 @@
             <h4>The Network</h4>
             <a href="consulting.html">Consulting</a>
             <a href="circle.html">eHive Circle</a>
-            <a href="membership.html">Membership</a>
+            <a href="vanguard.html">Membership</a>
             <a href="partners.html">Partners</a>
             <a href="franchise.html">Franchise</a>
             <a href="insights.html">Insights</a>
@@ -501,6 +502,19 @@
     <script src="apps.min.js?v=7" defer></script>
     <script>
       (function () {
+        /* Founding-cohort attribution: links arriving with ?tier=vanguard
+           pre-select the founding tier so applicants land on the right door.
+           The chosen tier flows to the CRM as tier_of_interest. */
+        try {
+          var params = new URLSearchParams(window.location.search);
+          if ((params.get("tier") || "").toLowerCase() === "vanguard") {
+            var tierSelect = document.getElementById("appTier");
+            if (tierSelect) tierSelect.value = "Vanguard";
+          }
+        } catch (e) {
+          /* leave the select at its default */
+        }
+
         const form = document.getElementById("applyForm");
         const confirmation = document.getElementById("applyConfirmation");
         const error = document.getElementById("applyError");

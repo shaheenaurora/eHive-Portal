@@ -1497,12 +1497,12 @@ const SITEMAP_PAGES = [
   "consulting-opsblueprint.html",
   "consulting-momentum90.html",
   "circle.html",
+  "vanguard.html",
   "clarity-scorecard.html",
   "brand-check.html",
   "book.html",
   "about.html",
   "how-it-works.html",
-  "membership.html",
   "partners.html",
   "franchise.html",
   "apply.html",
@@ -1621,6 +1621,15 @@ if (env.isProduction) {
   app.get("/business-setup", c => c.redirect("/consulting.html", 301));
   app.get("/get-started.html", c => c.redirect("/clarity-scorecard.html", 301));
   app.get("/get-started", c => c.redirect("/clarity-scorecard.html", 301));
+  /* The four-tier chooser retired at the Vanguard launch — one membership
+     door (/vanguard.html), with the tiers that open later named on it. */
+  app.get("/membership.html", c => c.redirect("/vanguard.html", 301));
+  app.get("/membership", c => c.redirect("/vanguard.html", 301));
+
+  /* Clean marketing slug for the Vanguard launch page. */
+  app.get("/vanguard", c =>
+    c.html(fs.readFileSync(path.resolve(import.meta.dirname, "../public/vanguard.html"), "utf-8"))
+  );
 
   /* Marketing site: served straight from source (public/). No build-time copy —
      bulk copies race on this filesystem. Bundle assets (portal-*.js/css) fall
