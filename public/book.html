@@ -161,19 +161,20 @@
                 <span><b id="bkPrice">No charge</b></span>
               </div>
               <div class="bk-after">
-                <h3>After you request</h3>
+                <h3>What happens</h3>
                 <ul>
                   <li>
                     <span class="rn">01</span
                     ><span
-                      >We receive your request and check the calendar.</span
+                      >Pick a slot — availability is live against our
+                      calendar.</span
                     >
                   </li>
                   <li>
                     <span class="rn">02</span
                     ><span id="bkPrep"
-                      >We confirm your slot by email within one business day and
-                      send a calendar invite.</span
+                      >Your slot is confirmed instantly and a calendar invite
+                      lands in your inbox.</span
                     >
                   </li>
                   <li>
@@ -212,8 +213,7 @@
                   ></div>
                   <p class="bk-tz">
                     All times Gulf Standard Time (UTC+4). Crossed-out slots are
-                    taken — <b>preview availability</b> until the live calendar
-                    connects.
+                    already booked — availability is live.
                   </p>
                 </div>
                 <div class="bk-step" style="margin-bottom: 0">
@@ -272,7 +272,7 @@
                       class="h-btn h-btn-primary"
                       id="bkConfirm"
                     >
-                      Request booking
+                      Confirm booking
                     </button>
                     <span class="bk-hint" id="bkHint"
                       >Pick a day and a time first.</span
@@ -294,22 +294,31 @@
                     />
                   </svg>
                 </div>
-                <h3>Your booking request is in.</h3>
+                <h3>You&rsquo;re booked.</h3>
                 <p>
-                  We&rsquo;ve received your request. We&rsquo;ll confirm your
-                  slot by email within one business day and send a calendar
-                  invite to
+                  Your slot is confirmed and a calendar invite (.ics) is on its
+                  way to
                   <b id="bkDoneEmail" style="color: var(--h-coral-2)"></b>.
                 </p>
                 <ul class="gs-sum" id="bkSummary"></ul>
+                <p>
+                  <a
+                    id="bkManage"
+                    class="bk-again"
+                    style="display: none"
+                    href="#"
+                    >Manage your booking — reschedule or cancel</a
+                  >
+                </p>
                 <div class="gs-err-note" id="bkErr" role="alert">
-                  We saved your request, but the confirmation email could not be
-                  sent automatically. We&rsquo;ll confirm your slot directly.
+                  Your slot is saved and confirmed — but the confirmation email
+                  could not be sent just now. Use the link above to manage your
+                  booking, and we&rsquo;ll follow up directly.
                 </div>
                 <p class="gs-note">
-                  Live availability is checked against our calendar. Your slot
-                  is reserved for review; the team will follow up with a
-                  calendar invite once it is confirmed.
+                  Live availability is checked against our calendar.
+                  You&rsquo;ll get a reminder 24 hours and 1 hour before your
+                  session.
                 </p>
                 <button class="bk-again" id="bkAgain" type="button">
                   Make another request →

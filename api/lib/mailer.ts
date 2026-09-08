@@ -143,7 +143,12 @@ async function sendViaZepto(
         subject: input.subject,
         htmlbody: input.html,
         textbody: input.text ?? htmlToText(input.html),
-        ...(input.replyTo ? { reply_to: [{ address: input.replyTo }] } : {}),
+        // ZeptoMail requires the same { email_address: { address } } wrapper
+        // for reply_to as for `to` — a bare { address } is rejected with
+        // "Mandatory Field missing".
+        ...(input.replyTo
+          ? { reply_to: [{ email_address: { address: input.replyTo } }] }
+          : {}),
         attachments:
           input.attachments?.map(a => ({
             file_name: a.filename,

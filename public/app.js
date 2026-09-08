@@ -1055,11 +1055,18 @@ function submitLead(payload, onOk, onErr) {
         .then(function (d) {
           restoreBtn(bkConfirm);
           if (d && d.ok) {
+            // Self-serve manage link — critical when email failed, since the
+            // holder otherwise has no way to change or cancel the session.
+            var manage = document.getElementById("bkManage");
+            if (manage && d.manageUrl) {
+              manage.href = d.manageUrl;
+              manage.style.display = "inline-block";
+            }
             if (d.emailSent === false && errNote) {
               errNote.textContent =
-                "We saved your request, but the confirmation email could not be sent" +
+                "Your slot is saved and confirmed — but the confirmation email could not be sent" +
                 (d.emailError ? " (" + d.emailError + ")" : "") +
-                ". We'll confirm your slot directly.";
+                ". Use the link above to manage your booking; we'll also follow up directly.";
               errNote.classList.add("show");
             } else {
               location.href = "/thank-you?src=booking";
