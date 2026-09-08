@@ -818,12 +818,21 @@ export const invoices = mysqlTable(
   "invoices",
   {
     id: serial("id").primaryKey(),
+    // Membership invoices reference their payment record. Consulting invoices
+    // (issued from a won lead) are created before any payment exists, so this
+    // is nullable and invoices.leadId carries the pipeline linkage instead.
     paymentRecordId: bigint("paymentRecordId", {
       mode: "number",
       unsigned: true,
-    })
-      .notNull()
-      .references(() => paymentRecords.id, { onDelete: "restrict" }),
+    }).references(() => paymentRecords.id, { onDelete: "restrict" }),
+    // Set when the invoice was issued against a won CRM lead (consulting).
+    leadId: bigint("leadId", { mode: "number", unsigned: true }).references(
+      () => leads.id,
+      { onDelete: "set null" }
+    ),
+    // External client snapshot for lead invoices (no member/user row exists).
+    payerName: varchar("payerName", { length: 255 }),
+    payerEmail: varchar("payerEmail", { length: 320 }),
     memberId: bigint("memberId", { mode: "number", unsigned: true }),
     userId: bigint("userId", { mode: "number", unsigned: true }).notNull(),
     invoiceNumber: varchar("invoiceNumber", { length: 32 }).notNull().unique(),
@@ -844,6 +853,7 @@ export const invoices = mysqlTable(
   },
   t => [
     index("ix_invoices_payment_record").on(t.paymentRecordId),
+    index("ix_invoices_lead").on(t.leadId),
     index("ix_invoices_user").on(t.userId),
     index("ix_invoices_member").on(t.memberId),
     index("ix_invoices_status").on(t.status),
@@ -911,6 +921,9 @@ export const leads = mysqlTable(
       .notNull()
       .default("new"),
     ownerUserId: bigint("ownerUserId", { mode: "number", unsigned: true }),
+    /* Scheduled next touch. When set, the follow-up-due view keys off this
+       instead of the age-based SLA. */
+    nextFollowUpAt: timestamp("nextFollowUpAt"),
     notes: text("notes"),
     updatedAt: timestamp("updatedAt")
       .defaultNow()

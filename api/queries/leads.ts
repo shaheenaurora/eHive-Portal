@@ -8,7 +8,9 @@ import { getDb } from "./connection";
 export const LEAD_NEW_SLA_HOURS = 24;
 export const LEAD_CONTACTED_SLA_HOURS = 72;
 
-/** SQL predicate selecting leads whose follow-up is overdue. */
+/** SQL predicate selecting leads whose follow-up is overdue. A manually
+ *  scheduled nextFollowUpAt wins; otherwise the age-based SLA applies
+ *  (new >24h, contacted >72h). */
 export function followUpDueCond(now: Date) {
   const newCutoff = new Date(
     now.getTime() - LEAD_NEW_SLA_HOURS * 60 * 60 * 1000
@@ -18,8 +20,13 @@ export function followUpDueCond(now: Date) {
   );
   return and(
     inArray(schema.leads.status, ["new", "contacted"]),
-    sql`(${schema.leads.status} = 'new' AND ${schema.leads.createdAt} <= ${newCutoff})
-        OR (${schema.leads.status} = 'contacted' AND ${schema.leads.updatedAt} <= ${contactedCutoff})`
+    sql`(
+        (${schema.leads.nextFollowUpAt} is not null AND ${schema.leads.nextFollowUpAt} <= ${now})
+        OR (${schema.leads.nextFollowUpAt} is null AND (
+          (${schema.leads.status} = 'new' AND ${schema.leads.createdAt} <= ${newCutoff})
+          OR (${schema.leads.status} = 'contacted' AND ${schema.leads.updatedAt} <= ${contactedCutoff})
+        ))
+      )`
   );
 }
 
@@ -60,4 +67,72 @@ export async function countFollowUpDue(now = new Date()): Promise<number> {
     .from(schema.leads)
     .where(followUpDueCond(now));
   return Number(rows.at(0)?.n ?? 0);
+}
+
+/** Best-effort product attribution for a lead (drives pipeline value by offer). */
+export function leadProduct(
+  lead: { form: string; payload: string | null },
+  recommendation: string | null
+): string {
+  if (lead.form === "clarity-scorecard" && recommendation)
+    return recommendation;
+  if (lead.form === "brand-check") return "Brand 3D";
+  try {
+    const p = JSON.parse(lead.payload ?? "{}") as Record<string, unknown>;
+    if (typeof p.product === "string" && p.product) return p.product;
+  } catch {
+    /* fall through */
+  }
+  return lead.form;
+}
+
+/** Consulting pipeline value — won leads reconciled against invoiced/paid
+ *  cash, attributed by product. Powers the Admin Reports pipeline-value view. */
+export async function leadPipelineReport() {
+  const rows = await getDb()
+    .select({
+      lead: schema.leads,
+      invoice: schema.invoices,
+      recommendation: schema.scorecardResults.recommendationProduct,
+    })
+    .from(schema.leads)
+    .leftJoin(schema.invoices, eq(schema.invoices.leadId, schema.leads.id))
+    .leftJoin(
+      schema.scorecardResults,
+      eq(schema.scorecardResults.leadId, schema.leads.id)
+    )
+    .where(eq(schema.leads.status, "won"));
+
+  const byProduct = new Map<
+    string,
+    { won: number; invoicedMinor: number; paidMinor: number }
+  >();
+  let invoicedMinor = 0;
+  let paidMinor = 0;
+  for (const r of rows) {
+    const product = leadProduct(r.lead, r.recommendation);
+    const bucket = byProduct.get(product) ?? {
+      won: 0,
+      invoicedMinor: 0,
+      paidMinor: 0,
+    };
+    bucket.won += 1;
+    if (r.invoice) {
+      bucket.invoicedMinor += Number(r.invoice.amount);
+      invoicedMinor += Number(r.invoice.amount);
+      if (r.invoice.status === "paid") {
+        bucket.paidMinor += Number(r.invoice.amount);
+        paidMinor += Number(r.invoice.amount);
+      }
+    }
+    byProduct.set(product, bucket);
+  }
+  return {
+    won: rows.length,
+    invoicedMinor,
+    paidMinor,
+    byProduct: [...byProduct.entries()]
+      .map(([product, v]) => ({ product, ...v }))
+      .sort((a, b) => b.invoicedMinor - a.invoicedMinor),
+  };
 }

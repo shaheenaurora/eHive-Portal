@@ -150,6 +150,63 @@ export type CreatedCreditNote = {
 };
 
 /**
+ * Issue an open (unpaid) consulting invoice against a won lead. No payment
+ * record exists yet — the client pays against this invoice later. The lead's
+ * contact snapshot is denormalised onto the invoice since external clients
+ * have no users/members row.
+ */
+export async function createInvoiceForLead(
+  tx: Tx,
+  lead: { id: number; email: string | null; payload: string | null },
+  input: {
+    amountMinor: number;
+    currency: string;
+    description: string;
+    dueDays?: number;
+    adminUserId: number;
+  }
+): Promise<CreatedInvoice> {
+  let payloadName: string | null = null;
+  try {
+    const p = JSON.parse(lead.payload ?? "{}") as Record<string, unknown>;
+    payloadName = typeof p.name === "string" && p.name ? p.name : null;
+  } catch {
+    /* leave null */
+  }
+  const billedAt = new Date();
+  const dueAt = new Date(
+    billedAt.getTime() + (input.dueDays ?? 14) * 24 * 60 * 60 * 1000
+  );
+  const invoiceNumber = await nextDocumentNumber(tx, "INV", billedAt);
+  const res = await tx.insert(schema.invoices).values({
+    leadId: lead.id,
+    payerName: payloadName,
+    payerEmail: lead.email,
+    userId: input.adminUserId,
+    invoiceNumber,
+    amount: input.amountMinor,
+    currency: input.currency,
+    status: "open",
+    billedAt,
+    dueAt,
+    lineItems: [
+      {
+        label: input.description,
+        quantity: 1,
+        amount: input.amountMinor,
+      },
+    ],
+  });
+  const id = Number((res as unknown as { insertId?: number }).insertId ?? 0);
+  return {
+    id,
+    invoiceNumber,
+    amount: input.amountMinor,
+    currency: input.currency,
+  };
+}
+
+/**
  * Create a credit note for a refund. If an invoice exists for the payment it is
  * linked for traceability.
  */
@@ -195,7 +252,7 @@ export async function createCreditNoteFromRefund(
 
 export type InvoiceRow = {
   id: number;
-  paymentRecordId: number;
+  paymentRecordId: number | null;
   memberId: number | null;
   userId: number;
   invoiceNumber: string;
@@ -236,8 +293,12 @@ export async function listInvoices(
       status: schema.invoices.status,
       billedAt: schema.invoices.billedAt,
       dueAt: schema.invoices.dueAt,
-      payerName: schema.users.name,
-      payerEmail: schema.users.email,
+      payerName: sql<
+        string | null
+      >`coalesce(${schema.invoices.payerName}, ${schema.users.name})`,
+      payerEmail: sql<
+        string | null
+      >`coalesce(${schema.invoices.payerEmail}, ${schema.users.email})`,
       createdAt: schema.invoices.createdAt,
     })
     .from(schema.invoices)
@@ -265,8 +326,12 @@ export async function getInvoiceById(id: number, scope?: FinanceScope) {
     await db
       .select({
         invoice: schema.invoices,
-        payerName: schema.users.name,
-        payerEmail: schema.users.email,
+        payerName: sql<
+          string | null
+        >`coalesce(${schema.invoices.payerName}, ${schema.users.name})`,
+        payerEmail: sql<
+          string | null
+        >`coalesce(${schema.invoices.payerEmail}, ${schema.users.email})`,
       })
       .from(schema.invoices)
       .leftJoin(schema.users, eq(schema.users.id, schema.invoices.userId))

@@ -23,7 +23,14 @@ const RAG_COLOR: Record<string, string> = {
   none: "var(--eh-line, #d8d2c4)",
 };
 const aedWhole = (n: number) => "AED " + Math.round(n).toLocaleString("en-AE");
-type Tab = "exec" | "chapters" | "atrisk" | "pipeline" | "conversion";
+type Tab =
+  | "exec"
+  | "chapters"
+  | "atrisk"
+  | "pipeline"
+  | "conversion"
+  | "retention"
+  | "consulting";
 
 function Dot({ status }: { status: string }) {
   return (
@@ -72,6 +79,16 @@ export default function AdminReports() {
       label: "Conversion funnel",
       can: adminHasScope(scopes, "full"),
     },
+    {
+      key: "retention",
+      label: "Retention & LTV",
+      can: adminHasScope(scopes, "membership"),
+    },
+    {
+      key: "consulting",
+      label: "Consulting pipeline",
+      can: adminHasScope(scopes, "finance"),
+    },
   ];
   const visible = TABS.filter(t => t.can);
   const [tab, setTab] = useState<Tab>(visible[0]?.key ?? "exec");
@@ -112,6 +129,8 @@ export default function AdminReports() {
           {active === "atrisk" && <AtRiskTab />}
           {active === "pipeline" && <PipelineTab />}
           {active === "conversion" && <ConversionTab />}
+          {active === "retention" && <RetentionTab />}
+          {active === "consulting" && <ConsultingTab />}
         </>
       )}
     </EhShell>
@@ -659,6 +678,294 @@ function ConversionTab() {
                 </span>
               </div>
             </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* Retention economics — renewal rate, churn, lifetime value and cohorts.
+   Definitions live next to the query (api/queries/reports.ts) so the numbers
+   stay defensible. */
+function RetentionTab() {
+  const q = trpc.admin.reportsRetention.useQuery(undefined, { retry: false });
+  const d = q.data;
+  const csv = () => {
+    if (!d) return;
+    downloadCsv(
+      "retention-cohorts",
+      [
+        ["month", "Month"],
+        ["joined", "Joined"],
+        ["lapsed", "Lapsed"],
+        ["retained_pct", "Retained %"],
+      ],
+      d.cohorts
+    );
+  };
+
+  return (
+    <div>
+      <Toolbar onCsv={csv} />
+      {q.isError && <LoadError onRetry={() => q.refetch()} />}
+      {q.isLoading && <Spinner />}
+      {d && (
+        <>
+          <div className="eh-grid g4">
+            <div className="eh-card">
+              <div className="eh-eyebrow" style={{ marginBottom: ".4rem" }}>
+                Renewal rate · 90d
+              </div>
+              <div
+                className="eh-num"
+                style={{ fontSize: "1.9rem", fontWeight: 800 }}
+              >
+                {d.renewalRatePct}%
+              </div>
+              <p className="eh-muted eh-sm" style={{ margin: ".25rem 0 0" }}>
+                {d.renewedLast90d} of {d.renewingNow} renewals due kept active.
+              </p>
+            </div>
+            <div className="eh-card">
+              <div className="eh-eyebrow" style={{ marginBottom: ".4rem" }}>
+                Churn · 90d
+              </div>
+              <div
+                className="eh-num"
+                style={{ fontSize: "1.9rem", fontWeight: 800 }}
+              >
+                {d.churnRatePct90}%
+              </div>
+              <p className="eh-muted eh-sm" style={{ margin: ".25rem 0 0" }}>
+                {d.churnedLast90d} members lapsed in the window.
+              </p>
+            </div>
+            <div className="eh-card">
+              <div className="eh-eyebrow" style={{ marginBottom: ".4rem" }}>
+                Avg tenure
+              </div>
+              <div
+                className="eh-num"
+                style={{ fontSize: "1.9rem", fontWeight: 800 }}
+              >
+                {d.avgTenureMonths}
+                <span style={{ fontSize: "1rem" }}> mo</span>
+              </div>
+              <p className="eh-muted eh-sm" style={{ margin: ".25rem 0 0" }}>
+                Current members, lapsed excluded.
+              </p>
+            </div>
+            <div className="eh-card">
+              <div className="eh-eyebrow" style={{ marginBottom: ".4rem" }}>
+                LTV proxy
+              </div>
+              <div
+                className="eh-num"
+                style={{
+                  fontSize: "1.9rem",
+                  fontWeight: 800,
+                  color: "var(--eh-gold)",
+                }}
+              >
+                {aedWhole(d.ltvAed)}
+              </div>
+              <p className="eh-muted eh-sm" style={{ margin: ".25rem 0 0" }}>
+                Avg tenure × blended dues of {aedWhole(d.blendedAnnualDuesAed)}
+                /yr. A proxy, not accounting data.
+              </p>
+            </div>
+          </div>
+
+          <div className="eh-grid g2" style={{ marginTop: ".8rem" }}>
+            <div className="eh-card">
+              <div className="eh-eyebrow" style={{ marginBottom: ".5rem" }}>
+                Cohorts by join month · last 12 months
+              </div>
+              <table className="eh-table stack">
+                <thead>
+                  <tr>
+                    <th>Month</th>
+                    <th>Joined</th>
+                    <th>Lapsed</th>
+                    <th>Retained</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {d.cohorts.map(c => (
+                    <tr key={c.month}>
+                      <td>{c.month}</td>
+                      <td className="eh-num">{c.joined}</td>
+                      <td className="eh-num">{c.lapsed}</td>
+                      <td>
+                        <Pill
+                          color={
+                            c.retainedPct >= 90
+                              ? "green"
+                              : c.retainedPct >= 70
+                                ? "gold"
+                                : "red"
+                          }
+                        >
+                          {c.retainedPct}%
+                        </Pill>
+                      </td>
+                    </tr>
+                  ))}
+                  {d.cohorts.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="eh-muted">
+                        No members joined in the last 12 months.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div className="eh-card">
+              <div className="eh-eyebrow" style={{ marginBottom: ".5rem" }}>
+                Lifecycle snapshot · {d.totalMembers} members
+              </div>
+              <div className="eh-list">
+                {Object.entries(d.lifecycle).map(([k, v]) => (
+                  <div className="row" key={k}>
+                    <span className="t">{k.replace(/_/g, " ")}</span>
+                    <span className="eh-num eh-strong">{v}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="eh-eyebrow" style={{ margin: "1rem 0 .5rem" }}>
+                12-month cohorts by chapter
+              </div>
+              <table className="eh-table stack">
+                <thead>
+                  <tr>
+                    <th>Chapter</th>
+                    <th>Joined</th>
+                    <th>Lapsed</th>
+                    <th>Retained</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {d.chapterCohorts.map(c => (
+                    <tr key={c.chapter}>
+                      <td>{c.chapter}</td>
+                      <td className="eh-num">{c.joined}</td>
+                      <td className="eh-num">{c.lapsed}</td>
+                      <td className="eh-num">{c.retainedPct}%</td>
+                    </tr>
+                  ))}
+                  {d.chapterCohorts.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="eh-muted">
+                        No chapter cohorts yet.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* Consulting pipeline value — won CRM leads reconciled against invoiced and
+   paid cash, attributed by product. Closes the loop between the leads inbox
+   and the finance ledger (audit B-P1-2). */
+function ConsultingTab() {
+  const q = trpc.admin.leadPipeline.useQuery(undefined, { retry: false });
+  const d = q.data;
+  const aed = (minor: number) => aedWhole(minor / 100);
+  return (
+    <div>
+      {q.isError && <LoadError onRetry={() => q.refetch()} />}
+      {q.isLoading && <Spinner />}
+      {d && (
+        <>
+          <div className="eh-grid g3">
+            <div className="eh-card">
+              <div className="eh-eyebrow" style={{ marginBottom: ".4rem" }}>
+                Won leads
+              </div>
+              <div
+                className="eh-num"
+                style={{ fontSize: "1.9rem", fontWeight: 800 }}
+              >
+                {d.won}
+              </div>
+              <p className="eh-muted eh-sm" style={{ margin: ".25rem 0 0" }}>
+                Marked won in the leads CRM.
+              </p>
+            </div>
+            <div className="eh-card">
+              <div className="eh-eyebrow" style={{ marginBottom: ".4rem" }}>
+                Invoiced
+              </div>
+              <div
+                className="eh-num"
+                style={{ fontSize: "1.9rem", fontWeight: 800 }}
+              >
+                {aed(d.invoicedMinor)}
+              </div>
+              <p className="eh-muted eh-sm" style={{ margin: ".25rem 0 0" }}>
+                Open + paid consulting invoices on won leads.
+              </p>
+            </div>
+            <div className="eh-card">
+              <div className="eh-eyebrow" style={{ marginBottom: ".4rem" }}>
+                Collected
+              </div>
+              <div
+                className="eh-num"
+                style={{
+                  fontSize: "1.9rem",
+                  fontWeight: 800,
+                  color: "var(--eh-good, #2e7d5b)",
+                }}
+              >
+                {aed(d.paidMinor)}
+              </div>
+              <p className="eh-muted eh-sm" style={{ margin: ".25rem 0 0" }}>
+                Paid invoices against won leads.
+              </p>
+            </div>
+          </div>
+
+          <div className="eh-card" style={{ marginTop: ".8rem" }}>
+            <div className="eh-eyebrow" style={{ marginBottom: ".5rem" }}>
+              By product
+            </div>
+            <table className="eh-table stack">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Won</th>
+                  <th>Invoiced</th>
+                  <th>Collected</th>
+                </tr>
+              </thead>
+              <tbody>
+                {d.byProduct.map(p => (
+                  <tr key={p.product}>
+                    <td>{p.product}</td>
+                    <td className="eh-num">{p.won}</td>
+                    <td className="eh-num">{aed(p.invoicedMinor)}</td>
+                    <td className="eh-num">{aed(p.paidMinor)}</td>
+                  </tr>
+                ))}
+                {d.byProduct.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="eh-muted">
+                      No won leads yet — mark a lead won in the Leads inbox to
+                      start tracking pipeline value.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </>
       )}

@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lte, ne, sql } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "./connection";
 import { TIER_PRICE_AED } from "@contracts/constants";
@@ -301,4 +301,170 @@ export async function renewalsReport(scope?: { chapterIds?: number[] }) {
     .orderBy(schema.members.renewalAt)
     .limit(500);
   return rows;
+}
+
+/**
+ * Retention economics — renewal rate, churn, lifetime value and cohorts.
+ *
+ * Definitions (documented so the numbers are defensible):
+ *  - Renewal rate: members whose renewalAt fell in the last 90 days and who
+ *    are not lapsed, ÷ all whose renewalAt fell in that window.
+ *  - Churn (90d): members entering `lapsed` in the last 90 days (updatedAt
+ *    approximates the transition timestamp).
+ *  - Cohorts: members who joined in the last 12 months, grouped by join month
+ *    and by home chapter; retention = not-lapsed share.
+ *  - LTV proxy: average tenure (years) of current members × blended annual
+ *    dues of the live tier mix (TIER_PRICE_AED). A proxy, not accounting data.
+ */
+export async function retentionMetrics() {
+  const db = getDb();
+  const now = new Date();
+  const HOUR = 60 * 60 * 1000;
+  const DAY = 24 * HOUR;
+  const m12 = new Date(now.getTime() - 365 * DAY);
+  const d90 = new Date(now.getTime() - 90 * DAY);
+
+  const [states, cohortRows, renewalRows, churnedRow, tenureRow, tierRows] =
+    await Promise.all([
+      db
+        .select({
+          state: schema.members.lifecycleState,
+          n: sql<number>`count(*)`,
+        })
+        .from(schema.members)
+        .groupBy(schema.members.lifecycleState),
+      db
+        .select({
+          joinedAt: schema.members.joinedAt,
+          lifecycleState: schema.members.lifecycleState,
+          tier: schema.members.tier,
+          homeChapterId: schema.members.homeChapterId,
+        })
+        .from(schema.members)
+        .where(gte(schema.members.joinedAt, m12)),
+      db
+        .select({ lifecycleState: schema.members.lifecycleState })
+        .from(schema.members)
+        .where(
+          and(
+            sql`${schema.members.renewalAt} is not null`,
+            lte(schema.members.renewalAt, now),
+            gte(schema.members.renewalAt, d90)
+          )
+        ),
+      db
+        .select({ n: sql<number>`count(*)` })
+        .from(schema.members)
+        .where(
+          and(
+            eq(schema.members.lifecycleState, "lapsed"),
+            gte(schema.members.updatedAt, d90)
+          )
+        ),
+      db
+        .select({
+          avgMonths: sql<number>`avg(timestampdiff(MONTH, ${schema.members.joinedAt}, ${now}))`,
+        })
+        .from(schema.members)
+        .where(ne(schema.members.lifecycleState, "lapsed")),
+      db
+        .select({
+          tier: schema.members.tier,
+          n: sql<number>`count(*)`,
+        })
+        .from(schema.members)
+        .where(ne(schema.members.lifecycleState, "lapsed"))
+        .groupBy(schema.members.tier),
+    ]);
+
+  const lifecycle = Object.fromEntries(states.map(s => [s.state, Number(s.n)]));
+  const totalMembers = states.reduce((a, s) => a + Number(s.n), 0);
+
+  const renewed = renewalRows.filter(r => r.lifecycleState !== "lapsed").length;
+  const retentionPct = pct(renewed, renewalRows.length);
+
+  const lapsed90 = Number(churnedRow.at(0)?.n ?? 0);
+  // Members active 90 days ago ≈ current non-lapsed members plus those who
+  // lapsed within the window (they were active at its start).
+  const totalLapsed = Number(lifecycle["lapsed"] ?? 0);
+  const active90Ago = totalMembers - totalLapsed + lapsed90;
+  const churnPct90 = pct(lapsed90, active90Ago);
+
+  // Cohorts by join month.
+  const byMonth = new Map<string, { joined: number; lapsed: number }>();
+  for (const r of cohortRows) {
+    const key = new Date(r.joinedAt).toISOString().slice(0, 7);
+    const b = byMonth.get(key) ?? { joined: 0, lapsed: 0 };
+    b.joined += 1;
+    if (r.lifecycleState === "lapsed") b.lapsed += 1;
+    byMonth.set(key, b);
+  }
+  const cohorts = [...byMonth.entries()].sort().map(([month, b]) => ({
+    month,
+    joined: b.joined,
+    lapsed: b.lapsed,
+    retainedPct: pct(b.joined - b.lapsed, b.joined),
+  }));
+
+  // Cohort rollup by home chapter.
+  const chapterIds = [...new Set(cohortRows.map(r => r.homeChapterId))].filter(
+    (v): v is number => typeof v === "number"
+  );
+  const chapterNames = new Map<number, string>();
+  if (chapterIds.length) {
+    const chaps = await db
+      .select({ id: schema.chapters.id, name: schema.chapters.name })
+      .from(schema.chapters)
+      .where(inArray(schema.chapters.id, chapterIds));
+    for (const c of chaps) chapterNames.set(c.id, c.name);
+  }
+  const byChapter = new Map<number, { joined: number; lapsed: number }>();
+  for (const r of cohortRows) {
+    if (typeof r.homeChapterId !== "number") continue;
+    const b = byChapter.get(r.homeChapterId) ?? { joined: 0, lapsed: 0 };
+    b.joined += 1;
+    if (r.lifecycleState === "lapsed") b.lapsed += 1;
+    byChapter.set(r.homeChapterId, b);
+  }
+  const chapterCohorts = [...byChapter.entries()]
+    .map(([chapterId, b]) => ({
+      chapter: chapterNames.get(chapterId) ?? `Chapter ${chapterId}`,
+      joined: b.joined,
+      lapsed: b.lapsed,
+      retainedPct: pct(b.joined - b.lapsed, b.joined),
+    }))
+    .sort((a, b) => b.joined - a.joined);
+
+  // LTV proxy.
+  const avgTenureMonths = Number(tenureRow.at(0)?.avgMonths ?? 0);
+  const activeCount = tierRows.reduce((a, t) => a + Number(t.n), 0);
+  const blendedAed =
+    activeCount > 0
+      ? tierRows.reduce(
+          (a, t) =>
+            a +
+            (Number(
+              TIER_PRICE_AED[t.tier as keyof typeof TIER_PRICE_AED] ?? 0
+            ) *
+              Number(t.n)) /
+              activeCount,
+          0
+        )
+      : 0;
+  const ltvAed = (avgTenureMonths / 12) * blendedAed;
+
+  return {
+    totalMembers,
+    lifecycle,
+    renewingNow: renewalRows.length,
+    renewedLast90d: renewed,
+    renewalRatePct: retentionPct,
+    churnedLast90d: lapsed90,
+    churnRatePct90: churnPct90,
+    avgTenureMonths: Math.round(avgTenureMonths * 10) / 10,
+    blendedAnnualDuesAed: Math.round(blendedAed),
+    ltvAed: Math.round(ltvAed),
+    cohorts,
+    chapterCohorts,
+  };
 }

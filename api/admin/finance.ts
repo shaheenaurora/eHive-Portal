@@ -205,9 +205,13 @@ export const financeRouter = createRouter({
           lead: schema.leads,
           ownerName: owner.name,
           ownerEmail: owner.email,
+          /* Won leads: the consulting invoice issued against them, if any. */
+          invoiceNumber: schema.invoices.invoiceNumber,
+          invoiceStatus: schema.invoices.status,
         })
         .from(schema.leads)
         .leftJoin(owner, eq(owner.id, schema.leads.ownerUserId))
+        .leftJoin(schema.invoices, eq(schema.invoices.leadId, schema.leads.id))
         .where(conds.length ? and(...conds) : undefined)
         .orderBy(
           input?.due ? schema.leads.updatedAt : desc(schema.leads.createdAt)
@@ -217,6 +221,8 @@ export const financeRouter = createRouter({
         ...r.lead,
         ownerName: r.ownerName,
         ownerEmail: r.ownerEmail,
+        invoiceNumber: r.invoiceNumber,
+        invoiceStatus: r.invoiceStatus,
       }));
     }),
 
@@ -234,7 +240,7 @@ export const financeRouter = createRouter({
     return { due: await countFollowUpDue(new Date()) };
   }),
 
-  /* Update a lead's CRM fields (status / owner / notes). */
+  /* Update a lead's CRM fields (status / owner / notes / next follow-up). */
   updateLead: scopedAdmin("finance")
     .input(
       z.object({
@@ -244,6 +250,8 @@ export const financeRouter = createRouter({
           .optional(),
         ownerUserId: z.number().int().positive().nullable().optional(),
         notes: z.string().max(5000).optional(),
+        /* ISO datetime, or null to clear back to the age-based SLA. */
+        nextFollowUpAt: z.string().datetime().nullable().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -251,6 +259,10 @@ export const financeRouter = createRouter({
       if (input.status !== undefined) set.status = input.status;
       if (input.ownerUserId !== undefined) set.ownerUserId = input.ownerUserId;
       if (input.notes !== undefined) set.notes = input.notes;
+      if (input.nextFollowUpAt !== undefined)
+        set.nextFollowUpAt = input.nextFollowUpAt
+          ? new Date(input.nextFollowUpAt)
+          : null;
       if (!Object.keys(set).length) return { ok: true };
       await getDb()
         .update(schema.leads)
@@ -263,6 +275,66 @@ export const financeRouter = createRouter({
       });
       return { ok: true };
     }),
+
+  /* Issue an open consulting invoice against a won lead. */
+  createLeadInvoice: scopedAdmin("finance")
+    .input(
+      z.object({
+        leadId: z.number().int().positive(),
+        amountAed: z.number().positive().max(10_000_000),
+        description: z.string().min(2).max(500),
+        dueDays: z.number().int().min(1).max(120).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const lead = (
+        await getDb()
+          .select()
+          .from(schema.leads)
+          .where(eq(schema.leads.id, input.leadId))
+          .limit(1)
+      ).at(0);
+      if (!lead)
+        throw new TRPCError({ code: "NOT_FOUND", message: "Lead not found." });
+      if (lead.status !== "won")
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Mark the lead as won before invoicing.",
+        });
+      const existing = await getDb()
+        .select({ id: schema.invoices.id })
+        .from(schema.invoices)
+        .where(eq(schema.invoices.leadId, lead.id))
+        .limit(1);
+      if (existing.length)
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "An invoice already exists for this lead.",
+        });
+      const { withTransaction } = await import("../queries/transaction");
+      const { createInvoiceForLead } = await import("../queries/invoicing");
+      const created = await withTransaction(async tx =>
+        createInvoiceForLead(tx, lead, {
+          amountMinor: Math.round(input.amountAed * 100),
+          currency: "aed",
+          description: input.description,
+          dueDays: input.dueDays ?? 14,
+          adminUserId: ctx.user.id,
+        })
+      );
+      await audit(ctx.user, "lead.invoice", {
+        type: "lead",
+        id: lead.id,
+        detail: created.invoiceNumber,
+      });
+      return created;
+    }),
+
+  /* Consulting pipeline value: won leads vs invoiced vs paid, by product. */
+  leadPipeline: scopedAdmin("finance").query(async () => {
+    const { leadPipelineReport } = await import("../queries/leads");
+    return leadPipelineReport();
+  }),
 
   /* ------------------------------- Finance ------------------------------- */
   financeSummary: scopedAdmin("finance").query(async ({ ctx }) => {

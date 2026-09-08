@@ -27,9 +27,12 @@ type LeadRow = {
   createdAt: Date | string;
   status: LeadStatus;
   ownerUserId: number | null;
+  nextFollowUpAt: Date | string | null;
   notes: string | null;
   ownerName: string | null;
   ownerEmail: string | null;
+  invoiceNumber: string | null;
+  invoiceStatus: string | null;
 };
 
 const STATUS_COLOR: Record<
@@ -47,6 +50,7 @@ export default function AdminLeads() {
   const [q2, setQ2] = useState("");
   const [status, setStatus] = useState<LeadStatus | "">("");
   const [due, setDue] = useState(false);
+  const [view, setView] = useState<"list" | "board">("list");
   const q = trpc.admin.leads.useQuery(
     {
       q: q2 || undefined,
@@ -54,6 +58,11 @@ export default function AdminLeads() {
       due: due || undefined,
     },
     { retry: false }
+  );
+  // The board always shows every stage at once.
+  const all = trpc.admin.leads.useQuery(
+    { q: q2 || undefined },
+    { retry: false, enabled: view === "board" }
   );
   const counts = trpc.admin.leadCounts.useQuery(undefined, { retry: false });
   const dueCount = trpc.admin.leadDueCount.useQuery(undefined, {
@@ -69,6 +78,7 @@ export default function AdminLeads() {
     setStatus("");
     setDue(v => !v);
   };
+  const active = view === "board" ? all : q;
 
   return (
     <EhShell groups={ADMIN_NAV} brandSub="Admin">
@@ -102,6 +112,19 @@ export default function AdminLeads() {
             {counts.data?.[s] ? ` · ${counts.data[s]}` : ""}
           </button>
         ))}
+        <span style={{ flex: 1 }} />
+        <button
+          className={view === "list" ? "on" : ""}
+          onClick={() => setView("list")}
+        >
+          List
+        </button>
+        <button
+          className={view === "board" ? "on" : ""}
+          onClick={() => setView("board")}
+        >
+          Board
+        </button>
       </div>
 
       <div className="eh-row eh-mb">
@@ -114,17 +137,17 @@ export default function AdminLeads() {
         />
       </div>
 
-      {q.isLoading && <Spinner />}
-      {q.isError && (
+      {active.isLoading && <Spinner />}
+      {active.isError && (
         <div className="eh-card">
           <Empty big="Couldn't load leads." p="Try again in a moment.">
-            <button className="eh-btn ghost" onClick={() => q.refetch()}>
+            <button className="eh-btn ghost" onClick={() => active.refetch()}>
               Retry
             </button>
           </Empty>
         </div>
       )}
-      {q.data && q.data.length === 0 && (
+      {active.data && active.data.length === 0 && (
         <div className="eh-card">
           <Empty
             big="No leads here yet."
@@ -133,7 +156,93 @@ export default function AdminLeads() {
         </div>
       )}
 
-      {q.data && q.data.length > 0 && (
+      {view === "board" && active.data && active.data.length > 0 && (
+        <div
+          className="eh-mb"
+          style={{
+            display: "grid",
+            gridTemplateColumns: `repeat(${LEAD_STATUSES.length}, minmax(210px, 1fr))`,
+            gap: ".8rem",
+            alignItems: "start",
+            overflowX: "auto",
+          }}
+        >
+          {LEAD_STATUSES.map(s => {
+            const cards = (active.data as LeadRow[]).filter(
+              l => l.status === s
+            );
+            return (
+              <div
+                key={s}
+                className="eh-card"
+                style={{ padding: ".7rem", background: "var(--eh-paper)" }}
+              >
+                <div className="eh-between" style={{ marginBottom: ".5rem" }}>
+                  <Pill color={STATUS_COLOR[s]}>{LEAD_STATUS_LABEL[s]}</Pill>
+                  <span className="eh-sm eh-muted">{cards.length}</span>
+                </div>
+                <div style={{ display: "grid", gap: ".5rem" }}>
+                  {cards.map(l => (
+                    <button
+                      key={l.id}
+                      type="button"
+                      onClick={() => setSel(l)}
+                      style={{
+                        textAlign: "left",
+                        background: "var(--eh-card, #fff)",
+                        border: "1px solid var(--eh-line)",
+                        borderRadius: 8,
+                        padding: ".55rem .65rem",
+                        cursor: "pointer",
+                        font: "inherit",
+                      }}
+                    >
+                      <div className="eh-sm" style={{ fontWeight: 600 }}>
+                        {leadName(l) ?? l.email ?? "—"}
+                      </div>
+                      <div
+                        className="eh-sm eh-muted"
+                        style={{ marginTop: ".15rem" }}
+                      >
+                        {formLabel(l.form)} · {relAge(l.createdAt)}
+                      </div>
+                      {l.nextFollowUpAt && (
+                        <div className="eh-sm" style={{ marginTop: ".2rem" }}>
+                          <Pill
+                            color={
+                              new Date(l.nextFollowUpAt) <= new Date()
+                                ? "red"
+                                : "grey"
+                            }
+                          >
+                            Follow-up {fmtDateTime(l.nextFollowUpAt)}
+                          </Pill>
+                        </div>
+                      )}
+                      {l.invoiceNumber && (
+                        <div
+                          className="eh-sm eh-muted"
+                          style={{ marginTop: ".2rem" }}
+                        >
+                          {l.invoiceNumber}
+                          {l.invoiceStatus === "paid" ? " · paid" : " · open"}
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                  {cards.length === 0 && (
+                    <p className="eh-sm eh-muted" style={{ margin: ".2rem 0" }}>
+                      Nothing here.
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {view === "list" && q.data && q.data.length > 0 && (
         <div className="eh-card" style={{ padding: ".4rem 1.25rem" }}>
           <table className="eh-table stack">
             <thead>
@@ -256,6 +365,11 @@ function LeadDetail({
     lead.ownerUserId ? String(lead.ownerUserId) : ""
   );
   const [notes, setNotes] = useState(lead.notes ?? "");
+  const [nextFollowUpAt, setNextFollowUpAt] = useState<string>(
+    lead.nextFollowUpAt
+      ? new Date(lead.nextFollowUpAt).toISOString().slice(0, 16)
+      : ""
+  );
 
   return (
     <Modal
@@ -474,6 +588,14 @@ function LeadDetail({
             ))}
           </select>
         </Field>
+        <Field label="Next follow-up (drives the due list)">
+          <input
+            className="eh-input"
+            type="datetime-local"
+            value={nextFollowUpAt}
+            onChange={e => setNextFollowUpAt(e.target.value)}
+          />
+        </Field>
       </div>
       <Field label="Notes">
         <textarea
@@ -492,12 +614,93 @@ function LeadDetail({
             status,
             ownerUserId: owner ? Number(owner) : null,
             notes,
+            nextFollowUpAt: nextFollowUpAt
+              ? new Date(nextFollowUpAt).toISOString()
+              : null,
           })
         }
       >
         {update.isPending ? "Saving…" : "Save"}
       </button>
+
+      {/* ---- Invoice (won leads) ---- */}
+      {status === "won" && (
+        <div
+          className="eh-card eh-mt"
+          style={{ background: "var(--eh-paper)" }}
+        >
+          <div className="eh-eyebrow" style={{ color: "var(--eh-gold)" }}>
+            Consulting invoice
+          </div>
+          {lead.invoiceNumber ? (
+            <p className="eh-sm" style={{ margin: ".3rem 0 0" }}>
+              {lead.invoiceNumber} · {lead.invoiceStatus}
+            </p>
+          ) : (
+            <LeadInvoiceForm lead={lead} onDone={onSaved} />
+          )}
+        </div>
+      )}
     </Modal>
+  );
+}
+
+/** Issue the first invoice for a won lead (one per lead, enforced server-side). */
+function LeadInvoiceForm({
+  lead,
+  onDone,
+}: {
+  lead: LeadRow;
+  onDone: () => void;
+}) {
+  const [amount, setAmount] = useState("");
+  const [description, setDescription] = useState(
+    `${formLabel(lead.form)} — consulting engagement`
+  );
+  const create = trpc.admin.createLeadInvoice.useMutation({
+    onSuccess: r => {
+      toast(`Invoice ${r.invoiceNumber} created.`);
+      onDone();
+    },
+    onError: e => toast(e.message),
+  });
+  return (
+    <div
+      className="eh-grid g2"
+      style={{ marginTop: ".4rem", alignItems: "end" }}
+    >
+      <Field label="Amount (AED)">
+        <input
+          className="eh-input"
+          inputMode="decimal"
+          placeholder="e.g. 15000"
+          value={amount}
+          onChange={e => setAmount(e.target.value)}
+        />
+      </Field>
+      <Field label="Description">
+        <input
+          className="eh-input"
+          value={description}
+          onChange={e => setDescription(e.target.value)}
+        />
+      </Field>
+      <div>
+        <button
+          className="eh-btn"
+          disabled={create.isPending || !Number(amount) || Number(amount) <= 0}
+          onClick={() =>
+            create.mutate({
+              leadId: lead.id,
+              amountAed: Number(amount),
+              description,
+            })
+          }
+        >
+          {create.isPending ? "Creating…" : "Create invoice"}
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -508,6 +711,15 @@ function leadName(l: { payload: string | null }): string | null {
   } catch {
     return null;
   }
+}
+
+/** Compact age label for board cards: "3h ago", "2d ago". */
+function relAge(d: Date | string): string {
+  const ms = Date.now() - new Date(d).getTime();
+  const h = Math.floor(ms / (60 * 60 * 1000));
+  if (h < 1) return "just now";
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
 }
 const FORM_LABELS: Record<string, string> = {
   "clarity-scorecard": "Clarity Scorecard",

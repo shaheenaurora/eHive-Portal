@@ -22,7 +22,7 @@ import {
   tierChangeHistory,
 } from "../queries/member-admin";
 import { kycQueue, getKyc, reviewKyc } from "../queries/kyc";
-import { pipelineReport } from "../queries/reports";
+import { pipelineReport, retentionMetrics } from "../queries/reports";
 import { audit } from "../lib/audit";
 import { recordAnalyticsEvent } from "../queries/analytics";
 import { sendMail } from "../lib/mailer";
@@ -962,4 +962,7 @@ export const membershipRouter = createRouter({
 
   /* --------------------------------- FRP ---------------------------------- */
   reportsPipeline: scopedAdmin("membership").query(() => pipelineReport()),
+
+  /* Retention economics — renewal/churn/LTV + cohorts (join month, chapter). */
+  reportsRetention: scopedAdmin("membership").query(() => retentionMetrics()),
 });
