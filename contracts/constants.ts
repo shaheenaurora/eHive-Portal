@@ -33,7 +33,7 @@ export const TIER_LABEL: Record<Tier, string> = {
 export const TIER_PRICE: Record<Tier, string> = {
   horizon: "AED 999/yr",
   ascent: "AED 5,999/yr",
-  vanguard: "AED 11,999/yr",
+  vanguard: "AED 12,000/yr",
   zenith: "AED 29,999/yr",
 };
 export function tierRank(t: string): number {
@@ -73,12 +73,21 @@ export function convertToBaseMinor(
 export const TIER_PRICE_AED: Record<Tier, number> = {
   horizon: 999,
   ascent: 5999,
-  vanguard: 11999,
+  vanguard: 12000, // founding rate, matches the public launch page
   zenith: 29999,
 };
-/** Tiers that can be joined by self-serve online payment. Zenith is application-only. */
-export const SELF_SERVE_TIERS = ["horizon", "ascent", "vanguard"] as const;
+/* Tiers that can be joined by self-serve online payment. During the founding
+ * cohort only Vanguard is open (Horizon and Ascent open later; Zenith is
+ * application-only). Vanguard itself is application-only while
+ * VANGUARD_FOUNDING_APPLICATION_ONLY holds — see below. */
+export const SELF_SERVE_TIERS = ["vanguard"] as const;
 export type SelfServeTier = (typeof SELF_SERVE_TIERS)[number];
+
+/* Launch window (founding cohort): Vanguard is sold strictly by application
+ * ("forty seats, by application" — the public site's whole positioning), so
+ * instant pay-to-join is disabled even though Vanguard is the only open tier.
+ * Flip to false after the founding cohort to restore instant payment. */
+export const VANGUARD_FOUNDING_APPLICATION_ONLY = true;
 
 export const MEMBER_STATUSES = ["active", "paused", "cancelled"] as const;
 export type MemberStatus = (typeof MEMBER_STATUSES)[number];

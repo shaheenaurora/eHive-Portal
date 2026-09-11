@@ -36,6 +36,7 @@ import {
   tierRank,
   TIER_PRICE_AED,
   SELF_SERVE_TIERS,
+  VANGUARD_FOUNDING_APPLICATION_ONLY,
   memberCanAccessEvent,
   eventEligibleTiers,
   TIER_LABEL,
@@ -146,6 +147,16 @@ export const circleRouter = createRouter({
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
           message: "Online payment isn't enabled yet — please apply instead.",
+        });
+      /* Founding cohort: Vanguard is strictly by application ("forty seats,
+       * by application" is the public positioning) — no instant pay-to-join
+       * while the founding window holds. Flip VANGUARD_FOUNDING_APPLICATION_ONLY
+       * off after the cohort to restore instant payment. */
+      if (input.tier === "vanguard" && VANGUARD_FOUNDING_APPLICATION_ONLY)
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "During the founding cohort, Vanguard membership is by application — submit your application and we'll be in touch within a few days.",
         });
       const existing = await getMemberByUserId(ctx.user.id);
       if (existing)

@@ -8,7 +8,12 @@ import {
   TIER_LABEL,
   TIER_PRICE,
   SELF_SERVE_TIERS,
+  VANGUARD_FOUNDING_APPLICATION_ONLY,
 } from "@contracts/constants";
+
+/* Tiers open for application during the founding cohort. Horizon and Ascent
+   are named but open later; Zenith stays invitation-only. */
+const OPEN_APPLY_TIERS = ["vanguard", "zenith"] as const;
 
 const STAGES = [
   "Idea",
@@ -51,7 +56,7 @@ export default function Apply() {
     retry: false,
   });
 
-  const [tier, setTier] = useState<string>("ascent");
+  const [tier, setTier] = useState<string>("vanguard");
   const [consent, setConsent] = useState(false);
   const [muslimIdentity, setMuslimIdentity] = useState(false);
   const [valuesAligned, setValuesAligned] = useState(false);
@@ -60,6 +65,7 @@ export default function Apply() {
   const canPayNow =
     !!pay.data?.enabled &&
     (SELF_SERVE_TIERS as readonly string[]).includes(tier) &&
+    !VANGUARD_FOUNDING_APPLICATION_ONLY &&
     !me.data?.member;
 
   const gateMode = gate.data?.mode ?? "open";
@@ -280,47 +286,72 @@ export default function Apply() {
             approves your application (or you join &amp; pay).
           </p>
           <div className="eh-list">
-            {TIERS.map(t => (
-              <label
-                key={t}
-                className="row"
-                style={{ cursor: "pointer", alignItems: "flex-start" }}
-              >
-                <input
-                  type="radio"
-                  name="tier"
-                  checked={tier === t}
-                  onChange={() => setTier(t)}
-                  style={{ marginTop: ".35rem", accentColor: "#b8862e" }}
-                />
-                <div style={{ flex: 1 }}>
-                  <div className="eh-between">
-                    <span className="t">
-                      {TIER_LABEL[t]}
-                      {t === "ascent" && (
-                        <span style={{ marginLeft: ".4rem" }}>
-                          <Pill>Recommended</Pill>
-                        </span>
-                      )}
-                    </span>
-                    <span className="eh-muted eh-sm eh-num">
-                      {TIER_PRICE[t]}
-                    </span>
+            {TIERS.map(t => {
+              const opensLater = !(
+                OPEN_APPLY_TIERS as readonly string[]
+              ).includes(t);
+              return (
+                <label
+                  key={t}
+                  className="row"
+                  style={{
+                    cursor: opensLater ? "not-allowed" : "pointer",
+                    alignItems: "flex-start",
+                    opacity: opensLater ? 0.6 : 1,
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="tier"
+                    checked={tier === t}
+                    disabled={opensLater}
+                    onChange={() => setTier(t)}
+                    style={{ marginTop: ".35rem", accentColor: "#b8862e" }}
+                  />
+                  <div style={{ flex: 1 }}>
+                    <div className="eh-between">
+                      <span className="t">
+                        {TIER_LABEL[t]}
+                        {t === "vanguard" && (
+                          <span style={{ marginLeft: ".4rem" }}>
+                            <Pill>Founding cohort</Pill>
+                          </span>
+                        )}
+                        {opensLater && (
+                          <span style={{ marginLeft: ".4rem" }}>
+                            <Pill>Opens later</Pill>
+                          </span>
+                        )}
+                      </span>
+                      <span className="eh-muted eh-sm eh-num">
+                        {opensLater ? "Opens later" : TIER_PRICE[t]}
+                      </span>
+                    </div>
+                    <div className="d">
+                      {t === "horizon" &&
+                        "Early founders. Community events, the library and one pod."}
+                      {t === "ascent" &&
+                        "Growing teams. Pods, Circle Dinners, the full library."}
+                      {t === "vanguard" &&
+                        "The founding tier: a confidential peer advisory board, a values-aligned community, and advisory to build. Forty founding seats, by application."}
+                      {t === "zenith" &&
+                        "Invitation-only. Council seats and first call on everything."}
+                    </div>
                   </div>
-                  <div className="d">
-                    {t === "horizon" &&
-                      "Early founders. Community events, the library and one pod."}
-                    {t === "ascent" &&
-                      "Growing teams. Pods, Circle Dinners, the full library."}
-                    {t === "vanguard" &&
-                      "Scaling operators. Masterminds, retreats, the FRP."}
-                    {t === "zenith" &&
-                      "Invitation-only. Council seats and first call on everything."}
-                  </div>
-                </div>
-              </label>
-            ))}
+                </label>
+              );
+            })}
           </div>
+          {tier === "vanguard" && VANGUARD_FOUNDING_APPLICATION_ONLY && (
+            <div className="eh-locked eh-mt" style={{ display: "block" }}>
+              <Pill>By application</Pill>
+              <p className="eh-sm" style={{ margin: ".4rem 0 0" }}>
+                The founding cohort is capped at forty seats and membership is
+                by application — submit the form and we&apos;ll be in touch
+                within a few days to talk properly.
+              </p>
+            </div>
+          )}
           {tier === "zenith" && (
             <div className="eh-locked eh-mt">
               <Pill>Invitation-only</Pill>

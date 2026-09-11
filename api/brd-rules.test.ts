@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   TIERS,
   TIER_PRICE,
+  SELF_SERVE_TIERS,
+  VANGUARD_FOUNDING_APPLICATION_ONLY,
   POINT_RULE_DEFAULTS,
   ZENITH_CAP,
   BUDDY_PAIR_WITHIN_DAYS,
@@ -42,8 +44,17 @@ describe("BRD §7.1 — membership tiers", () => {
   it("prices each tier per the BRD (AED / year)", () => {
     expect(TIER_PRICE.horizon).toBe("AED 999/yr");
     expect(TIER_PRICE.ascent).toBe("AED 5,999/yr");
-    expect(TIER_PRICE.vanguard).toBe("AED 11,999/yr");
+    // Vanguard founding rate: AED 12,000/yr per the Vanguard launch decision
+    // (eHive_Vanguard_Website_Integration.docx), matching the public site.
+    expect(TIER_PRICE.vanguard).toBe("AED 12,000/yr");
     expect(TIER_PRICE.zenith).toBe("AED 29,999/yr");
+  });
+
+  it("opens only Vanguard for self-serve during the founding cohort", () => {
+    // Horizon/Ascent open later; Zenith is application-only (BRD unchanged).
+    // Vanguard itself is application-only while the founding window holds.
+    expect([...SELF_SERVE_TIERS]).toEqual(["vanguard"]);
+    expect(VANGUARD_FOUNDING_APPLICATION_ONLY).toBe(true);
   });
 });
 
