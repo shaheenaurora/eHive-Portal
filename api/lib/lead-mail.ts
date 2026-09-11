@@ -239,6 +239,10 @@ export async function notifyLead(input: {
   email: string | null;
   payload: Record<string, unknown>;
   sourcePage: string | null;
+  /* Email of the CRM owner the lead was auto-assigned to, when assignment
+   * succeeded. They get a direct "assigned to you" copy so a lead never
+   * waits unseen in the shared inbox. */
+  ownerEmail?: string | null;
 }): Promise<{
   ok: boolean;
   ownerSent: boolean;
@@ -253,7 +257,20 @@ export async function notifyLead(input: {
       error: "Email is not configured.",
     };
   }
-  const meta = FORM_META[input.form] ?? GENERIC;
+  const base = FORM_META[input.form] ?? GENERIC;
+  /* Founding-cohort applicants (Vanguard via /apply.html?tier=vanguard) get a
+   * launch-window confirmation that names the cohort and the 1 October date. */
+  const founding =
+    input.form === "membership-application" &&
+    String(input.payload.tier_of_interest ?? "") === "Vanguard";
+  const meta = founding
+    ? {
+        ...base,
+        subject: "We've received your founding application — eHive",
+        intro:
+          "Thank you for applying to the founding Vanguard cohort — forty seats, opening 1 October. We review every applicant personally and will be in touch within a few days. We're glad you're here.",
+      }
+    : base;
   const rows = fieldRows(input.payload);
 
   let ownerSent = false;
@@ -276,6 +293,25 @@ export async function notifyLead(input: {
       replyTo: input.email || undefined,
     });
     ownerSent = r.ok;
+    if (!r.ok && r.error) errors.push(r.error);
+  }
+
+  // 1b) Notify the assigned CRM owner directly — speed-to-lead depends on the
+  // person who owns the follow-up actually knowing the lead exists.
+  if (input.ownerEmail && input.ownerEmail !== notifyTo) {
+    const assignHtml = shell(`
+      <p style="margin:0 0 4px;color:#b8862e;font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:700">Assigned to you · ${esc(meta.label)}</p>
+      <h1 style="margin:0 0 12px;font-family:Georgia,serif;font-size:20px;color:#101d2c;font-weight:600">${esc(input.email || "New enquiry")}</h1>
+      <p style="margin:0 0 16px;color:#33465e;font-size:14px;line-height:1.55">This enquiry was auto-assigned to you in the CRM. Please make first contact within 24 hours, or update its status in the admin console so it stops counting as overdue.</p>
+      <table style="width:100%;border-collapse:collapse;background:#faf7f1;border-radius:10px">${rows}</table>
+      ${input.sourcePage ? `<p style="margin:16px 0 0;color:#8a97a6;font-size:12px">From: ${esc(input.sourcePage)}</p>` : ""}
+    `);
+    const r = await sendMailDetailed({
+      to: input.ownerEmail,
+      subject: `Assigned to you — ${meta.label}${input.email ? ` (${input.email})` : ""}`,
+      html: assignHtml,
+      replyTo: input.email || undefined,
+    });
     if (!r.ok && r.error) errors.push(r.error);
   }
 
@@ -317,7 +353,7 @@ export async function notifyLead(input: {
 
 /** Alert the owning desk that a high-value enquiry is still un-actioned past its
  *  SLA. High-intent leads convert best with a fast reply, so a lead sitting in
- *  "new" gets one nudge to the partner/franchise inbox. */
+ *  "new" gets one nudge to its dedicated desk or the general lead inbox. */
 export async function sendLeadSlaAlert(input: {
   leadId: number;
   form: string;

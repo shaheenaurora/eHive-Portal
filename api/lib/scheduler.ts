@@ -964,9 +964,10 @@ async function jobScorecardFollowUp(now = new Date()): Promise<void> {
     });
 }
 
-/** SLA nudge (G9) — a high-value enquiry (partner / franchise) still sitting in
- *  "new" past the SLA gets one alert to its owning desk so it isn't forgotten.
- *  A per-lead marker means each lead is nudged once, not every day. */
+/** SLA nudge (G9) — a high-value enquiry (partner / franchise / membership
+ *  application) still sitting in "new" past the SLA gets one alert to its
+ *  owning desk so it isn't forgotten. A per-lead marker means each lead is
+ *  nudged once, not every day. */
 const LEAD_SLA_HOURS = 24;
 async function jobLeadSla(now = new Date()): Promise<void> {
   const db = getDb();
@@ -976,7 +977,11 @@ async function jobLeadSla(now = new Date()): Promise<void> {
     .from(schema.leads)
     .where(
       and(
-        inArray(schema.leads.form, ["partner-enquiry", "franchise-enquiry"]),
+        inArray(schema.leads.form, [
+          "partner-enquiry",
+          "franchise-enquiry",
+          "membership-application",
+        ]),
         eq(schema.leads.status, "new"),
         lte(schema.leads.createdAt, cutoff)
       )

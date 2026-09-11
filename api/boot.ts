@@ -350,6 +350,24 @@ app.post("/api/lead", async c => {
   } catch (err) {
     logger.warn("lead owner auto-assign failed", { error: err });
   }
+  // Resolve the assigned owner's email so they get a direct notification —
+  // speed-to-lead depends on the owner knowing the lead exists. Never let a
+  // lookup failure drop the lead.
+  let leadOwnerEmail: string | null = null;
+  if (leadOwnerId) {
+    try {
+      const ownerRow = (
+        await getDb()
+          .select({ email: schema.users.email })
+          .from(schema.users)
+          .where(eq(schema.users.id, leadOwnerId))
+          .limit(1)
+      ).at(0);
+      leadOwnerEmail = ownerRow?.email ?? null;
+    } catch (err) {
+      logger.warn("lead owner email lookup failed", { error: err });
+    }
+  }
   let leadId: number | undefined;
   // Persist Clarity Scorecard results in the same transaction as the lead so
   // the two records are always consistent.
@@ -454,6 +472,7 @@ app.post("/api/lead", async c => {
     email,
     payload: body,
     sourcePage,
+    ownerEmail: leadOwnerEmail,
   });
 
   // Update the scorecard nurture stage once we know whether the email went out.
@@ -1628,7 +1647,12 @@ if (env.isProduction) {
 
   /* Clean marketing slug for the Vanguard launch page. */
   app.get("/vanguard", c =>
-    c.html(fs.readFileSync(path.resolve(import.meta.dirname, "../public/vanguard.html"), "utf-8"))
+    c.html(
+      fs.readFileSync(
+        path.resolve(import.meta.dirname, "../public/vanguard.html"),
+        "utf-8"
+      )
+    )
   );
 
   /* Marketing site: served straight from source (public/). No build-time copy —
