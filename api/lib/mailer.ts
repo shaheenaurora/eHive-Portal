@@ -233,6 +233,28 @@ async function sendViaSmtp(
 async function deliver(
   input: MailInput
 ): Promise<{ ok: boolean; error?: string }> {
+  /* Pre-flight validation: an empty/whitespace recipient or subject is what
+   *  ZeptoMail rejects with the cryptic "Mandatory Field missing" — catch it
+   *  here with a self-diagnosing error instead of burning an API call, and
+   *  trim so stray whitespace can't poison an otherwise-valid address. */
+  const msg: MailInput = {
+    ...input,
+    to: (input.to ?? "").trim(),
+    subject: (input.subject ?? "").trim(),
+  };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(msg.to)) {
+    const r = {
+      ok: false,
+      error: `Invalid recipient address: ${JSON.stringify(input.to)}`,
+    };
+    recordSendResult(false, null, r.error);
+    return r;
+  }
+  if (!msg.subject) {
+    const r = { ok: false, error: "Empty email subject." };
+    recordSendResult(false, null, r.error);
+    return r;
+  }
   const provider = mailProvider();
   if (!provider) {
     const r = { ok: false, error: "No email transport configured." };
@@ -240,12 +262,12 @@ async function deliver(
     return r;
   }
   if (provider === "smtp") {
-    const r = await sendViaSmtp(input);
+    const r = await sendViaSmtp(msg);
     recordSendResult(r.ok, "smtp", r.error);
     return r;
   }
   // provider === "zeptomail"
-  const primary = await sendViaZepto(input);
+  const primary = await sendViaZepto(msg);
   if (primary.ok) {
     recordSendResult(true, "zeptomail");
     return primary;
@@ -253,10 +275,10 @@ async function deliver(
   // Primary rejected — fall back to SMTP if it's independently configured.
   if (smtpConfigured()) {
     logger.warn("[mail] ZeptoMail rejected — falling back to SMTP", {
-      to: maskEmail(input.to),
+      to: maskEmail(msg.to),
       error: primary.error,
     });
-    const fallback = await sendViaSmtp(input);
+    const fallback = await sendViaSmtp(msg);
     if (fallback.ok) {
       recordSendResult(true, "smtp-fallback");
       return fallback;
