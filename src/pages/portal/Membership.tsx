@@ -18,6 +18,7 @@ import {
 import { PushSettings } from "@/components/PushSettings";
 import { TwoFactorSettings } from "@/components/TwoFactorSettings";
 import { KycCard } from "@/components/KycCard";
+import { ValueCard } from "@/components/ValueCard";
 import { fmtDate } from "@/lib/ehf";
 import {
   TIERS,
@@ -252,6 +253,10 @@ export default function Membership() {
         sub="Tier, status, renewal and your profile — everything in one place, no emails required."
       />
 
+      <div className="eh-mb">
+        <ValueCard />
+      </div>
+
       {(() => {
         const badges = memberBadges({
           createdAt: member.createdAt,
@@ -359,9 +364,7 @@ export default function Membership() {
               <button
                 className="eh-btn gold eh-mt"
                 disabled={renew.isPending}
-                onClick={() =>
-                  renew.mutate({ promoCode: promo || undefined })
-                }
+                onClick={() => renew.mutate({ promoCode: promo || undefined })}
               >
                 {renew.isPending ? "Redirecting…" : "Renew & pay →"}
               </button>
@@ -513,7 +516,7 @@ export default function Membership() {
                       ? Math.min(
                           365,
                           Math.ceil(
-                            (renewalAt!.getTime() - Date.now()) /
+                            (renewalAt!.getTime() - new Date().getTime()) /
                               (24 * 60 * 60 * 1000)
                           )
                         )
@@ -735,8 +738,8 @@ export default function Membership() {
           <div className="eh-card eh-mb">
             <h3>Sessions</h3>
             <p className="eh-muted eh-sm">
-              You're signed in on this device. If you've signed in elsewhere —
-              a shared computer, an old phone — sign those devices out while
+              You're signed in on this device. If you've signed in elsewhere — a
+              shared computer, an old phone — sign those devices out while
               keeping this session active.
             </p>
             <button

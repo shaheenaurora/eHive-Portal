@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { eq, and, or, desc, asc, gte, isNull, sql } from "drizzle-orm";
+import { eq, and, or, desc, asc, gte, lt, isNull, sql } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "./queries/connection";
 import { createRouter, authedQuery } from "./middleware";
@@ -251,90 +251,90 @@ export const circleRouter = createRouter({
   startRenewal: authedQuery
     .input(z.object({ promoCode: z.string().max(32).optional() }))
     .mutation(async ({ ctx, input }) => {
-    requireVerified(ctx);
-    if (!paymentsEnabled())
-      throw new TRPCError({
-        code: "PRECONDITION_FAILED",
-        message:
-          "Online payment isn't enabled yet — the Circle team will help you renew.",
-      });
-    const m = await getMemberByUserId(ctx.user.id);
-    if (!m)
-      throw new TRPCError({
-        code: "PRECONDITION_FAILED",
-        message: "You don't have a membership to renew.",
-      });
-    // Only a SUSPENDED membership can't be self-reactivated by paying —
-    // reinstatement after a conduct suspension is an admin decision. Lapsed and
-    // alumni members CAN self-renew: paid win-back (lapsed → active, alumni →
-    // active) is an allowed lifecycle transition, so blocking it here would
-    // contradict the lifecycle matrix and lose reactivation revenue.
-    if (m.lifecycleState === "suspended")
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message:
-          "Your membership is under review and can't be renewed online. Please contact the Circle team to reinstate it.",
-      });
-    const tier = m.tier;
-    const amount = TIER_PRICE_AED[tier] * 100; // AED → fils
-    // Promo codes apply to renewals too (win-back campaigns). Same
-    // validate→claim→release discipline as the initial join checkout.
-    let finalAmount = amount;
-    let claimedPromoId: number | null = null;
-    if (input.promoCode && input.promoCode.trim()) {
-      const v = await validatePromo(input.promoCode, tier, amount);
-      if (!v.ok)
-        throw new TRPCError({ code: "BAD_REQUEST", message: v.error });
-      if (!(await claimPromo(v.promo.id)))
+      requireVerified(ctx);
+      if (!paymentsEnabled())
         throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "That promo code has been fully used.",
+          code: "PRECONDITION_FAILED",
+          message:
+            "Online payment isn't enabled yet — the Circle team will help you renew.",
         });
-      claimedPromoId = v.promo.id;
-      finalAmount = v.discountedFils;
-    }
-    // Redirect URLs come from the configured public URL, not the request Origin
-    // header (which an attacker could point at a phishing domain).
-    const base = env.publicUrl;
-    const provider = getPaymentProvider();
-    let session;
-    try {
-      session = await provider.createCheckoutSession({
-        tier,
+      const m = await getMemberByUserId(ctx.user.id);
+      if (!m)
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "You don't have a membership to renew.",
+        });
+      // Only a SUSPENDED membership can't be self-reactivated by paying —
+      // reinstatement after a conduct suspension is an admin decision. Lapsed and
+      // alumni members CAN self-renew: paid win-back (lapsed → active, alumni →
+      // active) is an allowed lifecycle transition, so blocking it here would
+      // contradict the lifecycle matrix and lose reactivation revenue.
+      if (m.lifecycleState === "suspended")
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message:
+            "Your membership is under review and can't be renewed online. Please contact the Circle team to reinstate it.",
+        });
+      const tier = m.tier;
+      const amount = TIER_PRICE_AED[tier] * 100; // AED → fils
+      // Promo codes apply to renewals too (win-back campaigns). Same
+      // validate→claim→release discipline as the initial join checkout.
+      let finalAmount = amount;
+      let claimedPromoId: number | null = null;
+      if (input.promoCode && input.promoCode.trim()) {
+        const v = await validatePromo(input.promoCode, tier, amount);
+        if (!v.ok)
+          throw new TRPCError({ code: "BAD_REQUEST", message: v.error });
+        if (!(await claimPromo(v.promo.id)))
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "That promo code has been fully used.",
+          });
+        claimedPromoId = v.promo.id;
+        finalAmount = v.discountedFils;
+      }
+      // Redirect URLs come from the configured public URL, not the request Origin
+      // header (which an attacker could point at a phishing domain).
+      const base = env.publicUrl;
+      const provider = getPaymentProvider();
+      let session;
+      try {
+        session = await provider.createCheckoutSession({
+          tier,
+          userId: ctx.user.id,
+          email: ctx.user.email ?? "",
+          amount: finalAmount,
+          currency: "aed",
+          successUrl: `${base}/portal/membership?renewed=1`,
+          cancelUrl: `${base}/portal/membership?canceled=1`,
+        });
+      } catch (err) {
+        if (claimedPromoId) await releasePromo(claimedPromoId);
+        throw err;
+      }
+      const { url, providerRef } = session;
+      await getDb().insert(schema.paymentRecords).values({
         userId: ctx.user.id,
-        email: ctx.user.email ?? "",
+        provider: provider.name,
+        providerRef,
+        tier,
         amount: finalAmount,
         currency: "aed",
-        successUrl: `${base}/portal/membership?renewed=1`,
-        cancelUrl: `${base}/portal/membership?canceled=1`,
-      });
-    } catch (err) {
-      if (claimedPromoId) await releasePromo(claimedPromoId);
-      throw err;
-    }
-    const { url, providerRef } = session;
-    await getDb().insert(schema.paymentRecords).values({
-      userId: ctx.user.id,
-      provider: provider.name,
-      providerRef,
-      tier,
-      amount: finalAmount,
-      currency: "aed",
-      status: "pending",
-      purpose: "renewal",
-    });
-    void recordAnalyticsEvent("payment_started", {
-      userId: ctx.user.id,
-      properties: {
-        tier,
-        amount: finalAmount,
-        fullAmount: amount,
-        promo: claimedPromoId != null,
+        status: "pending",
         purpose: "renewal",
-      },
-    });
-    return { url };
-  }),
+      });
+      void recordAnalyticsEvent("payment_started", {
+        userId: ctx.user.id,
+        properties: {
+          tier,
+          amount: finalAmount,
+          fullAmount: amount,
+          promo: claimedPromoId != null,
+          purpose: "renewal",
+        },
+      });
+      return { url };
+    }),
 
   /* ---- Vanguard week-one Clarity Sprint activation (AED 499) ---- */
   activationStatus: authedQuery.query(async ({ ctx }) => {
@@ -431,7 +431,8 @@ export const circleRouter = createRouter({
       if (!paymentsEnabled())
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: "Online payment isn't enabled yet — the Circle team will help you upgrade.",
+          message:
+            "Online payment isn't enabled yet — the Circle team will help you upgrade.",
         });
       const m = await getMemberByUserId(ctx.user.id);
       if (!m)
@@ -462,9 +463,7 @@ export const circleRouter = createRouter({
         365,
         Math.max(
           0,
-          Math.ceil(
-            (renewalAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000)
-          )
+          Math.ceil((renewalAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000))
         )
       );
       const deltaFils = Math.max(
@@ -529,6 +528,49 @@ export const circleRouter = createRouter({
       });
       return { url, amount: finalAmount };
     }),
+
+  /* ---- B5 value tracker: "used & saved this year" ---- */
+  valueSummary: authedQuery.query(async ({ ctx }) => {
+    const member = await getMemberByUserId(ctx.user.id);
+    if (!member)
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "No active membership yet",
+      });
+    const now = new Date();
+    const year = now.getFullYear();
+    const yearStart = new Date(year, 0, 1);
+    const yearEnd = new Date(year + 1, 0, 1);
+    const rows = await getDb()
+      .select({
+        id: schema.benefitRedemptions.id,
+        kind: schema.benefitRedemptions.kind,
+        label: schema.benefitRedemptions.label,
+        valueSavedAed: schema.benefitRedemptions.valueSavedAed,
+        occurredAt: schema.benefitRedemptions.occurredAt,
+      })
+      .from(schema.benefitRedemptions)
+      .where(
+        and(
+          eq(schema.benefitRedemptions.memberId, member.id),
+          gte(schema.benefitRedemptions.occurredAt, yearStart),
+          lt(schema.benefitRedemptions.occurredAt, yearEnd)
+        )
+      )
+      .orderBy(desc(schema.benefitRedemptions.occurredAt));
+    const totalSavedAed = rows.reduce((s, r) => s + (r.valueSavedAed || 0), 0);
+    // What the member paid for the year — the yardstick the savings are measured
+    // against ("saved X against the Y you invested").
+    const membershipPaidAed = TIER_PRICE_AED[member.tier];
+    return {
+      year,
+      totalSavedAed,
+      membershipPaidAed,
+      brokeEven: membershipPaidAed > 0 && totalSavedAed >= membershipPaidAed,
+      count: rows.length,
+      breakdown: rows,
+    };
+  }),
 
   /* ---- ML-05 year-in-review: the member's year, shown at the renewal moment ---- */
   yearInReview: authedQuery.query(async ({ ctx }) => {
@@ -1843,7 +1885,8 @@ export const circleRouter = createRouter({
       if (!paymentsEnabled())
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: "Online payment isn't enabled yet — contact the Circle team for a ticket.",
+          message:
+            "Online payment isn't enabled yet — contact the Circle team for a ticket.",
         });
       const base = env.publicUrl;
       const provider = getPaymentProvider();

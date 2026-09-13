@@ -225,6 +225,13 @@
       "when": 1789312137368,
       "tag": "0032_event_ticket_link",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "5",
+      "when": 1789335134016,
+      "tag": "0033_fine_thanos",
+      "breakpoints": true
     }
   ]
 }
