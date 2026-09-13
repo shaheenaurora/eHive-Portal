@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, like, or, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, like, or, sql } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "../queries/connection";
 import { createRouter, scopedAdmin, fullAdmin } from "../middleware";
@@ -285,6 +285,68 @@ export const membershipRouter = createRouter({
         .where(conds.length ? and(...conds) : undefined)
         .orderBy(desc(schema.members.hiveScore))
         .limit(300);
+    }),
+
+  /* Global quick-search for the back-office command palette: members (by name,
+     email or company), pods (by name) and leads (by email). Small result set,
+     each with a link the palette can jump to. */
+  globalSearch: scopedAdmin("membership")
+    .input(z.object({ q: z.string().min(1).max(120) }))
+    .query(async ({ input }) => {
+      const db = getDb();
+      const like_ = `%${input.q}%`;
+      const [memberRows, podRows, leadRows] = await Promise.all([
+        db
+          .select({
+            id: schema.members.id,
+            name: schema.users.name,
+            email: schema.users.email,
+            company: schema.members.company,
+            tier: schema.members.tier,
+          })
+          .from(schema.members)
+          .leftJoin(schema.users, eq(schema.users.id, schema.members.userId))
+          .where(
+            or(
+              like(schema.users.name, like_),
+              like(schema.users.email, like_),
+              like(schema.members.company, like_)
+            )
+          )
+          .orderBy(desc(schema.members.hiveScore))
+          .limit(6),
+        db
+          .select({ id: schema.pods.id, name: schema.pods.name })
+          .from(schema.pods)
+          .where(
+            and(isNull(schema.pods.deletedAt), like(schema.pods.name, like_))
+          )
+          .limit(5),
+        db
+          .select({ id: schema.leads.id, email: schema.leads.email })
+          .from(schema.leads)
+          .where(like(schema.leads.email, like_))
+          .orderBy(desc(schema.leads.createdAt))
+          .limit(5),
+      ]);
+      return {
+        members: memberRows.map(m => ({
+          id: m.id,
+          title: m.name || m.email || `Member #${m.id}`,
+          subtitle: [m.company, m.tier].filter(Boolean).join(" · "),
+          to: `/admin/members/${m.id}`,
+        })),
+        pods: podRows.map(p => ({
+          id: p.id,
+          title: p.name,
+          to: `/admin/pods/${p.id}`,
+        })),
+        leads: leadRows.map(l => ({
+          id: l.id,
+          title: l.email || `Lead #${l.id}`,
+          to: `/admin/leads`,
+        })),
+      };
     }),
 
   /* Member directory as a CSV for analysis / compliance. Same filters as the
