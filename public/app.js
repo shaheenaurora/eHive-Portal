@@ -111,6 +111,21 @@ function submitLead(payload, onOk, onErr) {
     document.body.classList.add("loaded");
   }, 1600);
 
+  /* ---- load position: marketing pages always open at the top.
+     Browsers restore the previous scroll offset on reload, and some restore
+     focus to a field the visitor last used (e.g. the footer newsletter
+     input) — which scrolls the page to the bottom. Combined with
+     html { scroll-behavior: smooth } that read as the landing page
+     "jumping to the bottom" on load. Manual restoration + an instant
+     scroll-to-top (unless the URL targets an explicit #anchor) keeps the
+     first screen deterministic. ---- */
+  if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+  window.addEventListener("load", function () {
+    if (location.hash) return;
+    if ((window.scrollY || 0) > 0)
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  });
+
   /* ---- nav: condense after 40px ---- */
   var nav = document.getElementById("siteNav");
   if (nav) {
