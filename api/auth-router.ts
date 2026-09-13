@@ -9,7 +9,9 @@ import {
   sign2faChallenge,
   verify2faChallenge,
   revokeSessionFromHeaders,
+  currentSessionIdFromHeaders,
 } from "./lib/session";
+import { revokeAllUserSessions } from "./queries/sessions";
 import {
   findUserByEmail,
   findUserById,
@@ -26,6 +28,7 @@ import {
   sendVerifyEmail,
   sendResetEmail,
   sendPasswordChangedEmail,
+  sendNewLoginEmail,
 } from "./lib/auth-mail";
 import { rateLimit, rateLimitReset } from "./lib/rate-limit";
 import { recordAnalyticsEvent } from "./queries/analytics";
@@ -177,6 +180,12 @@ export const authRouter = createRouter({
       "set-cookie",
       await sessionSetCookie(user.unionId, user.tokenVersion, ctx.req.headers)
     );
+    /* Security signal: best-effort new-login email (never blocks sign-in). */
+    void sendNewLoginEmail({
+      email: user.email ?? email,
+      name: user.name,
+      ip,
+    }).catch(err => logger.error("new-login email failed", { error: err }));
     return { needs2fa: false as const, user: safeUser(user) };
   }),
 
@@ -222,6 +231,12 @@ export const authRouter = createRouter({
         "set-cookie",
         await sessionSetCookie(user.unionId, user.tokenVersion, ctx.req.headers)
       );
+      /* Security signal: best-effort new-login email (never blocks sign-in). */
+      void sendNewLoginEmail({
+        email: user.email ?? "",
+        name: user.name,
+        ip: clientIp(ctx.req.headers),
+      }).catch(err => logger.error("new-login email failed", { error: err }));
       return { user: safeUser(user) };
     }),
 
@@ -233,6 +248,16 @@ export const authRouter = createRouter({
       await sessionClearCookie(ctx.req.headers)
     );
     return { success: true };
+  }),
+
+  /* "Log out of all other devices" — revokes every session except the one
+   * making this call. The current session stays live (its cookie is the one
+   * the member is using right now). */
+  revokeOtherSessions: authedQuery.mutation(async ({ ctx }) => {
+    const sid = await currentSessionIdFromHeaders(ctx.req.headers);
+    await revokeAllUserSessions(ctx.user.id, sid ?? undefined);
+    logger.info("revoked other sessions", { userId: ctx.user.id });
+    return { ok: true };
   }),
 
   /* ---- email verification ---- */

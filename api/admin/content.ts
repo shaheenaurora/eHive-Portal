@@ -50,5 +50,57 @@ export const contentRouter = createRouter({
       return { ok: true };
     }),
 
+  /* ------------------------------ testimonials ---------------------------- */
+
+  testimonialsAdmin: scopedAdmin("content").query(async () => {
+    return getDb()
+      .select()
+      .from(schema.testimonials)
+      .orderBy(desc(schema.testimonials.sortOrder), desc(schema.testimonials.createdAt))
+      .limit(200);
+  }),
+
+  saveTestimonial: scopedAdmin("content")
+    .input(
+      z.object({
+        id: z.number().int().positive().optional(),
+        quote: z.string().min(10).max(2000),
+        authorName: z.string().min(2).max(128),
+        authorRole: z.string().max(128).optional(),
+        authorChapter: z.string().max(128).optional(),
+        published: z.boolean().default(false),
+        sortOrder: z.number().int().default(0),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = getDb();
+      const { id, ...data } = input;
+      if (id) {
+        await db
+          .update(schema.testimonials)
+          .set(data)
+          .where(eq(schema.testimonials.id, id));
+        return { ok: true, id };
+      }
+      const res = await db.insert(schema.testimonials).values(data);
+      const newId = Number(res[0].insertId);
+      const { audit } = await import("../lib/audit");
+      await audit(ctx.user, "testimonial.create", {
+        type: "testimonial",
+        id: newId,
+        detail: input.authorName,
+      });
+      return { ok: true, id: newId };
+    }),
+
+  deleteTestimonial: scopedAdmin("content")
+    .input(idInput)
+    .mutation(async ({ input }) => {
+      await getDb()
+        .delete(schema.testimonials)
+        .where(eq(schema.testimonials.id, input.id));
+      return { ok: true };
+    }),
+
   /* -------------------------------- offers -------------------------------- */
 });

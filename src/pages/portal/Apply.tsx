@@ -57,6 +57,7 @@ export default function Apply() {
   });
 
   const [tier, setTier] = useState<string>("vanguard");
+  const [promo, setPromo] = useState("");
   const [consent, setConsent] = useState(false);
   const [muslimIdentity, setMuslimIdentity] = useState(false);
   const [valuesAligned, setValuesAligned] = useState(false);
@@ -76,7 +77,7 @@ export default function Apply() {
       toast("Please tick the consent box first.");
       return;
     }
-    checkout.mutate({ tier: tier as never });
+    checkout.mutate({ tier: tier as never, promoCode: promo || undefined });
   }
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
@@ -380,6 +381,14 @@ export default function Apply() {
                 {TIER_LABEL[tier as never]} membership activates the moment
                 payment clears. Secure checkout, cancel anytime.
               </p>
+              <input
+                className="eh-input eh-mb"
+                placeholder="Promo code (optional)"
+                value={promo}
+                onChange={e => setPromo(e.target.value)}
+                maxLength={32}
+                autoComplete="off"
+              />
               <button
                 className="eh-btn ghost"
                 type="button"

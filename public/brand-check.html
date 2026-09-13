@@ -8,18 +8,15 @@
       name="description"
       content="A short brand discovery form we ask every prospective client to complete before we recommend anything. No scoring, no wrong answers."
     />
-    <link rel="canonical" href="https://ehive.global/brand-check.html" />
+    <link rel="canonical" href="https://ehive-portal-production.up.railway.app/brand-check.html" />
     <meta property="og:title" content="eHive Brand Check" />
     <meta
       property="og:description"
       content="A short brand discovery form we ask every prospective client to complete before we recommend anything. No scoring, no wrong answers."
     />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://ehive.global/brand-check.html" />
-    <meta
-      property="og:image"
-      content="https://ehive.global/assets/icon-512.png"
-    />
+    <meta property="og:url" content="https://ehive-portal-production.up.railway.app/brand-check.html" />
+    <meta property="og:image" content="https://ehive-portal-production.up.railway.app/og/brand-check.png" />
     <meta property="og:site_name" content="eHive" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="eHive Brand Check" />
@@ -27,10 +24,7 @@
       name="twitter:description"
       content="A short brand discovery form we ask every prospective client to complete before we recommend anything. No scoring, no wrong answers."
     />
-    <meta
-      name="twitter:image"
-      content="https://ehive.global/assets/icon-512.png"
-    />
+    <meta name="twitter:image" content="https://ehive-portal-production.up.railway.app/og/brand-check.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -735,6 +729,44 @@
         var answers = {}; // keyed by question/business/contact key
         var step = 0;
 
+        /* ---- progress persistence: an accidental close/refresh must not lose
+         *  the member's work. Answers live in sessionStorage and are cleared
+         *  once the form is submitted. */
+        var STORE_KEY = "ehiveBrandCheck";
+        function saveProgress() {
+          try {
+            sessionStorage.setItem(
+              STORE_KEY,
+              JSON.stringify({ answers: answers, step: step })
+            );
+          } catch (e) {
+            /* storage unavailable — non-fatal */
+          }
+        }
+        function clearProgress() {
+          try {
+            sessionStorage.removeItem(STORE_KEY);
+          } catch (e) {
+            /* non-fatal */
+          }
+        }
+        (function restoreProgress() {
+          try {
+            var saved = JSON.parse(
+              sessionStorage.getItem(STORE_KEY) || "null"
+            );
+            if (saved && saved.answers && Object.keys(saved.answers).length) {
+              answers = saved.answers;
+              step = Math.min(
+                Math.max(Number(saved.step) || 0, 0),
+                STEPS.length - 1
+              );
+            }
+          } catch (e) {
+            /* corrupt state — start fresh */
+          }
+        })();
+
         var $ = function (id) {
           return document.getElementById(id);
         };
@@ -900,11 +932,13 @@
                   for (var j = 0; j < sibs.length; j++)
                     sibs[j].classList.remove("sel");
                   el.classList.add("sel");
+                  saveProgress();
                 });
               } else {
                 var ev = el.tagName === "SELECT" ? "change" : "input";
                 el.addEventListener(ev, function () {
                   answers[el.getAttribute("data-k")] = el.value;
+                  saveProgress();
                 });
               }
             })(fields[i]);
@@ -913,6 +947,7 @@
           if (consent)
             consent.addEventListener("change", function () {
               answers._consent = consent.checked;
+              saveProgress();
             });
         }
 
@@ -1021,6 +1056,7 @@
             submitLead().then(function (result) {
               setSubmitting(false);
               if (result.ok) {
+                clearProgress();
                 show("done");
               } else {
                 $("stepErr").textContent =
@@ -1032,11 +1068,18 @@
           }
           step++;
           renderStep();
+          saveProgress();
         }
 
         $("start").addEventListener("click", function () {
-          step = 0;
-          renderStep();
+          /* Resuming after an accidental close? Jump straight back to the
+           * saved step instead of restarting from the intro. */
+          if (step > 0) renderStep();
+          else {
+            step = 0;
+            renderStep();
+          }
+          saveProgress();
           show("quiz");
         });
         $("nextBtn").addEventListener("click", next);
@@ -1044,6 +1087,7 @@
           if (step > 0) {
             step--;
             renderStep();
+            saveProgress();
           }
         });
       })();

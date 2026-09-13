@@ -50,6 +50,13 @@ export default function AdminEvents() {
     },
     onError: e => toast(e.message),
   });
+  const duplicate = trpc.admin.duplicateEvent.useMutation({
+    onSuccess: () => {
+      toast("Duplicated — clone scheduled one month later.");
+      invalidate();
+    },
+    onError: e => toast(e.message),
+  });
   const markAtt = trpc.admin.markEventAttendance.useMutation({
     onSuccess: () => {
       toast("Updated — score adjusted where due.");
@@ -140,6 +147,9 @@ export default function AdminEvents() {
       capacity: Number(f.get("capacity")) || 40,
       cpdCredits: Number(f.get("cpdCredits")) || 0,
       costAed: f.get("costAed") ? Number(String(f.get("costAed"))) : undefined,
+      ticketPriceAed: f.get("ticketPriceAed")
+        ? Number(String(f.get("ticketPriceAed")))
+        : undefined,
     });
   }
 
@@ -284,6 +294,11 @@ export default function AdminEvents() {
                     {e.costAed != null
                       ? `AED ${e.costAed.toLocaleString()}`
                       : "—"}
+                    {e.ticketPriceMinor != null && e.ticketPriceMinor > 0 && (
+                      <div className="eh-muted eh-sm">
+                        tickets AED {(e.ticketPriceMinor / 100).toLocaleString()}
+                      </div>
+                    )}
                   </td>
                   <td style={{ whiteSpace: "nowrap" }}>
                     <button
@@ -297,6 +312,19 @@ export default function AdminEvents() {
                       onClick={() => setFbFor(e.id)}
                     >
                       Feedback →
+                    </button>{" "}
+                    <button
+                      className="eh-btn ghost sm"
+                      disabled={duplicate.isPending}
+                      title="Clone this activity, scheduled one month later"
+                      onClick={() =>
+                        duplicate.mutate(
+                          { id: e.id },
+                          { onSuccess: invalidate }
+                        )
+                      }
+                    >
+                      {duplicate.isPending ? "Duplicating…" : "Duplicate"}
                     </button>
                   </td>
                 </tr>
@@ -354,6 +382,16 @@ export default function AdminEvents() {
                   min={0}
                   max={1_000_000}
                   placeholder="Optional — consumes chapter budget"
+                />
+              </Field>
+              <Field label="Ticket price (AED)">
+                <input
+                  className="eh-input"
+                  name="ticketPriceAed"
+                  type="number"
+                  min={0}
+                  max={100_000}
+                  placeholder="0 or empty = free event"
                 />
               </Field>
             </div>

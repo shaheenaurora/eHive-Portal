@@ -83,3 +83,32 @@ export async function sendPasswordChangedEmail(input: {
     `),
   });
 }
+
+/** Security signal: let the account holder know a session was created, with
+ *  enough context (time, rough location proxy via IP) to spot a compromise.
+ *  Best-effort — never blocks sign-in. */
+export async function sendNewLoginEmail(input: {
+  email: string;
+  name: string | null;
+  ip: string;
+}): Promise<boolean> {
+  const first = input.name?.split(" ")[0] || "there";
+  const when = new Date().toLocaleString("en-GB", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Dubai",
+  });
+  return sendMail({
+    to: input.email,
+    subject: "New sign-in to your eHive account",
+    html: shell(`
+      <h1 style="margin:0 0 12px;font-family:Georgia,serif;font-size:22px;color:#101d2c;font-weight:600">New sign-in</h1>
+      <p style="margin:0 0 12px;color:#33465e;font-size:15px;line-height:1.55">Hi ${esc(first)}, your eHive account was just signed in to.</p>
+      <table style="margin:0 0 12px;font-size:14px;color:#33465e;border-collapse:collapse">
+        <tr><td style="padding:2px 12px 2px 0;color:#8a97a6">Time</td><td>${esc(when)} (Gulf)</td></tr>
+        <tr><td style="padding:2px 12px 2px 0;color:#8a97a6">IP</td><td>${esc(input.ip || "unknown")}</td></tr>
+      </table>
+      <p style="margin:0;color:#33465e;font-size:15px;line-height:1.55">If this was you, no action is needed. If you don't recognise this sign-in, change your password immediately from your account settings.</p>
+    `),
+  });
+}

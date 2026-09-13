@@ -61,6 +61,12 @@ export default function Events() {
     },
     onError: e => toast(e.message),
   });
+  const ticket = trpc.circle.startEventTicketCheckout.useMutation({
+    onSuccess: ({ url }) => {
+      window.location.href = url;
+    },
+    onError: e => toast(e.message),
+  });
   const checkin = trpc.engage.checkinEvent.useMutation({
     onSuccess: r => {
       toast(
@@ -260,10 +266,20 @@ export default function Events() {
                   <button
                     className="eh-btn gold"
                     style={{ width: "100%" }}
-                    disabled={reg.isPending}
-                    onClick={() => reg.mutate({ eventId: e.id })}
+                    disabled={reg.isPending || ticket.isPending}
+                    onClick={() =>
+                      e.ticketPriceMinor && e.ticketPriceMinor > 0
+                        ? ticket.mutate({ eventId: e.id })
+                        : reg.mutate({ eventId: e.id })
+                    }
                   >
-                    {full ? "Join the waitlist" : "Reserve my seat →"}
+                    {e.ticketPriceMinor && e.ticketPriceMinor > 0
+                      ? full
+                        ? "Sold out"
+                        : `Buy ticket — AED ${(e.ticketPriceMinor / 100).toLocaleString()} →`
+                      : full
+                        ? "Join the waitlist"
+                        : "Reserve my seat →"}
                   </button>
                 )}
               </div>

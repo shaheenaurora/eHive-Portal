@@ -439,6 +439,62 @@ export async function sendScorecardFollowUp(input: {
   return { ok: r.ok, error: r.error };
 }
 
+/** Brand-check nurture (M-P1-1): three days after a prospect completes the
+ *  Brand 3D discovery form, invite them to a review call. One email per lead
+ *  (the caller's marker system enforces that). */
+export async function sendBrandCheckReview(input: {
+  email: string;
+  name: string | null;
+  company: string | null;
+}): Promise<{ ok: boolean; error?: string }> {
+  if (!mailEnabled()) return { ok: false, error: "Email is not configured." };
+  const first = input.name ? input.name.split(" ")[0] : "";
+  const bookingUrl = `${env.publicUrl}/book.html?product=brand-3d&src=brandcheck`;
+  const html = shell(`
+    <h1 style="margin:0 0 12px;font-family:Georgia,serif;font-size:22px;color:#101d2c;font-weight:600">${first ? `Hi ${esc(first)},` : "Hi there,"}</h1>
+    <p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">A few days ago you completed the eHive Brand 3D discovery${input.company ? ` for <strong style="color:#101d2c">${esc(input.company)}</strong>` : ""}. We've reviewed your answers, and there's more in them than a score — the patterns point to where a brand is quietly leaking trust, and where the quick wins are.</p>
+    <p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">The natural next step is a short review call: we'll walk you through what we saw and what we'd do first. No deck, no pressure.</p>
+    <p style="margin:20px 0 0"><a href="${bookingUrl}" style="display:inline-block;background:#101d2c;color:#f5efe2;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:600">Book your Brand 3D review →</a></p>
+    <p style="margin:20px 0 0;color:#33465e;font-size:14px;line-height:1.55">Warm regards,<br/><strong>The eHive team</strong></p>
+  `);
+  const r = await sendMailDetailed({
+    to: input.email,
+    subject: "Your Brand 3D answers — ready for a review call? — eHive",
+    html,
+    replyTo: env.leadNotifyEmail || undefined,
+  });
+  return { ok: r.ok, error: r.error };
+}
+
+/** Booking no-show rebook (M-P1-1): the prospect missed a confirmed session.
+ *  Mark-and-rebook is done by the scheduler; this is the recovery email with a
+ *  one-click rebook link. */
+export async function sendNoShowRebook(input: {
+  email: string;
+  name: string;
+  product: string;
+  when: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  if (!mailEnabled()) return { ok: false, error: "Email is not configured." };
+  const bookingUrl = `${env.publicUrl}/book.html?product=${encodeURIComponent(
+    input.product
+  )}&src=noshow`;
+  const html = shell(`
+    <h1 style="margin:0 0 12px;font-family:Georgia,serif;font-size:22px;color:#101d2c;font-weight:600">We missed you, ${esc(input.name.split(" ")[0])}</h1>
+    <p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">You had a ${esc(input.product)} session booked for <strong style="color:#101d2c">${esc(input.when)}</strong>, and it looks like something came up — completely understandable.</p>
+    <p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">If the question you were going to bring is still open, we'd love to pick it up. Rebooking takes under a minute — pick any slot that suits you.</p>
+    <p style="margin:20px 0 0"><a href="${bookingUrl}" style="display:inline-block;background:#101d2c;color:#f5efe2;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:600">Pick a new time →</a></p>
+    <p style="margin:20px 0 0;color:#33465e;font-size:14px;line-height:1.55">Warm regards,<br/><strong>The eHive team</strong></p>
+  `);
+  const r = await sendMailDetailed({
+    to: input.email,
+    subject: "Sorry we missed you — rebook your eHive session in a minute",
+    html,
+    replyTo: env.leadNotifyEmail || undefined,
+  });
+  return { ok: r.ok, error: r.error };
+}
+
 /** Send a booking request confirmation. The submitter gets a polite "request
  *  received" note; the owner gets the full details so they can confirm manually
  *  until automated calendar sync is wired in. */

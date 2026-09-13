@@ -34,6 +34,8 @@ import {
   sendScorecardFollowUp,
   sendLeadSlaAlert,
   sendBookingReminder,
+  sendBrandCheckReview,
+  sendNoShowRebook,
 } from "./lead-mail";
 import { buildScorecardReport } from "../../src/lib/scorecard";
 import { formatGstDate, formatGstTime } from "./booking";
@@ -964,6 +966,106 @@ async function jobScorecardFollowUp(now = new Date()): Promise<void> {
     });
 }
 
+/** Brand-check nurture (M-P1-1): a lead who completed the Brand 3D discovery
+ *  form 3+ days ago gets one review-call invitation. Per-lead marker = sent
+ *  exactly once. */
+async function jobBrandCheckReview(now = new Date()): Promise<void> {
+  const db = getDb();
+  const day3 = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+  const leads = await db
+    .select()
+    .from(schema.leads)
+    .where(
+      and(
+        eq(schema.leads.form, "brand-check"),
+        isNotNull(schema.leads.email),
+        lte(schema.leads.createdAt, day3)
+      )
+    )
+    .limit(200);
+  let sent = 0;
+  for (const l of leads) {
+    if (!l.email) continue;
+    const markerKey = `brandcheck-review:${l.id}`;
+    if (await getMarker(markerKey)) continue;
+    const payload = (() => {
+      try {
+        return JSON.parse(l.payload ?? "{}");
+      } catch {
+        return {};
+      }
+    })();
+    const r = await sendBrandCheckReview({
+      email: l.email,
+      name: typeof payload.name === "string" ? payload.name : null,
+      company: typeof payload.company === "string" ? payload.company : null,
+    });
+    if (r.ok) {
+      await setMarker(markerKey, now.toISOString());
+      sent++;
+    } else {
+      logger.warn(`scheduler brand-check review failed for lead ${l.id}`, {
+        leadId: l.id,
+        error: r.error,
+      });
+    }
+  }
+  if (sent)
+    logger.info(`scheduler brand-check review: ${sent} email(s) sent`, {
+      sent,
+    });
+}
+
+/** Booking no-show recovery (M-P1-1): a confirmed appointment that ended 3+
+ *  hours ago without being cancelled is a no-show. Mark it once and send one
+ *  rebook email with a fresh booking link. */
+async function jobNoShowRebook(now = new Date()): Promise<void> {
+  const db = getDb();
+  const graceMs = 3 * 60 * 60 * 1000;
+  const cutoff = new Date(now.getTime() - graceMs);
+  const appts = await db
+    .select()
+    .from(schema.appointments)
+    .where(
+      and(
+        eq(schema.appointments.status, "confirmed"),
+        lte(schema.appointments.scheduledAt, cutoff)
+      )
+    )
+    .limit(100);
+  let sent = 0;
+  for (const a of appts) {
+    const slotEnd = new Date(
+      new Date(a.scheduledAt).getTime() + a.durationMin * 60 * 1000
+    );
+    if (slotEnd.getTime() + graceMs > now.getTime()) continue;
+    const markerKey = `noshow-rebook:${a.id}`;
+    if (await getMarker(markerKey)) continue;
+    const r = await sendNoShowRebook({
+      email: a.email,
+      name: a.name,
+      product: a.product,
+      when: `${formatGstDate(a.scheduledAt)} · ${formatGstTime(a.scheduledAt)} GST`,
+    });
+    // Mark no-show regardless of email delivery; the marker gates the email.
+    await db
+      .update(schema.appointments)
+      .set({ status: "no_show" })
+      .where(eq(schema.appointments.id, a.id));
+    if (r.ok) {
+      await setMarker(markerKey, now.toISOString());
+      sent++;
+    } else {
+      logger.warn(`scheduler no-show rebook failed for appointment ${a.id}`, {
+        appointmentId: a.id,
+        error: r.error,
+      });
+    }
+  }
+  if (sent)
+    logger.info(`scheduler no-show rebook: ${sent} email(s) sent`, { sent });
+}
+
 /** SLA nudge (G9) — a high-value enquiry (partner / franchise / membership
  *  application) still sitting in "new" past the SLA gets one alert to its
  *  owning desk so it isn't forgotten. A per-lead marker means each lead is
@@ -1161,7 +1263,15 @@ export async function runDailyJobs(now = new Date()): Promise<boolean> {
   await safe("franchise-onboarding-nudges", () =>
     jobFranchiseOnboardingNudges(now)
   );
+  /* Royalty invoices for the previous month. Idempotent — safe every day;
+   * the (chapter, period) uniqueness guard does the dedupe. */
+  await safe("franchise-royalty", async () => {
+    const { jobFranchiseRoyalty } = await import("./franchise-royalty");
+    await jobFranchiseRoyalty(now);
+  });
   await safe("scorecard-follow-up", () => jobScorecardFollowUp(now));
+  await safe("brand-check-review", () => jobBrandCheckReview(now));
+  await safe("no-show-rebook", () => jobNoShowRebook(now));
   await safe("lead-sla", () => jobLeadSla(now));
   await safe("retention", () => jobRetention(now));
   await safe("kpi-snapshots", async () => {

@@ -51,7 +51,8 @@ type Tab =
   | "budgets"
   | "expenses"
   | "reports"
-  | "fx";
+  | "fx"
+  | "royalty";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "payments", label: "Payments" },
@@ -62,6 +63,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "expenses", label: "Expenses" },
   { key: "reports", label: "Reports" },
   { key: "fx", label: "FX rates" },
+  { key: "royalty", label: "Franchise royalty" },
 ];
 
 export default function AdminFinance() {
@@ -207,6 +209,7 @@ export default function AdminFinance() {
       {tab === "expenses" && <ExpensesTab onRecord={() => setExpense(true)} />}
       {tab === "reports" && <ReportsTab />}
       {tab === "fx" && <FxRatesTab />}
+      {tab === "royalty" && <RoyaltyTab />}
 
       {receipt != null && (
         <ReceiptModal id={receipt} onClose={() => setReceipt(null)} />
@@ -1791,6 +1794,98 @@ function FxRatesTab() {
             })}
           </tbody>
         </table>
+      </div>
+    </>
+  );
+}
+
+/* Finance → franchise royalty: monthly royalty invoicing to chapters. Off by
+   default; enabling it makes the daily scheduler raise one invoice per chapter
+   for the previous month's paid member revenue, at the configured percentage.
+   Invoicing is idempotent per (chapter, month) so re-runs never duplicate. */
+function RoyaltyTab() {
+  const q = trpc.admin.royaltyConfig.useQuery(undefined, { retry: false });
+  const utils = trpc.useUtils();
+  const save = trpc.admin.setRoyaltyConfig.useMutation({
+    onSuccess: () => {
+      toast("Royalty settings saved.");
+      utils.admin.royaltyConfig.invalidate();
+    },
+    onError: e => toast(e.message),
+  });
+  const [enabled, setEnabled] = useState(false);
+  const [pct, setPct] = useState("10");
+  const [loaded, setLoaded] = useState(false);
+
+  if (q.isLoading) return <Spinner />;
+  if (q.isError) return <LoadError onRetry={() => q.refetch()} />;
+  const cfg = q.data;
+  if (cfg && !loaded) {
+    setEnabled(cfg.enabled);
+    setPct(String(cfg.pct));
+    setLoaded(true);
+  }
+
+  return (
+    <>
+      <p className="eh-sm eh-muted" style={{ marginTop: 0 }}>
+        Franchise royalty is billed monthly: on the first daily run of each
+        month, the platform raises one invoice per active chapter for the
+        previous month's paid member revenue (applications, renewals and
+        upgrades by members whose home chapter is that chapter), at the
+        percentage below. Each chapter-month is invoiced once — re-running the
+        scheduler or re-enabling this never duplicates an invoice.
+      </p>
+      <div className="eh-card" style={{ maxWidth: 480, padding: "1.25rem" }}>
+        <label
+          className="eh-row eh-sm"
+          style={{ gap: ".5rem", marginBottom: ".9rem", cursor: "pointer" }}
+        >
+          <input
+            type="checkbox"
+            checked={enabled}
+            onChange={e => setEnabled(e.target.checked)}
+          />
+          <span>
+            <b>Enable franchise royalty invoicing</b>
+            <div className="eh-muted eh-sm">
+              Currently {cfg?.enabled ? "on" : "off"} · monthly · idempotent
+            </div>
+          </span>
+        </label>
+        <label className="eh-sm eh-muted" htmlFor="royalty-pct">
+          Royalty percentage (0–100)
+        </label>
+        <div className="eh-row" style={{ gap: ".5rem", marginTop: ".35rem" }}>
+          <input
+            id="royalty-pct"
+            className="eh-input sm"
+            type="number"
+            min="0"
+            max="100"
+            step="0.5"
+            style={{ maxWidth: 120 }}
+            value={pct}
+            onChange={e => setPct(e.target.value)}
+          />
+          <span className="eh-sm eh-muted">% of chapter member revenue</span>
+        </div>
+        <div className="eh-row" style={{ gap: ".5rem", marginTop: "1.1rem" }}>
+          <button
+            className="eh-btn gold sm"
+            disabled={save.isPending}
+            onClick={() => {
+              const v = Number(pct);
+              if (!Number.isFinite(v) || v < 0 || v > 100) {
+                toast("Enter a percentage between 0 and 100.");
+                return;
+              }
+              save.mutate({ enabled, pct: v });
+            }}
+          >
+            Save settings
+          </button>
+        </div>
       </div>
     </>
   );

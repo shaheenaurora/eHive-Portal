@@ -10,9 +10,21 @@ import {
   promoteWaitlist,
 } from "../queries/circle";
 import { audit } from "../lib/audit";
+import { logger } from "../lib/log";
 import { chapterEventBudgetRemaining } from "../lib/chapter-budget";
 import { EVENT_CHECKIN_OPENS_BEFORE_MS } from "@contracts/constants";
 import { TIER, idInput, EVENT_KIND, AUDIENCE, resolveAudience } from "./shared";
+
+/** Add N calendar months to a date, preserving time-of-day (DST-free zones
+ *  like the Gulf make this straightforward). Used by event duplication. */
+function addMonthsKeepTime(d: Date, months: number): Date {
+  const r = new Date(d.getTime());
+  const day = r.getDate();
+  r.setMonth(r.getMonth() + months);
+  // Clamp Feb 31 → Feb 28 style overflow back to the last day of the month.
+  if (r.getDate() < day) r.setDate(0);
+  return r;
+}
 
 export const eventsRouter = createRouter({
   eventsAdmin: scopedAdmin("events").query(async () => {
@@ -61,10 +73,12 @@ export const eventsRouter = createRouter({
         cpdCredits: z.number().int().min(0).max(100).default(0),
         chapterId: z.number().int().positive().optional(),
         costAed: z.number().int().min(0).max(1_000_000).optional(),
+        // Attendee ticket price in AED (whole). Omit or 0 = free event.
+        ticketPriceAed: z.number().int().min(0).max(100_000).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { audience, audienceTiers, chapterId, costAed, ...rest } = input;
+      const { audience, audienceTiers, chapterId, costAed, ticketPriceAed, ...rest } = input;
       if (chapterId && costAed && costAed > 0) {
         const remaining = await chapterEventBudgetRemaining(chapterId);
         if (costAed > remaining) {
@@ -77,12 +91,75 @@ export const eventsRouter = createRouter({
       const scope = resolveAudience(audience, audienceTiers);
       const res = await getDb()
         .insert(schema.events)
-        .values({ ...rest, ...scope, chapterId, costAed });
+        .values({
+          ...rest,
+          ...scope,
+          chapterId,
+          costAed,
+          ticketPriceMinor: ticketPriceAed ? ticketPriceAed * 100 : null,
+        });
       const id = Number(res[0].insertId);
       await audit(ctx.user, "event.create", {
         type: "event",
         id,
         detail: `${input.kind} · ${audience}`,
+      });
+      return { ok: true, id };
+    }),
+
+  /* ---- Duplicate: one-click clone of an existing event. The practical
+   *  answer to "recurring events" — a monthly chapter meetup is one click
+   *  away from last month's. Starts at the same time-of-day, bumped one
+   *  month ahead unless an explicit start is given. Registrations are never
+   *  copied. */
+  duplicateEvent: scopedAdmin("events")
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        startsAt: z.coerce.date().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = getDb();
+      const src = (
+        await db
+          .select()
+          .from(schema.events)
+          .where(
+            and(eq(schema.events.id, input.id), isNull(schema.events.deletedAt))
+          )
+          .limit(1)
+      ).at(0);
+      if (!src)
+        throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
+      const startsAt = input.startsAt ?? addMonthsKeepTime(src.startsAt, 1);
+      if (src.chapterId && src.costAed && src.costAed > 0) {
+        const remaining = await chapterEventBudgetRemaining(src.chapterId);
+        if (src.costAed > remaining) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `This chapter only has AED ${remaining.toLocaleString()} of uncommitted event budget.`,
+          });
+        }
+      }
+      const res = await db.insert(schema.events).values({
+        title: src.title,
+        kind: src.kind,
+        description: src.description,
+        startsAt,
+        location: src.location,
+        audience: src.audience,
+        audienceTiers: src.audienceTiers,
+        capacity: src.capacity,
+        cpdCredits: src.cpdCredits,
+        chapterId: src.chapterId,
+        costAed: src.costAed,
+      });
+      const id = Number(res[0].insertId);
+      await audit(ctx.user, "event.duplicate", {
+        type: "event",
+        id,
+        detail: `from #${src.id} · ${src.title}`,
       });
       return { ok: true, id };
     }),
@@ -102,11 +179,20 @@ export const eventsRouter = createRouter({
         cpdCredits: z.number().int().min(0).max(100).optional(),
         chapterId: z.number().int().positive().nullable().optional(),
         costAed: z.number().int().min(0).max(1_000_000).optional(),
+        // Attendee ticket price in AED (whole). 0 clears the price (free).
+        ticketPriceAed: z.number().int().min(0).max(100_000).optional(),
       })
     )
     .mutation(async ({ input }) => {
-      const { id, audience, audienceTiers, chapterId, costAed, ...patch } =
-        input;
+      const {
+        id,
+        audience,
+        audienceTiers,
+        chapterId,
+        costAed,
+        ticketPriceAed,
+        ...patch
+      } = input;
       if (chapterId && costAed && costAed > 0) {
         const remaining = await chapterEventBudgetRemaining(chapterId, id);
         if (costAed > remaining) {
@@ -119,7 +205,15 @@ export const eventsRouter = createRouter({
       const scope = audience ? resolveAudience(audience, audienceTiers) : {};
       await getDb()
         .update(schema.events)
-        .set({ ...patch, ...scope, chapterId, costAed })
+        .set({
+          ...patch,
+          ...scope,
+          chapterId,
+          costAed,
+          ...(ticketPriceAed === undefined
+            ? {}
+            : { ticketPriceMinor: ticketPriceAed ? ticketPriceAed * 100 : null }),
+        })
         .where(eq(schema.events.id, id));
       return { ok: true };
     }),
@@ -143,6 +237,41 @@ export const eventsRouter = createRouter({
         .update(schema.events)
         .set({ deletedAt: new Date() })
         .where(eq(schema.events.id, input.id));
+      /* Don't strand registered members: an upcoming event that disappears
+       * without a word shows up as a trust-breaking no-show. Tell everyone
+       * holding a seat (paid seats keep their refund path via cancel). */
+      if (new Date(ev.startsAt).getTime() > Date.now()) {
+        const regs = await db
+          .select()
+          .from(schema.eventRegs)
+          .where(
+            and(
+              eq(schema.eventRegs.eventId, ev.id),
+              eq(schema.eventRegs.status, "registered")
+            )
+          );
+        const { notify } = await import("../queries/circle");
+        const { refundPayment } = await import("../queries/finance");
+        for (const r of regs) {
+          if (r.paymentRecordId) {
+            await refundPayment(
+              { id: ctx.user.id, email: ctx.user.email },
+              r.paymentRecordId,
+              `Event cancelled by host (event #${ev.id})`
+            ).catch(err => {
+              logger.error("event-cancel auto-refund failed", {
+                error: err,
+                regId: r.id,
+              });
+            });
+          }
+          await notify(
+            r.memberId,
+            `“${ev.title ?? "An event"}” has been cancelled — apologies for the change of plans. Any ticket you bought is being refunded automatically. 💳`,
+            "event"
+          ).catch(() => {});
+        }
+      }
       await audit(ctx.user, "event.archive", {
         type: "event",
         id: input.id,

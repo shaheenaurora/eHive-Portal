@@ -11,7 +11,7 @@
    the user keeps their summary and is told the request was not sent.      */
 var FORM_ENDPOINT = "/api/lead";
 var PORTAL_LIVE = true; /* portal is live at /portal */
-var WA_NUMBER = null; /* WhatsApp line disabled until a number is provisioned */
+var WA_NUMBER = "971555126996"; /* eHive WhatsApp line (Gulf) — floating CTA below */
 
 /* ---- launch date (single source of truth) -------------------------------
    1 Oct 2026, 00:00 Gulf Standard Time. Used by countdowns and launch copy. */
@@ -2166,6 +2166,125 @@ function submitLead(payload, onOk, onErr) {
       stats.forEach(function (el) {
         el.textContent = "—";
       });
+    });
+})();
+
+/* ===== Floating WhatsApp CTA =====
+   Highest-converting channel for the Gulf audience. Present on every marketing
+   page except the conversion flows themselves (scorecard / brand check /
+   booking / apply), where a distraction would hurt completion. */
+(function () {
+  "use strict";
+  if (!WA_NUMBER) return;
+  var path = location.pathname.replace(/\/+$/, "");
+  var page = path.split("/").pop() || "index.html";
+  var BLOCKED = {
+    "clarity-scorecard.html": 1,
+    "brand-check.html": 1,
+    "book.html": 1,
+    "apply.html": 1,
+    "thank-you.html": 1
+  };
+  if (BLOCKED[page]) return;
+  var msg =
+    "Hi eHive — I'd like to know more about the Circle and the consulting practice.";
+  var a = document.createElement("a");
+  a.href =
+    "https://wa.me/" + WA_NUMBER + "?text=" + encodeURIComponent(msg);
+  a.target = "_blank";
+  a.rel = "noopener";
+  a.setAttribute("aria-label", "Chat with eHive on WhatsApp");
+  a.innerHTML =
+    '<svg viewBox="0 0 32 32" width="28" height="28" fill="#fff" aria-hidden="true"><path d="M16 3C9.4 3 4 8.3 4 14.9c0 2.6.8 5 2.2 7L4.6 27l5.3-1.5c1.9 1 4 1.6 6.1 1.6 6.6 0 12-5.3 12-11.9S22.6 3 16 3zm5.9 16.9c-.3.8-1.5 1.5-2.4 1.6-.6.1-1.4.2-4.1-.9-3.4-1.4-5.6-4.9-5.8-5.1-.2-.2-1.4-1.8-1.4-3.5s.9-2.5 1.2-2.8c.3-.3.7-.4 1-.4h.7c.2 0 .5-.1.8.6.3.8 1.1 2.6 1.2 2.8.1.2.2.4 0 .7-.1.3-.2.4-.4.7l-.6.7c-.2.2-.4.4-.2.8.2.4 1 1.7 2.2 2.7 1.5 1.4 2.8 1.8 3.2 2 .4.2.6.2.9-.1.2-.3 1-1.2 1.3-1.6.3-.4.5-.3.9-.2.4.1 2.3 1.1 2.7 1.3.4.2.7.3.8.5.1.2.1.9-.2 1.7z"/></svg>';
+  var s = a.style;
+  s.position = "fixed";
+  s.right = "18px";
+  s.bottom = "18px";
+  s.zIndex = "90";
+  s.width = "54px";
+  s.height = "54px";
+  s.borderRadius = "50%";
+  s.background = "#25D366";
+  s.display = "flex";
+  s.alignItems = "center";
+  s.justifyContent = "center";
+  s.boxShadow = "0 6px 20px rgba(0,0,0,.28)";
+  s.textDecoration = "none";
+  document.addEventListener("DOMContentLoaded", function () {
+    document.body.appendChild(a);
+  });
+})();
+
+/* ===== Member voices: rotating testimonials from /api/testimonials ===== */
+(function () {
+  "use strict";
+  var section = document.getElementById("voices");
+  if (!section) return;
+  fetch("/api/testimonials")
+    .then(function (r) {
+      return r.json();
+    })
+    .then(function (data) {
+      var list = (data && data.testimonials) || [];
+      if (!list.length) return;
+      section.style.display = "";
+      var quoteEl = document.getElementById("voiceQuote");
+      var authorEl = document.getElementById("voiceAuthor");
+      var dotsEl = document.getElementById("voiceDots");
+      var i = 0;
+      function esc(s) {
+        return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
+          return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+        });
+      }
+      function render() {
+        var t = list[i];
+        quoteEl.style.opacity = "0";
+        setTimeout(function () {
+          quoteEl.textContent = "“" + t.quote + "”";
+          authorEl.textContent =
+            t.authorName +
+            (t.authorRole ? " · " + t.authorRole : "") +
+            (t.authorChapter ? " · " + t.authorChapter : "");
+          quoteEl.style.transition = "opacity .5s";
+          quoteEl.style.opacity = "1";
+        }, 250);
+        if (dotsEl) {
+          dotsEl.innerHTML = list
+            .map(function (_, j) {
+              return (
+                '<button role="tab" aria-selected="' +
+                (j === i) +
+                '" data-j="' +
+                j +
+                '" style="width:9px;height:9px;border-radius:50%;border:0;margin:0 4px;padding:0;cursor:pointer;background:' +
+                (j === i ? "#b8862e" : "#d6cdbb") +
+                '"></button>'
+              );
+            })
+            .join("");
+          Array.prototype.forEach.call(dotsEl.children, function (b) {
+            b.addEventListener("click", function () {
+              i = Number(b.getAttribute("data-j"));
+              render();
+              restart();
+            });
+          });
+        }
+      }
+      var timer = null;
+      function restart() {
+        if (timer) clearInterval(timer);
+        timer = setInterval(function () {
+          i = (i + 1) % list.length;
+          render();
+        }, 6000);
+      }
+      render();
+      restart();
+    })
+    .catch(function () {
+      /* no voices — section stays hidden */
     });
 })();
 

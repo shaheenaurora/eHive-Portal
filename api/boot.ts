@@ -13,7 +13,7 @@ import { env } from "./lib/env";
 import { getDb } from "./queries/connection";
 import { withTransaction } from "./queries/transaction";
 import * as schema from "@db/schema";
-import { eq, and, desc, gte, lte, sql, inArray } from "drizzle-orm";
+import { eq, and, desc, gte, lte, sql, inArray, isNull } from "drizzle-orm";
 import { paymentsEnabled, getPaymentProvider } from "./lib/payments";
 import {
   BOOKING_SLOTS,
@@ -688,6 +688,27 @@ app.get("/api/vanguard/cohort", async c => {
   }
 });
 
+/* Published member testimonials for the marketing site. Only published rows
+   are ever served; the homepage rotates through them client-side. */
+app.get("/api/testimonials", async c => {
+  try {
+    const rows = await getDb()
+      .select({
+        quote: schema.testimonials.quote,
+        authorName: schema.testimonials.authorName,
+        authorRole: schema.testimonials.authorRole,
+        authorChapter: schema.testimonials.authorChapter,
+      })
+      .from(schema.testimonials)
+      .where(eq(schema.testimonials.published, true))
+      .orderBy(schema.testimonials.sortOrder)
+      .limit(12);
+    return c.json({ testimonials: rows });
+  } catch {
+    return c.json({ testimonials: [] });
+  }
+});
+
 /* Public booking API — real availability check + appointment storage. */
 
 /** Return available slots for a product across a date range (inclusive).
@@ -1193,6 +1214,116 @@ app.post("/api/payments/webhook", async c => {
       if (record.purpose === "renewal") {
         const { renewMembership } = await import("./queries/circle");
         await renewMembership(record.userId, "Renewed via online payment");
+      } else if (record.purpose === "upgrade" && record.tier) {
+        const { upgradeMembership } = await import("./queries/circle");
+        await upgradeMembership(
+          record.userId,
+          record.tier,
+          "Upgraded via online payment"
+        );
+      } else if (record.purpose === "event_ticket" && record.eventId) {
+        /* Paid event seat: write the registration inside a transaction that
+         * locks the event row, exactly like free registration. If the event
+         * sold out between checkout and payment, refund automatically — a
+         * paid seat can never oversell capacity. */
+        const ticketEventId = record.eventId;
+        const { newCheckinCode } = await import("./queries/circle");
+        const memberRow = (
+          await getDb()
+            .select({ id: schema.members.id })
+            .from(schema.members)
+            .where(eq(schema.members.userId, record.userId))
+            .limit(1)
+        ).at(0);
+        if (memberRow) {
+          const outcome = await getDb().transaction(async tx => {
+            const ev = (
+              await tx
+                .select()
+                .from(schema.events)
+                .where(
+                  and(
+                    eq(schema.events.id, ticketEventId),
+                    isNull(schema.events.deletedAt)
+                  )
+                )
+                .for("update")
+            ).at(0);
+            if (!ev) return "gone" as const;
+            const existing = await tx
+              .select()
+              .from(schema.eventRegs)
+              .where(
+                and(
+                  eq(schema.eventRegs.eventId, ev.id),
+                  eq(schema.eventRegs.memberId, memberRow.id)
+                )
+              )
+              .limit(1);
+            if (existing.length && existing[0].status !== "cancelled")
+              return "duplicate" as const;
+            const count = await tx
+              .select({ n: sql<number>`count(*)` })
+              .from(schema.eventRegs)
+              .where(
+                and(
+                  eq(schema.eventRegs.eventId, ev.id),
+                  sql`${schema.eventRegs.status} in ('registered','attended')`
+                )
+              );
+            if ((count.at(0)?.n ?? 0) >= ev.capacity) return "full" as const;
+            if (existing.length) {
+              await tx
+                .update(schema.eventRegs)
+                .set({
+                  status: "registered",
+                  checkinCode: newCheckinCode(),
+                  paymentRecordId: record.id,
+                })
+                .where(eq(schema.eventRegs.id, existing[0].id));
+            } else {
+              await tx.insert(schema.eventRegs).values({
+                eventId: ev.id,
+                memberId: memberRow.id,
+                checkinCode: newCheckinCode(),
+                paymentRecordId: record.id,
+              });
+            }
+            return "registered" as const;
+          });
+          if (outcome === "full" || outcome === "gone") {
+            try {
+              const { refundPayment } = await import("./queries/finance");
+              await refundPayment(
+                { id: record.userId, email: "system@ehive" },
+                record.id,
+                outcome === "full"
+                  ? "Event sold out before ticket payment settled — auto refund"
+                  : "Event removed before ticket payment settled — auto refund"
+              );
+            } catch (err) {
+              logger.error("event ticket auto-refund failed", {
+                error: err,
+                paymentRecordId: record.id,
+              });
+            }
+            const { notify } = await import("./queries/circle");
+            await notify(
+              memberRow.id,
+              outcome === "full"
+                ? "The event sold out before your payment settled — you've been refunded automatically. 💳"
+                : "This event is no longer running — you've been refunded automatically. 💳",
+              "event"
+            ).catch(() => {});
+          } else if (outcome === "registered") {
+            const { notify } = await import("./queries/circle");
+            await notify(
+              memberRow.id,
+              "Your ticket is confirmed — see you at the event. 🎟️",
+              "event"
+            ).catch(() => {});
+          }
+        }
       } else if (record.tier) {
         await activateMembership(
           record.userId,

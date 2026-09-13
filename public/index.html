@@ -21,7 +21,7 @@
     />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="/" />
-    <meta property="og:image" content="/assets/icon-512.png" />
+    <meta property="og:image" content="https://ehive-portal-production.up.railway.app/og/index.png" />
     <meta property="og:site_name" content="eHive" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta
@@ -32,7 +32,7 @@
       name="twitter:description"
       content="A premium community and advisory for principled entrepreneurs — build your business through a values-aligned network, and grow it with consulting built on integrity. Join or work with us."
     />
-    <meta name="twitter:image" content="/assets/icon-512.png" />
+    <meta name="twitter:image" content="https://ehive-portal-production.up.railway.app/og/index.png" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -365,6 +365,38 @@
         </div>
       </section>
 
+      <!-- MEMBER VOICES — populated by /api/testimonials; hidden until data loads -->
+      <section
+        id="voices"
+        class="eh-section-v2 eh-full eh-light"
+        aria-labelledby="voices-h"
+        style="display: none"
+      >
+        <div class="eh-wrap" style="text-align: center">
+          <h2 id="voices-h" class="eh-h2">What members say</h2>
+          <figure
+            style="max-width: 62ch; margin: 2rem auto 0; position: relative"
+          >
+            <blockquote
+              id="voiceQuote"
+              class="eh-lead"
+              style="font-family: Georgia, serif; font-style: italic"
+            ></blockquote>
+            <figcaption
+              id="voiceAuthor"
+              class="eh-sm"
+              style="margin-top: 1rem; color: #6b7280"
+            ></figcaption>
+          </figure>
+          <div
+            id="voiceDots"
+            role="tablist"
+            aria-label="Testimonials"
+            style="margin-top: 1.5rem"
+          ></div>
+        </div>
+      </section>
+
       <!-- THREE PILLARS -->
       <section
         class="eh-section-v2 eh-full eh-light eh-hiw-v2"
@@ -595,7 +627,7 @@
       <a class="h-btn h-btn-ghost" href="consulting.html">Talk to consulting</a>
     </div>
 
-    <script src="app.min.js?v=8" defer></script>
+    <script src="app.min.js?v=9" defer></script>
     <script src="apps.min.js?v=7" defer></script>
     <script>
       (function () {

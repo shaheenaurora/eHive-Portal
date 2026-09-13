@@ -371,6 +371,48 @@ export function quarterStart(d = new Date()): Date {
   return new Date(d.getFullYear(), q, 1);
 }
 
+/** Apply a paid tier upgrade (webhook "upgrade" branch): the new tier takes
+ *  effect immediately and starts a fresh year on the higher tier. */
+export async function upgradeMembership(
+  userId: number,
+  toTier: Tier,
+  note = "Upgraded via online payment"
+): Promise<number | null> {
+  const db = getDb();
+  const m = (
+    await db
+      .select()
+      .from(schema.members)
+      .where(eq(schema.members.userId, userId))
+      .limit(1)
+  ).at(0);
+  if (!m) return null;
+  const renewal = new Date();
+  renewal.setFullYear(renewal.getFullYear() + 1);
+  await db
+    .update(schema.members)
+    .set({ tier: toTier, renewalAt: renewal })
+    .where(eq(schema.members.id, m.id));
+  await applyLifecycleTransition(m.id, "active", {
+    reason: note,
+    audit: false,
+  });
+  await db.insert(schema.membershipEvents).values({
+    memberId: m.id,
+    type: "upgrade",
+    fromTier: m.tier,
+    toTier,
+    note,
+  });
+  await awardPoints(m.id, "tenure", 10, `Upgraded to ${toTier}`);
+  await notify(
+    m.id,
+    `Welcome to ${toTier} — your upgrade is live and your new year has begun. 🎉`,
+    "membership"
+  );
+  return m.id;
+}
+
 /** Quarter-to-date engagement counts for a member. */
 export async function engagementCounts(
   memberId: number,

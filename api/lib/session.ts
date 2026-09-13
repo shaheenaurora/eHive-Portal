@@ -189,3 +189,15 @@ export async function revokeSessionFromHeaders(
   const claim = await verifySessionToken(token);
   if (claim) await revokeUserSession(claim.sid);
 }
+
+/** Session id of the request's own session, or null when the cookie is
+ *  absent/invalid. Used by "log out of all other devices". */
+export async function currentSessionIdFromHeaders(
+  headers: Headers
+): Promise<number | null> {
+  const cookies = cookie.parse(headers.get("cookie") || "");
+  const token = cookies[Session.cookieName];
+  if (!token) return null;
+  const claim = await verifySessionToken(token);
+  return claim?.sid ?? null;
+}

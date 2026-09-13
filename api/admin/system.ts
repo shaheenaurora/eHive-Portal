@@ -8,6 +8,7 @@ import { audit, maskEmail } from "../lib/audit";
 import { mailStatus, sendTestEmail } from "../lib/mailer";
 import { env } from "../lib/env";
 import { runDailyJobs } from "../lib/scheduler";
+import { royaltyConfig } from "../lib/franchise-royalty";
 import { removeDemoData, loadFullDemo } from "../queries/demo-data";
 import { opsOverview } from "../queries/ops";
 import { captureKpiSnapshots, kpiTrends } from "../queries/kpi-snapshots";
@@ -199,6 +200,47 @@ export const systemRouter = createRouter({
     await audit(ctx.user, "scheduler.run", { detail: ran ? "ran" : "skipped" });
     return { ran };
   }),
+
+  /* ---------------------- franchise royalty config ---------------------- */
+  /* Monthly royalty invoicing to chapters is OFF by default and gated here so
+     finance can flip it on and tune the percentage from the admin UI instead
+     of touching env vars or the database directly. */
+  royaltyConfig: fullAdmin.query(async ({ ctx }) => {
+    if (!isFullAdmin(ctx.user as never)) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Only a full administrator can view royalty settings.",
+      });
+    }
+    return royaltyConfig();
+  }),
+
+  setRoyaltyConfig: fullAdmin
+    .input(
+      z.object({
+        enabled: z.boolean(),
+        pct: z.number().min(0).max(100),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!isFullAdmin(ctx.user as never)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only a full administrator can change royalty settings.",
+        });
+      }
+      const setKey = async (key: string, value: string) =>
+        getDb()
+          .insert(schema.appConfig)
+          .values({ key, value })
+          .onDuplicateKeyUpdate({ set: { value } });
+      await setKey("royalty.enabled", String(input.enabled));
+      await setKey("royalty.pct", String(Math.min(Math.max(input.pct, 0), 100)));
+      await audit(ctx.user, "royalty.config", {
+        detail: `enabled=${input.enabled} pct=${input.pct}`,
+      });
+      return { ok: true };
+    }),
 
   /* ---------------------- remove seeded demo data ---------------------- */
   /* Full-admin only. Deletes ONLY seed-tagged rows (seed accounts, demo

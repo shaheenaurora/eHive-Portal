@@ -23,6 +23,7 @@ import {
   TIERS,
   TIER_LABEL,
   TIER_PRICE,
+  TIER_PRICE_AED,
   tierRank,
   DORMANCY_LABEL,
   memberBadges,
@@ -70,6 +71,15 @@ export default function Membership() {
     },
     onError: e => toast(e.message),
   });
+
+  const revokeOthers = trpc.auth.revokeOtherSessions.useMutation();
+  const upgrade = trpc.circle.startUpgrade.useMutation({
+    onSuccess: ({ url }) => {
+      window.location.href = url;
+    },
+    onError: e => toast(e.message),
+  });
+  const [promo, setPromo] = useState("");
 
   const updateProfile = trpc.circle.updateProfile.useMutation({
     onSuccess: () => {
@@ -337,10 +347,21 @@ export default function Membership() {
               >
                 {TIER_PRICE[member.tier]}
               </div>
+              <input
+                className="eh-input eh-mt"
+                placeholder="Promo code (optional)"
+                value={promo}
+                onChange={e => setPromo(e.target.value)}
+                maxLength={32}
+                autoComplete="off"
+                style={{ maxWidth: "220px", textAlign: "right" }}
+              />
               <button
                 className="eh-btn gold eh-mt"
                 disabled={renew.isPending}
-                onClick={() => renew.mutate()}
+                onClick={() =>
+                  renew.mutate({ promoCode: promo || undefined })
+                }
               >
                 {renew.isPending ? "Redirecting…" : "Renew & pay →"}
               </button>
@@ -469,6 +490,73 @@ export default function Membership() {
               </p>
             </div>
           )}
+          {(() => {
+            const higher = TIERS.filter(
+              t => tierRank(t) > tierRank(member.tier)
+            );
+            const renewalAt = member.renewalAt
+              ? new Date(member.renewalAt)
+              : null;
+            const termActive = !!renewalAt && renewalAt > new Date();
+            if (higher.length === 0) return null;
+            return (
+              <div className="eh-card">
+                <h3 style={{ margin: 0 }}>Upgrade</h3>
+                <p className="eh-sm eh-muted" style={{ marginTop: ".25rem" }}>
+                  Move up a tier today — you pay only the prorated difference
+                  for the rest of your term, and your new year starts on the
+                  higher tier.
+                </p>
+                <div className="eh-list eh-mt">
+                  {higher.map(t => {
+                    const remainingDays = termActive
+                      ? Math.min(
+                          365,
+                          Math.ceil(
+                            (renewalAt!.getTime() - Date.now()) /
+                              (24 * 60 * 60 * 1000)
+                          )
+                        )
+                      : 0;
+                    const delta =
+                      TIER_PRICE_AED[t] - TIER_PRICE_AED[member.tier];
+                    const due = termActive
+                      ? Math.max(
+                          1,
+                          Math.round((delta * 100 * remainingDays) / 365)
+                        )
+                      : delta * 100;
+                    return (
+                      <div className="row" key={t}>
+                        <span className="d">
+                          <TierPill tier={t} />{" "}
+                          <span className="eh-sm eh-muted">
+                            {TIER_PRICE[t]}
+                          </span>
+                        </span>
+                        <button
+                          className="eh-btn gold sm"
+                          disabled={
+                            upgrade.isPending || !termActive || delta <= 0
+                          }
+                          title={
+                            termActive
+                              ? undefined
+                              : "Renew first, then upgrade."
+                          }
+                          onClick={() => upgrade.mutate({ toTier: t })}
+                        >
+                          {termActive
+                            ? `Upgrade · AED ${(due / 100).toLocaleString()} due`
+                            : "Renew first"}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
           <div className="eh-card">
             <h3>Change tier</h3>
@@ -643,6 +731,30 @@ export default function Membership() {
           <PushSettings />
 
           <TwoFactorSettings />
+
+          <div className="eh-card eh-mb">
+            <h3>Sessions</h3>
+            <p className="eh-muted eh-sm">
+              You're signed in on this device. If you've signed in elsewhere —
+              a shared computer, an old phone — sign those devices out while
+              keeping this session active.
+            </p>
+            <button
+              className="eh-btn ghost sm"
+              disabled={revokeOthers.isPending}
+              onClick={() =>
+                revokeOthers.mutate(undefined, {
+                  onSuccess: () =>
+                    toast("All other devices have been signed out."),
+                  onError: e => toast(e.message),
+                })
+              }
+            >
+              {revokeOthers.isPending
+                ? "Signing out…"
+                : "Sign out of all other devices"}
+            </button>
+          </div>
 
           {(myActions.data ?? []).length > 0 && (
             <div className="eh-card eh-mb">
@@ -946,7 +1058,7 @@ export default function Membership() {
               }
               onClick={() => {
                 if (confirm.type === "renew") {
-                  renew.mutate();
+                  renew.mutate({ promoCode: promo || undefined });
                 } else {
                   change.mutate({
                     type: confirm.type,

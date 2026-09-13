@@ -27,6 +27,8 @@ import {
   requireOnboardingComplete,
 } from "./queries/onboarding";
 import { recordAnalyticsEvent } from "./queries/analytics";
+import { validatePromo, claimPromo, releasePromo } from "./queries/promo-codes";
+import { refundPayment } from "./queries/finance";
 import { notifyLead } from "./lib/lead-mail";
 import { ONBOARDING_MANUAL_KEYS } from "@contracts/constants";
 import { paymentsEnabled, getPaymentProvider } from "./lib/payments";
@@ -141,7 +143,12 @@ export const circleRouter = createRouter({
   paymentsEnabled: authedQuery.query(() => ({ enabled: paymentsEnabled() })),
 
   startCheckout: authedQuery
-    .input(z.object({ tier: z.enum(SELF_SERVE_TIERS) }))
+    .input(
+      z.object({
+        tier: z.enum(SELF_SERVE_TIERS),
+        promoCode: z.string().max(32).optional(),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       requireVerified(ctx);
       if (!paymentsEnabled())
@@ -176,39 +183,74 @@ export const circleRouter = createRouter({
           ? await vanguardCheckoutPriceAed()
           : TIER_PRICE_AED[input.tier];
       const amount = priceAed * 100; // AED → fils
+      // Promo code: validate, then atomically claim a use BEFORE creating the
+      // provider session so a usage cap can never be oversold. A claim is
+      // released again if checkout creation fails.
+      let finalAmount = amount;
+      let claimedPromoId: number | null = null;
+      if (input.promoCode && input.promoCode.trim()) {
+        const v = await validatePromo(input.promoCode, input.tier, amount);
+        if (!v.ok)
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: v.error,
+          });
+        if (!(await claimPromo(v.promo.id)))
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "That promo code has been fully used.",
+          });
+        claimedPromoId = v.promo.id;
+        finalAmount = v.discountedFils;
+      }
       // Build redirect URLs from the configured public URL — never the request
       // Origin header, which an attacker can set to redirect the member to a
       // phishing domain after checkout.
       const base = env.publicUrl;
       const provider = getPaymentProvider();
-      const { url, providerRef } = await provider.createCheckoutSession({
-        tier: input.tier,
-        userId: ctx.user.id,
-        email: ctx.user.email ?? "",
-        amount,
-        currency: "aed",
-        successUrl: `${base}/portal?paid=1`,
-        cancelUrl: `${base}/portal/apply?canceled=1`,
-      });
+      let session;
+      try {
+        session = await provider.createCheckoutSession({
+          tier: input.tier,
+          userId: ctx.user.id,
+          email: ctx.user.email ?? "",
+          amount: finalAmount,
+          currency: "aed",
+          successUrl: `${base}/portal?paid=1`,
+          cancelUrl: `${base}/portal/apply?canceled=1`,
+        });
+      } catch (err) {
+        if (claimedPromoId) await releasePromo(claimedPromoId);
+        throw err;
+      }
+      const { url, providerRef } = session;
       await getDb().insert(schema.paymentRecords).values({
         userId: ctx.user.id,
         provider: provider.name,
         providerRef,
         tier: input.tier,
-        amount,
+        amount: finalAmount,
         currency: "aed",
         status: "pending",
         purpose: "membership",
       });
       void recordAnalyticsEvent("payment_started", {
         userId: ctx.user.id,
-        properties: { tier: input.tier, amount, purpose: "membership" },
+        properties: {
+          tier: input.tier,
+          amount: finalAmount,
+          fullAmount: amount,
+          promo: claimedPromoId != null,
+          purpose: "membership",
+        },
       });
       return { url };
     }),
 
   /* ---- ML-05 renewal: pay to renew the current tier for another year ---- */
-  startRenewal: authedQuery.mutation(async ({ ctx }) => {
+  startRenewal: authedQuery
+    .input(z.object({ promoCode: z.string().max(32).optional() }))
+    .mutation(async ({ ctx, input }) => {
     requireVerified(ctx);
     if (!paymentsEnabled())
       throw new TRPCError({
@@ -235,32 +277,61 @@ export const circleRouter = createRouter({
       });
     const tier = m.tier;
     const amount = TIER_PRICE_AED[tier] * 100; // AED → fils
+    // Promo codes apply to renewals too (win-back campaigns). Same
+    // validate→claim→release discipline as the initial join checkout.
+    let finalAmount = amount;
+    let claimedPromoId: number | null = null;
+    if (input.promoCode && input.promoCode.trim()) {
+      const v = await validatePromo(input.promoCode, tier, amount);
+      if (!v.ok)
+        throw new TRPCError({ code: "BAD_REQUEST", message: v.error });
+      if (!(await claimPromo(v.promo.id)))
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "That promo code has been fully used.",
+        });
+      claimedPromoId = v.promo.id;
+      finalAmount = v.discountedFils;
+    }
     // Redirect URLs come from the configured public URL, not the request Origin
     // header (which an attacker could point at a phishing domain).
     const base = env.publicUrl;
     const provider = getPaymentProvider();
-    const { url, providerRef } = await provider.createCheckoutSession({
-      tier,
-      userId: ctx.user.id,
-      email: ctx.user.email ?? "",
-      amount,
-      currency: "aed",
-      successUrl: `${base}/portal/membership?renewed=1`,
-      cancelUrl: `${base}/portal/membership?canceled=1`,
-    });
+    let session;
+    try {
+      session = await provider.createCheckoutSession({
+        tier,
+        userId: ctx.user.id,
+        email: ctx.user.email ?? "",
+        amount: finalAmount,
+        currency: "aed",
+        successUrl: `${base}/portal/membership?renewed=1`,
+        cancelUrl: `${base}/portal/membership?canceled=1`,
+      });
+    } catch (err) {
+      if (claimedPromoId) await releasePromo(claimedPromoId);
+      throw err;
+    }
+    const { url, providerRef } = session;
     await getDb().insert(schema.paymentRecords).values({
       userId: ctx.user.id,
       provider: provider.name,
       providerRef,
       tier,
-      amount,
+      amount: finalAmount,
       currency: "aed",
       status: "pending",
       purpose: "renewal",
     });
     void recordAnalyticsEvent("payment_started", {
       userId: ctx.user.id,
-      properties: { tier, amount, purpose: "renewal" },
+      properties: {
+        tier,
+        amount: finalAmount,
+        fullAmount: amount,
+        promo: claimedPromoId != null,
+        purpose: "renewal",
+      },
     });
     return { url };
   }),
@@ -343,6 +414,121 @@ export const circleRouter = createRouter({
     });
     return { url };
   }),
+
+  /* ---- Tier upgrade: pay the prorated difference to a higher tier now.
+   *  The new tier takes effect on payment confirmation (webhook "upgrade"
+   *  branch) and starts a fresh year on the higher tier. Downgrades stay on
+   *  the admin-approved change-request path. */
+  startUpgrade: authedQuery
+    .input(
+      z.object({
+        toTier: z.enum(["horizon", "ascent", "vanguard", "zenith"]),
+        promoCode: z.string().max(32).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      requireVerified(ctx);
+      if (!paymentsEnabled())
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Online payment isn't enabled yet — the Circle team will help you upgrade.",
+        });
+      const m = await getMemberByUserId(ctx.user.id);
+      if (!m)
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "You don't have a membership to upgrade.",
+        });
+      if (m.lifecycleState === "suspended")
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message:
+            "Your membership is under review and can't be changed online. Please contact the Circle team.",
+        });
+      if (tierRank(input.toTier) <= tierRank(m.tier))
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Upgrades must be to a higher tier.",
+        });
+      const renewalAt = m.renewalAt ? new Date(m.renewalAt) : null;
+      if (!renewalAt || renewalAt <= new Date())
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Renew your membership first, then upgrade.",
+        });
+      // Prorate the tier difference across the remaining days of the term:
+      // delta = (priceTo - priceFrom) × remainingDays / 365.
+      const remainingDays = Math.min(
+        365,
+        Math.max(
+          0,
+          Math.ceil(
+            (renewalAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000)
+          )
+        )
+      );
+      const deltaFils = Math.max(
+        1,
+        Math.round(
+          ((TIER_PRICE_AED[input.toTier] - TIER_PRICE_AED[m.tier]) *
+            100 *
+            remainingDays) /
+            365
+        )
+      );
+      let finalAmount = deltaFils;
+      let claimedPromoId: number | null = null;
+      if (input.promoCode && input.promoCode.trim()) {
+        const v = await validatePromo(input.promoCode, input.toTier, deltaFils);
+        if (!v.ok)
+          throw new TRPCError({ code: "BAD_REQUEST", message: v.error });
+        if (!(await claimPromo(v.promo.id)))
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "That promo code has been fully used.",
+          });
+        claimedPromoId = v.promo.id;
+        finalAmount = v.discountedFils;
+      }
+      const base = env.publicUrl;
+      const provider = getPaymentProvider();
+      let session;
+      try {
+        session = await provider.createCheckoutSession({
+          tier: input.toTier,
+          userId: ctx.user.id,
+          email: ctx.user.email ?? "",
+          amount: finalAmount,
+          currency: "aed",
+          successUrl: `${base}/portal/membership?upgraded=1`,
+          cancelUrl: `${base}/portal/membership?canceled=1`,
+        });
+      } catch (err) {
+        if (claimedPromoId) await releasePromo(claimedPromoId);
+        throw err;
+      }
+      const { url, providerRef } = session;
+      await getDb().insert(schema.paymentRecords).values({
+        userId: ctx.user.id,
+        provider: provider.name,
+        providerRef,
+        tier: input.toTier,
+        amount: finalAmount,
+        currency: "aed",
+        status: "pending",
+        purpose: "upgrade",
+      });
+      void recordAnalyticsEvent("payment_started", {
+        userId: ctx.user.id,
+        properties: {
+          tier: input.toTier,
+          fromTier: m.tier,
+          amount: finalAmount,
+          purpose: "upgrade",
+        },
+      });
+      return { url, amount: finalAmount };
+    }),
 
   /* ---- ML-05 year-in-review: the member's year, shown at the renewal moment ---- */
   yearInReview: authedQuery.query(async ({ ctx }) => {
@@ -1466,6 +1652,13 @@ export const circleRouter = createRouter({
           code: "PRECONDITION_FAILED",
           message: "This event has already started — registration is closed.",
         });
+      // Paid events sell seats through the checkout flow; free registration
+      // would bypass the ticket price.
+      if (ev.ticketPriceMinor && ev.ticketPriceMinor > 0)
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "This is a paid event — buy a ticket to reserve your seat.",
+        });
       if (!memberCanAccessEvent(member.tier, ev))
         throw new TRPCError({
           code: "FORBIDDEN",
@@ -1545,6 +1738,146 @@ export const circleRouter = createRouter({
       });
     }),
 
+  /* ---- paid ticketing: buy a seat through the standard checkout. The seat
+   *  is only written when the webhook confirms payment (see boot.ts
+   *  "event_ticket" branch) — a pending checkout never holds capacity, and a
+   *  sold-out event refunds automatically instead of overselling. */
+  startEventTicketCheckout: authedQuery
+    .input(z.object({ eventId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const member = await requireMember(ctx.user.id);
+      await requireOnboardingComplete(member, "buying event tickets");
+      await requireKycVerified(member.id);
+      const db = getDb();
+      const ev = (
+        await db
+          .select()
+          .from(schema.events)
+          .where(
+            and(
+              eq(schema.events.id, input.eventId),
+              isNull(schema.events.deletedAt)
+            )
+          )
+          .limit(1)
+      ).at(0);
+      if (!ev) throw new TRPCError({ code: "NOT_FOUND" });
+      if (new Date(ev.startsAt).getTime() <= Date.now())
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "This event has already started — ticket sales are closed.",
+        });
+      if (!ev.ticketPriceMinor || ev.ticketPriceMinor <= 0)
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "This event is free — just register.",
+        });
+      if (!memberCanAccessEvent(member.tier, ev))
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "This activity isn't open to your tier.",
+        });
+      if (ev.chapterId && ev.chapterId !== member.homeChapterId)
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "This event is for another chapter.",
+        });
+      const existing = (
+        await db
+          .select()
+          .from(schema.eventRegs)
+          .where(
+            and(
+              eq(schema.eventRegs.eventId, ev.id),
+              eq(schema.eventRegs.memberId, member.id)
+            )
+          )
+          .limit(1)
+      ).at(0);
+      if (existing && ["registered", "attended"].includes(existing.status))
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "You already have a seat for this event.",
+        });
+      if (existing?.status === "waitlisted")
+        throw new TRPCError({
+          code: "CONFLICT",
+          message:
+            "You're on the waitlist — if a seat opens up you'll be registered, then you can pay for it from your events page.",
+        });
+      const pendingForEvent = (
+        await db
+          .select({ id: schema.paymentRecords.id })
+          .from(schema.paymentRecords)
+          .where(
+            and(
+              eq(schema.paymentRecords.userId, ctx.user.id),
+              eq(schema.paymentRecords.purpose, "event_ticket"),
+              eq(schema.paymentRecords.eventId, ev.id),
+              eq(schema.paymentRecords.status, "pending")
+            )
+          )
+          .limit(1)
+      ).at(0);
+      if (pendingForEvent)
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "You already have a pending ticket purchase for this event.",
+        });
+      // Soft pre-check so we don't send members to pay for a sold-out event.
+      // The authoritative check (with the row lock) happens on the webhook.
+      const sold = await db
+        .select({ n: sql<number>`count(*)` })
+        .from(schema.eventRegs)
+        .where(
+          and(
+            eq(schema.eventRegs.eventId, ev.id),
+            sql`${schema.eventRegs.status} in ('registered','attended')`
+          )
+        );
+      if ((sold.at(0)?.n ?? 0) >= ev.capacity)
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "This event is sold out.",
+        });
+      if (!paymentsEnabled())
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Online payment isn't enabled yet — contact the Circle team for a ticket.",
+        });
+      const base = env.publicUrl;
+      const provider = getPaymentProvider();
+      const { url, providerRef } = await provider.createCheckoutSession({
+        tier: member.tier,
+        userId: ctx.user.id,
+        email: ctx.user.email ?? "",
+        amount: ev.ticketPriceMinor,
+        currency: "aed",
+        successUrl: `${base}/portal/events?ticket=1`,
+        cancelUrl: `${base}/portal/events?canceled=1`,
+      });
+      await db.insert(schema.paymentRecords).values({
+        userId: ctx.user.id,
+        provider: provider.name,
+        providerRef,
+        tier: member.tier,
+        amount: ev.ticketPriceMinor,
+        currency: "aed",
+        status: "pending",
+        purpose: "event_ticket",
+        eventId: ev.id,
+      });
+      void recordAnalyticsEvent("payment_started", {
+        userId: ctx.user.id,
+        properties: {
+          purpose: "event_ticket",
+          eventId: ev.id,
+          amount: ev.ticketPriceMinor,
+        },
+      });
+      return { url };
+    }),
+
   cancelEventReg: authedQuery
     .input(z.object({ eventId: z.number() }))
     .mutation(async ({ ctx, input }) => {
@@ -1572,6 +1905,33 @@ export const circleRouter = createRouter({
             eq(schema.eventRegs.memberId, member.id)
           )
         );
+      /* Paid ticket cancelled: refund automatically within the standard
+       * refund window. A stale charge (past the window) stays cancelled
+       * without a refund and the member is told to contact the team. */
+      if (wasRegistered && reg?.paymentRecordId) {
+        try {
+          await refundPayment(
+            { id: ctx.user.id, email: ctx.user.email ?? "" },
+            reg.paymentRecordId,
+            `Event ticket cancelled (event #${input.eventId})`
+          );
+          notify(
+            member.id,
+            "Your ticket was cancelled and the refund is on its way to your card. 💳",
+            "event"
+          ).catch(() => {});
+        } catch (err) {
+          logger.error("event ticket refund failed", {
+            error: err,
+            regId: reg.id,
+          });
+          notify(
+            member.id,
+            "Your ticket was cancelled. The automatic refund didn't go through — the Circle team will sort it out; no action needed from you.",
+            "event"
+          ).catch(() => {});
+        }
+      }
       // BRD 6.4 — freed seat auto-promotes the waitlist
       if (wasRegistered) await promoteWaitlist(input.eventId);
       return { ok: true };

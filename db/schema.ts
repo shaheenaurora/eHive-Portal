@@ -10,6 +10,7 @@ import {
   index,
   uniqueIndex,
   json,
+  boolean,
 } from "drizzle-orm/mysql-core";
 import type { AnyMySqlColumn } from "drizzle-orm/mysql-core";
 
@@ -480,6 +481,11 @@ export const events = mysqlTable("events", {
   // Optional approved-budget commitment for chapter events. If set, it consumes
   // the chapter's approved allocation/sponsorship budget until the event runs.
   costAed: int("costAed"),
+  // Paid ticketing: attendee price in fils (AED minor units). Null = free
+  // event (the default since launch). Paid registration goes through the
+  // standard payment provider checkout; eventRegs.paymentRecordId links the
+  // seat to its payment for door refunds.
+  ticketPriceMinor: int("ticketPriceMinor"),
   deletedAt: timestamp("deletedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -506,6 +512,11 @@ export const eventRegs = mysqlTable(
     /* BRD 6.4 — QR check-in code (member shows code at door; check-in writes score real-time) */
     checkinCode: varchar("checkinCode", { length: 12 }),
     guestOf: bigint("guestOf", { mode: "number", unsigned: true }), // set when this seat is a member's guest ticket
+    // Paid ticketing: links the seat to its payment record (door refunds).
+    paymentRecordId: bigint("paymentRecordId", {
+      mode: "number",
+      unsigned: true,
+    }).references(() => paymentRecords.id, { onDelete: "set null" }),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   t => [
@@ -734,6 +745,46 @@ export const offers = mysqlTable("offers", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+/* Self-serve promo codes for membership checkout (launch campaigns, partner
+   and chapter-founder pricing). Redemption is claimed atomically at checkout
+   creation (`usedCount < maxUses` guard), so a usage cap can never be
+   oversold even under concurrent checkouts. */
+export const promoCodes = mysqlTable(
+  "promo_codes",
+  {
+    id: serial("id").primaryKey(),
+    code: varchar("code", { length: 32 }).notNull().unique(),
+    kind: mysqlEnum("kind", ["percent", "fixed"]).notNull(),
+    // percent: 1–100. fixed: discount in fils.
+    value: int("value").notNull(),
+    // CSV of tiers the code applies to; null = all tiers.
+    tierScope: varchar("tierScope", { length: 128 }),
+    maxUses: int("maxUses"),
+    usedCount: int("usedCount").notNull().default(0),
+    startsAt: timestamp("startsAt"),
+    endsAt: timestamp("endsAt"),
+    active: boolean("active").notNull().default(true),
+    note: varchar("note", { length: 255 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  t => [index("ix_promo_codes_active").on(t.active, t.endsAt)]
+);
+
+/* Approved member testimonials, rotated on the public homepage. Admin
+   publishes; only published rows are ever served publicly. */
+export const testimonials = mysqlTable("testimonials", {
+  id: serial("id").primaryKey(),
+  quote: text("quote").notNull(),
+  authorName: varchar("authorName", { length: 128 }).notNull(),
+  authorRole: varchar("authorRole", { length: 128 }),
+  authorChapter: varchar("authorChapter", { length: 128 }),
+  published: boolean("published").notNull().default(false),
+  sortOrder: int("sortOrder").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type PromoCode = typeof promoCodes.$inferSelect;
+export type Testimonial = typeof testimonials.$inferSelect;
+
 /* Provider-agnostic payment records (SRS INT-02). One row per checkout.
    providerRef is unique per provider so duplicate Stripe webhook deliveries
    and race conditions can't create double payments or double activations. */
@@ -772,6 +823,13 @@ export const paymentRecords = mysqlTable(
     paidAt: timestamp("paidAt"),
     // Optional idempotency key for offline/manual payment recording.
     idempotencyKey: varchar("idempotencyKey", { length: 64 }),
+    // Paid event ticketing: the event this checkout buys a seat for. Set only
+    // when purpose = "event_ticket"; the webhook converts it to an
+    // event_regs row (with paymentRecordId back-link) on payment.
+    eventId: bigint("eventId", { mode: "number", unsigned: true }).references(
+      () => events.id,
+      { onDelete: "set null" }
+    ),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt")
       .defaultNow()
@@ -841,6 +899,10 @@ export const invoices = mysqlTable(
     status: mysqlEnum("status", ["open", "paid", "void"])
       .notNull()
       .default("open"),
+    // Franchise royalty invoices: "YYYY-MM" period the royalty covers. Unique
+    // per (period, payer) via the workflow that generates them — the scheduler
+    // re-runs idempotently, never double-billing a chapter for a month.
+    royaltyPeriod: varchar("royaltyPeriod", { length: 7 }),
     billedAt: timestamp("billedAt").notNull(),
     dueAt: timestamp("dueAt"),
     lineItems: json("lineItems").$type<InvoiceLineItem[]>().notNull(),

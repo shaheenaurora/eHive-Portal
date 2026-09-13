@@ -210,6 +210,214 @@ export default function AdminLibrary() {
           </form>
         </Modal>
       )}
+
+      <TestimonialsPanel />
     </EhShell>
+  );
+}
+
+/** Member testimonials — published rows rotate on the public homepage. */
+function TestimonialsPanel() {
+  const utils = trpc.useUtils();
+  const q = trpc.admin.testimonialsAdmin.useQuery(undefined, { retry: false });
+  const [edit, setEdit] = useState<{
+    id?: number;
+    quote: string;
+    authorName: string;
+    authorRole: string;
+    authorChapter: string;
+    published: boolean;
+    sortOrder: number;
+  } | null>(null);
+
+  const save = trpc.admin.saveTestimonial.useMutation({
+    onSuccess: () => {
+      toast("Testimonial saved.");
+      utils.admin.testimonialsAdmin.invalidate();
+      setEdit(null);
+    },
+    onError: e => toast(e.message),
+  });
+  const del = trpc.admin.deleteTestimonial.useMutation({
+    onSuccess: () => {
+      toast("Deleted.");
+      utils.admin.testimonialsAdmin.invalidate();
+    },
+    onError: e => toast(e.message),
+  });
+
+  function onSave(e: FormEvent) {
+    e.preventDefault();
+    if (!edit) return;
+    save.mutate({
+      id: edit.id,
+      quote: edit.quote,
+      authorName: edit.authorName,
+      authorRole: edit.authorRole || undefined,
+      authorChapter: edit.authorChapter || undefined,
+      published: edit.published,
+      sortOrder: edit.sortOrder,
+    });
+  }
+
+  return (
+    <div className="eh-card eh-mt">
+      <div className="eh-between">
+        <div>
+          <h3 style={{ margin: 0 }}>Member testimonials</h3>
+          <p className="eh-sm eh-muted" style={{ margin: ".25rem 0 0" }}>
+            Published quotes rotate on the public homepage (“What members
+            say”). Get written consent before publishing.
+          </p>
+        </div>
+        <button
+          className="eh-btn ghost sm"
+          onClick={() =>
+            setEdit({
+              quote: "",
+              authorName: "",
+              authorRole: "",
+              authorChapter: "",
+              published: false,
+              sortOrder: 0,
+            })
+          }
+        >
+          + New testimonial
+        </button>
+      </div>
+
+      {q.data && q.data.length > 0 && (
+        <div className="eh-list eh-mt">
+          {q.data.map(t => (
+            <div className="row" key={t.id} style={{ alignItems: "flex-start" }}>
+              <div style={{ flex: 1 }}>
+                <div className="t">“{t.quote}”</div>
+                <div className="d eh-sm">
+                  {t.authorName}
+                  {t.authorRole ? ` · ${t.authorRole}` : ""}
+                  {t.authorChapter ? ` · ${t.authorChapter}` : ""}
+                </div>
+              </div>
+              <Pill color={t.published ? "green" : "grey"}>
+                {t.published ? "live" : "draft"}
+              </Pill>
+              <button
+                className="eh-btn ghost sm"
+                onClick={() =>
+                  setEdit({
+                    id: t.id,
+                    quote: t.quote,
+                    authorName: t.authorName,
+                    authorRole: t.authorRole ?? "",
+                    authorChapter: t.authorChapter ?? "",
+                    published: t.published,
+                    sortOrder: t.sortOrder,
+                  })
+                }
+              >
+                Edit
+              </button>
+              <button
+                className="eh-btn ghost sm"
+                style={{ color: "var(--eh-red)" }}
+                onClick={async () => {
+                  if (
+                    await confirmDialog({
+                      title: "Delete this testimonial?",
+                      body: "It disappears from the homepage rotation at once.",
+                      confirmLabel: "Delete",
+                      danger: true,
+                    })
+                  )
+                    del.mutate({ id: t.id });
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      {q.data && q.data.length === 0 && !edit && (
+        <Empty big="No testimonials yet." />
+      )}
+
+      {edit && (
+        <Modal
+          title={edit.id ? "Edit testimonial" : "New testimonial"}
+          onClose={() => setEdit(null)}
+        >
+          <form onSubmit={onSave}>
+            <Field label="Quote">
+              <textarea
+                className="eh-textarea"
+                required
+                minLength={10}
+                rows={4}
+                value={edit.quote}
+                onChange={e => setEdit({ ...edit, quote: e.target.value })}
+              />
+            </Field>
+            <div className="eh-grid g2">
+              <Field label="Author name">
+                <input
+                  className="eh-input"
+                  required
+                  value={edit.authorName}
+                  onChange={e =>
+                    setEdit({ ...edit, authorName: e.target.value })
+                  }
+                />
+              </Field>
+              <Field label="Role / title">
+                <input
+                  className="eh-input"
+                  value={edit.authorRole}
+                  onChange={e =>
+                    setEdit({ ...edit, authorRole: e.target.value })
+                  }
+                />
+              </Field>
+              <Field label="Chapter / company">
+                <input
+                  className="eh-input"
+                  value={edit.authorChapter}
+                  onChange={e =>
+                    setEdit({ ...edit, authorChapter: e.target.value })
+                  }
+                />
+              </Field>
+              <Field label="Sort order (higher first)">
+                <input
+                  className="eh-input"
+                  type="number"
+                  inputMode="numeric"
+                  value={edit.sortOrder}
+                  onChange={e =>
+                    setEdit({ ...edit, sortOrder: Number(e.target.value) || 0 })
+                  }
+                />
+              </Field>
+            </div>
+            <label className="eh-check">
+              <input
+                type="checkbox"
+                checked={edit.published}
+                onChange={e => setEdit({ ...edit, published: e.target.checked })}
+              />
+              Published (show on the homepage)
+            </label>
+            <button
+              className="eh-btn gold eh-mt"
+              type="submit"
+              disabled={save.isPending}
+            >
+              Save →
+            </button>
+          </form>
+        </Modal>
+      )}
+    </div>
   );
 }

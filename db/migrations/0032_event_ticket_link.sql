@@ -1,0 +1,2 @@
+ALTER TABLE `payment_records` ADD `eventId` bigint unsigned;--> statement-breakpoint
+ALTER TABLE `payment_records` ADD CONSTRAINT `payment_records_eventId_events_id_fk` FOREIGN KEY (`eventId`) REFERENCES `events`(`id`) ON DELETE set null ON UPDATE no action;

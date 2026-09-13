@@ -732,5 +732,75 @@ export const financeRouter = createRouter({
     );
   }),
 
+  /* -------------------- promo codes (launch & partner pricing) ------------- */
+
+  promoCodesAdmin: scopedAdmin("finance").query(async () => {
+    return getDb()
+      .select()
+      .from(schema.promoCodes)
+      .orderBy(desc(schema.promoCodes.createdAt))
+      .limit(200);
+  }),
+
+  createPromoCode: scopedAdmin("finance")
+    .input(
+      z.object({
+        code: z
+          .string()
+          .min(3)
+          .max(32)
+          .regex(/^[A-Za-z0-9_-]+$/, "Letters, numbers, dash, underscore only"),
+        kind: z.enum(["percent", "fixed"]),
+        value: z.number().int().positive().max(100_000_000),
+        tierScope: z.array(z.string()).optional(),
+        maxUses: z.number().int().positive().optional(),
+        endsAt: z.coerce.date().optional(),
+        note: z.string().max(255).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const code = input.code.trim().toUpperCase();
+      const dup = (
+        await getDb()
+          .select({ id: schema.promoCodes.id })
+          .from(schema.promoCodes)
+          .where(eq(schema.promoCodes.code, code))
+          .limit(1)
+      ).at(0);
+      if (dup)
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "A promo code with that name already exists.",
+        });
+      const res = await getDb()
+        .insert(schema.promoCodes)
+        .values({
+          code,
+          kind: input.kind,
+          value: input.value,
+          tierScope: input.tierScope?.length ? input.tierScope.join(",") : null,
+          maxUses: input.maxUses ?? null,
+          endsAt: input.endsAt ?? null,
+          note: input.note ?? null,
+        });
+      const id = Number(res[0].insertId);
+      await audit(ctx.user, "promo.create", { type: "promo_code", id, detail: code });
+      return { ok: true, id };
+    }),
+
+  setPromoActive: scopedAdmin("finance")
+    .input(z.object({ id: z.number().int().positive(), active: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      await getDb()
+        .update(schema.promoCodes)
+        .set({ active: input.active })
+        .where(eq(schema.promoCodes.id, input.id));
+      await audit(ctx.user, input.active ? "promo.enable" : "promo.disable", {
+        type: "promo_code",
+        id: input.id,
+      });
+      return { ok: true };
+    }),
+
   /* -------------------- admin audit trail + access control ----------------- */
 });
