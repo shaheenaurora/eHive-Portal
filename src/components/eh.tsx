@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { NavLink, Link, useNavigate, useLocation } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { CommandPalette } from "@/components/CommandPalette";
 import { initials } from "@/lib/ehf";
 import { TIER_LABEL } from "@contracts/constants";
 import { refCode, type EntityType } from "@contracts/ids";
@@ -584,6 +585,7 @@ export function EhShell(props: {
   return (
     <div className="eh-shell">
       <OfflineBanner />
+      {user.role === "admin" && <CommandPalette groups={props.groups} />}
       <a href="#eh-main" className="eh-skip">
         Skip to content
       </a>
@@ -645,6 +647,44 @@ export function EhShell(props: {
             </button>
           </div>
         </div>
+        {user.role === "admin" && (
+          <button
+            type="button"
+            className="eh-cmdk-trigger"
+            onClick={() =>
+              document.dispatchEvent(new CustomEvent("ehive:cmdk"))
+            }
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: ".5rem",
+              width: "calc(100% - 1.5rem)",
+              margin: ".25rem .75rem .5rem",
+              padding: ".5rem .7rem",
+              borderRadius: 9,
+              border: "1px solid rgba(0,0,0,.1)",
+              background: "var(--eh-bg, #faf7f0)",
+              color: "var(--eh-muted, #6b6455)",
+              cursor: "pointer",
+              fontSize: ".85rem",
+            }}
+          >
+            <span aria-hidden>⌕</span>
+            <span>Search…</span>
+            <span
+              style={{
+                marginLeft: "auto",
+                fontSize: ".7rem",
+                opacity: 0.7,
+                border: "1px solid rgba(0,0,0,.12)",
+                borderRadius: 5,
+                padding: "0 .3rem",
+              }}
+            >
+              ⌘K
+            </span>
+          </button>
+        )}
         <nav className="eh-nav">
           {filterNavByScope(props.groups, user.adminScopes).map((g, i) => (
             <div key={i}>
