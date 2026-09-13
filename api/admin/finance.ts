@@ -784,7 +784,11 @@ export const financeRouter = createRouter({
           note: input.note ?? null,
         });
       const id = Number(res[0].insertId);
-      await audit(ctx.user, "promo.create", { type: "promo_code", id, detail: code });
+      await audit(ctx.user, "promo.create", {
+        type: "promo_code",
+        id,
+        detail: code,
+      });
       return { ok: true, id };
     }),
 

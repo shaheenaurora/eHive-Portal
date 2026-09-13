@@ -8,15 +8,24 @@
       name="description"
       content="A short brand discovery form we ask every prospective client to complete before we recommend anything. No scoring, no wrong answers."
     />
-    <link rel="canonical" href="https://ehive-portal-production.up.railway.app/brand-check.html" />
+    <link
+      rel="canonical"
+      href="https://ehive-portal-production.up.railway.app/brand-check.html"
+    />
     <meta property="og:title" content="eHive Brand Check" />
     <meta
       property="og:description"
       content="A short brand discovery form we ask every prospective client to complete before we recommend anything. No scoring, no wrong answers."
     />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://ehive-portal-production.up.railway.app/brand-check.html" />
-    <meta property="og:image" content="https://ehive-portal-production.up.railway.app/og/brand-check.png" />
+    <meta
+      property="og:url"
+      content="https://ehive-portal-production.up.railway.app/brand-check.html"
+    />
+    <meta
+      property="og:image"
+      content="https://ehive-portal-production.up.railway.app/og/brand-check.png"
+    />
     <meta property="og:site_name" content="eHive" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="eHive Brand Check" />
@@ -24,7 +33,10 @@
       name="twitter:description"
       content="A short brand discovery form we ask every prospective client to complete before we recommend anything. No scoring, no wrong answers."
     />
-    <meta name="twitter:image" content="https://ehive-portal-production.up.railway.app/og/brand-check.png" />
+    <meta
+      name="twitter:image"
+      content="https://ehive-portal-production.up.railway.app/og/brand-check.png"
+    />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -752,9 +764,7 @@
         }
         (function restoreProgress() {
           try {
-            var saved = JSON.parse(
-              sessionStorage.getItem(STORE_KEY) || "null"
-            );
+            var saved = JSON.parse(sessionStorage.getItem(STORE_KEY) || "null");
             if (saved && saved.answers && Object.keys(saved.answers).length) {
               answers = saved.answers;
               step = Math.min(

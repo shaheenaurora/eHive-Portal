@@ -11,7 +11,8 @@
    the user keeps their summary and is told the request was not sent.      */
 var FORM_ENDPOINT = "/api/lead";
 var PORTAL_LIVE = true; /* portal is live at /portal */
-var WA_NUMBER = "971555126996"; /* eHive WhatsApp line (Gulf) — floating CTA below */
+var WA_NUMBER =
+  "971555126996"; /* eHive WhatsApp line (Gulf) — floating CTA below */
 
 /* ---- launch date (single source of truth) -------------------------------
    1 Oct 2026, 00:00 Gulf Standard Time. Used by countdowns and launch copy. */
@@ -2183,14 +2184,13 @@ function submitLead(payload, onOk, onErr) {
     "brand-check.html": 1,
     "book.html": 1,
     "apply.html": 1,
-    "thank-you.html": 1
+    "thank-you.html": 1,
   };
   if (BLOCKED[page]) return;
   var msg =
     "Hi eHive — I'd like to know more about the Circle and the consulting practice.";
   var a = document.createElement("a");
-  a.href =
-    "https://wa.me/" + WA_NUMBER + "?text=" + encodeURIComponent(msg);
+  a.href = "https://wa.me/" + WA_NUMBER + "?text=" + encodeURIComponent(msg);
   a.target = "_blank";
   a.rel = "noopener";
   a.setAttribute("aria-label", "Chat with eHive on WhatsApp");

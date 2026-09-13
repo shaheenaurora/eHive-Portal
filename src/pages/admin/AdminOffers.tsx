@@ -277,7 +277,10 @@ function PromoCodes() {
           ? Math.round(value * 100) // AED → fils
           : Math.min(value, 100),
       tierScope: form.tierScope
-        ? form.tierScope.split(",").map(s => s.trim()).filter(Boolean)
+        ? form.tierScope
+            .split(",")
+            .map(s => s.trim())
+            .filter(Boolean)
         : undefined,
       maxUses: form.maxUses ? Math.round(Number(form.maxUses)) : undefined,
       endsAt: form.endsAt ? new Date(form.endsAt) : undefined,
@@ -324,7 +327,9 @@ function PromoCodes() {
                 <option value="fixed">Fixed AED off</option>
               </select>
             </Field>
-            <Field label={form.kind === "percent" ? "Percent (1–100)" : "AED off"}>
+            <Field
+              label={form.kind === "percent" ? "Percent (1–100)" : "AED off"}
+            >
               <input
                 className="eh-input"
                 value={form.value}
@@ -365,7 +370,11 @@ function PromoCodes() {
               onChange={e => setForm({ ...form, note: e.target.value })}
             />
           </Field>
-          <button className="eh-btn gold" type="submit" disabled={create.isPending}>
+          <button
+            className="eh-btn gold"
+            type="submit"
+            disabled={create.isPending}
+          >
             Create code →
           </button>
         </form>
@@ -388,12 +397,12 @@ function PromoCodes() {
               <tr key={p.id}>
                 <td>
                   <b>{p.code}</b>
-                  {p.note && (
-                    <div className="eh-muted eh-sm">{p.note}</div>
-                  )}
+                  {p.note && <div className="eh-muted eh-sm">{p.note}</div>}
                 </td>
                 <td>
-                  {p.kind === "percent" ? `${p.value}% off` : `AED ${(p.value / 100).toLocaleString()} off`}
+                  {p.kind === "percent"
+                    ? `${p.value}% off`
+                    : `AED ${(p.value / 100).toLocaleString()} off`}
                 </td>
                 <td className="eh-sm">{p.tierScope ?? "All tiers"}</td>
                 <td className="eh-num">

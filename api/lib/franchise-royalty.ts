@@ -23,7 +23,9 @@ async function getConfig(key: string): Promise<string | null> {
 /** Previous calendar month as { period: "YYYY-MM", from, to }. */
 export function previousMonth(now = new Date()) {
   const first = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  const from = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() - 1, 1));
+  const from = new Date(
+    Date.UTC(first.getUTCFullYear(), first.getUTCMonth() - 1, 1)
+  );
   const to = first;
   const period = `${from.getUTCFullYear()}-${String(from.getUTCMonth() + 1).padStart(2, "0")}`;
   return { period, from, to };
@@ -68,7 +70,9 @@ export async function jobFranchiseRoyalty(now = new Date()): Promise<{
     /* Monthly chapter revenue: paid payments by members of this chapter. */
     const revenue = (
       await db
-        .select({ total: sql<number>`coalesce(sum(${schema.paymentRecords.amount}),0)` })
+        .select({
+          total: sql<number>`coalesce(sum(${schema.paymentRecords.amount}),0)`,
+        })
         .from(schema.paymentRecords)
         .innerJoin(
           schema.members,
@@ -135,10 +139,13 @@ export async function jobFranchiseRoyalty(now = new Date()): Promise<{
       });
     });
     invoiced++;
-    logger.info(`franchise royalty invoiced: ${ch.name} ${period} AED ${royaltyAed}`, {
-      chapterId: ch.id,
-      period,
-    });
+    logger.info(
+      `franchise royalty invoiced: ${ch.name} ${period} AED ${royaltyAed}`,
+      {
+        chapterId: ch.id,
+        period,
+      }
+    );
   }
 
   return { invoiced, skipped, period };

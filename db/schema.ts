@@ -785,6 +785,43 @@ export const testimonials = mysqlTable("testimonials", {
 export type PromoCode = typeof promoCodes.$inferSelect;
 export type Testimonial = typeof testimonials.$inferSelect;
 
+/* B5 — member value ledger. One row per benefit a member has used, with the AED
+   value it saved them, so the portal can show "used & saved this year" with real
+   numbers instead of a claim. Rows are logged by staff (a redeemed offer, an
+   advisory session at member rates) or written automatically (the paid
+   activation, an event attended). */
+export const benefitRedemptions = mysqlTable(
+  "benefit_redemptions",
+  {
+    id: serial("id").primaryKey(),
+    memberId: bigint("memberId", { mode: "number", unsigned: true })
+      .notNull()
+      .references(() => members.id, { onDelete: "cascade" }),
+    kind: mysqlEnum("kind", [
+      "offer",
+      "advisory",
+      "event",
+      "activation",
+      "other",
+    ])
+      .notNull()
+      .default("other"),
+    label: varchar("label", { length: 255 }).notNull(),
+    /** Whole AED this benefit saved the member (0 allowed for non-monetary use). */
+    valueSavedAed: int("valueSavedAed").notNull().default(0),
+    occurredAt: timestamp("occurredAt").defaultNow().notNull(),
+    createdByUserId: bigint("createdByUserId", {
+      mode: "number",
+      unsigned: true,
+    }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  t => ({
+    ix_benefit_member: index("ix_benefit_member").on(t.memberId),
+  })
+);
+export type BenefitRedemption = typeof benefitRedemptions.$inferSelect;
+
 /* Provider-agnostic payment records (SRS INT-02). One row per checkout.
    providerRef is unique per provider so duplicate Stripe webhook deliveries
    and race conditions can't create double payments or double activations. */

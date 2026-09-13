@@ -965,4 +965,71 @@ export const membershipRouter = createRouter({
 
   /* Retention economics — renewal/churn/LTV + cohorts (join month, chapter). */
   reportsRetention: scopedAdmin("membership").query(() => retentionMetrics()),
+
+  /* ---- B5 value ledger: a member's logged benefits ("used & saved") ---- */
+  memberBenefits: scopedAdmin("membership")
+    .input(z.object({ memberId: z.number().int().positive() }))
+    .query(async ({ input }) => {
+      const rows = await getDb()
+        .select({
+          id: schema.benefitRedemptions.id,
+          kind: schema.benefitRedemptions.kind,
+          label: schema.benefitRedemptions.label,
+          valueSavedAed: schema.benefitRedemptions.valueSavedAed,
+          occurredAt: schema.benefitRedemptions.occurredAt,
+        })
+        .from(schema.benefitRedemptions)
+        .where(eq(schema.benefitRedemptions.memberId, input.memberId))
+        .orderBy(desc(schema.benefitRedemptions.occurredAt))
+        .limit(200);
+      const totalSavedAed = rows.reduce(
+        (s, r) => s + (r.valueSavedAed || 0),
+        0
+      );
+      return { rows, totalSavedAed };
+    }),
+
+  logBenefit: scopedAdmin("membership")
+    .input(
+      z.object({
+        memberId: z.number().int().positive(),
+        kind: z.enum(["offer", "advisory", "event", "activation", "other"]),
+        label: z.string().min(2).max(255),
+        valueSavedAed: z.number().int().min(0).max(10_000_000),
+        occurredAt: z.string().datetime().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      await getDb()
+        .insert(schema.benefitRedemptions)
+        .values({
+          memberId: input.memberId,
+          kind: input.kind,
+          label: input.label,
+          valueSavedAed: input.valueSavedAed,
+          createdByUserId: ctx.user.id,
+          ...(input.occurredAt
+            ? { occurredAt: new Date(input.occurredAt) }
+            : {}),
+        });
+      await audit(ctx.user, "member.benefit.logged", {
+        type: "member",
+        id: input.memberId,
+        detail: `${input.kind}: ${input.label} (AED ${input.valueSavedAed})`,
+      });
+      return { ok: true };
+    }),
+
+  deleteBenefit: scopedAdmin("membership")
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      await getDb()
+        .delete(schema.benefitRedemptions)
+        .where(eq(schema.benefitRedemptions.id, input.id));
+      await audit(ctx.user, "member.benefit.deleted", {
+        type: "member",
+        id: input.id,
+      });
+      return { ok: true };
+    }),
 });

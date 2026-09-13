@@ -17,6 +17,7 @@ import {
   toast,
 } from "@/components/eh";
 import { AdminKycPanel } from "@/components/AdminKycPanel";
+import { AdminValueLedger } from "@/components/AdminValueLedger";
 import { fmtDate, fmtDateTime, initials, relDay } from "@/lib/ehf";
 import {
   SCORE_FACTORS,
@@ -505,6 +506,8 @@ export default function AdminMemberDetail() {
               );
             })()}
           </div>
+
+          <AdminValueLedger memberId={mid} />
 
           <div className="eh-card">
             <h3>Action items ({actionItems.length})</h3>

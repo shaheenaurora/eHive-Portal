@@ -56,7 +56,10 @@ export const contentRouter = createRouter({
     return getDb()
       .select()
       .from(schema.testimonials)
-      .orderBy(desc(schema.testimonials.sortOrder), desc(schema.testimonials.createdAt))
+      .orderBy(
+        desc(schema.testimonials.sortOrder),
+        desc(schema.testimonials.createdAt)
+      )
       .limit(200);
   }),
 

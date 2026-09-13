@@ -1,8 +1,8 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "3678677a-5a8f-4664-afc5-04d79465271b",
-  "prevId": "db7e50fe-0ebe-447f-8df6-a249cc9b4737",
+  "id": "c491eb94-2a5c-4a0e-a785-42cfad7090b0",
+  "prevId": "7bb2f41e-23d1-4c1d-b5f5-c170a33bb159",
   "tables": {
     "action_items": {
       "name": "action_items",
@@ -1713,6 +1713,97 @@
       "compositePrimaryKeys": {
         "ballots_id": {
           "name": "ballots_id",
+          "columns": ["id"]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "benefit_redemptions": {
+      "name": "benefit_redemptions",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "memberId": {
+          "name": "memberId",
+          "type": "bigint unsigned",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "enum('offer','advisory','event','activation','other')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'other'"
+        },
+        "label": {
+          "name": "label",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "valueSavedAed": {
+          "name": "valueSavedAed",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "occurredAt": {
+          "name": "occurredAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "createdByUserId": {
+          "name": "createdByUserId",
+          "type": "bigint unsigned",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "ix_benefit_member": {
+          "name": "ix_benefit_member",
+          "columns": ["memberId"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "benefit_redemptions_memberId_members_id_fk": {
+          "name": "benefit_redemptions_memberId_members_id_fk",
+          "tableFrom": "benefit_redemptions",
+          "tableTo": "members",
+          "columnsFrom": ["memberId"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "benefit_redemptions_id": {
+          "name": "benefit_redemptions_id",
           "columns": ["id"]
         }
       },
@@ -7268,6 +7359,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "eventId": {
+          "name": "eventId",
+          "type": "bigint unsigned",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "createdAt": {
           "name": "createdAt",
           "type": "timestamp",
@@ -7297,7 +7395,17 @@
           "isUnique": true
         }
       },
-      "foreignKeys": {},
+      "foreignKeys": {
+        "payment_records_eventId_events_id_fk": {
+          "name": "payment_records_eventId_events_id_fk",
+          "tableFrom": "payment_records",
+          "tableTo": "events",
+          "columnsFrom": ["eventId"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {
         "payment_records_id": {
           "name": "payment_records_id",
