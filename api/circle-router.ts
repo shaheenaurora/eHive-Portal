@@ -30,6 +30,7 @@ import { recordAnalyticsEvent } from "./queries/analytics";
 import { notifyLead } from "./lib/lead-mail";
 import { ONBOARDING_MANUAL_KEYS } from "@contracts/constants";
 import { paymentsEnabled, getPaymentProvider } from "./lib/payments";
+import { vanguardCheckoutPriceAed, activationPriceAed } from "./lib/vanguard";
 import { applyLifecycleTransition } from "./lib/lifecycle";
 import { audit } from "./lib/audit";
 import {
@@ -165,7 +166,16 @@ export const circleRouter = createRouter({
           message: "You're already a member.",
         });
 
-      const amount = TIER_PRICE_AED[input.tier] * 100; // AED → fils
+      // Vanguard uses the founding-cohort charter rate while seats remain and
+      // the standard rate once the cohort has filled ("the rate rises"); other
+      // tiers use the fixed tier price. (Vanguard self-serve checkout is only
+      // reached once VANGUARD_FOUNDING_APPLICATION_ONLY is flipped off — during
+      // the founding cohort the application-only gate above blocks it.)
+      const priceAed =
+        input.tier === "vanguard"
+          ? await vanguardCheckoutPriceAed()
+          : TIER_PRICE_AED[input.tier];
+      const amount = priceAed * 100; // AED → fils
       // Build redirect URLs from the configured public URL — never the request
       // Origin header, which an attacker can set to redirect the member to a
       // phishing domain after checkout.
@@ -251,6 +261,85 @@ export const circleRouter = createRouter({
     void recordAnalyticsEvent("payment_started", {
       userId: ctx.user.id,
       properties: { tier, amount, purpose: "renewal" },
+    });
+    return { url };
+  }),
+
+  /* ---- Vanguard week-one Clarity Sprint activation (AED 499) ---- */
+  activationStatus: authedQuery.query(async ({ ctx }) => {
+    const priceAed = await activationPriceAed();
+    const paid = await getDb()
+      .select({ id: schema.paymentRecords.id })
+      .from(schema.paymentRecords)
+      .where(
+        and(
+          eq(schema.paymentRecords.userId, ctx.user.id),
+          eq(schema.paymentRecords.purpose, "activation"),
+          eq(schema.paymentRecords.status, "paid")
+        )
+      )
+      .limit(1);
+    return { priceAed, purchased: paid.length > 0, enabled: paymentsEnabled() };
+  }),
+
+  startActivation: authedQuery.mutation(async ({ ctx }) => {
+    requireVerified(ctx);
+    if (!paymentsEnabled())
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "Online payment isn't enabled yet.",
+      });
+    const member = await getMemberByUserId(ctx.user.id);
+    if (!member)
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message:
+          "The activation is for members. Complete your membership first.",
+      });
+    // One activation per member — don't let someone pay twice.
+    const already = await getDb()
+      .select({ id: schema.paymentRecords.id })
+      .from(schema.paymentRecords)
+      .where(
+        and(
+          eq(schema.paymentRecords.userId, ctx.user.id),
+          eq(schema.paymentRecords.purpose, "activation"),
+          eq(schema.paymentRecords.status, "paid")
+        )
+      )
+      .limit(1);
+    if (already.length)
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "Your Clarity Sprint activation is already active.",
+      });
+    const amount = (await activationPriceAed()) * 100; // AED → fils
+    const base = env.publicUrl;
+    const provider = getPaymentProvider();
+    const { url, providerRef } = await provider.createCheckoutSession({
+      tier: member.tier,
+      userId: ctx.user.id,
+      email: ctx.user.email ?? "",
+      amount,
+      currency: "aed",
+      label: "eHive — Clarity Sprint activation",
+      successUrl: `${base}/portal?activated=1`,
+      cancelUrl: `${base}/portal/membership?canceled=1`,
+    });
+    // No tier on the record: the webhook only touches membership lifecycle when a
+    // tier is present, so an activation payment never renews or re-activates.
+    await getDb().insert(schema.paymentRecords).values({
+      userId: ctx.user.id,
+      provider: provider.name,
+      providerRef,
+      amount,
+      currency: "aed",
+      status: "pending",
+      purpose: "activation",
+    });
+    void recordAnalyticsEvent("payment_started", {
+      userId: ctx.user.id,
+      properties: { amount, purpose: "activation" },
     });
     return { url };
   }),

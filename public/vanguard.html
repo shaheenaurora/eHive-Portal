@@ -132,7 +132,11 @@
           >
             Founding cohort opens 1 October · Forty seats · By application.
           </p>
-          <p class="eh-meta eh-reveal" id="vanguardCountdown" style="--d: 0.28s">
+          <p
+            class="eh-meta eh-reveal"
+            id="vanguardCountdown"
+            style="--d: 0.28s"
+          >
             <!-- set by inline script: days until applications open -->
           </p>
           <div class="eh-actions eh-reveal" style="--d: 0.32s">
@@ -154,7 +158,9 @@
             class="eh-reveal"
             style="text-align: center; max-width: 70ch; margin: 0 auto"
           >
-            <h2 id="for-h" class="eh-h2">For founders past the proving stage.</h2>
+            <h2 id="for-h" class="eh-h2">
+              For founders past the proving stage.
+            </h2>
             <p class="eh-lead" style="margin-top: 1rem">
               You've built something real. You don't need another networking
               room full of people selling to each other — you need a small
@@ -164,8 +170,7 @@
             <p style="margin-top: 1rem; color: var(--h-muted-2)">
               Vanguard is for established founders and owners — principled,
               serious about growth, and generous by default. Membership is by
-              application, because the room is only as good as the people in
-              it.
+              application, because the room is only as good as the people in it.
             </p>
           </div>
         </div>
@@ -236,10 +241,10 @@
               </h2>
               <p style="margin-top: 1rem; color: var(--h-muted-2)">
                 At the heart of Vanguard is your Peer Advisory Board — six to
-                eight founders, matched for calibre and mixed by sector,
-                meeting in strict confidence. You bring a real challenge; you
-                get the counsel of people who have faced it. Between sessions,
-                you hold each other accountable.
+                eight founders, matched for calibre and mixed by sector, meeting
+                in strict confidence. You bring a real challenge; you get the
+                counsel of people who have faced it. Between sessions, you hold
+                each other accountable.
               </p>
               <p style="margin-top: 1rem; color: var(--h-muted-2)">
                 Bought elsewhere, a board like this runs into tens of thousands
@@ -259,7 +264,10 @@
       </section>
 
       <!-- 5 — THE FOUNDING ACTIVATION -->
-      <section class="eh-section-v2 eh-full eh-light" aria-labelledby="activation-h">
+      <section
+        class="eh-section-v2 eh-full eh-light"
+        aria-labelledby="activation-h"
+      >
         <div class="eh-wrap">
           <div
             class="eh-reveal"
@@ -294,10 +302,10 @@
             </h2>
             <p class="eh-lead" style="margin-top: 1rem">
               A confidential peer board alone, bought elsewhere, runs into tens
-              of thousands a year. Add the programming, the advisory access,
-              the curated benefits and the room itself, and Vanguard delivers
-              many times its fee — before you count the one introduction that
-              changes everything.
+              of thousands a year. Add the programming, the advisory access, the
+              curated benefits and the room itself, and Vanguard delivers many
+              times its fee — before you count the one introduction that changes
+              everything.
             </p>
           </div>
         </div>
@@ -313,14 +321,11 @@
             <h2 id="pricing-h" class="eh-h2">
               Forty founding seats. By application.
             </h2>
-            <p
-              class="eh-lead"
-              style="max-width: 62ch; margin: 1rem auto 0"
-            >
+            <p class="eh-lead" style="max-width: 62ch; margin: 1rem auto 0">
               The founding Vanguard cohort opens 1 October and is capped at
-              forty. Membership is by application and a short conversation —
-              not because we're difficult, but because the value of this room
-              is the people in it, and we protect that above everything.
+              forty. Membership is by application and a short conversation — not
+              because we're difficult, but because the value of this room is the
+              people in it, and we protect that above everything.
             </p>
           </div>
           <div
@@ -328,8 +333,10 @@
             style="--d: 0.1s; margin-top: 2.5rem"
           >
             <div class="eh-number-card">
-              <span class="eh-number">40</span>
-              <span class="eh-number-label">Founding seats</span>
+              <span class="eh-number" id="vgSeats">40</span>
+              <span class="eh-number-label" id="vgSeatsLabel"
+                >Founding seats</span
+              >
             </div>
             <div class="eh-number-card">
               <span class="eh-number">AED 12,000</span>
@@ -373,16 +380,17 @@
             class="eh-reveal"
             style="text-align: center; max-width: 70ch; margin: 0 auto"
           >
-            <h2 id="tiers-h" class="eh-h2">Vanguard is the door that's open.</h2>
+            <h2 id="tiers-h" class="eh-h2">
+              Vanguard is the door that's open.
+            </h2>
             <p class="eh-lead" style="margin-top: 1rem">
-              eHive Circle will grow into further tiers — Horizon and Ascent
-              are opening later, and Zenith is by invitation only. For the
-              founding chapter, Vanguard is where it begins.
+              eHive Circle will grow into further tiers — Horizon and Ascent are
+              opening later, and Zenith is by invitation only. For the founding
+              chapter, Vanguard is where it begins.
             </p>
             <p style="margin-top: 1.25rem">
               <a class="eh-explore-link" href="circle.html"
-                >Explore the community's culture
-                <span class="h-arr">→</span></a
+                >Explore the community's culture <span class="h-arr">→</span></a
               >
             </p>
           </div>
@@ -401,9 +409,7 @@
           <div class="eh-steps eh-steps-3">
             <div class="eh-step eh-reveal" data-num="01">
               <h3>Apply</h3>
-              <p>
-                Tell us about you and your business (a few minutes).
-              </p>
+              <p>Tell us about you and your business (a few minutes).</p>
             </div>
             <div class="eh-step eh-reveal" data-num="02" style="--d: 0.1s">
               <h3>Conversation</h3>
@@ -540,12 +546,48 @@
         var dayMs = 24 * 60 * 60 * 1000;
         var days = Math.ceil((opens.getTime() - now.getTime()) / dayMs);
         if (days <= 0) {
-          el.textContent = "Applications are open — the founding cohort is forming now.";
+          el.textContent =
+            "Applications are open — the founding cohort is forming now.";
         } else if (days === 1) {
           el.textContent = "Applications open tomorrow.";
         } else {
           el.textContent = "Applications open in " + days + " days.";
         }
+      })();
+    </script>
+    <!--
+      Live founding-seat count. The page is authored with the real cap ("40");
+      this replaces it with seats actually remaining once any founding members
+      are admitted, so "forty seats" stays honest. No JS or a failed fetch leaves
+      the authored number in place.
+    -->
+    <script>
+      (function () {
+        fetch("/api/vanguard/cohort", {
+          headers: { accept: "application/json" },
+        })
+          .then(function (r) {
+            return r.ok ? r.json() : null;
+          })
+          .then(function (s) {
+            if (!s || typeof s.seatsLeft !== "number") return;
+            var seats = document.getElementById("vgSeats");
+            var label = document.getElementById("vgSeatsLabel");
+            if (s.seatsLeft <= 0) {
+              if (seats) seats.textContent = "0";
+              if (label) label.textContent = "Founding cohort full";
+              return;
+            }
+            // Only tighten the number below the cap — never show more than the
+            // authored figure if the endpoint reports something odd.
+            if (seats && s.seatsLeft < s.cap) {
+              seats.textContent = String(s.seatsLeft);
+              if (label) label.textContent = "Founding seats left";
+            }
+          })
+          .catch(function () {
+            /* keep the authored count */
+          });
       })();
     </script>
   </body>

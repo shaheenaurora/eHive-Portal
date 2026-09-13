@@ -9,6 +9,9 @@ export type CheckoutInput = {
   currency: string; // e.g. "aed"
   successUrl: string;
   cancelUrl: string;
+  /** Optional line-item label; falls back to the tier membership name. Lets
+   *  non-membership charges (e.g. the Clarity Sprint activation) read correctly. */
+  label?: string;
 };
 
 /** Normalized outcome of a provider webhook, gateway-agnostic. */

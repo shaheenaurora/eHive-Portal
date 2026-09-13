@@ -89,6 +89,31 @@ export type SelfServeTier = (typeof SELF_SERVE_TIERS)[number];
  * Flip to false after the founding cohort to restore instant payment. */
 export const VANGUARD_FOUNDING_APPLICATION_ONLY = true;
 
+/* Founding-cohort scarcity engine. These back the public "forty seats / the
+   rate rises" claims with real state so the site never advertises a cap or a
+   price the system can't hold. All are overridable at runtime via app_config
+   (keys `vanguard:founding_cap`, `vanguard:founding_price_aed`,
+   `vanguard:post_founding_price_aed`, `vanguard:activation_price_aed`), so they
+   can be tuned without a deploy. The post-founding price is a placeholder
+   default — confirm it before the cohort closes so "the rate rises" is real. */
+export const VANGUARD_FOUNDING_CAP = 40;
+export const VANGUARD_FOUNDING_PRICE_AED = 12000;
+export const VANGUARD_POST_FOUNDING_PRICE_AED = 18000;
+/** The paid week-one Clarity Sprint activation (normally AED 2,500). Overridable
+    via app_config key `vanguard:activation_price_aed`. */
+export const VANGUARD_ACTIVATION_PRICE_AED = 499;
+/** Resolve a Vanguard cohort setting from an optional app_config override,
+   clamped to a sane range. Pure, so it's unit-testable. */
+export function vanguardSetting(
+  raw: string | null | undefined,
+  fallback: number,
+  { min = 1, max = 1_000_000 }: { min?: number; max?: number } = {}
+): number {
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < min || n > max) return fallback;
+  return Math.floor(n);
+}
+
 export const MEMBER_STATUSES = ["active", "paused", "cancelled"] as const;
 export type MemberStatus = (typeof MEMBER_STATUSES)[number];
 
