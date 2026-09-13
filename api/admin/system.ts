@@ -139,6 +139,74 @@ export const systemRouter = createRouter({
     };
   }),
 
+  /* "Needs attention now" — the small set of live counts the back-office should
+     act on today, each with a link. Powers the action row on the dashboard. */
+  needsAttention: adminQuery.query(async () => {
+    const db = getDb();
+    const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const count = sql<number>`count(*)`;
+    const [[apps], [leadsSla], [atRisk], [saves], [dsar], cohort] =
+      await Promise.all([
+        db
+          .select({ n: count })
+          .from(schema.applications)
+          .where(
+            or(
+              eq(schema.applications.status, "received"),
+              eq(schema.applications.status, "screening"),
+              eq(schema.applications.status, "interview")
+            )
+          ),
+        db
+          .select({ n: count })
+          .from(schema.leads)
+          .where(
+            and(
+              eq(schema.leads.status, "new"),
+              lte(schema.leads.createdAt, dayAgo)
+            )
+          ),
+        db
+          .select({ n: count })
+          .from(schema.members)
+          .where(
+            and(
+              eq(schema.members.status, "active"),
+              eq(schema.members.dormancyStage, "at_risk")
+            )
+          ),
+        db
+          .select({ n: count })
+          .from(schema.memberSaveCases)
+          .where(
+            or(
+              eq(schema.memberSaveCases.status, "open"),
+              eq(schema.memberSaveCases.status, "working")
+            )
+          ),
+        db
+          .select({ n: count })
+          .from(schema.dataRequests)
+          .where(eq(schema.dataRequests.status, "open")),
+        (async () => {
+          try {
+            const { cohortStatus } = await import("../lib/vanguard");
+            return await cohortStatus();
+          } catch {
+            return null;
+          }
+        })(),
+      ]);
+    return {
+      pendingApplications: Number(apps?.n ?? 0),
+      leadsBreachingSla: Number(leadsSla?.n ?? 0),
+      atRiskMembers: Number(atRisk?.n ?? 0),
+      openSaveCases: Number(saves?.n ?? 0),
+      openDataRequests: Number(dsar?.n ?? 0),
+      foundingSeatsLeft: cohort ? cohort.seatsLeft : null,
+    };
+  }),
+
   /* ------------------------- email (SMTP) config ------------------------- */
   /* Non-secret status of outbound mail + a full-admin-only test send, so SMTP
      can be verified from the portal after setting the Railway variables. */

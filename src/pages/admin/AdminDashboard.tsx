@@ -13,6 +13,7 @@ import {
   Bar,
   adminHasScope,
 } from "@/components/eh";
+import { AdminAttention } from "@/components/AdminAttention";
 import { useAuth } from "@/hooks/useAuth";
 import { fmtDate } from "@/lib/ehf";
 import { TIER_LABEL } from "@contracts/constants";
@@ -51,6 +52,8 @@ export default function AdminDashboard() {
         title="The circle at a glance"
         sub="Membership, applications, events and website leads — live from the same database the portal runs on."
       />
+
+      <AdminAttention />
 
       <div className="eh-grid g4">
         <Stat
