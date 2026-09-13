@@ -94,11 +94,12 @@ export const VANGUARD_FOUNDING_APPLICATION_ONLY = true;
    price the system can't hold. All are overridable at runtime via app_config
    (keys `vanguard:founding_cap`, `vanguard:founding_price_aed`,
    `vanguard:post_founding_price_aed`, `vanguard:activation_price_aed`), so they
-   can be tuned without a deploy. The post-founding price is a placeholder
-   default — confirm it before the cohort closes so "the rate rises" is real. */
+   can be tuned without a deploy. */
 export const VANGUARD_FOUNDING_CAP = 40;
 export const VANGUARD_FOUNDING_PRICE_AED = 12000;
-export const VANGUARD_POST_FOUNDING_PRICE_AED = 18000;
+/** The standard rate once the founding cohort has filled — this is the "rate
+    rises" number (founding AED 12,000 → AED 19,999). */
+export const VANGUARD_POST_FOUNDING_PRICE_AED = 19999;
 /** The paid week-one Clarity Sprint activation (normally AED 2,500). Overridable
     via app_config key `vanguard:activation_price_aed`. */
 export const VANGUARD_ACTIVATION_PRICE_AED = 499;
