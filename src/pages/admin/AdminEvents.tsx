@@ -296,7 +296,8 @@ export default function AdminEvents() {
                       : "—"}
                     {e.ticketPriceMinor != null && e.ticketPriceMinor > 0 && (
                       <div className="eh-muted eh-sm">
-                        tickets AED {(e.ticketPriceMinor / 100).toLocaleString()}
+                        tickets AED{" "}
+                        {(e.ticketPriceMinor / 100).toLocaleString()}
                       </div>
                     )}
                   </td>

@@ -37,7 +37,10 @@ export async function validatePromo(
     return { ok: false, error: "That promo code has been fully used." };
   if (
     promo.tierScope &&
-    !promo.tierScope.split(",").map(s => s.trim()).includes(tier)
+    !promo.tierScope
+      .split(",")
+      .map(s => s.trim())
+      .includes(tier)
   ) {
     return { ok: false, error: "That promo code doesn't apply to this tier." };
   }
@@ -45,7 +48,8 @@ export async function validatePromo(
     promo.kind === "percent"
       ? Math.floor((amountFils * Math.min(Math.max(promo.value, 1), 100)) / 100)
       : Math.min(promo.value, amountFils);
-  if (discount <= 0) return { ok: false, error: "That promo code has no value." };
+  if (discount <= 0)
+    return { ok: false, error: "That promo code has no value." };
   return { ok: true, discountedFils: amountFils - discount, promo };
 }
 
@@ -62,7 +66,9 @@ export async function claimPromo(promoId: number): Promise<boolean> {
       AND active = true
       AND (maxUses IS NULL OR usedCount < maxUses)
   `);
-  const affected = Number((res as unknown as [{ affectedRows: number }])[0]?.affectedRows ?? 0);
+  const affected = Number(
+    (res as unknown as [{ affectedRows: number }])[0]?.affectedRows ?? 0
+  );
   return affected > 0;
 }
 

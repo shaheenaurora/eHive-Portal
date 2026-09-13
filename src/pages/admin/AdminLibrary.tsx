@@ -266,8 +266,8 @@ function TestimonialsPanel() {
         <div>
           <h3 style={{ margin: 0 }}>Member testimonials</h3>
           <p className="eh-sm eh-muted" style={{ margin: ".25rem 0 0" }}>
-            Published quotes rotate on the public homepage (“What members
-            say”). Get written consent before publishing.
+            Published quotes rotate on the public homepage (“What members say”).
+            Get written consent before publishing.
           </p>
         </div>
         <button
@@ -290,7 +290,11 @@ function TestimonialsPanel() {
       {q.data && q.data.length > 0 && (
         <div className="eh-list eh-mt">
           {q.data.map(t => (
-            <div className="row" key={t.id} style={{ alignItems: "flex-start" }}>
+            <div
+              className="row"
+              key={t.id}
+              style={{ alignItems: "flex-start" }}
+            >
               <div style={{ flex: 1 }}>
                 <div className="t">“{t.quote}”</div>
                 <div className="d eh-sm">
@@ -404,7 +408,9 @@ function TestimonialsPanel() {
               <input
                 type="checkbox"
                 checked={edit.published}
-                onChange={e => setEdit({ ...edit, published: e.target.checked })}
+                onChange={e =>
+                  setEdit({ ...edit, published: e.target.checked })
+                }
               />
               Published (show on the homepage)
             </label>

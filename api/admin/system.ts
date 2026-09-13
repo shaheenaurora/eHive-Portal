@@ -220,7 +220,7 @@ export const systemRouter = createRouter({
       z.object({
         enabled: z.boolean(),
         pct: z.number().min(0).max(100),
-      }),
+      })
     )
     .mutation(async ({ ctx, input }) => {
       if (!isFullAdmin(ctx.user as never)) {
@@ -235,7 +235,10 @@ export const systemRouter = createRouter({
           .values({ key, value })
           .onDuplicateKeyUpdate({ set: { value } });
       await setKey("royalty.enabled", String(input.enabled));
-      await setKey("royalty.pct", String(Math.min(Math.max(input.pct, 0), 100)));
+      await setKey(
+        "royalty.pct",
+        String(Math.min(Math.max(input.pct, 0), 100))
+      );
       await audit(ctx.user, "royalty.config", {
         detail: `enabled=${input.enabled} pct=${input.pct}`,
       });

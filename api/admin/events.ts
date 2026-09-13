@@ -78,7 +78,14 @@ export const eventsRouter = createRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { audience, audienceTiers, chapterId, costAed, ticketPriceAed, ...rest } = input;
+      const {
+        audience,
+        audienceTiers,
+        chapterId,
+        costAed,
+        ticketPriceAed,
+        ...rest
+      } = input;
       if (chapterId && costAed && costAed > 0) {
         const remaining = await chapterEventBudgetRemaining(chapterId);
         if (costAed > remaining) {
@@ -212,7 +219,9 @@ export const eventsRouter = createRouter({
           costAed,
           ...(ticketPriceAed === undefined
             ? {}
-            : { ticketPriceMinor: ticketPriceAed ? ticketPriceAed * 100 : null }),
+            : {
+                ticketPriceMinor: ticketPriceAed ? ticketPriceAed * 100 : null,
+              }),
         })
         .where(eq(schema.events.id, id));
       return { ok: true };
