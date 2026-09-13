@@ -60,6 +60,16 @@ export default function Membership() {
     },
     onError: e => toast(e.message),
   });
+  const activation = trpc.circle.activationStatus.useQuery(undefined, {
+    retry: false,
+    enabled: !!me.data?.member,
+  });
+  const startActivation = trpc.circle.startActivation.useMutation({
+    onSuccess: ({ url }) => {
+      window.location.href = url;
+    },
+    onError: e => toast(e.message),
+  });
 
   const updateProfile = trpc.circle.updateProfile.useMutation({
     onSuccess: () => {
@@ -427,6 +437,38 @@ export default function Membership() {
               )}
             </div>
           </div>
+
+          {activation.data?.enabled && !activation.data.purchased && (
+            <div className="eh-card">
+              <div className="eh-eyebrow" style={{ marginBottom: ".4rem" }}>
+                Founding activation
+              </div>
+              <p className="eh-strong" style={{ margin: "0 0 .3rem" }}>
+                Start your Clarity Sprint
+              </p>
+              <p className="eh-sm eh-muted" style={{ margin: "0 0 .75rem" }}>
+                A AED 2,500 diagnostic that sets your year — yours for AED{" "}
+                {activation.data.priceAed} as a founding member. The paid first
+                step that makes the membership yours from day one.
+              </p>
+              <button
+                className="eh-btn sm green"
+                disabled={startActivation.isPending}
+                onClick={() => startActivation.mutate()}
+              >
+                {startActivation.isPending
+                  ? "Redirecting…"
+                  : `Activate — AED ${activation.data.priceAed} →`}
+              </button>
+            </div>
+          )}
+          {activation.data?.purchased && (
+            <div className="eh-card">
+              <p className="eh-sm eh-muted" style={{ margin: 0 }}>
+                Clarity Sprint activation active ✓
+              </p>
+            </div>
+          )}
 
           <div className="eh-card">
             <h3>Change tier</h3>

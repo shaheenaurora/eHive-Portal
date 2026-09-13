@@ -676,6 +676,18 @@ app.get("/api/public-stats", async c => {
   }
 });
 
+/* Vanguard founding-cohort status — public, no PII. Backs the "forty seats /
+   the rate rises" claims on the launch page with real seat math. */
+app.get("/api/vanguard/cohort", async c => {
+  try {
+    const { cohortStatus } = await import("./lib/vanguard");
+    return c.json(await cohortStatus());
+  } catch (err) {
+    logger.error("vanguard cohort status failed", { error: err });
+    return c.json({ error: "unavailable" }, 500);
+  }
+});
+
 /* Public booking API — real availability check + appointment storage. */
 
 /** Return available slots for a product across a date range (inclusive).

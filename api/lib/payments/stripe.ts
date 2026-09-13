@@ -24,7 +24,9 @@ export class StripeProvider implements PaymentProvider {
             currency: input.currency,
             unit_amount: input.amount,
             product_data: {
-              name: `eHive Circle — ${input.tier} membership (1 year)`,
+              name:
+                input.label ??
+                `eHive Circle — ${input.tier} membership (1 year)`,
             },
           },
         },
