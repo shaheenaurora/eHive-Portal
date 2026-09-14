@@ -114,164 +114,187 @@ export default function PodDetail() {
           </button>
         </div>
       ) : (
-        <div className="eh-grid g3" style={{ alignItems: "start" }}>
+        <>
           <div
-            className="eh-span2"
-            style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+            className="eh-mb"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: ".55rem",
+              padding: ".6rem .9rem",
+              borderRadius: 10,
+              background: "#fdfaf3",
+              border: "1px solid #e8d5ac",
+              fontSize: ".85rem",
+            }}
           >
-            {myOpen.length > 0 && (
-              <div
-                className="eh-card"
-                style={{ borderColor: "#e8d5ac", background: "#fdfaf3" }}
-              >
-                <h3>Your open commitments ({myOpen.length})</h3>
+            <span aria-hidden style={{ fontSize: "1rem" }}>
+              🔒
+            </span>
+            <span>
+              <b>Chatham House Rule.</b> Everything shared in this room —
+              numbers, decisions, who said what — stays in it.
+            </span>
+          </div>
+          <div className="eh-grid g3" style={{ alignItems: "start" }}>
+            <div
+              className="eh-span2"
+              style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+            >
+              {myOpen.length > 0 && (
+                <div
+                  className="eh-card"
+                  style={{ borderColor: "#e8d5ac", background: "#fdfaf3" }}
+                >
+                  <h3>Your open commitments ({myOpen.length})</h3>
+                  <div className="eh-list">
+                    {myOpen.map(({ item }) => (
+                      <div className="row" key={item.id}>
+                        <div>
+                          <div className="t">{item.text}</div>
+                          <div className="d">Due {relDay(item.dueAt)}</div>
+                        </div>
+                        <button
+                          className="eh-btn gold sm"
+                          disabled={complete.isPending}
+                          onClick={() => complete.mutate({ id: item.id })}
+                        >
+                          Mark done ✓
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="eh-card">
+                <h3>Sessions</h3>
+                {sessions.length === 0 && (
+                  <Empty
+                    big="No sessions yet."
+                    p="Your facilitator will schedule the first one."
+                  />
+                )}
                 <div className="eh-list">
-                  {myOpen.map(({ item }) => (
+                  {upcoming.map(s => (
+                    <div className="row" key={s.id}>
+                      <div>
+                        <div className="t">{s.topic ?? "Pod session"}</div>
+                        <div className="d">
+                          {fmtDay(s.startsAt)} ·{" "}
+                          {fmtDateTime(s.startsAt).split("·")[1]} ·{" "}
+                          {s.durationMin} min
+                        </div>
+                      </div>
+                      <div className="eh-row">
+                        {s.videoLink && (
+                          <a
+                            className="eh-btn sm"
+                            href={s.videoLink}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Join →
+                          </a>
+                        )}
+                        <StatusPill status={s.status} />
+                      </div>
+                    </div>
+                  ))}
+                  {past.map(s => {
+                    const note = noteMap.get(s.id);
+                    const att = attMap.get(s.id);
+                    return (
+                      <div
+                        className="row"
+                        key={s.id}
+                        style={{ alignItems: "flex-start" }}
+                      >
+                        <div style={{ flex: 1 }}>
+                          <div className="t">{s.topic ?? "Pod session"}</div>
+                          <div className="d">{fmtDateTime(s.startsAt)}</div>
+                          {note?.summary && (
+                            <p
+                              className="eh-sm eh-muted"
+                              style={{
+                                margin: ".4rem 0 0",
+                                whiteSpace: "pre-line",
+                              }}
+                            >
+                              {note.summary}
+                            </p>
+                          )}
+                        </div>
+                        <div className="eh-row">
+                          {att && <StatusPill status={att.status} />}
+                          <StatusPill status={s.status} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="eh-card">
+                <h3>All commitments in the room</h3>
+                {actionItems.length === 0 && (
+                  <Empty big="Nothing on the board." />
+                )}
+                <div className="eh-list">
+                  {actionItems.map(({ item, user }) => (
                     <div className="row" key={item.id}>
                       <div>
-                        <div className="t">{item.text}</div>
-                        <div className="d">Due {relDay(item.dueAt)}</div>
+                        <div
+                          className="t"
+                          style={
+                            item.status === "done"
+                              ? { textDecoration: "line-through", opacity: 0.6 }
+                              : undefined
+                          }
+                        >
+                          {item.text}
+                        </div>
+                        <div className="d">
+                          {user.name ?? "Member"} · due {relDay(item.dueAt)}
+                        </div>
                       </div>
-                      <button
-                        className="eh-btn gold sm"
-                        disabled={complete.isPending}
-                        onClick={() => complete.mutate({ id: item.id })}
-                      >
-                        Mark done ✓
-                      </button>
+                      <StatusPill status={item.status} />
                     </div>
                   ))}
                 </div>
               </div>
-            )}
-
-            <div className="eh-card">
-              <h3>Sessions</h3>
-              {sessions.length === 0 && (
-                <Empty
-                  big="No sessions yet."
-                  p="Your facilitator will schedule the first one."
-                />
-              )}
-              <div className="eh-list">
-                {upcoming.map(s => (
-                  <div className="row" key={s.id}>
-                    <div>
-                      <div className="t">{s.topic ?? "Pod session"}</div>
-                      <div className="d">
-                        {fmtDay(s.startsAt)} ·{" "}
-                        {fmtDateTime(s.startsAt).split("·")[1]} ·{" "}
-                        {s.durationMin} min
-                      </div>
-                    </div>
-                    <div className="eh-row">
-                      {s.videoLink && (
-                        <a
-                          className="eh-btn sm"
-                          href={s.videoLink}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          Join →
-                        </a>
-                      )}
-                      <StatusPill status={s.status} />
-                    </div>
-                  </div>
-                ))}
-                {past.map(s => {
-                  const note = noteMap.get(s.id);
-                  const att = attMap.get(s.id);
-                  return (
-                    <div
-                      className="row"
-                      key={s.id}
-                      style={{ alignItems: "flex-start" }}
-                    >
-                      <div style={{ flex: 1 }}>
-                        <div className="t">{s.topic ?? "Pod session"}</div>
-                        <div className="d">{fmtDateTime(s.startsAt)}</div>
-                        {note?.summary && (
-                          <p
-                            className="eh-sm eh-muted"
-                            style={{
-                              margin: ".4rem 0 0",
-                              whiteSpace: "pre-line",
-                            }}
-                          >
-                            {note.summary}
-                          </p>
-                        )}
-                      </div>
-                      <div className="eh-row">
-                        {att && <StatusPill status={att.status} />}
-                        <StatusPill status={s.status} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
             </div>
 
             <div className="eh-card">
-              <h3>All commitments in the room</h3>
-              {actionItems.length === 0 && (
-                <Empty big="Nothing on the board." />
-              )}
+              <h3>The room ({roster.length})</h3>
               <div className="eh-list">
-                {actionItems.map(({ item, user }) => (
-                  <div className="row" key={item.id}>
-                    <div>
-                      <div
-                        className="t"
-                        style={
-                          item.status === "done"
-                            ? { textDecoration: "line-through", opacity: 0.6 }
-                            : undefined
-                        }
-                      >
-                        {item.text}
-                      </div>
-                      <div className="d">
-                        {user.name ?? "Member"} · due {relDay(item.dueAt)}
+                {roster.map(({ member, user, role }) => (
+                  <div className="row" key={member.id}>
+                    <div className="eh-row" style={{ flexWrap: "nowrap" }}>
+                      <span className="eh-avatar">{initials(user.name)}</span>
+                      <div>
+                        <div className="t">{user.name ?? "Member"}</div>
+                        <div className="d">{member.company ?? ""}</div>
                       </div>
                     </div>
-                    <StatusPill status={item.status} />
+                    {role !== "member" && <Pill>{role}</Pill>}
                   </div>
                 ))}
               </div>
-            </div>
-          </div>
-
-          <div className="eh-card">
-            <h3>The room ({roster.length})</h3>
-            <div className="eh-list">
-              {roster.map(({ member, user, role }) => (
-                <div className="row" key={member.id}>
-                  <div className="eh-row" style={{ flexWrap: "nowrap" }}>
-                    <span className="eh-avatar">{initials(user.name)}</span>
-                    <div>
-                      <div className="t">{user.name ?? "Member"}</div>
-                      <div className="d">{member.company ?? ""}</div>
-                    </div>
-                  </div>
-                  {role !== "member" && <Pill>{role}</Pill>}
+              <hr className="eh-divider" />
+              <div className="eh-list">
+                <div className="row">
+                  <span className="d">Facilitator</span>
+                  <span className="t eh-sm">{pod.facilitator ?? "—"}</span>
                 </div>
-              ))}
-            </div>
-            <hr className="eh-divider" />
-            <div className="eh-list">
-              <div className="row">
-                <span className="d">Facilitator</span>
-                <span className="t eh-sm">{pod.facilitator ?? "—"}</span>
-              </div>
-              <div className="row">
-                <span className="d">Cadence</span>
-                <span className="t eh-sm">{pod.cadence ?? "—"}</span>
+                <div className="row">
+                  <span className="d">Cadence</span>
+                  <span className="t eh-sm">{pod.cadence ?? "—"}</span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </>
       )}
     </EhShell>
   );
