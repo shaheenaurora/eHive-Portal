@@ -9,8 +9,16 @@ import {
   TierPill,
   Spinner,
   LoadError,
+  Bar,
 } from "@/components/eh";
 import { fmtDay, fmtDateTime } from "@/lib/ehf";
+
+/** Is a session within the next 7 days? Used to flag imminent meetings. */
+function soon(startsAt: string | Date): boolean {
+  const t = new Date(startsAt).getTime();
+  const now = Date.now();
+  return t >= now && t - now <= 7 * 24 * 60 * 60 * 1000;
+}
 
 export default function Pods() {
   const q = trpc.circle.myPods.useQuery(undefined, { retry: false });
@@ -69,24 +77,48 @@ export default function Pods() {
                 </div>
                 <div className="row">
                   <span className="d">Seats</span>
-                  <span className="t eh-sm eh-num">
-                    {memberCount}/{pod.capacity}
+                  <span
+                    className="t eh-sm eh-num"
+                    style={{ minWidth: 120, flex: "0 0 auto" }}
+                  >
+                    <Bar
+                      pct={Math.round((memberCount / pod.capacity) * 100)}
+                      label={`${memberCount} of ${pod.capacity} seats`}
+                    />
                   </span>
                 </div>
                 <div className="row">
                   <span className="d">Next session</span>
                   <span className="t eh-sm">
-                    {nextSession
-                      ? `${fmtDay(nextSession.startsAt)} ${fmtDateTime(nextSession.startsAt).split("·")[1]}`
-                      : "To be scheduled"}
+                    {nextSession ? (
+                      <>
+                        {fmtDay(nextSession.startsAt)}{" "}
+                        {fmtDateTime(nextSession.startsAt).split("·")[1]}
+                        {soon(nextSession.startsAt) && (
+                          <>
+                            {" "}
+                            <Pill color="gold">this week</Pill>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      "To be scheduled"
+                    )}
                   </span>
                 </div>
               </div>
-              {role !== "member" && (
-                <div className="eh-mt">
-                  <Pill>Your role: {role}</Pill>
-                </div>
-              )}
+              <div
+                className="eh-between eh-mt"
+                style={{ alignItems: "center" }}
+              >
+                <span
+                  className="eh-sm eh-muted"
+                  style={{ display: "inline-flex", gap: ".3rem" }}
+                >
+                  🔒 Chatham House
+                </span>
+                {role !== "member" && <Pill>Your role: {role}</Pill>}
+              </div>
             </div>
           </Link>
         ))}
