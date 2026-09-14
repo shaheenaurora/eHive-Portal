@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 
-/* ZeptoMail payload-shape test: guards the { email_address } wrapper that the
-   API requires for recipient objects — a bare { address } in reply_to is
-   rejected with "Mandatory Field missing" (seen in production). */
+/* ZeptoMail payload-shape tests: reply_to must be an array of FLAT address
+   objects ([{ address, name }]) — unlike `to` it is not wrapped in
+   { email_address }, and the wrapped shape is rejected with
+   "Mandatory Field missing" (seen in production). Attachments use the current
+   content / mime_type / name fields. */
 
 const originalEnv = { ...process.env };
 
@@ -43,9 +45,7 @@ describe("sendMailDetailed via ZeptoMail", () => {
     const payload = JSON.parse(
       (fetchMock.mock.calls[0][1] as RequestInit).body as string
     );
-    expect(payload.reply_to).toEqual([
-      { email_address: { address: "owner@example.com" } },
-    ]);
+    expect(payload.reply_to).toEqual([{ address: "owner@example.com", name: "eHive" }]);
     // `to` uses the same wrapper shape.
     expect(payload.to).toEqual([
       { email_address: { address: "visitor@example.com" } },

@@ -143,11 +143,12 @@ async function sendViaZepto(
         subject: input.subject,
         htmlbody: input.html,
         textbody: input.text ?? htmlToText(input.html),
-        // ZeptoMail requires the same { email_address: { address } } wrapper
-        // for reply_to as for `to` — a bare { address } is rejected with
-        // "Mandatory Field missing".
+        // ZeptoMail's reply_to is an array of FLAT address objects
+        // ([{ address, name }]) — unlike `to`/`cc`/`bcc` it is NOT wrapped in
+        // { email_address }. The wrapped shape is rejected with
+        // "Mandatory Field missing" (seen in production on booking mail).
         ...(input.replyTo
-          ? { reply_to: [{ email_address: { address: input.replyTo } }] }
+          ? { reply_to: [{ address: input.replyTo, name: "eHive" }] }
           : {}),
         // ZeptoMail's inline-attachment schema is { content, mime_type, name }
         // (content = base64). The older { file_name, file_type, file_cache }
