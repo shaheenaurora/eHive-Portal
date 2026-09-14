@@ -14,6 +14,7 @@ import {
   Pill,
   toast,
 } from "@/components/eh";
+import { AdmissionWizard } from "@/components/AdmissionWizard";
 import { fmtDate } from "@/lib/ehf";
 import { APPLICATION_STATUSES, TIERS, TIER_LABEL } from "@contracts/constants";
 
@@ -101,6 +102,7 @@ export default function AdminApplications() {
     { retry: false }
   );
   const [sel, setSel] = useState<AppRow | null>(null);
+  const [wizardApp, setWizardApp] = useState<AppRow | null>(null);
   const [note, setNote] = useState("");
   const [tier, setTier] = useState<string>("ascent");
   const [chapter, setChapter] = useState<string>("");
@@ -256,13 +258,46 @@ export default function AdminApplications() {
                     })()}
                   </td>
                   <td data-label="">
-                    <span className="eh-btn ghost sm">Review →</span>
+                    <span
+                      style={{
+                        display: "flex",
+                        gap: ".4rem",
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      {(a.status === "received" ||
+                        a.status === "screening" ||
+                        a.status === "interview") && (
+                        <button
+                          className="eh-btn gold sm"
+                          onClick={e => {
+                            e.stopPropagation();
+                            setWizardApp(a);
+                          }}
+                        >
+                          Admit ⇥
+                        </button>
+                      )}
+                      <span className="eh-btn ghost sm">Review →</span>
+                    </span>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      )}
+
+      {wizardApp && (
+        <AdmissionWizard
+          app={wizardApp}
+          chapters={(chapters.data ?? []).map(c => ({
+            id: c.id,
+            name: c.name,
+          }))}
+          onClose={() => setWizardApp(null)}
+          onApproved={() => utils.admin.applications.invalidate()}
+        />
       )}
 
       {sel && (
