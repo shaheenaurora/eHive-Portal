@@ -100,11 +100,12 @@ describe("sendMailDetailed via ZeptoMail", () => {
     const payload = JSON.parse(
       (fetchMock.mock.calls[0][1] as RequestInit).body as string
     );
+    // ZeptoMail's inline-attachment schema: { name, mime_type, content }.
     expect(payload.attachments).toEqual([
       {
-        file_name: "invite.ics",
-        file_type: "text/calendar",
-        file_cache: Buffer.from("BEGIN:VCALENDAR").toString("base64"),
+        name: "invite.ics",
+        mime_type: "text/calendar",
+        content: Buffer.from("BEGIN:VCALENDAR").toString("base64"),
       },
     ]);
   });
