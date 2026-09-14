@@ -71,6 +71,16 @@ export default function AdminLeads() {
   });
   const [sel, setSel] = useState<LeadRow | null>(null);
 
+  // Inline status change straight from a table row — no need to open the panel.
+  const inlineStatus = trpc.admin.updateLead.useMutation({
+    onSuccess: () => {
+      q.refetch();
+      counts.refetch();
+      dueCount.refetch();
+    },
+    onError: e => toast(e.message),
+  });
+
   const pickStatus = (s: LeadStatus | "") => {
     setDue(false);
     setStatus(s);
@@ -288,9 +298,31 @@ export default function AdminLeads() {
                       {leadHighlight(l)}
                     </td>
                     <td data-label="Status">
-                      <Pill color={STATUS_COLOR[l.status]}>
-                        {LEAD_STATUS_LABEL[l.status]}
-                      </Pill>
+                      <select
+                        className="eh-input eh-inline-select"
+                        aria-label="Lead status"
+                        value={l.status}
+                        disabled={inlineStatus.isPending}
+                        onClick={e => e.stopPropagation()}
+                        onKeyDown={e => e.stopPropagation()}
+                        onChange={e => {
+                          e.stopPropagation();
+                          const next = e.target.value as LeadStatus;
+                          if (next === l.status) return;
+                          inlineStatus.mutate({
+                            id: l.id,
+                            status: next,
+                            ownerUserId: l.ownerUserId,
+                          });
+                        }}
+                        style={{ padding: ".2rem .4rem", fontSize: ".82rem" }}
+                      >
+                        {LEAD_STATUSES.map(s => (
+                          <option key={s} value={s}>
+                            {LEAD_STATUS_LABEL[s]}
+                          </option>
+                        ))}
+                      </select>
                     </td>
                     <td data-label="Owner" className="eh-sm">
                       {l.ownerName ?? l.ownerEmail ?? "—"}
