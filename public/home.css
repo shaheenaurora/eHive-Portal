@@ -2011,6 +2011,45 @@ body.has-sticky-cta {
   line-height: 1.5;
 }
 
+/* Booking / enquiry form fields. book.html (and other h- pages) load home.css
+   only, so the base gs-* field styling must live here — without it the inputs
+   fall back to the browser default inline size. */
+.gs-label {
+  display: block;
+  font-size: 0.88rem;
+  color: var(--h-muted, rgba(30, 30, 41, 0.65));
+}
+.gs-input,
+.gs-select,
+.gs-area {
+  display: block;
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.9rem 1.05rem;
+  border: 1px solid var(--h-line-2, rgba(20, 24, 33, 0.2));
+  background: #f8f5f0;
+  font-size: 0.95rem;
+  font-family: "Hanken Grotesk", system-ui, sans-serif;
+  border-radius: var(--h-radius-sm, 10px);
+  color: var(--h-ink, #1e1e29);
+  box-sizing: border-box;
+}
+.gs-area {
+  resize: vertical;
+  min-height: 110px;
+}
+.gs-input:focus,
+.gs-select:focus,
+.gs-area:focus {
+  outline: 2px solid var(--h-coral, #da3a22);
+  outline-offset: 1px;
+  border-color: var(--h-coral, #da3a22);
+}
+.gs-input.err,
+.gs-area.err {
+  border-color: #b23b2e;
+}
+
 .bk-fields {
   display: grid;
   grid-template-columns: 1fr 1fr;
