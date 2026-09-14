@@ -149,11 +149,16 @@ async function sendViaZepto(
         ...(input.replyTo
           ? { reply_to: [{ email_address: { address: input.replyTo } }] }
           : {}),
+        // ZeptoMail's inline-attachment schema is { content, mime_type, name }
+        // (content = base64). The older { file_name, file_type, file_cache }
+        // keys are not recognised, so the whole send is rejected with
+        // "Mandatory Field missing" — which is why booking emails (they carry
+        // the .ics calendar invite) failed while plain emails went through.
         attachments:
           input.attachments?.map(a => ({
-            file_name: a.filename,
-            file_type: a.contentType,
-            file_cache: a.content.toString("base64"),
+            name: a.filename,
+            mime_type: a.contentType,
+            content: a.content.toString("base64"),
           })) ?? undefined,
       }),
     });
