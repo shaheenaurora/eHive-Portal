@@ -24,6 +24,7 @@ import {
 import { kycQueue, getKyc, reviewKyc } from "../queries/kyc";
 import { pipelineReport, retentionMetrics } from "../queries/reports";
 import { audit } from "../lib/audit";
+import { env } from "../lib/env";
 import { recordAnalyticsEvent } from "../queries/analytics";
 import { sendMail } from "../lib/mailer";
 import { logger } from "../lib/log";
@@ -231,7 +232,7 @@ export const membershipRouter = createRouter({
                   <p style="margin:0 0 22px;font-size:16px;line-height:1.55;color:#141312">We genuinely appreciate the time you took to apply, and we welcome you to stay connected through our public events and insights.</p>
                 </div>
                 <div style="padding:16px 24px;border-top:1px solid #E4DECF;color:#8A8578;font-size:12px;line-height:1.5">
-                  eHive · Dubai, UAE · <a href="https://ehiveglobal.com" style="color:#DA3A22;text-decoration:none">ehiveglobal.com</a>
+                  eHive · Dubai, UAE · <a href="${env.publicUrl}" style="color:#DA3A22;text-decoration:none">${env.publicUrl.replace(/^https:\/\//, "")}</a>
                 </div>
               </div>
             </div>`,

@@ -186,7 +186,7 @@ function shell(bodyHtml: string): string {
       </div>
       <div style="padding:24px">${bodyHtml}</div>
       <div style="padding:16px 24px;border-top:1px solid #efe9dd;color:#8a97a6;font-size:12px">
-        eHive · Dubai, UAE · <a href="https://ehiveglobal.com" style="color:#b8862e;text-decoration:none">ehiveglobal.com</a>
+        eHive · Dubai, UAE · <a href="${env.publicUrl}" style="color:#b8862e;text-decoration:none">${env.publicUrl.replace(/^https:\/\//, "")}</a>
       </div>
     </div>
   </div>`;

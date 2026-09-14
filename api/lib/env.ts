@@ -63,11 +63,14 @@ export const env = {
   // those enquiries fall back to the general lead inbox above.
   partnersNotifyEmail: process.env.PARTNERS_NOTIFY_EMAIL ?? undefined,
   franchiseNotifyEmail: process.env.FRANCHISE_NOTIFY_EMAIL ?? undefined,
-  // Public base URL for absolute links in emails (e.g. the portal button).
+  // Public base URL for absolute links in emails (e.g. the portal button),
+  // checkout redirect URLs, robots.txt and the sitemap. Set PUBLIC_URL to your
+  // custom domain when one is attached; the fallback is the known-live origin
+  // (ehiveglobal.com is unregistered and must not be used for redirects).
   publicUrl: (
     process.env.PUBLIC_URL ??
     process.env.APP_URL ??
-    "https://ehiveglobal.com"
+    "https://ehive-portal-production.up.railway.app"
   ).replace(/\/$/, ""),
   // Zoho ZeptoMail HTTP API — sends over HTTPS, so it works where hosts block
   // outbound SMTP ports (e.g. Railway). When the token is set it takes priority

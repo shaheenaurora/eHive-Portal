@@ -799,6 +799,8 @@
             return (
               '<textarea data-k="' +
               f.k +
+              '" aria-label="' +
+              esc(f.label || f.ph || "Your answer") +
               '" placeholder="' +
               esc(f.ph || "Type your answer…") +
               '">' +
@@ -832,6 +834,8 @@
           return (
             '<input type="text" data-k="' +
             f.k +
+            '" aria-label="' +
+            esc(f.label || f.ph || "Your answer") +
             '" value="' +
             val +
             '" placeholder="' +
@@ -903,16 +907,16 @@
               '<div class="section-no">Where to send our read</div>' +
               '<div class="section-title">Your details</div>' +
               '<div class="grid2">' +
-              '<div class="field"><label>Your name *</label><input type="text" data-k="name" value="' +
+              '<div class="field"><label>Your name *</label><input type="text" data-k="name" aria-label="Your name" value="' +
               esc(answers.name || "") +
               '" autocomplete="name" placeholder="Full name"></div>' +
-              '<div class="field"><label>Your role</label><input type="text" data-k="role" value="' +
+              '<div class="field"><label>Your role</label><input type="text" data-k="role" aria-label="Your role" value="' +
               esc(answers.role || "") +
               '" autocomplete="organization-title" placeholder="e.g. Founder / CMO"></div>' +
-              '<div class="field"><label>Email *</label><input type="email" data-k="email" value="' +
+              '<div class="field"><label>Email *</label><input type="email" data-k="email" aria-label="Email" value="' +
               esc(answers.email || "") +
               '" autocomplete="email" placeholder="you@company.com"></div>' +
-              '<div class="field"><label>Phone *</label><input type="tel" data-k="phone" value="' +
+              '<div class="field"><label>Phone *</label><input type="tel" data-k="phone" aria-label="Phone" value="' +
               esc(answers.phone || "") +
               '" autocomplete="tel" inputmode="tel" placeholder="+971 50 000 0000"></div>' +
               "</div>" +
