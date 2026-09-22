@@ -754,3 +754,36 @@ export async function sendBookingInternalNotice(input: {
   });
   return { ok: r.ok, error: r.error };
 }
+
+/** Generic member lifecycle email — renewal reminders, lapse notices, payment
+ *  dunning, award congratulations. Best-effort: returns the delivery result and
+ *  never throws, so scheduler jobs keep running when mail is down. Callers fire
+ *  it at the same idempotency markers as the in-app notify(), so the two
+ *  channels stay in lock-step and never drift into double-messaging. */
+export async function sendMembershipLifecycleMail(input: {
+  email: string;
+  name: string | null;
+  subject: string;
+  headline: string;
+  /** One or more <p>-style paragraphs of body HTML (already escaped). */
+  bodyHtml: string;
+  cta?: { label: string; url: string } | null;
+}): Promise<{ ok: boolean; error?: string }> {
+  if (!mailEnabled()) return { ok: false, error: "Email is not configured." };
+  const cta = input.cta
+    ? `<p style="margin:22px 0 0"><a href="${input.cta.url}" style="display:inline-block;background:#101d2c;color:#f5efe2;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:600">${esc(input.cta.label)}</a></p>`
+    : "";
+  const html = shell(`
+    <h1 style="margin:0 0 12px;font-family:Georgia,serif;font-size:22px;color:#101d2c;font-weight:600">${esc(input.headline)}</h1>
+    ${input.bodyHtml}
+    ${cta}
+    <p style="margin:20px 0 0;color:#33465e;font-size:14px;line-height:1.55">Warm regards,<br/><strong>The eHive team</strong></p>
+  `);
+  const r = await sendMailDetailed({
+    to: input.email,
+    subject: input.subject,
+    html,
+    replyTo: env.leadNotifyEmail || undefined,
+  });
+  return { ok: r.ok, error: r.error };
+}

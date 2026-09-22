@@ -9,6 +9,8 @@ import * as schema from "@db/schema";
 import { getDb } from "./connection";
 import { audit } from "../lib/audit";
 import { notify, awardPoints } from "./circle";
+import { env } from "../lib/env";
+import { sendMembershipLifecycleMail } from "../lib/lead-mail";
 import { isBackToBack } from "../lib/awards-scoring";
 import {
   AWARD_FAIRNESS_WINDOW_DAYS,
@@ -92,6 +94,24 @@ async function confer(
         `You've been recognised: ${rec.label}. 🏆`,
         "recognition"
       );
+      const contact = (
+        await db
+          .select({ email: schema.users.email, name: schema.users.name })
+          .from(schema.members)
+          .innerJoin(schema.users, eq(schema.members.userId, schema.users.id))
+          .where(eq(schema.members.id, rec.memberId))
+          .limit(1)
+      ).at(0);
+      if (contact) {
+        await sendMembershipLifecycleMail({
+          email: contact.email,
+          name: contact.name,
+          subject: `You've been recognised — ${rec.label}`,
+          headline: "You've been recognised 🏆",
+          bodyHtml: `<p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">Congratulations — you've been recognised with <strong style="color:#101d2c">${rec.label}</strong>. The recognition is on your member profile, along with ${points} recognition points. Thank you for the way you show up for the hive.</p>`,
+          cta: { label: "Open the portal", url: `${env.publicUrl}/portal` },
+        });
+      }
     } catch {
       /* non-fatal */
     }

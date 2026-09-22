@@ -36,6 +36,7 @@ import {
   sendBookingReminder,
   sendBrandCheckReview,
   sendNoShowRebook,
+  sendMembershipLifecycleMail,
 } from "./lead-mail";
 import { buildScorecardReport } from "../../src/lib/scorecard";
 import { formatGstDate, formatGstTime } from "./booking";
@@ -182,6 +183,46 @@ async function jobDormancy(): Promise<void> {
  * active → renewal when the window opens; active/renewal → lapsed past grace.
  * Only the CRM lifecycle is changed here; billing status is untouched.
  */
+/** Resolve a member's login email + display name for lifecycle mail. */
+async function memberContact(
+  memberId: number
+): Promise<{ email: string; name: string | null } | null> {
+  const row = (
+    await getDb()
+      .select({ email: schema.users.email, name: schema.users.name })
+      .from(schema.members)
+      .innerJoin(schema.users, eq(schema.members.userId, schema.users.id))
+      .where(eq(schema.members.id, memberId))
+      .limit(1)
+  ).at(0);
+  return row ?? null;
+}
+
+/** Best-effort email paired with an in-app notify — fires at the same
+ *  idempotency marker so both channels stay in lock-step. Never throws, so a
+ *  mail outage can never break a scheduler job. */
+async function notifyByEmail(
+  memberId: number,
+  mail: {
+    subject: string;
+    headline: string;
+    bodyHtml: string;
+    cta?: { label: string; url: string } | null;
+  }
+): Promise<void> {
+  try {
+    const c = await memberContact(memberId);
+    if (!c) return;
+    await sendMembershipLifecycleMail({
+      email: c.email,
+      name: c.name,
+      ...mail,
+    });
+  } catch {
+    /* the in-app notify already landed; email is a bonus channel */
+  }
+}
+
 async function jobRenewal(now = new Date()): Promise<void> {
   const db = getDb();
   // Only members whose renewal date is at or inside the window horizon can
@@ -218,6 +259,15 @@ async function jobRenewal(now = new Date()): Promise<void> {
           "Your renewal window is open — here's your year in review. Renew from your Membership page to keep your membership and chapter access.",
           "renewal"
         );
+        void notifyByEmail(m.id, {
+          subject: "Your eHive renewal window is open",
+          headline: "Your year in review is ready",
+          bodyHtml: `<p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">Your membership renewal window is now open. Your year in review is waiting in the portal — renew from your Membership page to keep your membership and chapter seat active.</p>`,
+          cta: {
+            label: "Open Membership",
+            url: `${env.publicUrl}/portal/membership`,
+          },
+        });
         opened++;
       } else {
         logger.info(`scheduler renewal window skipped: ${r.reason}`, {
@@ -251,6 +301,19 @@ async function jobRenewal(now = new Date()): Promise<void> {
         const markerKey = `renewal-nudge:${m.id}:${cycle}:${nudge.key}`;
         if (!(await getMarker(markerKey))) {
           await notify(m.id, nudge.text, "renewal");
+          void notifyByEmail(m.id, {
+            subject:
+              nudge.key === "due"
+                ? "Your eHive membership renewal is due"
+                : "Your eHive membership renews soon",
+            headline:
+              nudge.key === "due" ? "Renewal due today" : "Renewal coming up",
+            bodyHtml: `<p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">${nudge.text}</p>`,
+            cta: {
+              label: "Renew now",
+              url: `${env.publicUrl}/portal/membership`,
+            },
+          });
           await setMarker(markerKey, now.toISOString());
           nudged++;
         }
@@ -267,6 +330,15 @@ async function jobRenewal(now = new Date()): Promise<void> {
           "Your membership has lapsed. You can renew any time to rejoin your chapter — your history is preserved.",
           "renewal"
         );
+        void notifyByEmail(m.id, {
+          subject: "Your eHive membership has lapsed",
+          headline: "Your membership is on pause",
+          bodyHtml: `<p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">Your membership has lapsed because the renewal window closed without payment. The good news: your history is preserved, and you can renew any time to rejoin your chapter and pick up right where you left off.</p>`,
+          cta: {
+            label: "Renew your membership",
+            url: `${env.publicUrl}/portal/membership`,
+          },
+        });
         lapsed++;
       } else {
         logger.info(`scheduler lapse skipped: ${r.reason}`, {
@@ -791,6 +863,15 @@ async function jobDunning(now = new Date()): Promise<void> {
       "You have a membership payment still pending. Complete it from your Membership page to keep your access active.",
       "membership"
     );
+    void notifyByEmail(member.id, {
+      subject: "Your eHive payment is still pending",
+      headline: "One step left to keep your access",
+      bodyHtml: `<p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">A membership payment you started is still pending. Complete it from your Membership page to keep your access active — it only takes a minute.</p>`,
+      cta: {
+        label: "Complete payment",
+        url: `${env.publicUrl}/portal/membership`,
+      },
+    });
     await setMarker(markerKey, `${count + 1}|${now.toISOString()}`);
     nudged++;
   }

@@ -45,7 +45,9 @@ describe("sendMailDetailed via ZeptoMail", () => {
     const payload = JSON.parse(
       (fetchMock.mock.calls[0][1] as RequestInit).body as string
     );
-    expect(payload.reply_to).toEqual([{ address: "owner@example.com", name: "eHive" }]);
+    expect(payload.reply_to).toEqual([
+      { address: "owner@example.com", name: "eHive" },
+    ]);
     // `to` uses the same wrapper shape.
     expect(payload.to).toEqual([
       { email_address: { address: "visitor@example.com" } },
