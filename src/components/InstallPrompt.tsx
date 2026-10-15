@@ -1,27 +1,19 @@
 import { useEffect, useState } from "react";
-
-type BeforeInstallPromptEvent = Event & {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-};
+import { isInstallable, onInstallChange, promptInstall } from "@/lib/install";
 
 /** Shows a one-tap "Install eHive" banner when the browser offers installation. */
 export function InstallPrompt() {
-  const [evt, setEvt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [canInstall, setCanInstall] = useState(isInstallable());
   const [hidden, setHidden] = useState(
     () => localStorage.getItem("eh-install-dismissed") === "1"
   );
 
-  useEffect(() => {
-    const handler = (e: Event) => {
-      e.preventDefault();
-      setEvt(e as BeforeInstallPromptEvent);
-    };
-    window.addEventListener("beforeinstallprompt", handler);
-    return () => window.removeEventListener("beforeinstallprompt", handler);
-  }, []);
+  useEffect(
+    () => onInstallChange(() => setCanInstall(isInstallable())),
+    []
+  );
 
-  if (!evt || hidden) return null;
+  if (!canInstall || hidden) return null;
 
   const dismiss = () => {
     setHidden(true);
@@ -63,11 +55,7 @@ export function InstallPrompt() {
       </div>
       <button
         className="eh-btn gold sm"
-        onClick={async () => {
-          await evt.prompt();
-          await evt.userChoice;
-          setEvt(null);
-        }}
+        onClick={() => void promptInstall()}
       >
         Install
       </button>

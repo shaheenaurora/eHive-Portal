@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { NavLink, Link, useNavigate, useLocation } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { isInstallable, onInstallChange, promptInstall } from "@/lib/install";
 import { CommandPalette } from "@/components/CommandPalette";
 import { initials } from "@/lib/ehf";
 import { TIER_LABEL } from "@contracts/constants";
@@ -84,6 +85,25 @@ function OfflineBanner() {
     >
       You&apos;re offline — some data may be stale until the connection returns.
     </div>
+  );
+}
+
+/* ------------------------------ install app ----------------------------- */
+/** Sidebar "Install app" entry — only rendered while the browser has offered
+ *  installation (beforeinstallprompt captured in @/lib/install). Hides itself
+ *  again once the app is installed. */
+function InstallAppEntry() {
+  const [canInstall, setCanInstall] = useState(isInstallable());
+  useEffect(() => onInstallChange(() => setCanInstall(isInstallable())), []);
+  if (!canInstall) return null;
+  return (
+    <button
+      className="eh-signout"
+      style={{ marginBottom: ".5rem" }}
+      onClick={() => void promptInstall()}
+    >
+      ⤓ Install app
+    </button>
   );
 }
 
@@ -732,6 +752,7 @@ export function EhShell(props: {
               <span>{user.email}</span>
             </div>
           </div>
+          <InstallAppEntry />
           <button className="eh-signout" onClick={() => logout()}>
             Sign out
           </button>
