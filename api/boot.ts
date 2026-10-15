@@ -13,8 +13,13 @@ import { env } from "./lib/env";
 import { getDb } from "./queries/connection";
 import { withTransaction } from "./queries/transaction";
 import * as schema from "@db/schema";
-import { eq, and, desc, gte, lte, sql, inArray, isNull } from "drizzle-orm";
-import { paymentsEnabled, getPaymentProvider } from "./lib/payments";
+import { eq, and, desc, gte, lte, sql, inArray } from "drizzle-orm";
+import {
+  paymentsEnabled,
+  getPaymentProvider,
+  assertPaymentConfig,
+} from "./lib/payments";
+import { fulfillPayment } from "./lib/payments/fulfill";
 import {
   BOOKING_SLOTS,
   productDurationMin,
@@ -29,13 +34,10 @@ import {
   sendBookingCancellation,
   sendBookingInternalNotice,
   notifyLead,
-  sendInvoiceReady,
 } from "./lib/lead-mail";
 import { signBookingToken, verifyBookingToken } from "./lib/booking-token";
 import { mailProvider, mailEnabled, verifyMailTransport } from "./lib/mailer";
-import { activateMembership } from "./queries/circle";
 import {
-  createInvoiceFromPayment,
   getCreditNoteById,
   getInvoiceById,
   renderInvoiceHtml,
@@ -1103,8 +1105,9 @@ app.post("/api/bookings/manage", async c => {
 });
 
 /* Payment gateway webhook (SRS INT-01). Reads the RAW body for signature
-   verification, then flips the payment_records row and activates membership.
-   Idempotent: a record already marked paid is left untouched. */
+   verification, then hands the settled record to the shared fulfillment
+   (invoice + entitlement delivery, B7). Idempotent: a record already marked
+   paid is left untouched. */
 app.post("/api/payments/webhook", async c => {
   if (!paymentsEnabled())
     return c.json({ ok: false, error: "payments disabled" }, 404);
@@ -1168,196 +1171,15 @@ app.post("/api/payments/webhook", async c => {
         });
         return c.json({ ok: false, error: "amount mismatch" }, 400);
       }
-      // Compare-and-swap: only the first concurrent webhook flips pending→paid.
-      // The unique index on (provider, providerRef) is the backstop; this WHERE
-      // clause makes the update itself idempotent so double activations can't
-      // happen even in a race. The invoice is created in the same transaction so
-      // the ledger stays in sync with the payment.
-      const paidAt = new Date();
-      const invoiceResult = await withTransaction(async tx => {
-        const paidUpdate = await tx
-          .update(schema.paymentRecords)
-          .set({ status: "paid", paidAt })
-          .where(
-            and(
-              eq(schema.paymentRecords.id, record.id),
-              eq(schema.paymentRecords.status, "pending")
-            )
-          );
-        if (
-          (paidUpdate as unknown as [{ affectedRows: number }])[0]
-            .affectedRows === 0
-        ) {
-          return { duplicate: true as const };
-        }
-        const invoice = await createInvoiceFromPayment(
-          tx,
-          {
-            id: record.id,
-            userId: record.userId,
-            purpose: record.purpose,
-            tier: record.tier ?? null,
-            amount: record.amount,
-            currency: record.currency,
-            paidAt,
-          },
-          { status: "paid" }
-        );
-        return {
-          duplicate: false as const,
-          invoiceNumber: invoice.invoiceNumber,
-        };
-      });
-      if (invoiceResult.duplicate) {
+      // Compare-and-swap + invoice + entitlement delivery live in the shared
+      // fulfillment (B7) so the scheduler reconciler can't mark a record paid
+      // without delivering what was paid for. The CAS inside makes concurrent
+      // webhook/reconciler deliveries idempotent; the unique index on
+      // (provider, providerRef) is the backstop.
+      const outcome = await fulfillPayment(record);
+      if (outcome.duplicate) {
         return c.json({ ok: true, duplicate: true });
       }
-      if (record.purpose === "renewal") {
-        const { renewMembership } = await import("./queries/circle");
-        await renewMembership(record.userId, "Renewed via online payment");
-      } else if (record.purpose === "upgrade" && record.tier) {
-        const { upgradeMembership } = await import("./queries/circle");
-        await upgradeMembership(
-          record.userId,
-          record.tier,
-          "Upgraded via online payment"
-        );
-      } else if (record.purpose === "event_ticket" && record.eventId) {
-        /* Paid event seat: write the registration inside a transaction that
-         * locks the event row, exactly like free registration. If the event
-         * sold out between checkout and payment, refund automatically — a
-         * paid seat can never oversell capacity. */
-        const ticketEventId = record.eventId;
-        const { newCheckinCode } = await import("./queries/circle");
-        const memberRow = (
-          await getDb()
-            .select({ id: schema.members.id })
-            .from(schema.members)
-            .where(eq(schema.members.userId, record.userId))
-            .limit(1)
-        ).at(0);
-        if (memberRow) {
-          const outcome = await getDb().transaction(async tx => {
-            const ev = (
-              await tx
-                .select()
-                .from(schema.events)
-                .where(
-                  and(
-                    eq(schema.events.id, ticketEventId),
-                    isNull(schema.events.deletedAt)
-                  )
-                )
-                .for("update")
-            ).at(0);
-            if (!ev) return "gone" as const;
-            const existing = await tx
-              .select()
-              .from(schema.eventRegs)
-              .where(
-                and(
-                  eq(schema.eventRegs.eventId, ev.id),
-                  eq(schema.eventRegs.memberId, memberRow.id)
-                )
-              )
-              .limit(1);
-            if (existing.length && existing[0].status !== "cancelled")
-              return "duplicate" as const;
-            const count = await tx
-              .select({ n: sql<number>`count(*)` })
-              .from(schema.eventRegs)
-              .where(
-                and(
-                  eq(schema.eventRegs.eventId, ev.id),
-                  sql`${schema.eventRegs.status} in ('registered','attended')`
-                )
-              );
-            if ((count.at(0)?.n ?? 0) >= ev.capacity) return "full" as const;
-            if (existing.length) {
-              await tx
-                .update(schema.eventRegs)
-                .set({
-                  status: "registered",
-                  checkinCode: newCheckinCode(),
-                  paymentRecordId: record.id,
-                })
-                .where(eq(schema.eventRegs.id, existing[0].id));
-            } else {
-              await tx.insert(schema.eventRegs).values({
-                eventId: ev.id,
-                memberId: memberRow.id,
-                checkinCode: newCheckinCode(),
-                paymentRecordId: record.id,
-              });
-            }
-            return "registered" as const;
-          });
-          if (outcome === "full" || outcome === "gone") {
-            try {
-              const { refundPayment } = await import("./queries/finance");
-              await refundPayment(
-                { id: record.userId, email: "system@ehive" },
-                record.id,
-                outcome === "full"
-                  ? "Event sold out before ticket payment settled — auto refund"
-                  : "Event removed before ticket payment settled — auto refund"
-              );
-            } catch (err) {
-              logger.error("event ticket auto-refund failed", {
-                error: err,
-                paymentRecordId: record.id,
-              });
-            }
-            const { notify } = await import("./queries/circle");
-            await notify(
-              memberRow.id,
-              outcome === "full"
-                ? "The event sold out before your payment settled — you've been refunded automatically. 💳"
-                : "This event is no longer running — you've been refunded automatically. 💳",
-              "event"
-            ).catch(() => {});
-          } else if (outcome === "registered") {
-            const { notify } = await import("./queries/circle");
-            await notify(
-              memberRow.id,
-              "Your ticket is confirmed — see you at the event. 🎟️",
-              "event"
-            ).catch(() => {});
-          }
-        }
-      } else if (record.tier) {
-        await activateMembership(
-          record.userId,
-          record.tier,
-          "Membership activated via online payment"
-        );
-      }
-      const payer = (
-        await getDb()
-          .select({ name: schema.users.name, email: schema.users.email })
-          .from(schema.users)
-          .where(eq(schema.users.id, record.userId))
-          .limit(1)
-      ).at(0);
-      if (payer?.email && invoiceResult.invoiceNumber) {
-        sendInvoiceReady({
-          email: payer.email,
-          name: payer.name,
-          invoiceNumber: invoiceResult.invoiceNumber,
-          amount: record.amount / 100,
-          currency: record.currency,
-        }).catch(() => {
-          /* non-fatal */
-        });
-      }
-      void recordAnalyticsEvent("payment_succeeded", {
-        userId: record.userId,
-        properties: {
-          purpose: record.purpose,
-          tier: record.tier,
-          amount: record.amount,
-          currency: record.currency,
-        },
-      });
     } else if (
       result.status === "failed" &&
       record &&
@@ -1567,6 +1389,15 @@ app.get("/api/health", async c => {
       provider: mailProvider(),
       ...mail,
     },
+    payments: {
+      enabled: paymentsEnabled(),
+      mode: env.stripeSecretKey.startsWith("sk_live_")
+        ? "live"
+        : env.stripeSecretKey.startsWith("sk_test_")
+          ? "test"
+          : null,
+      webhookSecretSet: !!env.stripeWebhookSecret,
+    },
     scheduler: {
       lastRunAt: sched.lastRunAt,
       lastSuccessAt: sched.lastSuccessAt,
@@ -1728,6 +1559,12 @@ app.get("/sitemap.xml", async c => {
 export default app;
 
 if (env.isProduction) {
+  /* B6: refuse to boot with a half-configured gateway. A missing webhook secret
+     means checkout charges cards while every settlement webhook 400s; test keys
+     mean real charges land in a throwaway Stripe account. Crash-loop loudly
+     instead of discovering either on the first live payment. */
+  assertPaymentConfig();
+
   // Seed the editorial article batch (idempotent by slug) so the blog publishes on deploy.
   try {
     const { seedInsights } = await import("./queries/seed-insights");

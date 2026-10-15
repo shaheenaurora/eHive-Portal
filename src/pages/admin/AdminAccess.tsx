@@ -315,6 +315,10 @@ function DemoDataCard() {
     onError: e => toast(e.message),
   });
 
+  // The server refuses demo loads in production unless ALLOW_DEMO_DATA=true —
+  // keep the button out of production builds so it can't even be attempted.
+  const demoLoadAllowed = !import.meta.env.PROD;
+
   return (
     <div className="eh-card eh-mb" style={{ borderColor: "var(--eh-gold)" }}>
       <h3 style={{ margin: 0 }}>Demo &amp; simulation data</h3>
@@ -333,7 +337,9 @@ function DemoDataCard() {
         and a management team. All accounts use the password{" "}
         <code>ehive1234</code>.
       </p>
-      {loaded ? (
+      {!demoLoadAllowed ? (
+        <Pill>Disabled in production</Pill>
+      ) : loaded ? (
         <Pill color="green">
           {loaded.loaded
             ? `Loaded — ${loaded.members} members · ${loaded.chapters} chapters · ${loaded.admins} admins`

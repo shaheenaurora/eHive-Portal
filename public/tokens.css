@@ -4,6 +4,25 @@
    the public marketing site (home.css) and the member portal (styles.css).
    ========================================================================== */
 
+/* ---- self-hosted fonts ---------------------------------------------------
+   Space Grotesk (display, OFL) + Manrope (body, OFL), variable woff2,
+   latin subset, served from /fonts — no external font requests (CSP-safe). */
+@font-face {
+  font-family: "Space Grotesk";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("fonts/space-grotesk-var-latin.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("fonts/manrope-var-latin.woff2") format("woff2");
+}
+
 :root {
   /* ---- brand palette ---- */
   --eh-coral-500: #da3a22;
@@ -30,11 +49,27 @@
 
   /* ---- typography ---- */
   --eh-font-display:
-    "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+    "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
   --eh-font-body:
-    "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+    "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
   --eh-font-mono: "SF Mono", "Menlo", "Consolas", "Liberation Mono", monospace;
+
+  /* fluid type scale */
+  --eh-fs-hero: clamp(2.85rem, 8.2vw, 7rem);
+  --eh-fs-h1: clamp(2.45rem, 5.6vw, 4.1rem);
+  --eh-fs-h2: clamp(2.05rem, 4.8vw, 3.6rem);
+  --eh-fs-h3: clamp(1.2rem, 1.8vw, 1.5rem);
+  --eh-fs-lead: clamp(1.08rem, 1.7vw, 1.32rem);
+  --eh-fs-body: 1.0625rem;
+  --eh-lh-display: 1.02;
+  --eh-lh-heading: 1.15;
+  --eh-lh-lead: 1.6;
+  --eh-lh-body: 1.65;
+  --eh-track-display: -0.035em;
+  --eh-track-heading: -0.02em;
 
   /* ---- motion ---- */
   --eh-ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --eh-ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --eh-dur-reveal: 0.85s;
 }

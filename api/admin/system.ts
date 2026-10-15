@@ -5,6 +5,7 @@ import * as schema from "@db/schema";
 import { getDb } from "../queries/connection";
 import { createRouter, adminQuery, fullAdmin, hasScope } from "../middleware";
 import { audit, maskEmail } from "../lib/audit";
+import { logger } from "../lib/log";
 import { mailStatus, sendTestEmail } from "../lib/mailer";
 import { env } from "../lib/env";
 import { runDailyJobs } from "../lib/scheduler";
@@ -316,7 +317,9 @@ export const systemRouter = createRouter({
   /* ---------------------- remove seeded demo data ---------------------- */
   /* Full-admin only. Deletes ONLY seed-tagged rows (seed accounts, demo
      chapters/hierarchy, demo pods/events) — never real data. Requires an
-     explicit confirm string so it can't fire by accident. */
+     explicit confirm string so it can't fire by accident. Deliberately NOT
+     gated by environment: cleanup must work everywhere in case demo data
+     ever got into a production database. */
   removeDemoData: fullAdmin
     .input(z.object({ confirm: z.literal("REMOVE DEMO DATA") }))
     .mutation(async ({ ctx }) => {
@@ -324,12 +327,6 @@ export const systemRouter = createRouter({
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Only a full administrator can remove demo data.",
-        });
-      }
-      if (env.isProduction) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Demo data operations are disabled in production.",
         });
       }
       const removed = await removeDemoData();
@@ -341,7 +338,10 @@ export const systemRouter = createRouter({
     }),
 
   /* Full-admin only. Generates the complete simulation dataset (hierarchy,
-     hundreds of members, officers, leaders, management team). Idempotent. */
+     hundreds of members, officers, leaders, management team). Idempotent.
+     Refuses in production unless ALLOW_DEMO_DATA=true is explicitly set —
+     demo accounts carry a publicly documented password, so the loader must be
+     impossible to trigger against a paid/production database by accident. */
   loadFullDemo: fullAdmin
     .input(z.object({ confirm: z.literal("LOAD DEMO") }))
     .mutation(async ({ ctx }) => {
@@ -351,10 +351,14 @@ export const systemRouter = createRouter({
           message: "Only a full administrator can load demo data.",
         });
       }
-      if (env.isProduction) {
+      if (env.isProduction && !env.allowDemoData) {
+        logger.warn("demo.loadFull refused: production without ALLOW_DEMO_DATA", {
+          actor: ctx.user.email,
+        });
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "Demo data operations are disabled in production.",
+          message:
+            "Loading demo data is disabled in production. Set ALLOW_DEMO_DATA=true to override.",
         });
       }
       const res = await loadFullDemo();

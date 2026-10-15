@@ -1416,7 +1416,7 @@ function submitLead(payload, onOk, onErr) {
     }
 
     document
-      .querySelectorAll(".h-hero h1, .h-page-hero h1, .p-hero h1")
+      .querySelectorAll(".h-hero h1, .h-page-hero h1, .p-hero h1, .eh-hero-v2 h1")
       .forEach(function (h1) {
         if (prefersReduced) return;
         splitText(h1);
@@ -1465,7 +1465,9 @@ function submitLead(payload, onOk, onErr) {
     /* ---- magnetic buttons (desktop only) ---- */
     if (!prefersReduced && !isTouch) {
       document
-        .querySelectorAll(".h-btn-primary, .h-btn-ghost, .btn-primary")
+        .querySelectorAll(
+          ".h-btn-primary, .h-btn-ghost, .btn-primary, .eh-btn-primary, .eh-btn-ghost, .eh-btn-dark"
+        )
         .forEach(function (btn) {
           btn.classList.add("magnetic");
           btn.addEventListener("mousemove", function (e) {
@@ -1760,6 +1762,71 @@ function submitLead(payload, onOk, onErr) {
             card.style.setProperty("--ry", "0deg");
           });
         });
+      }
+
+      /* ---- staggered children for grids that don't self-reveal ------------
+        If the grid container itself carries .eh-reveal it animates as one
+        block; if its children already self-reveal we leave them alone.
+        Everything else gets .eh-stag: children rise with an 85ms index
+        stagger (delay via --i, CSS in home.css). IntersectionObserver-gated,
+        GPU-cheap, and fails open: reduced motion / no IO / a 3s safety net
+        all land the content fully visible. */
+      if (!prefersReduced) {
+        var STAG_GRIDS =
+          ".eh-steps, .eh-numbers-grid, .eh-trust-grid, .eh-stats-grid, .eh-pillar-grid, .eh-voice-grid, .art-grid, .h-4col, .h-benefit-grid, .h-who-for-grid, .h-tiers";
+        var stagIo = null;
+        if ("IntersectionObserver" in window) {
+          stagIo = new IntersectionObserver(
+            function (entries) {
+              entries.forEach(function (e) {
+                if (e.isIntersecting) {
+                  e.target.classList.add("in");
+                  stagIo.unobserve(e.target);
+                }
+              });
+            },
+            { threshold: 0.1, rootMargin: "0px 0px -6% 0px" }
+          );
+        }
+        document.querySelectorAll(STAG_GRIDS).forEach(function (grid) {
+          if (grid.classList.contains("eh-reveal")) return;
+          var kids = Array.prototype.filter.call(
+            grid.children,
+            function (kid) {
+              return !(
+                kid.classList.contains("eh-reveal") ||
+                kid.classList.contains("reveal") ||
+                kid.classList.contains("h-reveal")
+              );
+            }
+          );
+          if (kids.length < 2) return;
+          /* If most children self-reveal, their own stagger already covers it. */
+          if (kids.length < grid.children.length / 2) return;
+          grid.classList.add("eh-stag");
+          kids.forEach(function (kid, i) {
+            kid.style.setProperty("--i", i);
+          });
+          if (stagIo) stagIo.observe(grid);
+          else grid.classList.add("in");
+        });
+        setTimeout(function () {
+          document
+            .querySelectorAll(".eh-stag:not(.in)")
+            .forEach(function (grid) {
+              grid.classList.add("in");
+            });
+        }, 3000);
+      }
+
+      /* ---- scroll hint: fade once the visitor leaves the fold ---- */
+      var scrollHint = document.querySelector(".eh-hero-v2 .eh-scroll-hint");
+      if (scrollHint && !prefersReduced) {
+        var hintOnScroll = function () {
+          scrollHint.classList.toggle("hide", window.scrollY > 60);
+        };
+        window.addEventListener("scroll", hintOnScroll, { passive: true });
+        hintOnScroll();
       }
     }
   })();
@@ -2136,18 +2203,29 @@ function submitLead(payload, onOk, onErr) {
   "use strict";
   var stats = document.querySelectorAll("[data-stat]");
   if (!stats.length) return;
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  /* Ease-out-expo count-up; starts only when the figure scrolls into view. */
   function animate(el, value) {
-    var duration = 900;
-    var start = 0;
+    var duration = 1400;
     var startTime = null;
     function step(t) {
       if (!startTime) startTime = t;
       var p = Math.min((t - startTime) / duration, 1);
-      el.textContent = Math.floor(p * value).toLocaleString("en-IN");
+      var eased = p === 1 ? 1 : 1 - Math.pow(2, -10 * p);
+      el.textContent = Math.round(eased * value).toLocaleString("en-IN");
       if (p < 1) requestAnimationFrame(step);
     }
     requestAnimationFrame(step);
+  }
+
+  function play(el, value) {
+    el.classList.add("count-up");
+    if (reduce) {
+      el.textContent = value.toLocaleString("en-IN");
+      return;
+    }
+    animate(el, value);
   }
 
   fetch("/api/public-stats")
@@ -2156,18 +2234,88 @@ function submitLead(payload, onOk, onErr) {
       return r.json();
     })
     .then(function (data) {
+      var queued = [];
       stats.forEach(function (el) {
         var key = el.getAttribute("data-stat");
         var value = data && typeof data[key] === "number" ? data[key] : 0;
-        if (value > 0) animate(el, value);
+        if (value > 0) queued.push([el, value]);
         else el.textContent = "0";
       });
+      if (!queued.length) return;
+      if ("IntersectionObserver" in window) {
+        var io = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (e) {
+              if (!e.isIntersecting) return;
+              var pair = queued.filter(function (q) {
+                return q[0] === e.target;
+              })[0];
+              if (pair) play(pair[0], pair[1]);
+              io.unobserve(e.target);
+            });
+          },
+          { threshold: 0.4 }
+        );
+        queued.forEach(function (q) {
+          io.observe(q[0]);
+        });
+      } else {
+        queued.forEach(function (q) {
+          play(q[0], q[1]);
+        });
+      }
     })
     .catch(function () {
       stats.forEach(function (el) {
         el.textContent = "—";
       });
     });
+})();
+
+/* ===== Count-up for static numeric figures (.eh-number with pure digits) =====
+   Founding-facts / pricing cards read as live stats: digits ease from 0 when
+   they enter the viewport. Non-numeric figures ("Dubai", "1 October") and
+   reduced-motion users are left exactly as authored. */
+(function () {
+  "use strict";
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  var nums = Array.prototype.filter.call(
+    document.querySelectorAll(".eh-number"),
+    function (el) {
+      return /^\d+$/.test((el.textContent || "").trim());
+    }
+  );
+  if (!nums.length) return;
+
+  function count(el, target) {
+    var duration = 1200;
+    var startTime = null;
+    function step(t) {
+      if (!startTime) startTime = t;
+      var p = Math.min((t - startTime) / duration, 1);
+      var eased = p === 1 ? 1 : 1 - Math.pow(2, -10 * p);
+      el.textContent = String(Math.round(eased * target));
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  if ("IntersectionObserver" in window) {
+    var io = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (e) {
+          if (!e.isIntersecting) return;
+          e.target.classList.add("count-up");
+          count(e.target, parseInt(e.target.textContent, 10) || 0);
+          io.unobserve(e.target);
+        });
+      },
+      { threshold: 0.5 }
+    );
+    nums.forEach(function (el) {
+      io.observe(el);
+    });
+  }
 })();
 
 /* ===== Floating WhatsApp CTA =====

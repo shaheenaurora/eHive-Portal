@@ -3,22 +3,24 @@ import { TRPCError } from "@trpc/server";
 import * as schema from "@db/schema";
 import { getDb } from "./connection";
 import { audit } from "../lib/audit";
+import { sealIdNumber, displayIdNumber } from "../lib/id-seal";
 import { notify } from "./circle";
 import { applyLifecycleTransition } from "../lib/lifecycle";
 
 export type Actor = { id: number; email: string };
 
-/** A member's KYC record, or null if they've never started. */
+/** A member's KYC record, or null if they've never started. The stored
+ *  idNumber is aes-256-gcm sealed; decrypt it for display (legacy plaintext
+ *  rows pass through, undecryptable rows fail closed as null). */
 export async function getKyc(memberId: number) {
-  return (
-    (
-      await getDb()
-        .select()
-        .from(schema.memberKyc)
-        .where(eq(schema.memberKyc.memberId, memberId))
-        .limit(1)
-    ).at(0) ?? null
-  );
+  const row = (
+    await getDb()
+      .select()
+      .from(schema.memberKyc)
+      .where(eq(schema.memberKyc.memberId, memberId))
+      .limit(1)
+  ).at(0);
+  return row ? { ...row, idNumber: displayIdNumber(row.idNumber) } : null;
 }
 
 /** Member submits / updates their KYC details → status becomes 'submitted'.
@@ -36,7 +38,8 @@ export async function submitKyc(
   const existing = await getKyc(memberId);
   const values = {
     idType: input.idType,
-    idNumber: input.idNumber.slice(0, 64),
+    // Sealed at rest (aes-256-gcm); the column holds the prefixed ciphertext.
+    idNumber: sealIdNumber(input.idNumber.slice(0, 64)),
     nationality: input.nationality?.slice(0, 96) ?? null,
     idExpiry: input.idExpiry ?? null,
     status: "submitted" as const,

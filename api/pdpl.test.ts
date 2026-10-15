@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { exportUser } from "./lib/pdpl";
+import { exportUser, exportKyc } from "./lib/pdpl";
+import { sealIdNumber } from "./lib/id-seal";
 import type * as schema from "@db/schema";
 
 function makeUser(partial: Partial<typeof schema.users.$inferSelect> = {}) {
@@ -55,5 +56,54 @@ describe("exportUser", () => {
     const exported = exportUser(user);
     expect(Object.values(exported)).not.toContain("leaked");
     expect(Object.values(exported)).not.toContain("super-secret-totp");
+  });
+});
+
+function makeKyc(partial: Partial<typeof schema.memberKyc.$inferSelect> = {}) {
+  return {
+    id: 1,
+    memberId: 42,
+    idType: "emirates_id",
+    idNumber: "784199012345678",
+    nationality: "United Arab Emirates",
+    idExpiry: null,
+    status: "verified",
+    submittedAt: new Date("2026-01-01"),
+    reviewedByUserId: 7,
+    reviewedAt: new Date("2026-01-02"),
+    reviewNote: null,
+    createdAt: new Date("2026-01-01"),
+    updatedAt: new Date("2026-01-01"),
+    ...partial,
+  } as typeof schema.memberKyc.$inferSelect;
+}
+
+describe("exportKyc", () => {
+  it("decrypts a sealed idNumber so the data subject can read their export", () => {
+    const kyc = makeKyc({ idNumber: sealIdNumber("784199012345678") });
+    const exported = exportKyc(kyc);
+    expect(exported.idNumber).toBe("784199012345678");
+  });
+
+  it("passes through legacy plaintext idNumbers", () => {
+    const kyc = makeKyc();
+    const exported = exportKyc(kyc);
+    expect(exported.idNumber).toBe("784199012345678");
+  });
+
+  it("exports null rather than raw ciphertext when the seal can't be opened", () => {
+    const kyc = makeKyc({
+      idNumber: sealIdNumber("784199012345678").slice(0, -4) + "AAAA",
+    });
+    const exported = exportKyc(kyc);
+    expect(exported.idNumber).toBeNull();
+  });
+
+  it("keeps the rest of the KYC row intact", () => {
+    const kyc = makeKyc();
+    const exported = exportKyc(kyc);
+    expect(exported.memberId).toBe(42);
+    expect(exported.idType).toBe("emirates_id");
+    expect(exported.status).toBe("verified");
   });
 });

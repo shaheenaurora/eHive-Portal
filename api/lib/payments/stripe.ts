@@ -14,27 +14,32 @@ export class StripeProvider implements PaymentProvider {
   }
 
   async createCheckoutSession(input: CheckoutInput) {
-    const session = await this.stripe.checkout.sessions.create({
-      mode: "payment",
-      customer_email: input.email || undefined,
-      line_items: [
-        {
-          quantity: 1,
-          price_data: {
-            currency: input.currency,
-            unit_amount: input.amount,
-            product_data: {
-              name:
-                input.label ??
-                `eHive Circle — ${input.tier} membership (1 year)`,
+    const session = await this.stripe.checkout.sessions.create(
+      {
+        mode: "payment",
+        customer_email: input.email || undefined,
+        line_items: [
+          {
+            quantity: 1,
+            price_data: {
+              currency: input.currency,
+              unit_amount: input.amount,
+              product_data: {
+                name:
+                  input.label ??
+                  `eHive Circle — ${input.tier} membership (1 year)`,
+              },
             },
           },
-        },
-      ],
-      success_url: input.successUrl,
-      cancel_url: input.cancelUrl,
-      metadata: { userId: String(input.userId), tier: input.tier },
-    });
+        ],
+        success_url: input.successUrl,
+        cancel_url: input.cancelUrl,
+        metadata: { userId: String(input.userId), tier: input.tier },
+      },
+      // H2: same idempotency key (the pending payment_records id) returns the
+      // original session on a retry instead of creating a second chargeable one.
+      input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : undefined
+    );
     return { url: session.url ?? "", providerRef: session.id };
   }
 

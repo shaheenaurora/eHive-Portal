@@ -64,9 +64,9 @@ export const env = {
   partnersNotifyEmail: process.env.PARTNERS_NOTIFY_EMAIL ?? undefined,
   franchiseNotifyEmail: process.env.FRANCHISE_NOTIFY_EMAIL ?? undefined,
   // Public base URL for absolute links in emails (e.g. the portal button),
-  // checkout redirect URLs, robots.txt and the sitemap. Set PUBLIC_URL to your
-  // custom domain when one is attached; the fallback is the known-live origin
-  // (ehiveglobal.com is unregistered and must not be used for redirects).
+  // checkout redirect URLs, robots.txt and the sitemap. ehiveglobal.com is the
+  // custom domain — set PUBLIC_URL when serving on it; the fallback is the
+  // known-live railway origin.
   publicUrl: (
     process.env.PUBLIC_URL ??
     process.env.APP_URL ??
@@ -111,6 +111,11 @@ export const env = {
   // can collect violations without breaking the site. Use this while migrating
   // away from 'unsafe-inline' for style-src.
   cspReportOnly: process.env.CSP_REPORT_ONLY === "true",
+  // Escape hatch for the "Load full demo" admin procedure, which otherwise
+  // refuses to run when NODE_ENV=production. Demo accounts use a publicly
+  // documented password, so this must stay unset on any paid/production
+  // environment. "Remove demo data" is never gated by this.
+  allowDemoData: process.env.ALLOW_DEMO_DATA === "true",
 };
 
 export type IntegrationApiKey = {

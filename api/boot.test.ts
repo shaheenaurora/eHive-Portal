@@ -9,6 +9,11 @@ describe("public site + ops routes", () => {
       status: string;
       db: string;
       mail: { configured: boolean; ok: boolean; provider: string | null };
+      payments: {
+        enabled: boolean;
+        mode: "live" | "test" | null;
+        webhookSecretSet: boolean;
+      };
       scheduler: { lastRunAt: string | null };
     };
     expect(body.status).toBe("ok");
@@ -20,6 +25,11 @@ describe("public site + ops routes", () => {
     expect(
       body.mail.provider === null || typeof body.mail.provider === "string"
     ).toBe(true);
+    expect(body.payments).toMatchObject({
+      enabled: expect.any(Boolean),
+      webhookSecretSet: expect.any(Boolean),
+    });
+    expect(["live", "test", null]).toContain(body.payments.mode);
     expect(body.scheduler).toHaveProperty("lastRunAt");
   });
 

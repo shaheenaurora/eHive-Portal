@@ -12,6 +12,10 @@ export type CheckoutInput = {
   /** Optional line-item label; falls back to the tier membership name. Lets
    *  non-membership charges (e.g. the Clarity Sprint activation) read correctly. */
   label?: string;
+  /** Optional gateway idempotency key (unique per payment_records row). A
+   *  retried create with the same key returns the original session instead of
+   *  charging a second one, so a double-click/retry can't double-charge. */
+  idempotencyKey?: string;
 };
 
 /** Normalized outcome of a provider webhook, gateway-agnostic. */

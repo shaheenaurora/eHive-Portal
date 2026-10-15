@@ -163,7 +163,10 @@ export const memberKyc = mysqlTable("member_kyc", {
     .notNull()
     .unique(),
   idType: mysqlEnum("idType", ["emirates_id", "passport", "other"]),
-  idNumber: varchar("idNumber", { length: 64 }),
+  // National ID number, AES-256-GCM sealed base64 with an `ehid:` prefix (same
+  // layout as the TOTP secret seal). Column widened from 64 to hold the
+  // ciphertext; legacy rows may still hold plaintext until next re-submission.
+  idNumber: varchar("idNumber", { length: 255 }),
   nationality: varchar("nationality", { length: 96 }),
   idExpiry: timestamp("idExpiry"),
   status: mysqlEnum("status", [

@@ -6,7 +6,7 @@ import { getDb } from "../queries/connection";
 import { createRouter, scopedAdmin } from "../middleware";
 import { audit } from "../lib/audit";
 import { notify } from "../queries/circle";
-import { exportUser } from "../lib/pdpl";
+import { exportUser, exportKyc } from "../lib/pdpl";
 
 const requestIdInput = z.object({ requestId: z.number().int().positive() });
 
@@ -192,7 +192,7 @@ export const adminDataRequestsRouter = createRouter({
         const tables: Record<string, unknown[]> = {
           users: users.map(exportUser),
           members,
-          memberKyc,
+          memberKyc: memberKyc.map(exportKyc),
           membershipEvents,
           memberChangeRequests,
           applications,

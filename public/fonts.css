@@ -1,0 +1,19 @@
+/* eHive — self-hosted fonts (shared by the standalone tool pages that don't
+   load home.css/tokens.css). Space Grotesk (display) + Manrope (body),
+   variable woff2, latin subset, OFL. Main site pages get these declarations
+   via tokens.css; keep the two files in sync. */
+@font-face {
+  font-family: "Space Grotesk";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("fonts/space-grotesk-var-latin.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("fonts/manrope-var-latin.woff2") format("woff2");
+}

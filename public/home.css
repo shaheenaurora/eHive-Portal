@@ -70,16 +70,11 @@ html {
 }
 
 body {
-  font-family:
-    "Hanken Grotesk",
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    sans-serif;
+  font-family: var(--eh-font-body);
   background: var(--h-cream);
   color: var(--h-navy);
-  font-size: 1.0625rem;
-  line-height: 1.7;
+  font-size: var(--eh-fs-body);
+  line-height: var(--eh-lh-body);
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
@@ -145,31 +140,34 @@ a {
 }
 
 .h-h1 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 900;
-  font-size: clamp(2.6rem, 6.5vw, 5rem);
+  font-family: var(--eh-font-display);
+  font-weight: 700;
+  font-size: var(--eh-fs-h1);
   line-height: 1.05;
-  letter-spacing: -0.03em;
+  letter-spacing: var(--eh-track-display);
+  text-wrap: balance;
 }
 
 .h-h2 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
-  font-size: clamp(2rem, 4.2vw, 3.2rem);
-  line-height: 1.1;
-  letter-spacing: -0.025em;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
+  font-size: var(--eh-fs-h2);
+  line-height: var(--eh-lh-heading);
+  letter-spacing: var(--eh-track-heading);
+  text-wrap: balance;
 }
 
 .h-h3 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
-  font-size: 1.35rem;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
+  font-size: var(--eh-fs-h3);
+  line-height: var(--eh-lh-heading);
+  letter-spacing: var(--eh-track-heading);
 }
 
 .h-lede {
-  font-size: clamp(1.05rem, 1.6vw, 1.25rem);
+  font-size: var(--eh-fs-lead);
+  line-height: var(--eh-lh-lead);
   color: var(--h-muted);
   max-width: 56ch;
 }
@@ -184,7 +182,7 @@ a {
   align-items: center;
   justify-content: center;
   gap: 0.55rem;
-  font-family: "Hanken Grotesk", system-ui, sans-serif;
+  font-family: var(--eh-font-body);
   font-weight: 700;
   font-size: 0.92rem;
   letter-spacing: 0.03em;
@@ -557,8 +555,8 @@ a {
 
 .h-hero-stats .stat b {
   display: block;
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: clamp(1.4rem, 2.5vw, 1.8rem);
   color: var(--h-coral);
   line-height: 1;
@@ -606,8 +604,8 @@ a {
 
 .h-trust-item b {
   display: block;
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.1rem;
   color: var(--h-navy);
 }
@@ -809,8 +807,8 @@ a {
 }
 
 .h-step .num {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 900;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 2rem;
   color: var(--h-coral);
   line-height: 1;
@@ -847,8 +845,8 @@ a {
 }
 
 .h-voice blockquote {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: clamp(1.2rem, 2.2vw, 1.5rem);
   line-height: 1.25;
   letter-spacing: -0.02em;
@@ -874,8 +872,8 @@ a {
   color: var(--h-coral);
   display: grid;
   place-items: center;
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 0.9rem;
   flex: none;
 }
@@ -952,8 +950,8 @@ a {
 }
 
 .h-faq summary {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.15rem;
   cursor: pointer;
   list-style: none;
@@ -1018,8 +1016,8 @@ a {
 }
 
 .h-legal-body h2 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.35rem;
   line-height: 1.2;
   letter-spacing: -0.02em;
@@ -1092,8 +1090,8 @@ a {
 }
 
 .h-error-code {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 900;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: clamp(2.2rem, 5.5vw, 4rem);
   line-height: 1;
   letter-spacing: -0.03em;
@@ -1102,8 +1100,8 @@ a {
 }
 
 .h-error h1 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 900;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: clamp(1.8rem, 4vw, 3rem);
   line-height: 1.1;
   letter-spacing: -0.03em;
@@ -1201,8 +1199,10 @@ a {
   }
 }
 
-/* ---- reveals ---- */
-.h-reveal {
+/* ---- reveals ----
+   Hidden states are gated on body.anim (added synchronously by app.js) so
+   the no-JS experience renders fully visible content. */
+.anim .h-reveal {
   opacity: 0;
   transform: translateY(28px) scale(0.98);
   transition:
@@ -1213,18 +1213,18 @@ a {
   will-change: opacity, transform;
 }
 
-.h-reveal.in {
+.anim .h-reveal.in {
   opacity: 1;
   transform: none;
 }
 
-body.loaded .h-reveal.in {
+body.loaded .anim .h-reveal.in {
   opacity: 1;
   transform: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .h-reveal {
+  .anim .h-reveal {
     opacity: 1;
     transform: none;
     transition: none;
@@ -1299,8 +1299,8 @@ body.loaded .h-reveal.in {
   --mut: var(--h-muted);
   --line-d: var(--line-dark);
   --line-l: var(--h-line);
-  --font-display: "Archivo", system-ui, sans-serif;
-  --font-body: "Hanken Grotesk", system-ui, sans-serif;
+  --font-display: var(--eh-font-display);
+  --font-body: var(--eh-font-body);
   --font-mono: "SF Mono", "Menlo", "Consolas", monospace;
   --sans: var(--font-body);
   --radius-sm: 6px;
@@ -1316,8 +1316,9 @@ body.loaded .h-reveal.in {
   --dur-slow: 0.42s;
 }
 
-/* ---- reveal animation used by app.js ---- */
-.reveal {
+/* ---- reveal animation used by app.js ----
+   Gated on body.anim so no-JS renders visible (see .h-reveal note above). */
+.anim .reveal {
   opacity: 0;
   transform: translateY(26px) scale(0.985);
   transition:
@@ -1327,13 +1328,13 @@ body.loaded .h-reveal.in {
   will-change: opacity, transform;
 }
 
-.reveal.in-view {
+.anim .reveal.in-view {
   opacity: 1;
   transform: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .reveal {
+  .anim .reveal {
     opacity: 1;
     transform: none;
     transition: none;
@@ -1346,7 +1347,7 @@ body.loaded .h-reveal.in {
   align-items: center;
   justify-content: center;
   gap: 0.55rem;
-  font-family: "Hanken Grotesk", system-ui, sans-serif;
+  font-family: var(--eh-font-body);
   font-weight: 700;
   font-size: 0.92rem;
   letter-spacing: 0.03em;
@@ -1476,11 +1477,12 @@ body.has-sticky-cta {
 }
 
 .h-page-hero h1 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 900;
-  font-size: clamp(2.4rem, 5.5vw, 4rem);
-  line-height: 1.08;
-  letter-spacing: -0.03em;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
+  font-size: var(--eh-fs-h1);
+  line-height: 1.06;
+  letter-spacing: var(--eh-track-display);
+  text-wrap: balance;
 }
 
 .h-page-hero h1 em {
@@ -1489,10 +1491,17 @@ body.has-sticky-cta {
 }
 
 .h-page-hero .sub {
-  font-size: clamp(1.05rem, 1.6vw, 1.25rem);
+  font-size: var(--eh-fs-lead);
+  line-height: var(--eh-lh-lead);
   color: var(--h-muted);
   max-width: 56ch;
   margin-top: 1.2rem;
+  text-wrap: pretty;
+}
+
+.h-page-hero {
+  position: relative;
+  overflow: hidden;
 }
 
 .h-page-hero .motif {
@@ -1684,8 +1693,8 @@ body.has-sticky-cta {
   background: var(--h-cream, #f8f6f0);
 }
 .gs-ok-title {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.3rem;
   margin: 0 0 0.5rem;
 }
@@ -1764,8 +1773,8 @@ body.has-sticky-cta {
 }
 
 .h-rail-card h3 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.15rem;
   margin-bottom: 1rem;
 }
@@ -1786,8 +1795,8 @@ body.has-sticky-cta {
 }
 
 .rn {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 0.8rem;
   color: var(--h-coral);
   flex: none;
@@ -1843,8 +1852,8 @@ body.has-sticky-cta {
 }
 
 .bk-name {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 900;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.8rem;
   line-height: 1.1;
   margin-bottom: 0.8rem;
@@ -1866,8 +1875,8 @@ body.has-sticky-cta {
 }
 
 .bk-after h3 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1rem;
   margin-bottom: 0.8rem;
 }
@@ -1908,8 +1917,8 @@ body.has-sticky-cta {
 }
 
 .bk-step h3 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.2rem;
   margin-bottom: 1rem;
   display: flex;
@@ -1918,8 +1927,8 @@ body.has-sticky-cta {
 }
 
 .sn {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 900;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1rem;
   color: var(--h-coral);
 }
@@ -2029,7 +2038,7 @@ body.has-sticky-cta {
   border: 1px solid var(--h-line-2, rgba(20, 24, 33, 0.2));
   background: #f8f5f0;
   font-size: 0.95rem;
-  font-family: "Hanken Grotesk", system-ui, sans-serif;
+  font-family: var(--eh-font-body);
   border-radius: var(--h-radius-sm, 10px);
   color: var(--h-ink, #1e1e29);
   box-sizing: border-box;
@@ -2085,8 +2094,8 @@ body.has-sticky-cta {
 }
 
 .bk-done h3 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.5rem;
   margin-bottom: 0.8rem;
 }
@@ -2154,8 +2163,8 @@ body.has-sticky-cta {
 }
 
 .h-promise blockquote {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: clamp(1.6rem, 3.5vw, 2.6rem);
   line-height: 1.15;
   letter-spacing: -0.02em;
@@ -2163,7 +2172,7 @@ body.has-sticky-cta {
 
 .h-promise blockquote b {
   color: var(--h-coral-2);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .h-promise .attr {
@@ -2210,8 +2219,8 @@ body.has-sticky-cta {
 }
 
 .h-fact-card h3 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.2rem;
   margin-bottom: 1rem;
   color: var(--h-navy);
@@ -2314,8 +2323,8 @@ body.has-sticky-cta {
   right: 0;
   padding: clamp(1rem, 3vw, 1.6rem);
   color: #fff;
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: clamp(0.95rem, 1.6vw, 1.2rem);
   line-height: 1.25;
   letter-spacing: -0.01em;
@@ -2425,8 +2434,8 @@ body.has-sticky-cta {
 }
 
 .t-name {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 900;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.7rem;
   color: var(--h-navy);
   line-height: 1.1;
@@ -2440,8 +2449,8 @@ body.has-sticky-cta {
 }
 
 .t-price {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.6rem;
   color: var(--h-navy);
   margin-bottom: 1rem;
@@ -2563,8 +2572,8 @@ body.has-sticky-cta {
 }
 
 .h-step-card .num {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 900;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 2rem;
   color: var(--h-coral);
   line-height: 1;
@@ -2578,8 +2587,8 @@ body.has-sticky-cta {
 }
 
 .h-step-card h3 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.25rem;
   margin-bottom: 0.5rem;
   color: var(--h-navy);
@@ -2599,8 +2608,8 @@ body.has-sticky-cta {
 }
 
 .h-access-strip > h3 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: clamp(1.3rem, 2.5vw, 1.8rem);
   color: var(--h-navy);
   margin-bottom: 1.5rem;
@@ -2658,8 +2667,8 @@ body.has-sticky-cta {
 }
 
 .r-step {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 0.85rem;
   color: var(--h-coral);
   text-transform: uppercase;
@@ -2671,8 +2680,8 @@ body.has-sticky-cta {
 }
 
 .h-rung h3 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.1rem;
   margin-bottom: 0.2rem;
   color: inherit;
@@ -2721,8 +2730,8 @@ body.has-sticky-cta {
 }
 
 .h-honest h4 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.1rem;
   color: var(--h-navy);
   margin-bottom: 0.5rem;
@@ -2751,8 +2760,8 @@ body.has-sticky-cta {
 }
 
 .sim-head h3 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: clamp(1.3rem, 2.5vw, 1.8rem);
   color: var(--h-navy);
   margin-bottom: 0.5rem;
@@ -2818,8 +2827,8 @@ body.has-sticky-cta {
 }
 
 .sim-score b {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 900;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 3rem;
   color: var(--h-navy);
   line-height: 1;
@@ -2866,8 +2875,8 @@ body.has-sticky-cta {
 }
 
 .sim-act b {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 900;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.2rem;
   color: var(--h-coral);
 }
@@ -2926,8 +2935,8 @@ body.has-sticky-cta {
 
 .h-sim-miles li b {
   display: block;
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 900;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.4rem;
   color: var(--h-coral);
   margin-bottom: 0.2rem;
@@ -2978,8 +2987,8 @@ body.has-sticky-cta {
 }
 
 .h-ev h3 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.15rem;
   margin-bottom: 0.5rem;
   color: var(--h-navy);
@@ -3100,8 +3109,8 @@ body.has-sticky-cta {
 }
 
 .h-count-date {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 900;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: clamp(1.6rem, 3vw, 2.2rem);
   color: #fff;
   margin-bottom: 1.2rem;
@@ -3122,8 +3131,8 @@ body.has-sticky-cta {
 
 .h-count-cell b {
   display: block;
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 900;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: clamp(1.5rem, 3vw, 2rem);
   color: var(--h-coral-2);
   line-height: 1;
@@ -3154,8 +3163,8 @@ body.has-sticky-cta {
 }
 
 .h-quote-card blockquote {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: clamp(1.1rem, 2vw, 1.35rem);
   line-height: 1.3;
   letter-spacing: -0.01em;
@@ -3181,8 +3190,8 @@ body.has-sticky-cta {
   color: var(--h-coral);
   display: grid;
   place-items: center;
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 0.9rem;
   flex: none;
 }
@@ -3278,8 +3287,8 @@ body.has-sticky-cta {
 }
 
 .h-assess-card h3 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.25rem;
   margin-bottom: 0.5rem;
   color: var(--h-navy);
@@ -3307,7 +3316,7 @@ body.has-sticky-cta {
 }
 
 .h-method p {
-  font-family: "Archivo", system-ui, sans-serif;
+  font-family: var(--eh-font-display);
   font-size: clamp(1.05rem, 1.8vw, 1.3rem);
   line-height: 1.55;
   color: var(--h-navy);
@@ -3315,7 +3324,7 @@ body.has-sticky-cta {
 
 .h-method p b {
   color: var(--h-coral);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 @media (max-width: 760px) {
@@ -3433,7 +3442,7 @@ body.has-sticky-cta {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: "Archivo", system-ui, sans-serif;
+  font-family: var(--eh-font-display);
   color: var(--h-coral);
   font-size: 1.05rem;
   transition:
@@ -3458,8 +3467,8 @@ body.has-sticky-cta {
 }
 
 .h-p-body h3 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.5rem;
   letter-spacing: -0.01em;
   margin-bottom: 0.3rem;
@@ -3467,7 +3476,7 @@ body.has-sticky-cta {
 }
 
 .h-p-tag {
-  font-family: "Archivo", system-ui, sans-serif;
+  font-family: var(--eh-font-display);
   font-style: italic;
   color: var(--h-coral-2);
   font-size: 1.05rem;
@@ -3526,8 +3535,8 @@ body.has-sticky-cta {
 }
 
 .h-p-price {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.5rem;
   color: var(--h-navy);
   letter-spacing: -0.01em;
@@ -3536,7 +3545,7 @@ body.has-sticky-cta {
 
 .h-p-price small {
   display: block;
-  font-family: "Hanken Grotesk", system-ui, sans-serif;
+  font-family: var(--eh-font-body);
   font-size: 0.78rem;
   color: var(--h-muted);
   margin-top: 0.35rem;
@@ -3645,7 +3654,7 @@ body.has-sticky-cta {
   border-radius: 999px;
   padding: 0.62rem 1.15rem;
   font-size: 0.9rem;
-  font-family: "Hanken Grotesk", system-ui, sans-serif;
+  font-family: var(--eh-font-body);
   cursor: pointer;
   transition: all 0.18s var(--h-ease);
   min-height: 44px;
@@ -3682,7 +3691,7 @@ body.has-sticky-cta {
 }
 
 .sel-result h3 {
-  font-family: "Archivo", system-ui, sans-serif;
+  font-family: var(--eh-font-display);
   font-size: 1.5rem;
   color: var(--h-navy);
   margin: 0 0 0.5rem;
@@ -3849,8 +3858,8 @@ body.has-sticky-cta {
 }
 
 .bs-path-card h3 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.35rem;
   color: var(--h-navy);
 }
@@ -3924,15 +3933,15 @@ body.has-sticky-cta {
 }
 
 .bs-track h3 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.7rem;
   color: var(--h-navy);
   margin-bottom: 0.4rem;
 }
 
 .bs-track .tline {
-  font-family: "Archivo", system-ui, sans-serif;
+  font-family: var(--eh-font-display);
   font-style: italic;
   color: var(--h-coral-2);
   font-size: 1.05rem;
@@ -4000,8 +4009,8 @@ body.has-sticky-cta {
 }
 
 .bs-compare h3 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.35rem;
   color: var(--h-navy);
   margin-bottom: 1.2rem;
@@ -4027,7 +4036,7 @@ body.has-sticky-cta {
 .bs-compare .cmp thead th {
   background: var(--h-navy);
   color: #fff;
-  font-family: "Archivo", system-ui, sans-serif;
+  font-family: var(--eh-font-display);
   font-weight: 700;
   font-size: 1rem;
 }
@@ -4145,7 +4154,7 @@ body.has-sticky-cta {
 }
 
 .bs-page .visa-count {
-  font-family: "Archivo", system-ui, sans-serif;
+  font-family: var(--eh-font-display);
   font-size: 1.6rem;
   color: var(--h-coral);
   min-width: 2.4rem;
@@ -4179,7 +4188,7 @@ body.has-sticky-cta {
 }
 
 .bs-page .co-amount {
-  font-family: "Archivo", system-ui, sans-serif;
+  font-family: var(--eh-font-display);
   font-size: clamp(1.9rem, 3.4vw, 2.7rem);
   color: var(--h-coral);
   line-height: 1.15;
@@ -4247,8 +4256,8 @@ body.has-sticky-cta {
 }
 
 .bs-calc-capture h3 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.1rem;
   color: var(--h-navy);
   margin: 0 0 0.3rem;
@@ -4324,8 +4333,8 @@ body.has-sticky-cta {
 }
 
 .bs-svc-band h3 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.3rem;
   color: var(--h-navy);
   margin-bottom: 0.6rem;
@@ -4399,18 +4408,18 @@ body.has-sticky-cta {
 }
 
 .bs-why-item .n {
-  font-family: "Archivo", system-ui, sans-serif;
+  font-family: var(--eh-font-display);
   color: var(--h-coral);
   font-size: 1rem;
-  font-weight: 800;
+  font-weight: 700;
   flex: none;
   padding-top: 0.2rem;
   min-width: 2rem;
 }
 
 .bs-why-item h3 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.2rem;
   color: var(--h-navy);
   margin-bottom: 0.4rem;
@@ -4488,8 +4497,8 @@ body.has-sticky-cta {
 }
 
 .h-purpose-state {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: clamp(1.4rem, 3vw, 2.2rem);
   line-height: 1.2;
   letter-spacing: -0.02em;
@@ -4532,8 +4541,8 @@ body.has-sticky-cta {
 }
 
 .h-val .n {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 900;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 2rem;
   color: var(--h-coral);
   line-height: 1;
@@ -4542,8 +4551,8 @@ body.has-sticky-cta {
 }
 
 .h-val h3 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.25rem;
   margin-bottom: 0.5rem;
   color: var(--h-navy);
@@ -4564,8 +4573,8 @@ body.has-sticky-cta {
 }
 
 .h-value-moment h2 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 900;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: clamp(2.2rem, 5vw, 3.6rem);
   line-height: 1.05;
   letter-spacing: -0.03em;
@@ -4618,8 +4627,8 @@ body.has-sticky-cta {
 
 /* ---- team ---- */
 .h-sub-head {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.1rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -4652,15 +4661,15 @@ body.has-sticky-cta {
   color: var(--h-coral);
   display: grid;
   place-items: center;
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.2rem;
   flex: none;
 }
 
 .h-person h4 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.25rem;
   color: var(--h-navy);
   margin-bottom: 0.2rem;
@@ -4714,15 +4723,15 @@ body.has-sticky-cta {
   color: var(--h-coral);
   display: grid;
   place-items: center;
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.1rem;
   margin: 0 auto 0.8rem;
 }
 
 .h-tm h4 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.1rem;
   color: var(--h-navy);
   margin-bottom: 0.2rem;
@@ -4743,8 +4752,8 @@ body.has-sticky-cta {
 }
 
 .h-advisors h4 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.2rem;
   color: var(--h-navy);
   margin-bottom: 1rem;
@@ -4830,8 +4839,8 @@ body.has-sticky-cta {
 }
 
 .feat h3 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: clamp(1.4rem, 3vw, 2rem);
   line-height: 1.15;
   letter-spacing: -0.02em;
@@ -4928,7 +4937,7 @@ body.has-sticky-cta {
   border-radius: 999px;
   padding: 0.6rem 1.1rem;
   font-size: 0.88rem;
-  font-family: "Hanken Grotesk", system-ui, sans-serif;
+  font-family: var(--eh-font-body);
   font-weight: 600;
   cursor: pointer;
   transition: all 0.18s var(--h-ease);
@@ -4995,8 +5004,8 @@ a.art:hover {
 }
 
 .art h3 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.25rem;
   line-height: 1.2;
   color: var(--h-navy);
@@ -5045,8 +5054,8 @@ a.art:hover {
 }
 
 .h-subscribe h2 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 900;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: clamp(2rem, 4.5vw, 3.2rem);
   line-height: 1.1;
   letter-spacing: -0.025em;
@@ -5231,8 +5240,8 @@ a.art:hover {
 }
 
 .p-hero h1 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 900;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: clamp(2.4rem, 5.5vw, 4rem);
   line-height: 1.08;
   letter-spacing: -0.03em;
@@ -5277,8 +5286,8 @@ a.art:hover {
 }
 
 .book-card .bc-price {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 900;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: clamp(1.6rem, 3vw, 2.4rem);
   color: var(--h-navy);
   line-height: 1.1;
@@ -5332,8 +5341,8 @@ a.art:hover {
 }
 
 .promise blockquote {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: clamp(1.6rem, 3.5vw, 2.6rem);
   line-height: 1.15;
   letter-spacing: -0.02em;
@@ -5341,7 +5350,7 @@ a.art:hover {
 
 .promise blockquote b {
   color: var(--h-coral-2);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .promise .attr {
@@ -5394,8 +5403,8 @@ a.art:hover {
   right: 0;
   padding: clamp(1rem, 3vw, 2rem);
   color: #fff;
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: clamp(1rem, 1.8vw, 1.35rem);
   line-height: 1.25;
   letter-spacing: -0.01em;
@@ -5439,8 +5448,8 @@ a.art:hover {
 .takeaways.light .h2,
 .fit.light .h2,
 .format.light .h2 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: clamp(2rem, 4.2vw, 3.2rem);
   line-height: 1.1;
   letter-spacing: -0.025em;
@@ -5472,8 +5481,8 @@ a.art:hover {
 }
 
 .tk-item .n {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 900;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.5rem;
   color: var(--h-coral);
   line-height: 1;
@@ -5481,8 +5490,8 @@ a.art:hover {
 }
 
 .tk-item h3 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.15rem;
   color: var(--h-navy);
   margin-bottom: 0.4rem;
@@ -5519,8 +5528,8 @@ a.art:hover {
 
 .fit-yes h3,
 .fit-no h3 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.25rem;
   color: var(--h-navy);
   margin-bottom: 1.2rem;
@@ -5588,8 +5597,8 @@ a.art:hover {
 }
 
 .format-cell .v {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: clamp(1.3rem, 2.4vw, 1.8rem);
   color: var(--h-navy);
   line-height: 1.15;
@@ -5645,15 +5654,15 @@ a.art:hover {
 }
 
 .tier .t-name {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 800;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.3rem;
   color: var(--h-navy);
 }
 
 .tier .t-price {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 900;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: 1.8rem;
   color: var(--h-coral);
   margin: 0.8rem 0;
@@ -5730,8 +5739,8 @@ a.art:hover {
 }
 
 .next-prod .np-name {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-weight: 900;
+  font-family: var(--eh-font-display);
+  font-weight: 700;
   font-size: clamp(1.4rem, 3vw, 2rem);
   color: var(--h-navy);
   line-height: 1.1;
@@ -5871,7 +5880,7 @@ a.art:hover {
 }
 
 .brand-check-cta .headline {
-  font-family: "Archivo", system-ui, sans-serif;
+  font-family: var(--eh-font-display);
   font-size: clamp(20px, 2.6vw, 26px);
   font-weight: 700;
   margin: 0 0 6px;
@@ -6242,11 +6251,12 @@ a.art:hover {
 }
 
 .eh-hero-v2 h1 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-size: clamp(2.8rem, 8vw, 7.5rem);
-  font-weight: 900;
-  line-height: 0.95;
-  letter-spacing: -0.045em;
+  font-family: var(--eh-font-display);
+  font-size: var(--eh-fs-hero);
+  font-weight: 700;
+  line-height: var(--eh-lh-display);
+  letter-spacing: var(--eh-track-display);
+  text-wrap: balance;
 }
 
 .eh-hero-v2 h1 em {
@@ -6255,11 +6265,12 @@ a.art:hover {
 }
 
 .eh-hero-v2 .eh-lead {
-  font-size: clamp(1.1rem, 2vw, 1.55rem);
+  font-size: var(--eh-fs-lead);
   color: rgba(255, 255, 255, 0.72);
   max-width: 680px;
   margin: 1.8rem auto 0;
-  line-height: 1.55;
+  line-height: var(--eh-lh-lead);
+  text-wrap: pretty;
 }
 
 .eh-hero-v2 .eh-actions {
@@ -6346,9 +6357,9 @@ a.art:hover {
 }
 
 .eh-marquee span {
-  font-family: "Archivo", system-ui, sans-serif;
+  font-family: var(--eh-font-display);
   font-size: clamp(1.4rem, 3vw, 2.4rem);
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.02em;
   white-space: nowrap;
   padding: 0 2.5rem;
@@ -6435,9 +6446,9 @@ a.art:hover {
 
 .eh-number {
   display: block;
-  font-family: "Archivo", system-ui, sans-serif;
+  font-family: var(--eh-font-display);
   font-size: clamp(2.2rem, 5vw, 3rem);
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1;
   color: var(--h-navy);
 }
@@ -6494,11 +6505,12 @@ a.art:hover {
 }
 
 .eh-section-v2 .eh-h2 {
-  font-family: "Archivo", system-ui, sans-serif;
-  font-size: clamp(2.4rem, 6vw, 5rem);
-  font-weight: 900;
-  line-height: 1.02;
-  letter-spacing: -0.04em;
+  font-family: var(--eh-font-display);
+  font-size: var(--eh-fs-h2);
+  font-weight: 700;
+  line-height: var(--eh-lh-display);
+  letter-spacing: var(--eh-track-display);
+  text-wrap: balance;
 }
 
 .eh-section-v2 .eh-h2 em {
@@ -6507,11 +6519,12 @@ a.art:hover {
 }
 
 .eh-section-v2 .eh-lead {
-  font-size: clamp(1.1rem, 1.8vw, 1.35rem);
-  line-height: 1.6;
+  font-size: var(--eh-fs-lead);
+  line-height: var(--eh-lh-lead);
   color: rgba(10, 10, 10, 0.65);
   max-width: 58ch;
   margin-top: 1.2rem;
+  text-wrap: pretty;
 }
 
 .eh-section-v2.eh-dark .eh-lead {
@@ -6620,9 +6633,9 @@ a.art:hover {
 }
 
 .eh-pillar-card h3 {
-  font-family: "Archivo", system-ui, sans-serif;
+  font-family: var(--eh-font-display);
   font-size: 1.5rem;
-  font-weight: 800;
+  font-weight: 700;
   margin-bottom: 0.6rem;
 }
 
@@ -6679,9 +6692,9 @@ a.art:hover {
 }
 
 .h-for-col h3 {
-  font-family: "Archivo", system-ui, sans-serif;
+  font-family: var(--eh-font-display);
   font-size: 1.15rem;
-  font-weight: 800;
+  font-weight: 700;
   margin-bottom: 1rem;
 }
 
@@ -6733,9 +6746,9 @@ a.art:hover {
 }
 
 .h-benefit h3 {
-  font-family: "Archivo", system-ui, sans-serif;
+  font-family: var(--eh-font-display);
   font-size: 1.1rem;
-  font-weight: 800;
+  font-weight: 700;
   margin-bottom: 0.6rem;
   color: var(--h-navy);
 }
@@ -6786,17 +6799,17 @@ a.art:hover {
   position: absolute;
   top: 0;
   left: 0;
-  font-family: "Archivo", system-ui, sans-serif;
+  font-family: var(--eh-font-display);
   font-size: 4rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
   color: rgba(218, 58, 34, 0.12);
 }
 
 .eh-step h3 {
-  font-family: "Archivo", system-ui, sans-serif;
+  font-family: var(--eh-font-display);
   font-size: 1.2rem;
-  font-weight: 800;
+  font-weight: 700;
   margin-bottom: 0.5rem;
 }
 
@@ -6830,9 +6843,9 @@ a.art:hover {
 
 .eh-stat b {
   display: block;
-  font-family: "Archivo", system-ui, sans-serif;
+  font-family: var(--eh-font-display);
   font-size: clamp(2.2rem, 5vw, 4rem);
-  font-weight: 900;
+  font-weight: 700;
   color: var(--eh-coral);
   line-height: 1;
 }
@@ -6872,9 +6885,9 @@ a.art:hover {
 }
 
 .eh-voice blockquote {
-  font-family: "Archivo", system-ui, sans-serif;
+  font-family: var(--eh-font-display);
   font-size: clamp(1.4rem, 2.5vw, 2rem);
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.2;
   letter-spacing: -0.02em;
   margin-bottom: 1.2rem;
@@ -6968,7 +6981,7 @@ a.art:hover {
 }
 
 .eh-faq-v2 summary {
-  font-family: "Archivo", system-ui, sans-serif;
+  font-family: var(--eh-font-display);
   font-size: 1.15rem;
   font-weight: 700;
   cursor: pointer;
@@ -7019,8 +7032,11 @@ a.art:hover {
   margin-top: 2.5rem;
 }
 
-/* ---- reveal helpers for v2 ---- */
-.eh-reveal {
+/* ---- reveal helpers for v2 ----
+   Gated on body.anim so no-JS renders visible (see .h-reveal note above);
+   the upgrade layer at the end of this file refines the curve to the
+   expo easing + a soft blur. */
+.anim .eh-reveal {
   opacity: 0;
   transform: translateY(36px);
   transition:
@@ -7029,13 +7045,13 @@ a.art:hover {
   transition-delay: var(--d, 0s);
 }
 
-.eh-reveal.in {
+.anim .eh-reveal.in {
   opacity: 1;
   transform: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .eh-reveal {
+  .anim .eh-reveal {
     opacity: 1;
     transform: none;
     transition: none;
@@ -7776,9 +7792,9 @@ a.art:hover {
 }
 
 .eh-explore-body h3 {
-  font-family: "Archivo", system-ui, sans-serif;
+  font-family: var(--eh-font-display);
   font-size: 1.25rem;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.15;
   margin-bottom: 0.5rem;
   color: var(--eh-ink);
@@ -7988,5 +8004,589 @@ a.art:hover {
     height: 94vh;
     max-width: 100%;
     border-radius: 14px;
+  }
+}
+
+/* ==========================================================================
+   Design upgrade layer — self-hosted type, ambient art, motion & depth
+   (2026 visual pass: Space Grotesk + Manrope, aurora heroes, hive motif,
+   staggered reveals, card depth). Appended last so it wins ties.
+   ========================================================================== */
+
+/* ---- reveal system: smoother easing, soft blur, staggered children ---- */
+.anim .eh-reveal {
+  opacity: 0;
+  transform: translateY(34px);
+  filter: blur(5px);
+  transition:
+    opacity var(--eh-dur-reveal) var(--eh-ease-expo),
+    transform var(--eh-dur-reveal) var(--eh-ease-expo),
+    filter var(--eh-dur-reveal) var(--eh-ease-expo);
+  transition-delay: var(--d, 0s);
+  will-change: opacity, transform;
+}
+
+.anim .eh-reveal.in {
+  opacity: 1;
+  transform: none;
+  filter: blur(0);
+}
+
+/* grids whose children don't self-reveal get an index-staggered rise
+   (.eh-stag / .in / --i are applied by app.js; no-JS renders visible) */
+.anim .eh-stag > * {
+  opacity: 0;
+  transform: translateY(26px);
+  transition:
+    opacity 0.8s var(--eh-ease-expo),
+    transform 0.8s var(--eh-ease-expo);
+  transition-delay: calc(var(--i, 0) * 85ms);
+  will-change: opacity, transform;
+}
+
+.anim .eh-stag.in > * {
+  opacity: 1;
+  transform: none;
+}
+
+/* interior-page reveals get the same calmer curve */
+.anim .reveal {
+  transition:
+    opacity 0.8s var(--eh-ease-expo),
+    transform 0.8s var(--eh-ease-expo);
+}
+
+.anim .h-reveal {
+  transition:
+    opacity 0.8s var(--eh-ease-expo),
+    transform 0.8s var(--eh-ease-expo),
+    filter 0.8s var(--eh-ease-expo);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim .eh-reveal,
+  .anim .eh-stag > * {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    transition: none;
+  }
+}
+
+/* ---- hero v2: aurora mesh + film grain + hive motif ----------------------
+   All art is local CSS/SVG (data-URIs) — no external imagery. The aurora is
+   an oversized compositor-animated layer; grain is a static feTurbulence
+   tile; both freeze gracefully under reduced motion. */
+.eh-hero-v2::before {
+  content: "";
+  position: absolute;
+  inset: -25%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      42% 40% at 16% 20%,
+      rgba(218, 58, 34, 0.34),
+      transparent 62%
+    ),
+    radial-gradient(
+      34% 40% at 86% 10%,
+      rgba(255, 194, 40, 0.13),
+      transparent 60%
+    ),
+    radial-gradient(
+      48% 46% at 76% 92%,
+      rgba(30, 49, 87, 0.9),
+      transparent 66%
+    ),
+    radial-gradient(
+      36% 34% at 6% 88%,
+      rgba(228, 87, 63, 0.2),
+      transparent 62%
+    );
+  animation: eh-aurora 26s ease-in-out infinite alternate;
+}
+
+.eh-hero-v2::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0.32;
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+}
+
+.eh-hero-v2 .eh-hero-content {
+  z-index: 2;
+}
+
+@keyframes eh-aurora {
+  0% {
+    transform: translate3d(-2.5%, -1.5%, 0) scale(1);
+  }
+  100% {
+    transform: translate3d(2.5%, 2%, 0) scale(1.06);
+  }
+}
+
+/* faint honeycomb field behind the hero, echoing the hive mark */
+.eh-hero-v2 .eh-hero-content::before {
+  content: "";
+  position: absolute;
+  inset: -12% -18%;
+  z-index: -1;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='49' viewBox='0 0 28 49'%3E%3Cpath d='M13.99 9.25l13 7.5v15l-13 7.5L1 31.75v-15l12.99-7.5zM3 17.9v12.7l10.99 6.34 11-6.35V17.9l-11-6.34L3 17.9zM0 15l12.98-7.5V0h-2v6.35L0 12.69v2.3zm0 18.5L12.98 41v8h-2v-6.85L0 35.81v-2.3zM15 0v7.5L27.99 15H28v-2.31h-.01L17 6.35V0h-2zm0 49v-8l12.99-7.5H28v2.31h-.01L17 42.15V49h-2z' fill='%23ffffff' fill-opacity='0.035'/%3E%3C/svg%3E");
+  background-size: 28px 49px;
+  mask-image: radial-gradient(
+    70% 60% at 50% 45%,
+    #000 0%,
+    transparent 78%
+  );
+  -webkit-mask-image: radial-gradient(
+    70% 60% at 50% 45%,
+    #000 0%,
+    transparent 78%
+  );
+}
+
+/* scroll hint fades once the visitor leaves the fold (class from app.js) */
+.eh-hero-v2 .eh-scroll-hint {
+  transition: opacity 0.5s var(--eh-ease-out);
+}
+
+.eh-hero-v2 .eh-scroll-hint.hide {
+  opacity: 0;
+}
+
+/* ---- dark v2 sections: richer ambient field ---------------------------- */
+.eh-section-v2.eh-dark {
+  background:
+    radial-gradient(
+      90% 120% at 88% 0%,
+      rgba(218, 58, 34, 0.16),
+      transparent 55%
+    ),
+    radial-gradient(
+      70% 90% at 4% 100%,
+      rgba(30, 49, 87, 0.55),
+      transparent 60%
+    ),
+    var(--eh-ink);
+  overflow: hidden;
+}
+
+.eh-section-v2.eh-dark::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.25;
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+}
+
+/* ---- interior heroes: layered mesh over the cream ground ---------------- */
+.h-page-hero {
+  background:
+    radial-gradient(
+      70% 90% at 88% 8%,
+      rgba(218, 58, 34, 0.09),
+      transparent 55%
+    ),
+    radial-gradient(
+      55% 70% at 4% 96%,
+      rgba(22, 38, 76, 0.07),
+      transparent 58%
+    ),
+    var(--h-cream);
+}
+
+.h-page-hero .h-page-hero-grid {
+  position: relative;
+  z-index: 1;
+}
+
+/* interior heroes on v2 pages share the homepage's ambient field (static) */
+.eh-v2 .h-page-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      46% 42% at 10% 16%,
+      rgba(218, 58, 34, 0.26),
+      transparent 62%
+    ),
+    radial-gradient(
+      34% 40% at 92% 6%,
+      rgba(255, 194, 40, 0.1),
+      transparent 60%
+    ),
+    radial-gradient(
+      46% 50% at 90% 98%,
+      rgba(30, 49, 87, 0.75),
+      transparent 66%
+    );
+}
+
+.eh-v2 .h-page-hero .h-wrap {
+  position: relative;
+  z-index: 1;
+}
+
+/* hero motifs breathe gently */
+.h-page-hero .motif,
+.h-page-hero .rings {
+  animation: eh-float 7s ease-in-out infinite;
+}
+
+@keyframes eh-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-9px);
+  }
+}
+
+/* ---- nav: deeper condense on scroll ------------------------------------- */
+.eh-v2 .h-nav {
+  background: rgba(10, 10, 10, 0.85);
+}
+
+.eh-v2 .h-nav.scrolled {
+  background: rgba(8, 8, 8, 0.97);
+  border-bottom-color: rgba(255, 255, 255, 0.07);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+}
+
+/* ---- buttons: press states + focus rings -------------------------------- */
+.eh-v2 .eh-btn {
+  will-change: transform;
+}
+
+.eh-btn.magnetic {
+  transform: translate(var(--mag-x, 0), var(--mag-y, 0));
+}
+
+.eh-v2 .eh-btn:active {
+  transform: translateY(1px) scale(0.985);
+}
+
+.eh-v2 .eh-btn-primary {
+  background: linear-gradient(
+    135deg,
+    var(--eh-coral-2),
+    var(--eh-coral) 60%
+  );
+}
+
+.eh-v2 .eh-btn:focus-visible,
+.h-btn:focus-visible,
+.eh-explore-link:focus-visible,
+.eh-btn:focus-visible {
+  outline: 2px solid var(--eh-coral);
+  outline-offset: 3px;
+}
+
+/* ---- section rhythm: hairline between consecutive light bands ----------- */
+.eh-section-v2.eh-light + .eh-section-v2.eh-light {
+  border-top: 1px solid rgba(10, 10, 10, 0.05);
+}
+
+/* ---- card depth: lift, image scale, glow, gradient borders -------------- */
+.eh-number-card,
+.h-tier,
+.art-grid .art,
+.eh-trust-item {
+  transition:
+    transform 0.4s var(--eh-ease-expo),
+    box-shadow 0.4s var(--eh-ease-expo),
+    border-color 0.4s var(--eh-ease-expo);
+}
+
+.eh-number-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.eh-number-card::before,
+.h-tier::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.45s var(--eh-ease-out);
+  background: radial-gradient(
+    120% 90% at 50% -20%,
+    rgba(218, 58, 34, 0.1),
+    transparent 60%
+  );
+}
+
+.eh-number-card:hover,
+.h-tier:hover,
+.eh-trust-item:hover {
+  transform: translateY(-5px);
+  border-color: rgba(218, 58, 34, 0.32);
+  box-shadow:
+    0 20px 46px rgba(15, 28, 58, 0.12),
+    0 6px 22px rgba(218, 58, 34, 0.1);
+}
+
+.eh-number-card:hover::before,
+.h-tier:hover::before {
+  opacity: 1;
+}
+
+.eh-number {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--eh-track-heading);
+}
+
+/* the Vanguard pricing grid's price card reads as the featured tile */
+.eh-numbers-grid:has(#vgSeats) .eh-number-card:nth-child(2) {
+  background:
+    radial-gradient(
+      120% 100% at 50% -30%,
+      rgba(218, 58, 34, 0.28),
+      transparent 62%
+    ),
+    linear-gradient(165deg, #17130f, #0d0c0b 70%);
+  border-color: rgba(228, 87, 63, 0.4);
+  box-shadow: 0 24px 60px rgba(10, 10, 10, 0.28);
+}
+
+.eh-numbers-grid:has(#vgSeats) .eh-number-card:nth-child(2) .eh-number {
+  color: var(--eh-coral-2);
+}
+
+.eh-numbers-grid:has(#vgSeats) .eh-number-card:nth-child(2):hover {
+  border-color: rgba(228, 87, 63, 0.65);
+  box-shadow:
+    0 30px 70px rgba(10, 10, 10, 0.34),
+    0 0 44px rgba(218, 58, 34, 0.18);
+}
+
+.eh-numbers-grid:has(#vgSeats) .eh-number-card:nth-child(2)::before {
+  display: none;
+}
+
+/* recommended membership tier: gradient ring + halo */
+.h-tier.reco {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--h-paper), var(--h-paper)) padding-box,
+    linear-gradient(
+        150deg,
+        rgba(218, 58, 34, 0.85),
+        rgba(255, 194, 40, 0.5) 55%,
+        rgba(218, 58, 34, 0.15)
+      )
+      border-box;
+  box-shadow:
+    var(--h-shadow),
+    0 10px 34px rgba(218, 58, 34, 0.14);
+}
+
+.h-tier.reco:hover {
+  box-shadow:
+    var(--h-shadow-lg),
+    0 14px 44px rgba(218, 58, 34, 0.22);
+}
+
+/* explore cards: wider, calmer pair on desktop */
+@media (min-width: 861px) {
+  .eh-explore .eh-swipe-row-track {
+    max-width: 920px;
+    gap: 2rem;
+  }
+}
+
+.eh-explore-card {
+  position: relative;
+}
+
+.eh-explore-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.45s var(--eh-ease-out);
+  box-shadow:
+    inset 0 0 0 1px rgba(218, 58, 34, 0.28),
+    0 0 34px rgba(218, 58, 34, 0.12);
+}
+
+.eh-explore-card:hover::after {
+  opacity: 1;
+}
+
+/* article cards (insights) — image-scale echo on hover */
+.art-grid .art {
+  position: relative;
+  overflow: hidden;
+}
+
+.art-grid .art::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--eh-coral), var(--eh-gold));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.5s var(--eh-ease-expo);
+}
+
+.art-grid .art:hover::before {
+  transform: scaleX(1);
+}
+
+/* ---- hive-motif echoes in section furniture ----------------------------- */
+.eh-step::after {
+  content: "";
+  position: absolute;
+  top: 0.4rem;
+  right: 0;
+  width: 14px;
+  height: 16px;
+  pointer-events: none;
+  opacity: 0.55;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 32'%3E%3Cpath d='M14 1.5l12 7v15l-12 7-12-7v-15z' fill='none' stroke='%23DA3A22' stroke-opacity='0.35' stroke-width='1.4'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+
+.h-fact-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.h-fact-card::after {
+  content: "";
+  position: absolute;
+  right: -24px;
+  bottom: -30px;
+  width: 190px;
+  height: 190px;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='49' viewBox='0 0 28 49'%3E%3Cpath d='M13.99 9.25l13 7.5v15l-13 7.5L1 31.75v-15l12.99-7.5zM3 17.9v12.7l10.99 6.34 11-6.35V17.9l-11-6.34L3 17.9zM0 15l12.98-7.5V0h-2v6.35L0 12.69v2.3zm0 18.5L12.98 41v8h-2v-6.85L0 35.81v-2.3zM15 0v7.5L27.99 15H28v-2.31h-.01L17 6.35V0h-2zm0 49v-8l12.99-7.5H28v2.31h-.01L17 42.15V49h-2z' fill='%23DA3A22' fill-opacity='0.06'/%3E%3C/svg%3E");
+  background-size: 28px 49px;
+}
+
+/* ---- footer refinement ---------------------------------------------------- */
+.h-footer {
+  position: relative;
+  padding: 5rem 0 2.5rem;
+  background:
+    radial-gradient(
+      60% 100% at 100% 0%,
+      rgba(218, 58, 34, 0.05),
+      transparent 60%
+    ),
+    var(--h-cream-2);
+  overflow: hidden;
+}
+
+.h-footer::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(218, 58, 34, 0.45),
+    rgba(255, 194, 40, 0.4),
+    transparent
+  );
+}
+
+.h-footer .h-wrap {
+  position: relative;
+  z-index: 1;
+}
+
+.h-footer a {
+  transition:
+    color 0.2s,
+    transform 0.2s var(--eh-ease-out);
+}
+
+.h-footer-grid > div:not(:first-child) a:hover {
+  transform: translateX(3px);
+}
+
+.h-footer-bottom a {
+  display: inline-block;
+}
+
+/* ---- journal empty state (insights.html) ---------------------------------- */
+.journal-empty {
+  display: none;
+  text-align: center;
+  margin-top: 2.2rem;
+  padding: clamp(2.6rem, 6vw, 4.25rem) 1.5rem;
+  border: 1.5px dashed var(--h-line-2);
+  border-radius: var(--h-radius);
+  background: var(--h-paper);
+}
+
+.journal-empty.show {
+  display: block;
+}
+
+.journal-empty svg {
+  width: 52px;
+  height: 58px;
+  margin: 0 auto 1.1rem;
+  display: block;
+}
+
+.journal-empty h3 {
+  font-family: var(--eh-font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: var(--eh-track-heading);
+  color: var(--h-navy);
+  margin-bottom: 0.5rem;
+}
+
+.journal-empty p {
+  color: var(--h-muted);
+  font-size: 0.98rem;
+  max-width: 46ch;
+  margin: 0 auto;
+  line-height: var(--eh-lh-lead);
+}
+
+/* ---- motion hygiene: freeze ambient loops under reduced motion ------------ */
+@media (prefers-reduced-motion: reduce) {
+  .eh-hero-v2::before,
+  .h-page-hero .motif,
+  .h-page-hero .rings {
+    animation: none;
+  }
+
+  .eh-hero-v2::before {
+    transform: none;
   }
 }

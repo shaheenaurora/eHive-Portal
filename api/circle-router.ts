@@ -88,6 +88,41 @@ function requireVerified(ctx: { user: { emailVerifiedAt?: Date | null } }) {
   }
 }
 
+/* H2 — duplicate-checkout guard. A member with a pending payment for the same
+ * purpose already has a live checkout; starting another would create a second
+ * gateway session and a second charge. Mirrors the event-ticket flow. */
+async function assertNoPendingPayment(
+  userId: number,
+  purpose: string,
+  purposeLabel: string
+): Promise<void> {
+  const pending = (
+    await getDb()
+      .select({ id: schema.paymentRecords.id })
+      .from(schema.paymentRecords)
+      .where(
+        and(
+          eq(schema.paymentRecords.userId, userId),
+          eq(schema.paymentRecords.purpose, purpose),
+          eq(schema.paymentRecords.status, "pending")
+        )
+      )
+      .limit(1)
+  ).at(0);
+  if (pending)
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: `You already have a pending ${purposeLabel} payment — complete it from your portal before starting a new one.`,
+    });
+}
+
+/** H2 — the Stripe idempotency key for a pending payment row: scoped to the
+ *  row id so a retried create with the same key returns the same session
+ *  instead of opening a second chargeable checkout. */
+function checkoutIdempotencyKey(paymentRecordId: number): string {
+  return `checkout-${paymentRecordId}`;
+}
+
 async function memberPolicyScopeIds(memberId: number): Promise<{
   chapterId?: number;
   zoneId?: number;
@@ -172,6 +207,7 @@ export const circleRouter = createRouter({
           code: "CONFLICT",
           message: "You're already a member.",
         });
+      await assertNoPendingPayment(ctx.user.id, "membership", "membership");
 
       // Vanguard uses the founding-cohort charter rate while seats remain and
       // the standard rate once the cohort has filled ("the rate rises"); other
@@ -208,6 +244,23 @@ export const circleRouter = createRouter({
       // phishing domain after checkout.
       const base = env.publicUrl;
       const provider = getPaymentProvider();
+      /* H2: create the pending row FIRST so its id keys the gateway call.
+       * Stripe retries with the same idempotency key return the same session,
+       * so a retried create can never open a second chargeable checkout. The
+       * row is removed again if session creation fails. */
+      const inserted = await getDb()
+        .insert(schema.paymentRecords)
+        .values({
+          userId: ctx.user.id,
+          provider: provider.name,
+          tier: input.tier,
+          amount: finalAmount,
+          currency: "aed",
+          status: "pending",
+          purpose: "membership",
+        });
+      const paymentRecordId = Number(inserted[0].insertId);
+      const idempotencyKey = checkoutIdempotencyKey(paymentRecordId);
       let session;
       try {
         session = await provider.createCheckoutSession({
@@ -218,22 +271,20 @@ export const circleRouter = createRouter({
           currency: "aed",
           successUrl: `${base}/portal?paid=1`,
           cancelUrl: `${base}/portal/apply?canceled=1`,
+          idempotencyKey,
         });
       } catch (err) {
         if (claimedPromoId) await releasePromo(claimedPromoId);
+        await getDb()
+          .delete(schema.paymentRecords)
+          .where(eq(schema.paymentRecords.id, paymentRecordId));
         throw err;
       }
       const { url, providerRef } = session;
-      await getDb().insert(schema.paymentRecords).values({
-        userId: ctx.user.id,
-        provider: provider.name,
-        providerRef,
-        tier: input.tier,
-        amount: finalAmount,
-        currency: "aed",
-        status: "pending",
-        purpose: "membership",
-      });
+      await getDb()
+        .update(schema.paymentRecords)
+        .set({ providerRef, idempotencyKey })
+        .where(eq(schema.paymentRecords.id, paymentRecordId));
       void recordAnalyticsEvent("payment_started", {
         userId: ctx.user.id,
         properties: {
@@ -275,6 +326,7 @@ export const circleRouter = createRouter({
           message:
             "Your membership is under review and can't be renewed online. Please contact the Circle team to reinstate it.",
         });
+      await assertNoPendingPayment(ctx.user.id, "renewal", "renewal");
       const tier = m.tier;
       const amount = TIER_PRICE_AED[tier] * 100; // AED → fils
       // Promo codes apply to renewals too (win-back campaigns). Same
@@ -297,6 +349,20 @@ export const circleRouter = createRouter({
       // header (which an attacker could point at a phishing domain).
       const base = env.publicUrl;
       const provider = getPaymentProvider();
+      /* H2: pending row first so its id keys the gateway call (see startCheckout). */
+      const inserted = await getDb()
+        .insert(schema.paymentRecords)
+        .values({
+          userId: ctx.user.id,
+          provider: provider.name,
+          tier,
+          amount: finalAmount,
+          currency: "aed",
+          status: "pending",
+          purpose: "renewal",
+        });
+      const paymentRecordId = Number(inserted[0].insertId);
+      const idempotencyKey = checkoutIdempotencyKey(paymentRecordId);
       let session;
       try {
         session = await provider.createCheckoutSession({
@@ -307,22 +373,20 @@ export const circleRouter = createRouter({
           currency: "aed",
           successUrl: `${base}/portal/membership?renewed=1`,
           cancelUrl: `${base}/portal/membership?canceled=1`,
+          idempotencyKey,
         });
       } catch (err) {
         if (claimedPromoId) await releasePromo(claimedPromoId);
+        await getDb()
+          .delete(schema.paymentRecords)
+          .where(eq(schema.paymentRecords.id, paymentRecordId));
         throw err;
       }
       const { url, providerRef } = session;
-      await getDb().insert(schema.paymentRecords).values({
-        userId: ctx.user.id,
-        provider: provider.name,
-        providerRef,
-        tier,
-        amount: finalAmount,
-        currency: "aed",
-        status: "pending",
-        purpose: "renewal",
-      });
+      await getDb()
+        .update(schema.paymentRecords)
+        .set({ providerRef, idempotencyKey })
+        .where(eq(schema.paymentRecords.id, paymentRecordId));
       void recordAnalyticsEvent("payment_started", {
         userId: ctx.user.id,
         properties: {
@@ -384,30 +448,49 @@ export const circleRouter = createRouter({
         code: "CONFLICT",
         message: "Your Clarity Sprint activation is already active.",
       });
+    await assertNoPendingPayment(ctx.user.id, "activation", "activation");
     const amount = (await activationPriceAed()) * 100; // AED → fils
     const base = env.publicUrl;
     const provider = getPaymentProvider();
-    const { url, providerRef } = await provider.createCheckoutSession({
-      tier: member.tier,
-      userId: ctx.user.id,
-      email: ctx.user.email ?? "",
-      amount,
-      currency: "aed",
-      label: "eHive — Clarity Sprint activation",
-      successUrl: `${base}/portal?activated=1`,
-      cancelUrl: `${base}/portal/membership?canceled=1`,
-    });
+    /* H2: pending row first so its id keys the gateway call (see startCheckout). */
+    const inserted = await getDb()
+      .insert(schema.paymentRecords)
+      .values({
+        userId: ctx.user.id,
+        provider: provider.name,
+        amount,
+        currency: "aed",
+        status: "pending",
+        purpose: "activation",
+      });
+    const paymentRecordId = Number(inserted[0].insertId);
+    const idempotencyKey = checkoutIdempotencyKey(paymentRecordId);
+    let session;
+    try {
+      session = await provider.createCheckoutSession({
+        tier: member.tier,
+        userId: ctx.user.id,
+        email: ctx.user.email ?? "",
+        amount,
+        currency: "aed",
+        label: "eHive — Clarity Sprint activation",
+        successUrl: `${base}/portal?activated=1`,
+        cancelUrl: `${base}/portal/membership?canceled=1`,
+        idempotencyKey,
+      });
+    } catch (err) {
+      await getDb()
+        .delete(schema.paymentRecords)
+        .where(eq(schema.paymentRecords.id, paymentRecordId));
+      throw err;
+    }
+    const { url, providerRef } = session;
     // No tier on the record: the webhook only touches membership lifecycle when a
     // tier is present, so an activation payment never renews or re-activates.
-    await getDb().insert(schema.paymentRecords).values({
-      userId: ctx.user.id,
-      provider: provider.name,
-      providerRef,
-      amount,
-      currency: "aed",
-      status: "pending",
-      purpose: "activation",
-    });
+    await getDb()
+      .update(schema.paymentRecords)
+      .set({ providerRef, idempotencyKey })
+      .where(eq(schema.paymentRecords.id, paymentRecordId));
     void recordAnalyticsEvent("payment_started", {
       userId: ctx.user.id,
       properties: { amount, purpose: "activation" },
@@ -457,6 +540,7 @@ export const circleRouter = createRouter({
           code: "PRECONDITION_FAILED",
           message: "Renew your membership first, then upgrade.",
         });
+      await assertNoPendingPayment(ctx.user.id, "upgrade", "upgrade");
       // Prorate the tier difference across the remaining days of the term:
       // delta = (priceTo - priceFrom) × remainingDays / 365.
       const remainingDays = Math.min(
@@ -491,6 +575,20 @@ export const circleRouter = createRouter({
       }
       const base = env.publicUrl;
       const provider = getPaymentProvider();
+      /* H2: pending row first so its id keys the gateway call (see startCheckout). */
+      const inserted = await getDb()
+        .insert(schema.paymentRecords)
+        .values({
+          userId: ctx.user.id,
+          provider: provider.name,
+          tier: input.toTier,
+          amount: finalAmount,
+          currency: "aed",
+          status: "pending",
+          purpose: "upgrade",
+        });
+      const paymentRecordId = Number(inserted[0].insertId);
+      const idempotencyKey = checkoutIdempotencyKey(paymentRecordId);
       let session;
       try {
         session = await provider.createCheckoutSession({
@@ -501,22 +599,20 @@ export const circleRouter = createRouter({
           currency: "aed",
           successUrl: `${base}/portal/membership?upgraded=1`,
           cancelUrl: `${base}/portal/membership?canceled=1`,
+          idempotencyKey,
         });
       } catch (err) {
         if (claimedPromoId) await releasePromo(claimedPromoId);
+        await getDb()
+          .delete(schema.paymentRecords)
+          .where(eq(schema.paymentRecords.id, paymentRecordId));
         throw err;
       }
       const { url, providerRef } = session;
-      await getDb().insert(schema.paymentRecords).values({
-        userId: ctx.user.id,
-        provider: provider.name,
-        providerRef,
-        tier: input.toTier,
-        amount: finalAmount,
-        currency: "aed",
-        status: "pending",
-        purpose: "upgrade",
-      });
+      await getDb()
+        .update(schema.paymentRecords)
+        .set({ providerRef, idempotencyKey })
+        .where(eq(schema.paymentRecords.id, paymentRecordId));
       void recordAnalyticsEvent("payment_started", {
         userId: ctx.user.id,
         properties: {
@@ -1781,9 +1877,10 @@ export const circleRouter = createRouter({
     }),
 
   /* ---- paid ticketing: buy a seat through the standard checkout. The seat
-   *  is only written when the webhook confirms payment (see boot.ts
-   *  "event_ticket" branch) — a pending checkout never holds capacity, and a
-   *  sold-out event refunds automatically instead of overselling. */
+   *  is only written when payment settles (shared fulfillment, B7 — webhook
+   *  and scheduler reconciler both route through it) — a pending checkout
+   *  never holds capacity, and a sold-out event refunds automatically instead
+   *  of overselling. */
   startEventTicketCheckout: authedQuery
     .input(z.object({ eventId: z.number() }))
     .mutation(async ({ ctx, input }) => {
@@ -1890,26 +1987,44 @@ export const circleRouter = createRouter({
         });
       const base = env.publicUrl;
       const provider = getPaymentProvider();
-      const { url, providerRef } = await provider.createCheckoutSession({
-        tier: member.tier,
-        userId: ctx.user.id,
-        email: ctx.user.email ?? "",
-        amount: ev.ticketPriceMinor,
-        currency: "aed",
-        successUrl: `${base}/portal/events?ticket=1`,
-        cancelUrl: `${base}/portal/events?canceled=1`,
-      });
-      await db.insert(schema.paymentRecords).values({
-        userId: ctx.user.id,
-        provider: provider.name,
-        providerRef,
-        tier: member.tier,
-        amount: ev.ticketPriceMinor,
-        currency: "aed",
-        status: "pending",
-        purpose: "event_ticket",
-        eventId: ev.id,
-      });
+      /* H2: pending row first so its id keys the gateway call (see startCheckout). */
+      const inserted = await db
+        .insert(schema.paymentRecords)
+        .values({
+          userId: ctx.user.id,
+          provider: provider.name,
+          tier: member.tier,
+          amount: ev.ticketPriceMinor,
+          currency: "aed",
+          status: "pending",
+          purpose: "event_ticket",
+          eventId: ev.id,
+        });
+      const paymentRecordId = Number(inserted[0].insertId);
+      const idempotencyKey = checkoutIdempotencyKey(paymentRecordId);
+      let session;
+      try {
+        session = await provider.createCheckoutSession({
+          tier: member.tier,
+          userId: ctx.user.id,
+          email: ctx.user.email ?? "",
+          amount: ev.ticketPriceMinor,
+          currency: "aed",
+          successUrl: `${base}/portal/events?ticket=1`,
+          cancelUrl: `${base}/portal/events?canceled=1`,
+          idempotencyKey,
+        });
+      } catch (err) {
+        await db
+          .delete(schema.paymentRecords)
+          .where(eq(schema.paymentRecords.id, paymentRecordId));
+        throw err;
+      }
+      const { url, providerRef } = session;
+      await db
+        .update(schema.paymentRecords)
+        .set({ providerRef, idempotencyKey })
+        .where(eq(schema.paymentRecords.id, paymentRecordId));
       void recordAnalyticsEvent("payment_started", {
         userId: ctx.user.id,
         properties: {

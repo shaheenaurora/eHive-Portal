@@ -50,6 +50,7 @@ import { carryForwardBudgets } from "./budget-carry-forward";
 import { audit } from "./audit";
 import { retryEmailDelivery } from "./notify-mail";
 import { paymentsEnabled, getPaymentProvider } from "./payments";
+import { fulfillPayment } from "./payments/fulfill";
 import { env } from "./env";
 import { randomUUID } from "node:crypto";
 
@@ -882,6 +883,9 @@ async function jobDunning(now = new Date()): Promise<void> {
 /**
  * OPS-P0-2 — reconcile pending Stripe payments that may have missed a webhook.
  * Polls records older than 1 hour once per day and flips status to paid/failed.
+ * Paid records go through the same shared fulfillment as the webhook (B7), so
+ * reconciliation can never mark a payment paid without also delivering the
+ * entitlement (renewal/upgrade/activation/ticket) and issuing the invoice.
  */
 async function jobReconcilePayments(now = new Date()): Promise<void> {
   if (!paymentsEnabled()) return;
@@ -892,12 +896,7 @@ async function jobReconcilePayments(now = new Date()): Promise<void> {
   const db = getDb();
   const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
   const pending = await db
-    .select({
-      id: schema.paymentRecords.id,
-      providerRef: schema.paymentRecords.providerRef,
-      userId: schema.paymentRecords.userId,
-      amount: schema.paymentRecords.amount,
-    })
+    .select()
     .from(schema.paymentRecords)
     .where(
       and(
@@ -916,18 +915,41 @@ async function jobReconcilePayments(now = new Date()): Promise<void> {
       if (!result) continue; // gateway still pending
       const status = result.status;
       if (status !== "paid" && status !== "failed") continue;
-      await db
-        .update(schema.paymentRecords)
-        .set({
-          status,
-          paidAt: status === "paid" ? new Date() : undefined,
-        })
-        .where(eq(schema.paymentRecords.id, p.id));
-      await audit(SYSTEM_ACTOR, "payment.reconcile", {
-        type: "payment",
-        id: p.id,
-        detail: `Reconciled to ${status} via retrieveCheckoutSession`,
-      });
+      if (status === "paid") {
+        /* fulfillPayment owns the pending→paid compare-and-swap and every
+         * side effect; a webhook that already fulfilled the record makes this
+         * a duplicate no-op, and a fulfillment failure flips the record to
+         * failed (via the shared path) so it stays visible for remediation. */
+        const outcome = await fulfillPayment(p);
+        if (outcome.duplicate) continue;
+        await audit(SYSTEM_ACTOR, "payment.reconcile", {
+          type: "payment",
+          id: p.id,
+          detail: `Reconciled to paid via retrieveCheckoutSession (fulfilled)`,
+        });
+      } else {
+        // Same compare-and-swap guard for the failed transition as the webhook.
+        const failedUpdate = await db
+          .update(schema.paymentRecords)
+          .set({ status: "failed" })
+          .where(
+            and(
+              eq(schema.paymentRecords.id, p.id),
+              eq(schema.paymentRecords.status, "pending")
+            )
+          );
+        if (
+          (failedUpdate as unknown as [{ affectedRows: number }])[0]
+            .affectedRows === 0
+        ) {
+          continue;
+        }
+        await audit(SYSTEM_ACTOR, "payment.reconcile", {
+          type: "payment",
+          id: p.id,
+          detail: `Reconciled to failed via retrieveCheckoutSession`,
+        });
+      }
       reconciled++;
     } catch (e) {
       logger.warn(`scheduler payment reconciliation failed for ${p.id}`, {

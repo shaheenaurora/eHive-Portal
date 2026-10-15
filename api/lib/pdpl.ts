@@ -1,6 +1,7 @@
 import { eq, and } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { getDb } from "../queries/connection";
+import { displayIdNumber } from "./id-seal";
 
 /** Fields that must never leave the system in a member data export. */
 const EXPORT_DENYLIST = new Set([
@@ -25,6 +26,14 @@ export function exportUser(user: typeof schema.users.$inferSelect) {
     | "resetToken"
     | "resetTokenExpiresAt"
   >;
+}
+
+/** Shape a member_kyc row for a member data export: idNumber is stored
+ *  aes-256-gcm sealed, so decrypt it for the data subject (legacy plaintext
+ *  rows pass through; undecryptable rows export as null, never raw
+ *  ciphertext). */
+export function exportKyc(row: typeof schema.memberKyc.$inferSelect) {
+  return { ...row, idNumber: displayIdNumber(row.idNumber) };
 }
 
 /** Returns true when the member already has an open request of the given kind. */

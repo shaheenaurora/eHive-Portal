@@ -70,6 +70,7 @@ async function verifySessionToken(
     return null;
   }
 }
+export { verifySessionToken };
 
 type ChallengePayload = { twofa: number; fp: string };
 

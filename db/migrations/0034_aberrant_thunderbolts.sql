@@ -1,0 +1,1 @@
+ALTER TABLE `member_kyc` MODIFY COLUMN `idNumber` varchar(255);
