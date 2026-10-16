@@ -1,7 +1,24 @@
-/* Fonts (Archivo + Hanken Grotesk) are loaded via a non-render-blocking <link>
-   in portal.html. A CSS @import here would be render-blocking: if Google Fonts
-   is slow or blocked, the whole portal stylesheet — and the module script that
-   waits on it — would stall, leaving a blank screen. Do not re-add an @import. */
+/* Brand fonts (Space Grotesk display + Manrope body) are self-hosted woff2
+   in public/fonts and declared via @font-face below (also preloaded from
+   portal.html). No external font requests — CSP-safe, no render-blocking. */
+
+/* Self-hosted brand fonts — variable woff2, latin subset, OFL. Keep in sync
+   with public/tokens.css (marketing site) and public/fonts.css. */
+@font-face {
+  font-family: "Space Grotesk";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("/fonts/space-grotesk-var-latin.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url("/fonts/manrope-var-latin.woff2") format("woff2");
+}
 
 @tailwind base;
 @tailwind components;
@@ -48,6 +65,17 @@
    eHive Circle portal — brand design system (prefix: eh-)
    ========================================================================== */
 :root {
+  /* Brand typography — same self-hosted families as the marketing site. */
+  --eh-font-display:
+    "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --eh-font-body:
+    "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --eh-font-mono:
+    "SF Mono", "Menlo", "Consolas", "Liberation Mono", monospace;
+  /* Single accent system-wide. The old ochre gold (#b8862e) is retired:
+     everything accent-coloured uses this token so one change recolours the
+     whole portal. */
+  --eh-accent: var(--eh-gold);
   --eh-ink: #141312;
   --eh-ink-2: #16264c;
   --eh-ink-3: #2a3e66;
@@ -56,19 +84,25 @@
   --eh-line-2: #e4decf;
   --eh-paper: #f3f1ea;
   --eh-card: #fbfaf6;
-  --eh-gold: #da3a22;
+  /* Coral accent, darkened from #da3a22 (4.03–4.36:1 on paper/card) to pass
+     WCAG AA 4.5:1 for small text: 5.06 on --eh-paper, 5.48 on --eh-card,
+     4.55 on --eh-gold-soft, and 5.76 with white text on it (buttons). */
+  --eh-gold: #bf311c;
   --eh-gold-2: #e4573f;
   --eh-gold-soft: #f6e1db;
-  --eh-green: #2e7d5b;
+  /* Pill / status foregrounds darkened ~10–15% so 0.66–0.68rem uppercase
+     labels clear WCAG AA 4.5:1 on their soft backgrounds:
+     green #277052 → 5.03:1, red #9a5035 → 4.79:1, amber #7f6424 → 4.59:1. */
+  --eh-green: #277052;
   --eh-green-soft: #e2efe8;
   /* "Off-track / needs attention" — a calm warm terracotta, NOT an alarm red.
      Reserve a true error red (--eh-error) for genuine failures only. */
-  --eh-red: #b05c3e;
+  --eh-red: #9a5035;
   --eh-red-soft: #f1e6de;
   --eh-error: #c0453b;
   --eh-error-soft: #f6e4e1;
   /* "Watch" amber — warm ochre, used for the middle RAG band. */
-  --eh-amber: #a9802f;
+  --eh-amber: #7f6424;
   --eh-amber-soft: #f1e8d4;
   --eh-blue: #16264c;
   --eh-blue-soft: #e6eaf1;
@@ -83,14 +117,14 @@ html {
   background: var(--eh-paper);
 }
 body {
-  font-family: "Hanken Grotesk", system-ui, sans-serif;
+  font-family: var(--eh-font-body);
   color: var(--eh-ink);
 }
 .eh-serif {
-  font-family: "Archivo", system-ui, sans-serif;
+  font-family: var(--eh-font-display);
 }
 .eh-mono {
-  font-family: "Archivo", system-ui, sans-serif;
+  font-family: var(--eh-font-mono);
 }
 
 /* ------------------------------- layout -------------------------------- */
@@ -126,13 +160,13 @@ body {
   place-items: center;
   border: 1.6px solid var(--eh-gold-2);
   clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
-  background: rgba(218, 58, 34, 0.14);
+  background: rgba(191, 49, 28, 0.14);
   color: var(--eh-gold-2);
   font-size: 13px;
   font-weight: 700;
 }
 .eh-side-brand b {
-  font-family: "Archivo", system-ui, sans-serif;
+  font-family: var(--eh-font-display);
   font-size: 1.05rem;
   letter-spacing: 0.01em;
   color: #f5efe2;
@@ -177,7 +211,7 @@ body {
   color: #fff;
 }
 .eh-nav a.on {
-  background: rgba(218, 58, 34, 0.16);
+  background: rgba(191, 49, 28, 0.16);
   color: #f0a99b;
 }
 .eh-nav a .eh-ico {
@@ -490,11 +524,26 @@ textarea:focus-visible,
   margin-bottom: 0.3rem;
 }
 .eh-h1 {
-  font-family: "Archivo", system-ui, sans-serif;
+  font-family: var(--eh-font-display);
   font-size: clamp(1.5rem, 2.6vw, 2rem);
   font-weight: 600;
   margin: 0;
   color: var(--eh-ink);
+}
+/* Section headings — used across pages but was never defined, so every
+   section h2 fell back to browser defaults. Sits between .eh-h1 and
+   .eh-card h3 (1.05rem) in the display scale. */
+.eh-h2 {
+  font-family: var(--eh-font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin: 1.5rem 0 0.65rem;
+  color: var(--eh-ink);
+}
+.eh-h2:first-child {
+  margin-top: 0;
 }
 .eh-sub {
   color: var(--eh-mut);
@@ -513,7 +562,7 @@ textarea:focus-visible,
   margin-top: 1rem;
 }
 .eh-card h3 {
-  font-family: "Archivo", system-ui, sans-serif;
+  font-family: var(--eh-font-display);
   font-size: 1.05rem;
   margin: 0 0 0.7rem;
   color: var(--eh-ink);
@@ -565,7 +614,7 @@ textarea:focus-visible,
   font-weight: 600;
 }
 .eh-stat .v {
-  font-family: "Archivo", system-ui, sans-serif;
+  font-family: var(--eh-font-display);
   font-size: 1.9rem;
   font-weight: 600;
   color: var(--eh-ink);
@@ -593,11 +642,11 @@ textarea:focus-visible,
   border-radius: 999px;
   background: var(--eh-gold-soft);
   color: var(--eh-gold);
-  border: 1px solid #e8d5ac;
+  border: 1px solid #ecc9bf;
   white-space: nowrap;
 }
 .eh-refcode {
-  font-family: "Archivo", ui-monospace, monospace;
+  font-family: var(--eh-font-mono);
   font-size: 0.72rem;
   letter-spacing: 0.04em;
   font-weight: 700;
@@ -759,7 +808,7 @@ textarea:focus-visible,
 .eh-select:focus,
 .eh-textarea:focus {
   border-color: var(--eh-gold);
-  box-shadow: 0 0 0 3px rgba(218, 58, 34, 0.14);
+  box-shadow: 0 0 0 3px rgba(191, 49, 28, 0.14);
 }
 .eh-textarea {
   min-height: 110px;
@@ -781,7 +830,7 @@ textarea:focus-visible,
   color: var(--eh-mut);
 }
 .eh-empty .big {
-  font-family: "Archivo", system-ui, sans-serif;
+  font-family: var(--eh-font-display);
   font-size: 1.15rem;
   color: var(--eh-ink-2);
   margin-bottom: 0.3rem;
@@ -841,7 +890,7 @@ textarea:focus-visible,
   }
 }
 .eh-modal h3 {
-  font-family: "Archivo", system-ui, sans-serif;
+  font-family: var(--eh-font-display);
   margin: 0 0 1rem;
   font-size: 1.2rem;
 }
@@ -884,7 +933,7 @@ textarea:focus-visible,
   gap: 0.7rem;
   margin-bottom: 1.2rem;
   background: var(--eh-gold-soft);
-  border: 1px solid #e8d5ac;
+  border: 1px solid #ecc9bf;
   border-radius: 12px;
   padding: 0.7rem 1rem;
   font-size: 0.86rem;
@@ -945,7 +994,7 @@ textarea:focus-visible,
   text-align: center;
 }
 .eh-ring .lbl b {
-  font-family: "Archivo", system-ui, sans-serif;
+  font-family: var(--eh-font-display);
   font-size: 2rem;
   color: var(--eh-ink);
   display: block;
@@ -1077,11 +1126,11 @@ textarea:focus-visible,
   top: -40px;
   width: 170px;
   height: 170px;
-  border: 1.5px solid rgba(218, 58, 34, 0.35);
+  border: 1.5px solid rgba(191, 49, 28, 0.35);
   clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
 }
 .eh-banner h2 {
-  font-family: "Archivo", system-ui, sans-serif;
+  font-family: var(--eh-font-display);
   font-size: 1.35rem;
   margin: 0 0 0.35rem;
 }
@@ -1173,12 +1222,13 @@ textarea:focus-visible,
   text-align: right;
 }
 .eh-num {
-  font-family: "Archivo", system-ui, sans-serif;
+  font-family: var(--eh-font-display);
 }
 
 /* ==========================================================================
-   Ledger type calibration — Archivo needs real display weight where the old
-   serif (Fraunces) sat at 600. Appended last so it wins the cascade.
+   Ledger type calibration — Space Grotesk needs real display weight where the
+   old serif (Fraunces) sat at 600. Appended last so it wins the cascade.
+   (Space Grotesk's variable file caps at 700, so 800 clamps to 700.)
    ========================================================================== */
 .eh-h1,
 .eh-h2,
@@ -1204,7 +1254,80 @@ textarea:focus-visible,
 }
 .eh-eyebrow,
 .eh-nav-label {
-  font-family: "Hanken Grotesk", system-ui, sans-serif;
+  font-family: var(--eh-font-body);
+}
+
+/* ------------------------------ skeletons ------------------------------ */
+/* Loading placeholders — shimmer bars sized for common slots. Reduced-motion
+   users get a static block (global rule below zeroes the animation). */
+.eh-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--eh-line-2);
+  border-radius: 8px;
+}
+.eh-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.55),
+    transparent
+  );
+  animation: eh-shimmer 1.6s infinite;
+}
+@keyframes eh-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+.eh-skeleton.line {
+  height: 0.85rem;
+  margin: 0.4rem 0;
+}
+.eh-skeleton.title {
+  height: 1.25rem;
+  width: 45%;
+  margin: 0.5rem 0;
+}
+.eh-skeleton.card {
+  height: 9rem;
+  border-radius: 14px;
+}
+
+/* ---------------------------- breadcrumbs ------------------------------ */
+.eh-crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.4rem;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.1rem;
+  font-size: 0.78rem;
+  color: var(--eh-mut);
+}
+.eh-crumbs li + li::before {
+  content: "/";
+  margin-right: 0.4rem;
+  color: var(--eh-line);
+}
+.eh-crumbs a {
+  color: var(--eh-ink-3);
+  font-weight: 600;
+  text-decoration: none;
+}
+.eh-crumbs a:hover {
+  color: var(--eh-gold);
+}
+
+/* ARIA tab roles — same chrome as .eh-tabs button[aria-pressed] states. */
+.eh-tabs [role="tab"][aria-selected="true"] {
+  background: var(--eh-ink);
+  border-color: var(--eh-ink);
+  color: #f5efe2;
 }
 
 /* Respect users who prefer reduced motion. */

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router";
 import { trpc } from "@/providers/trpc";
 import {
@@ -18,8 +18,12 @@ export default function PodDetail() {
   const podId = Number(id);
   const utils = trpc.useUtils();
   const q = trpc.circle.podDetail.useQuery({ id: podId }, { retry: false });
-  // Fixed "now" reference for partitioning sessions, captured once on mount.
-  const [now] = useState(() => Date.now());
+  // Ticking "now" reference for partitioning sessions — never more than a minute stale.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
   const complete = trpc.circle.completeActionItem.useMutation({
     onSuccess: r => {
       toast(`Done — Hive Score now ${r.score}`);

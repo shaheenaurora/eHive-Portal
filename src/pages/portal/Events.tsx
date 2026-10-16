@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router";
 import { trpc } from "@/providers/trpc";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
@@ -90,6 +91,28 @@ export default function Events() {
     },
     onError: e => toast(e.message),
   });
+
+  const [params, setParams] = useSearchParams();
+  // Checkout return flags: a purchased ticket, or a canceled checkout.
+  useEffect(() => {
+    const flags: [string, string][] = [
+      ["ticket", "Ticket purchased — see you there!"],
+      ["canceled", "Checkout canceled — no charge."],
+    ];
+    let hit = false;
+    for (const [key, message] of flags) {
+      if (params.get(key) === "1") {
+        toast(message);
+        params.delete(key);
+        hit = true;
+      }
+    }
+    if (hit) {
+      setParams(params, { replace: true });
+      refresh();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const list = (q.data ?? []).filter(
     e => filter === "all" || e.kind === filter
@@ -266,7 +289,11 @@ export default function Events() {
                   <button
                     className="eh-btn gold"
                     style={{ width: "100%" }}
-                    disabled={reg.isPending || ticket.isPending}
+                    disabled={
+                      reg.isPending ||
+                      ticket.isPending ||
+                      (full && !!e.ticketPriceMinor && e.ticketPriceMinor > 0)
+                    }
                     onClick={() =>
                       e.ticketPriceMinor && e.ticketPriceMinor > 0
                         ? ticket.mutate({ eventId: e.id })

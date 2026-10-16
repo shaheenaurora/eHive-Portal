@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { trpc } from "@/providers/trpc";
 import {
@@ -89,8 +89,12 @@ export default function AdminEvents() {
   const [doorCode, setDoorCode] = useState("");
   const [scanning, setScanning] = useState(false);
   const [fbFor, setFbFor] = useState<number | null>(null);
-  // Stable "now" for the attendance-window check (avoids impure Date.now in render).
-  const [now] = useState(() => Date.now());
+  // Ticking "now" for the attendance-window check — never more than a minute stale.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
   // Activity-master audience picker (controlled — the rest of the form is FormData).
   const [audience, setAudience] = useState<"public" | "members" | "tiers">(
     "members"
@@ -512,6 +516,7 @@ export default function AdminEvents() {
                       <>
                         <button
                           className="eh-btn gold sm"
+                          disabled={markAtt.isPending}
                           onClick={() =>
                             markAtt.mutate({
                               eventId: regsFor,
@@ -549,6 +554,7 @@ export default function AdminEvents() {
                   {reg.status === "attended" && (
                     <button
                       className="eh-btn ghost sm"
+                      disabled={markAtt.isPending}
                       onClick={() =>
                         markAtt.mutate({
                           eventId: regsFor,

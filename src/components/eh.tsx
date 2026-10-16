@@ -1,14 +1,20 @@
-import { useEffect, useState, useRef, useId } from "react";
+import { lazy, Suspense, useEffect, useState, useRef, useId } from "react";
 import type { ReactNode } from "react";
 import { NavLink, Link, useNavigate, useLocation } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { isInstallable, onInstallChange, promptInstall } from "@/lib/install";
-import { CommandPalette } from "@/components/CommandPalette";
 import { initials } from "@/lib/ehf";
 import { TIER_LABEL } from "@contracts/constants";
 import { refCode, type EntityType } from "@contracts/ids";
 import { trpc } from "@/providers/trpc";
+
+/* Admin-only surface — lazy so it never ships in the member entry chunk. */
+const CommandPalette = lazy(() =>
+  import("@/components/CommandPalette").then(m => ({
+    default: m.CommandPalette,
+  }))
+);
 
 /* ------------------------------- toasts -------------------------------- */
 let pushToastFn: ((msg: string) => void) | null = null;
@@ -490,12 +496,12 @@ export function Ring(props: {
           cy="60"
           r={r}
           fill="none"
-          stroke="#b8862e"
           strokeWidth="9"
           strokeLinecap="round"
           strokeDasharray={c}
           strokeDashoffset={c * (1 - pct)}
           style={{
+            stroke: "var(--eh-accent)",
             transition: "stroke-dashoffset 1s cubic-bezier(.2,.8,.2,1)",
           }}
         />
@@ -511,6 +517,29 @@ export function Ring(props: {
 }
 
 /* -------------------------------- shell -------------------------------- */
+/** Breadcrumb trail — `<EhCrumbs items={[{ label: "Pods", to: "/portal/pods" }, { label: "Pod #3" }]}/>`.
+ *  The last item renders as the current page (aria-current="page"); give it no
+ *  `to`. Not yet wired into pages — provided for the follow-up layout pass. */
+export function EhCrumbs(props: { items: { label: string; to?: string }[] }) {
+  const last = props.items.length - 1;
+  return (
+    <nav className="eh-crumbs" aria-label="Breadcrumb">
+      <ol>
+        {props.items.map((it, i) => (
+          <li key={i}>
+            {it.to && i < last ? (
+              <Link to={it.to}>{it.label}</Link>
+            ) : (
+              <span aria-current={i === last ? "page" : undefined}>
+                {it.label}
+              </span>
+            )}
+          </li>
+        ))}
+      </ol>
+    </nav>
+  );
+}
 export type NavItem = {
   to: string;
   label: string;
@@ -573,17 +602,35 @@ export function EhShell(props: {
   const [menuOpen, setMenuOpen] = useState(false);
   const sideId = useId();
   const burgerRef = useRef<HTMLButtonElement>(null);
+  // Admin nav implies the admin role unless a page says otherwise — most
+  // admin pages never passed roleRequired, so a member landing on /admin/*
+  // would otherwise render the full admin shell.
+  const roleRequired =
+    props.roleRequired ?? (props.groups === ADMIN_NAV ? "admin" : undefined);
 
   useEffect(() => {
     if (!isLoading && !user) navigate("/login");
-    if (
-      !isLoading &&
-      user &&
-      props.roleRequired === "admin" &&
-      user.role !== "admin"
-    )
+    if (!isLoading && user && roleRequired === "admin" && user.role !== "admin")
       navigate("/portal");
-  }, [isLoading, user, navigate, props.roleRequired]);
+  }, [isLoading, user, navigate, roleRequired]);
+
+  // Global document titles: "<nav label> · eHive Circle" for the current
+  // route, else the bare brand. Pages that call useDocumentTitle still win —
+  // their (child) effect commits between our render and our (parent) effect,
+  // so a title that changed since render means a page took ownership.
+  const titleAtRender = useRef(document.title);
+  titleAtRender.current = document.title;
+  useEffect(() => {
+    const items = [...MEMBER_NAV, ...ADMIN_NAV].flatMap(g => g.items);
+    const hit =
+      items.find(it => it.to === location.pathname) ??
+      items
+        .filter(it => !it.end && location.pathname.startsWith(it.to + "/"))
+        .sort((a, b) => b.to.length - a.to.length)[0];
+    const next = hit ? `${hit.label} · eHive Circle` : "eHive Circle";
+    if (document.title === titleAtRender.current) document.title = next;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -599,13 +646,16 @@ export function EhShell(props: {
   }, [menuOpen]);
 
   if (isLoading || !user) return <Spinner />;
-  if (props.roleRequired === "admin" && user.role !== "admin")
-    return <Spinner />;
+  if (roleRequired === "admin" && user.role !== "admin") return <Spinner />;
 
   return (
     <div className="eh-shell">
       <OfflineBanner />
-      {user.role === "admin" && <CommandPalette groups={props.groups} />}
+      {user.role === "admin" && (
+        <Suspense fallback={null}>
+          <CommandPalette groups={props.groups} />
+        </Suspense>
+      )}
       <a href="#eh-main" className="eh-skip">
         Skip to content
       </a>
@@ -762,7 +812,12 @@ export function EhShell(props: {
         {!user.emailVerifiedAt && <VerifyBanner />}
         {props.children}
       </main>
-      {props.notif && <NotifBell />}
+      {/* Bell is on by default for portal pages (member or admin nav); a page
+          can still opt out with notif={false}. */}
+      {(props.notif ??
+        (props.groups === MEMBER_NAV || props.groups === ADMIN_NAV)) && (
+        <NotifBell />
+      )}
       <ToastHost />
       <ConfirmHost />
       <InstallPrompt />
@@ -778,27 +833,61 @@ function NotifBell() {
   const closeRef = useRef<HTMLButtonElement>(null);
   const q = trpc.engage.myNotifications.useQuery(undefined, {
     retry: false,
-    refetchInterval: 30000,
+    refetchInterval: 120000,
   });
   const mark = trpc.engage.markNotificationsRead.useMutation({
     onSuccess: () => q.refetch(),
   });
   const rows = q.data?.rows ?? [];
   const unread = q.data?.unread ?? 0;
+  const unreadRef = useRef(unread);
+  unreadRef.current = unread;
+  // Set when the dropdown opens with unread items; cleared (and marked read)
+  // when it closes — a mis-tap that opens+closes the bell shouldn't wipe the
+  // unread state before the member has actually seen the list.
+  const markOnClose = useRef(false);
 
   useEffect(() => {
     if (open) {
+      markOnClose.current = unreadRef.current > 0;
       closeRef.current?.focus();
     } else {
+      if (markOnClose.current) {
+        markOnClose.current = false;
+        mark.mutate({});
+      }
       bellRef.current?.focus();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // Dismiss the dropdown on Escape or an outside click (only while open).
+  // Dismiss on Escape or an outside click, and trap Tab within the bell +
+  // dropdown while open (the dropdown is role="dialog" aria-modal, so focus
+  // must not escape — same pattern as Modal).
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        setOpen(false);
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const panel = wrapRef.current;
+      const items = Array.from(
+        panel?.querySelectorAll<HTMLElement>(
+          'a[href],button:not([disabled]),textarea,input,select,[tabindex]:not([tabindex="-1"])'
+        ) ?? []
+      ).filter(el => el.offsetParent !== null);
+      if (!items.length) return;
+      const first = items[0],
+        last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     const onDown = (e: MouseEvent) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node))
@@ -819,10 +908,7 @@ function NotifBell() {
         aria-label="Notifications"
         aria-haspopup="true"
         aria-expanded={open}
-        onClick={() => {
-          setOpen(!open);
-          if (!open && unread > 0) mark.mutate({});
-        }}
+        onClick={() => setOpen(!open)}
         style={{ position: "relative", background: "var(--eh-card, #fff)" }}
       >
         <svg
@@ -845,7 +931,7 @@ function NotifBell() {
               position: "absolute",
               top: -6,
               right: -6,
-              background: "#b8862e",
+              background: "var(--eh-accent)",
               color: "#fff",
               borderRadius: 99,
               fontSize: ".68rem",
@@ -880,6 +966,7 @@ function NotifBell() {
             <button
               ref={closeRef}
               className="eh-btn ghost sm"
+              aria-label="Close notifications"
               onClick={() => setOpen(false)}
             >
               ✕

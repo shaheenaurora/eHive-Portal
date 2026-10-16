@@ -85,9 +85,17 @@ export default function Frp() {
 
   const enrolled = mine.data;
   const a = enrolled?.assessment;
-  const scores = a
+  const serverScores = a
     ? [a.team, a.traction, a.market, a.financials, a.narrative, a.legal]
-    : [0, 0, 0, 0, 0, 0];
+    : null;
+  const [draft, setDraft] = useState<{
+    enrolmentId: number;
+    scores: number[];
+  } | null>(null);
+  const scores =
+    draft && draft.enrolmentId === enrolled?.enrolment.id
+      ? draft.scores
+      : (serverScores ?? [0, 0, 0, 0, 0, 0]);
   const readiness = scores.reduce((x, y) => x + y, 0);
 
   return (
@@ -189,9 +197,14 @@ export default function Frp() {
                         {[1, 2, 3, 4, 5].map(n => (
                           <button
                             key={n}
+                            disabled={saveAssess.isPending}
                             onClick={() => {
                               const next = [...scores];
                               next[i] = n;
+                              setDraft({
+                                enrolmentId: enrolled.enrolment.id,
+                                scores: next,
+                              });
                               saveAssess.mutate({
                                 enrolmentId: enrolled.enrolment.id,
                                 team: next[0],

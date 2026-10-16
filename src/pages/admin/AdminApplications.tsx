@@ -120,6 +120,7 @@ export default function AdminApplications() {
       );
       utils.admin.applications.invalidate();
       utils.admin.stats.invalidate();
+      utils.admin.members.invalidate();
       setSel(null);
     },
     onError: e => toast(e.message),

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { trpc } from "@/providers/trpc";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
@@ -32,6 +32,7 @@ export default function AdminMembers() {
   const [status, setStatus] = useState("");
   const [lifecycle, setLifecycle] = useState("");
   const utils = trpc.useUtils();
+  const navigate = useNavigate();
   const q = trpc.admin.members.useQuery(
     {
       q: q2 || undefined,
@@ -73,6 +74,22 @@ export default function AdminMembers() {
       return next;
     });
   const clearSel = () => setSel(new Set());
+  // A different filtered set of rows is on screen — drop stale selections.
+  const [prevFilters, setPrevFilters] = useState({
+    q2,
+    tier,
+    status,
+    lifecycle,
+  });
+  if (
+    prevFilters.q2 !== q2 ||
+    prevFilters.tier !== tier ||
+    prevFilters.status !== status ||
+    prevFilters.lifecycle !== lifecycle
+  ) {
+    setPrevFilters({ q2, tier, status, lifecycle });
+    setSel(new Set());
+  }
   const afterBulk = () => {
     clearSel();
     setBulkText("");
@@ -374,13 +391,11 @@ export default function AdminMembers() {
                   tabIndex={0}
                   role="link"
                   aria-label={`Open ${userName ?? "member"} profile`}
-                  onClick={() =>
-                    (window.location.href = `/admin/members/${member.id}`)
-                  }
+                  onClick={() => navigate(`/admin/members/${member.id}`)}
                   onKeyDown={e => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      window.location.href = `/admin/members/${member.id}`;
+                      navigate(`/admin/members/${member.id}`);
                     }
                   }}
                 >

@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
+import { useSearchParams } from "react-router";
 import { trpc } from "@/providers/trpc";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
@@ -85,6 +86,7 @@ export default function Membership() {
   const updateProfile = trpc.circle.updateProfile.useMutation({
     onSuccess: () => {
       toast("Profile saved.");
+      setEdited(null);
       utils.circle.me.invalidate();
     },
     onError: e => toast(e.message),
@@ -187,6 +189,37 @@ export default function Membership() {
   } | null>(null);
   const form = edited ?? serverForm;
   const setForm = setEdited;
+  const dirty =
+    edited !== null &&
+    (Object.keys(serverForm) as (keyof typeof serverForm)[]).some(
+      k => edited[k] !== serverForm[k]
+    );
+
+  const [params, setParams] = useSearchParams();
+  // Checkout return flags, handled like the Dashboard's paid=1 toast.
+  useEffect(() => {
+    const flags: [string, string][] = [
+      [
+        "renewed",
+        "Renewal confirmed — your membership is extended for another year.",
+      ],
+      ["upgraded", "Upgrade confirmed — your new tier is active."],
+      ["canceled", "Checkout canceled — no charge."],
+    ];
+    let hit = false;
+    for (const [key, message] of flags) {
+      if (params.get(key) === "1") {
+        toast(message);
+        params.delete(key);
+        hit = true;
+      }
+    }
+    if (hit) {
+      setParams(params, { replace: true });
+      void utils.circle.me.invalidate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (me.isLoading)
     return (
@@ -685,7 +718,7 @@ export default function Membership() {
               <button
                 className="eh-btn"
                 type="submit"
-                disabled={updateProfile.isPending}
+                disabled={updateProfile.isPending || !dirty}
               >
                 Save profile
               </button>
@@ -1113,7 +1146,15 @@ export default function Membership() {
           </Field>
           <button
             className="eh-btn gold"
-            disabled={requestCorrection.isPending}
+            disabled={
+              requestCorrection.isPending ||
+              !(
+                (corr.name.trim() !== "" &&
+                  corr.name.trim() !== (me.data?.user?.name ?? "").trim()) ||
+                (corr.email.trim() !== "" &&
+                  corr.email.trim() !== (me.data?.user?.email ?? "").trim())
+              )
+            }
             onClick={() =>
               requestCorrection.mutate({
                 name: corr.name || undefined,

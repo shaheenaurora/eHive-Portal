@@ -48,6 +48,24 @@ export default defineConfig({
     copyPublicDir: false, // handled by copyPublicDir() plugin above (mount-safe)
     rollupOptions: {
       input: { portal: path.resolve(__dirname, "portal.html") },
+      output: {
+        /* Split the rarely-changing framework/data layer into stable vendor
+           chunks so an app code change doesn't invalidate the whole entry
+           (repeat visitors keep these cached across deploys). */
+        manualChunks(id: string) {
+          if (!id.includes("node_modules")) return undefined;
+          if (id.includes("@trpc/") || id.includes("@tanstack/"))
+            return "vendor-data";
+          if (
+            id.includes("react-router") ||
+            id.includes("@remix-run/") ||
+            id.includes("react-dom/") ||
+            /node_modules\/(react|scheduler)\//.test(id)
+          )
+            return "vendor-react";
+          return undefined;
+        },
+      },
     },
   },
 });

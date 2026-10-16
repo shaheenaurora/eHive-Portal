@@ -54,8 +54,11 @@ export function AdmissionWizard(props: {
     };
   }, []);
 
+  const utils = trpc.useUtils();
   const admit = trpc.admin.setApplicationStatus.useMutation({
     onSuccess: () => {
+      props.onApproved();
+      utils.admin.stats.invalidate();
       setDone(true);
     },
     onError: e => toast(e.message),

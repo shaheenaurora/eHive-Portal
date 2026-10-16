@@ -395,21 +395,23 @@ function PromoCodes() {
           <tbody>
             {q.data.map(p => (
               <tr key={p.id}>
-                <td>
+                <td data-label="Code">
                   <b>{p.code}</b>
                   {p.note && <div className="eh-muted eh-sm">{p.note}</div>}
                 </td>
-                <td>
+                <td data-label="Discount">
                   {p.kind === "percent"
                     ? `${p.value}% off`
                     : `AED ${(p.value / 100).toLocaleString()} off`}
                 </td>
-                <td className="eh-sm">{p.tierScope ?? "All tiers"}</td>
-                <td className="eh-num">
+                <td data-label="Scope" className="eh-sm">
+                  {p.tierScope ?? "All tiers"}
+                </td>
+                <td data-label="Used" className="eh-num">
                   {p.usedCount}
                   {p.maxUses != null ? ` / ${p.maxUses}` : ""}
                 </td>
-                <td className="eh-sm">
+                <td data-label="Expires" className="eh-sm">
                   {p.endsAt ? new Date(p.endsAt).toLocaleDateString() : "—"}
                 </td>
                 <td>

@@ -3,6 +3,7 @@ installLogScrubber();
 
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
+import { compress } from "hono/compress";
 import { secureHeaders } from "hono/secure-headers";
 import { cors } from "hono/cors";
 import type { HttpBindings } from "@hono/node-server";
@@ -241,6 +242,12 @@ app.use(
 );
 
 app.use(bodyLimit({ maxSize: 5 * 1024 * 1024 }));
+
+/* Response compression (gzip/deflate via CompressionStream). Registered after
+   the security headers and before any route/static serving, so it wraps every
+   response — the 357 kB SPA entry and 94 kB CSS included. Skips already-encoded
+   responses, HEAD requests, and bodies under the 1 kB threshold. */
+app.use(compress());
 
 // Increment request counter for observability. 5xx responses are counted below
 // in the global error handler.
@@ -1575,7 +1582,7 @@ if (env.isProduction) {
   }
 
   const { serve } = await import("@hono/node-server");
-  const { serveStaticFiles } = await import("./lib/vite");
+  const { serveStaticFiles, staticCacheControl } = await import("./lib/vite");
   const { serveStatic } = await import("@hono/node-server/serve-static");
   const fs = await import("fs");
   const path = await import("path");
@@ -1604,7 +1611,12 @@ if (env.isProduction) {
     "/admin",
     "/admin/*",
   ]) {
-    app.get(p, c => c.html(readPortal()));
+    // portal.html must revalidate on every load — a cached shell is what used
+    // to pin users on stale service workers and stale asset hashes.
+    app.get(p, c => {
+      c.header("Cache-Control", "no-cache");
+      return c.html(readPortal());
+    });
   }
 
   /* Clean marketing slug → its static .html file (e.g. /thank-you). */
@@ -1612,7 +1624,10 @@ if (env.isProduction) {
     import.meta.dirname,
     "../public/thank-you.html"
   );
-  app.get("/thank-you", c => c.html(fs.readFileSync(thankYouPath, "utf-8")));
+  app.get("/thank-you", c => {
+    c.header("Cache-Control", "no-cache");
+    return c.html(fs.readFileSync(thankYouPath, "utf-8"));
+  });
 
   /* Retired marketing pages — permanent redirects so old links/bookmarks/email
      CTAs send traffic to the current doors instead of 404s or stale content. */
@@ -1626,19 +1641,30 @@ if (env.isProduction) {
   app.get("/membership", c => c.redirect("/vanguard.html", 301));
 
   /* Clean marketing slug for the Vanguard launch page. */
-  app.get("/vanguard", c =>
-    c.html(
+  app.get("/vanguard", c => {
+    c.header("Cache-Control", "no-cache");
+    return c.html(
       fs.readFileSync(
         path.resolve(import.meta.dirname, "../public/vanguard.html"),
         "utf-8"
       )
-    )
-  );
+    );
+  });
 
   /* Marketing site: served straight from source (public/). No build-time copy —
      bulk copies race on this filesystem. Bundle assets (portal-*.js/css) fall
-     through to serveStaticFiles (./dist/public) below. */
-  app.use("*", serveStatic({ root: "./public" }));
+     through to serveStaticFiles (./dist/public) below. Cache policy: hashed
+     /assets + /fonts are immutable, HTML/SW/manifest must revalidate. */
+  app.use(
+    "*",
+    serveStatic({
+      root: "./public",
+      onFound: (_path, c) => {
+        const policy = staticCacheControl(c.req.path);
+        if (policy) c.header("Cache-Control", policy);
+      },
+    })
+  );
 
   serveStaticFiles(app);
 

@@ -1061,9 +1061,20 @@ export default function Chapter() {
                         <button
                           className="eh-btn sm gold"
                           disabled={vote.isPending}
-                          onClick={() =>
-                            vote.mutate({ electionId: e.id, candidateId: c.id })
-                          }
+                          onClick={async () => {
+                            if (
+                              await confirmDialog({
+                                title: "Cast your vote?",
+                                body: `Your vote for ${c.name} is secret — once cast it can't be changed.`,
+                                confirmLabel: "Vote",
+                              })
+                            ) {
+                              vote.mutate({
+                                electionId: e.id,
+                                candidateId: c.id,
+                              });
+                            }
+                          }}
                         >
                           Vote
                         </button>

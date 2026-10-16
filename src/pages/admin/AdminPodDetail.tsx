@@ -332,6 +332,7 @@ export default function AdminPodDetail() {
                                   ).map(st => (
                                     <button
                                       key={st}
+                                      disabled={markAtt.isPending}
                                       className={
                                         "eh-btn sm" +
                                         (cur?.status === st

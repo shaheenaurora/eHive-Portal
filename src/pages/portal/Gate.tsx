@@ -1,11 +1,12 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { trpc } from "@/providers/trpc";
 import { Spinner } from "@/components/eh";
 
 /* Entry: routes the signed-in user to Apply, Application status, or Dashboard */
 export default function Gate() {
   const navigate = useNavigate();
+  const { search } = useLocation();
   const me = trpc.circle.me.useQuery(undefined, { retry: false });
 
   // Not signed in (or the session expired) — send them to the login page
@@ -19,14 +20,14 @@ export default function Gate() {
     }
     if (!me.data) return;
     const { member, application } = me.data;
-    if (member) navigate("/portal/dashboard", { replace: true });
+    if (member) navigate(`/portal/dashboard${search}`, { replace: true });
     else if (
       application &&
       ["received", "screening", "interview"].includes(application.status)
     )
       navigate("/portal/status", { replace: true });
     else navigate("/portal/apply", { replace: true });
-  }, [me.data, unauthenticated, navigate]);
+  }, [me.data, unauthenticated, navigate, search]);
 
   if (me.error && !unauthenticated) {
     return (
