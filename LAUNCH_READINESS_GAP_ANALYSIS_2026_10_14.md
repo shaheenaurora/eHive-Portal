@@ -6,6 +6,31 @@
 
 ---
 
+## RESOLUTION UPDATE — 2026-10-17 (code pushed through `74f799a`)
+
+The code-level findings below are now **fixed and pushed to GitHub main** across three commits (`562a223`, `afdcc67`, `74f799a`). All gates green on each: tsc 0 errors, 278/278 tests (up from 247), eslint 0 errors, build + Docker CI passing.
+
+| Finding | Status |
+|---|---|
+| B4 URL split-brain | HTML canonicals/OG now `www.ehiveglobal.com`; **setting `PUBLIC_URL` on Railway remains an env task** |
+| B6 Stripe config validation | ✅ boot refuses to start in production with key-but-no-webhook-secret or `sk_test_`; `/api/health` reports payments state |
+| B7 Reconciler entitlement gap | ✅ shared `fulfillPayment()` used by webhook + reconciler (invoices, renewals, upgrades, activation, tickets, emails; failures marked failed) |
+| B8 Demo-data pollution risk | ✅ load-demo disabled in production unless `ALLOW_DEMO_DATA=true`; remove-demo always available; DEPLOY.md demo content moved to local-only section |
+| H2 Duplicate checkout charges | ✅ pending-conflict guards on all 5 checkout flows + Stripe idempotency keys |
+| H3 KYC plaintext IDs | ✅ AES-256-GCM sealed at rest (migration 0034), legacy read fallback, PDPL exports decrypt |
+| H5 Money/auth test coverage | ✅ 31 new tests (payments-fulfill ×8, auth-session ×12, kyc/pdpl ×11) |
+| H6 DEPLOY.md drift | ✅ migrations-first runbook, PUBLIC_URL requirement, join/pay modes documented with source-of-truth constants, stale backlog cleared |
+| Marketing design | ✅ self-hosted Space Grotesk/Manrope, aurora/hex art, expo-easing motion, count-up stats, featured pricing tile, journal empty state |
+| Portal bugs (15 verified) | ✅ checkout-return confirmations, stale invalidations, FRP race, sold-out button, bell mark-read-on-close, admin nav/selection/focus fixes |
+| Portal design/perf | ✅ AA contrast, single accent, `.eh-h2` defined, self-hosted fonts, admin nav gated by default, global document titles, skeleton/EhCrumbs components, gzip compression, immutable asset caching, staleTime 45s, bell 120s, vendor chunks, 43 dead components + 28 deps removed (−7.3k lines) |
+| PWA | ✅ installable portal: manifest (maskable), app-shell offline, cache-first assets, install prompt, SW verified in headless Chromium |
+
+**Still open (owner/env tasks, unchanged):** B1/B2/B3 legal pages · B5 backups (`DATABASE_BACKUP_URL`, Railway snapshots, restore rehearsal) · §0 launch-model decision · env vars on Railway (`PUBLIC_URL` first) · Stripe dashboard live-key + webhook registration + live-card test · ZeptoMail/Zoho sender verification · prod never demo-seeded (verify) · H1 analytics · H4 mail-failure surfacing · H8 portal support channel · H9 apply-funnel bridge.
+**New follow-up backlog from portal audits:** wire `LoadError` into the ~24 pages still missing error states · wire `EhCrumbs` into detail pages · wire skeletons into the full-page-spinner pages · replace remaining `#b8862e`/Georgia literals in page files · optional QrScanner swap to BarcodeDetector · superjson re-render churn (`notifyOnChangeProps`) · server-bundle split (5.7MB boot.js).
+
+
+---
+
 ## Verdict
 
 **The platform is genuinely close — closer than any prior audit suggests — but it is not launch-ready for a paid public launch.** All six quality gates pass today (tsc 0 errors, 247/247 vitest, build, eslint, prettier, CI). Every README feature claim maps to real, working code; there are no stubs, no mocked screens, no dead nav. Security and the Stripe webhook core are unusually solid. Prior audits' fixes were verified in code (V4's "open" list is ~80% already fixed in later commits).
