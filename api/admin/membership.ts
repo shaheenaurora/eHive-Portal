@@ -22,6 +22,7 @@ import {
   tierChangeHistory,
 } from "../queries/member-admin";
 import { kycQueue, getKyc, reviewKyc } from "../queries/kyc";
+import { findUserById, markEmailVerified } from "../queries/users";
 import { pipelineReport, retentionMetrics } from "../queries/reports";
 import { audit } from "../lib/audit";
 import { env } from "../lib/env";
@@ -556,6 +557,7 @@ export const membershipRouter = createRouter({
           member: schema.members,
           userName: schema.users.name,
           userEmail: schema.users.email,
+          userEmailVerifiedAt: schema.users.emailVerifiedAt,
           userAvatar: schema.users.avatar,
         })
         .from(schema.members)
@@ -638,6 +640,25 @@ export const membershipRouter = createRouter({
     .mutation(async ({ ctx, input }) => {
       const { memberId, ...patch } = input;
       return applyProfileEdit(ctx.user, memberId, patch, "admin");
+    }),
+
+  /** Ops-only escape hatch: mark a member's email verified without the link —
+   *  reserved for when the mailbox is undeliverable (bounces, provider outage)
+   *  so the member isn't stranded at the login gate. Every use is audited. */
+  verifyMemberEmail: scopedAdmin("membership")
+    .input(z.object({ userId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const user = await findUserById(input.userId);
+      if (!user)
+        throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+      if (user.emailVerifiedAt) return { ok: true, alreadyVerified: true };
+      await markEmailVerified(user.id);
+      await audit(ctx.user, "member.email_verified", {
+        type: "user",
+        id: user.id,
+        detail: `ops: email marked verified for ${user.email ?? "?"}`,
+      });
+      return { ok: true };
     }),
 
   /** Propose a high-impact change (tier/status/lifecycle) — enters the queue. */

@@ -21,6 +21,16 @@ export default function Login() {
      interstitial instead of silently dropping the brand-new user into the
      portal before they've been told to check their inbox. */
   const [justRegistered, setJustRegistered] = useState(false);
+  /* Whether the verification email was actually accepted for delivery at
+     register time — false means the account exists but the mail failed, in
+     which case a persistent warning (not a vanishing toast) must tell the
+     user what to do next. */
+  const [verificationSent, setVerificationSent] = useState<boolean | null>(
+    null
+  );
+  const [resendState, setResendState] = useState<"idle" | "sent" | "failed">(
+    "idle"
+  );
 
   const [challenge, setChallenge] = useState<string | null>(null);
   const [code, setCode] = useState("");
@@ -56,13 +66,16 @@ export default function Login() {
     onError: e => setErr(e.message),
   });
   const register = trpc.auth.register.useMutation({
-    onSuccess: async () => {
+    onSuccess: async r => {
       await utils.auth.me.invalidate();
+      setVerificationSent(r.verificationSent);
+      setResendState("idle");
       setJustRegistered(true);
     },
     onError: e => setErr(e.message),
   });
   const resend = trpc.auth.resendVerification.useMutation({
+    onSuccess: r => setResendState(r.sent ? "sent" : "failed"),
     onError: e => setErr(e.message),
   });
   const pending = login.isPending || register.isPending || verify2fa.isPending;
@@ -159,12 +172,71 @@ export default function Login() {
             >
               ✓ Account created
             </p>
-            <p style={{ margin: 0, color: "#c4cdd8", fontSize: ".88rem" }}>
-              We&apos;ve sent a verification link to{" "}
-              <strong style={{ color: "#f5efe2" }}>{email}</strong>. Please
-              check your inbox (and spam folder) and click the link to verify
-              your email — you can explore the portal in the meantime.
-            </p>
+            {verificationSent === false ? (
+              /* Persistent warning — the account exists but the verification
+                 email never left the server. Not a toast: the user must see
+                 this until they act on it. */
+              <div
+                role="alert"
+                style={{
+                  display: "grid",
+                  gap: ".6rem",
+                  background: "rgba(240,168,160,.07)",
+                  border: "1px solid rgba(240,168,160,.4)",
+                  borderRadius: 8,
+                  padding: ".8rem .9rem",
+                }}
+              >
+                <p style={{ margin: 0, color: "#f0c9a8", fontSize: ".85rem" }}>
+                  Account created, but the verification email couldn&apos;t be
+                  sent. Try resend, or contact{" "}
+                  <a
+                    href="mailto:info@ehiveglobal.com"
+                    style={{ color: "#f5efe2" }}
+                  >
+                    info@ehiveglobal.com
+                  </a>
+                  .
+                </p>
+                <button
+                  type="button"
+                  className="eh-btn ghost sm"
+                  style={{ width: "100%" }}
+                  disabled={resend.isPending}
+                  onClick={() => resend.mutate()}
+                >
+                  {resend.isPending
+                    ? "Sending…"
+                    : resendState === "sent"
+                      ? "Verification email re-sent ✓"
+                      : "Resend verification email"}
+                </button>
+                {resendState === "sent" && !resend.isPending && (
+                  <p style={{ margin: 0, color: "#8fd0ae", fontSize: ".82rem" }}>
+                    Sent — check your inbox (and spam folder).
+                  </p>
+                )}
+                {resendState === "failed" && !resend.isPending && (
+                  <p style={{ margin: 0, color: "#f0a8a0", fontSize: ".82rem" }}>
+                    Still couldn&apos;t send. Please email{" "}
+                    <a
+                      href="mailto:info@ehiveglobal.com"
+                      style={{ color: "#f5efe2" }}
+                    >
+                      info@ehiveglobal.com
+                    </a>{" "}
+                    and we&apos;ll verify your account.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p style={{ margin: 0, color: "#c4cdd8", fontSize: ".88rem" }}>
+                We&apos;ve sent a verification link to{" "}
+                <strong style={{ color: "#f5efe2" }}>{email}</strong>. Please
+                check your inbox (and spam folder) and click the link to verify
+                your email — you can explore the portal in the meantime.
+              </p>
+            )}
             <div style={{ display: "grid", gap: ".5rem" }}>
               <button
                 type="button"
@@ -174,24 +246,28 @@ export default function Login() {
               >
                 Continue to the portal →
               </button>
-              <button
-                type="button"
-                className="eh-btn ghost sm"
-                style={{ width: "100%" }}
-                disabled={resend.isPending || resend.isSuccess}
-                onClick={() => resend.mutate()}
-              >
-                {resend.isPending
-                  ? "Sending…"
-                  : resend.isSuccess
-                    ? "Verification email re-sent ✓"
-                    : "Resend verification email"}
-              </button>
+              {verificationSent !== false && (
+                <button
+                  type="button"
+                  className="eh-btn ghost sm"
+                  style={{ width: "100%" }}
+                  disabled={resend.isPending || resendState === "sent"}
+                  onClick={() => resend.mutate()}
+                >
+                  {resend.isPending
+                    ? "Sending…"
+                    : resendState === "sent"
+                      ? "Verification email re-sent ✓"
+                      : "Resend verification email"}
+                </button>
+              )}
             </div>
             <button
               type="button"
               onClick={() => {
                 setJustRegistered(false);
+                setVerificationSent(null);
+                setResendState("idle");
                 setMode("login");
               }}
               style={{

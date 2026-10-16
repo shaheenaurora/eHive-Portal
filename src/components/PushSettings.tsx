@@ -132,7 +132,11 @@ export function PushSettings() {
                     type="checkbox"
                     checked={cats.includes(c.key)}
                     onChange={() => toggle(c.key)}
-                    style={{ accentColor: "#b8862e", width: 18, height: 18 }}
+                    style={{
+                      accentColor: "var(--eh-accent)",
+                      width: 18,
+                      height: 18,
+                    }}
                   />
                 </label>
               );

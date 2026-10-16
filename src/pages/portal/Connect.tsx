@@ -294,7 +294,7 @@ export default function Connect() {
           </p>
 
           {pendingForMe.length > 0 && (
-            <div className="eh-card eh-mb" style={{ borderColor: "#b8862e" }}>
+            <div className="eh-card eh-mb" style={{ borderColor: "var(--eh-accent)" }}>
               <h3>Awaiting your confirmation</h3>
               <div className="eh-list">
                 {pendingForMe.map(r => (

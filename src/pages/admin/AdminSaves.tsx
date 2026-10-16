@@ -66,7 +66,8 @@ function initials(name?: string | null): string {
 function urgency(daysOpen: number): { color: string; label: string } {
   if (daysOpen >= 7)
     return { color: "var(--eh-red, #b23a2e)", label: `${daysOpen}d open` };
-  if (daysOpen >= 3) return { color: "#b8862e", label: `${daysOpen}d open` };
+  if (daysOpen >= 3)
+    return { color: "var(--eh-amber, #7f6424)", label: `${daysOpen}d open` };
   return {
     color: "var(--eh-good, #2e7d5b)",
     label: daysOpen === 0 ? "New today" : `${daysOpen}d open`,

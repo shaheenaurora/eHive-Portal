@@ -76,7 +76,7 @@ export default function AdminRequests() {
         <Metric
           k="Awaiting approval"
           v={total}
-          accent={total > 0 ? "#b8862e" : undefined}
+          accent={total > 0 ? "var(--eh-accent)" : undefined}
         />
         <Metric k="Record changes" v={rows.length} />
         <Metric k="Tier requests" v={tierRows.length} />
@@ -106,7 +106,7 @@ export default function AdminRequests() {
                 <div
                   className="eh-card"
                   key={r.id}
-                  style={{ borderLeft: "3px solid #b8862e" }}
+                  style={{ borderLeft: "3px solid var(--eh-accent)" }}
                 >
                   <div
                     className="eh-between"
@@ -235,7 +235,7 @@ export default function AdminRequests() {
               <div
                 className="eh-card"
                 key={t.req.id}
-                style={{ borderLeft: "3px solid #b8862e" }}
+                style={{ borderLeft: "3px solid var(--eh-accent)" }}
               >
                 <div
                   className="eh-between"

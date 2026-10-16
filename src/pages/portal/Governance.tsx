@@ -346,7 +346,7 @@ function ReportConcernModal({ onClose }: { onClose: () => void }) {
           type="checkbox"
           checked={anonymous}
           onChange={e => setAnonymous(e.target.checked)}
-          style={{ marginTop: ".2rem", accentColor: "#b8862e" }}
+          style={{ marginTop: ".2rem", accentColor: "var(--eh-accent)" }}
         />
         <span className="eh-muted">
           Report anonymously — your name won't be attached to this case.

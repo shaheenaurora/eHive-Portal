@@ -121,7 +121,7 @@ export default function AdminConnect() {
       {tab === "buddies" && (
         <>
           {(buddy.data?.unpaired.length ?? 0) > 0 && (
-            <div className="eh-card eh-mb" style={{ borderColor: "#b8862e" }}>
+            <div className="eh-card eh-mb" style={{ borderColor: "var(--eh-accent)" }}>
               <div className="eh-between">
                 <h3 style={{ margin: 0 }}>New members awaiting a buddy</h3>
                 <button

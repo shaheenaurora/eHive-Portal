@@ -327,6 +327,15 @@ export default function AdminLeads() {
                     </td>
                     <td>
                       <span className="eh-btn ghost sm">Open →</span>
+                      {l.email && (
+                        <SendPortalLinkButton
+                          lead={l}
+                          onDone={() => {
+                            q.refetch();
+                            counts.refetch();
+                          }}
+                        />
+                      )}
                     </td>
                   </tr>
                 );
@@ -678,6 +687,52 @@ function LeadDetail({
         </div>
       )}
     </Modal>
+  );
+}
+
+/** Email the lead the direct route into the real screening application
+ *  (sign in to the portal, then Apply). The sent/failed outcome stays on the
+ *  button and in a toast — a failed send must never look like it worked. */
+function SendPortalLinkButton({
+  lead,
+  onDone,
+}: {
+  lead: LeadRow;
+  onDone: () => void;
+}) {
+  const send = trpc.admin.sendLeadPortalLink.useMutation({
+    onSuccess: r => {
+      if (r.ok) {
+        toast(`Application link sent to ${lead.email}.`);
+        onDone();
+      } else {
+        toast(`Send failed: ${r.error ?? "unknown error"}`);
+      }
+    },
+    onError: e => toast(e.message),
+  });
+  const failed = send.isError || (send.isSuccess && !send.data.ok);
+  const label = send.isPending
+    ? "Sending…"
+    : send.isSuccess && send.data.ok
+      ? "Sent ✓"
+      : failed
+        ? "Send failed — retry"
+        : "Send portal application link";
+  return (
+    <button
+      type="button"
+      className="eh-btn ghost sm"
+      style={{ marginLeft: ".4rem" }}
+      disabled={send.isPending}
+      title={`Email ${lead.email} the portal application link`}
+      onClick={e => {
+        e.stopPropagation();
+        send.mutate({ id: lead.id });
+      }}
+    >
+      {label}
+    </button>
   );
 }
 

@@ -448,7 +448,7 @@ export default function Events() {
               max={5}
               value={rating}
               onChange={e => setRating(Number(e.target.value))}
-              style={{ width: "100%", accentColor: "#b8862e" }}
+              style={{ width: "100%", accentColor: "var(--eh-accent)" }}
             />
           </Field>
           <Field label="What should we keep or change? (optional)">

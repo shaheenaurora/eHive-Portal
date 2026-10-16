@@ -459,7 +459,7 @@ function ScopeChecklist({
               type="checkbox"
               checked={selected.has(s.key)}
               onChange={() => onToggle(s.key)}
-              style={{ marginTop: ".3rem", accentColor: "#b8862e" }}
+              style={{ marginTop: ".3rem", accentColor: "var(--eh-accent)" }}
             />
             <span className="t" style={{ flex: 1 }}>
               {s.label}

@@ -56,7 +56,15 @@ export default function Awards() {
         sub="Nominate peers, vote on the shortlist, and celebrate the members and chapters that embody Build · Belong · Become."
       />
 
-      {q.isLoading && <Spinner />}
+      {q.isLoading && (
+        <>
+          <div className="eh-skeleton card eh-mb" />
+          <div className="eh-grid g2" style={{ alignItems: "start" }}>
+            <div className="eh-skeleton card" />
+            <div className="eh-skeleton card" />
+          </div>
+        </>
+      )}
       {q.isError && <LoadError what="awards" onRetry={() => q.refetch()} />}
       {q.data && (
         <>
@@ -140,7 +148,7 @@ export default function Awards() {
                   <div
                     className="eh-card"
                     key={w.id}
-                    style={{ borderLeft: "3px solid var(--eh-gold, #b8862e)" }}
+                    style={{ borderLeft: "3px solid var(--eh-gold, #bf311c)" }}
                   >
                     <div
                       className="eh-row"

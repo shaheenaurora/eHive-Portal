@@ -124,7 +124,7 @@ export default function AdminFinance() {
               k="Renewals due"
               v={aedWhole(s.renewals.valueAed)}
               n={`${s.renewals.count} member${s.renewals.count === 1 ? "" : "s"} · next 30 days`}
-              accent={s.renewals.count > 0 ? "#b8862e" : undefined}
+              accent={s.renewals.count > 0 ? "var(--eh-accent)" : undefined}
             />
             <Metric
               k="Refunded"
@@ -1092,7 +1092,7 @@ function ManualPaymentModal({
             type="checkbox"
             checked={extend}
             onChange={e => setExtend(e.target.checked)}
-            style={{ accentColor: "#b8862e" }}
+            style={{ accentColor: "var(--eh-accent)" }}
           />
           <span className="eh-sm">
             Roll this member's renewal date forward one year

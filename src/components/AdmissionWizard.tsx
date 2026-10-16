@@ -157,7 +157,7 @@ export function AdmissionWizard(props: {
                       i < step
                         ? "var(--eh-green, #2e7d5b)"
                         : i === step
-                          ? "var(--eh-gold, #b8862e)"
+                          ? "var(--eh-gold, #bf311c)"
                           : "rgba(0,0,0,.1)",
                     color: i <= step ? "#fff" : "inherit",
                   }}

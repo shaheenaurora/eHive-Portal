@@ -7,7 +7,6 @@ import {
   Pill,
   Empty,
   TierPill,
-  Spinner,
   LoadError,
 } from "@/components/eh";
 
@@ -67,7 +66,13 @@ export default function Library() {
         />
       </div>
 
-      {q.isLoading && <Spinner />}
+      {q.isLoading && (
+        <div className="eh-grid g3" style={{ alignItems: "start" }}>
+          <div className="eh-skeleton card" />
+          <div className="eh-skeleton card" />
+          <div className="eh-skeleton card" />
+        </div>
+      )}
       {q.isError && (
         <LoadError what="the library" onRetry={() => q.refetch()} />
       )}

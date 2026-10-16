@@ -92,7 +92,7 @@ export function CookieConsent() {
         We use essential cookies to run your session, and — only with your
         consent — analytics to improve eHive. You can change this anytime. See
         our{" "}
-        <a href="/privacy.html" style={{ color: "var(--eh-gold, #b8862e)" }}>
+        <a href="/privacy.html" style={{ color: "var(--eh-gold, #bf311c)" }}>
           Privacy Policy
         </a>
         .
@@ -117,7 +117,7 @@ export function CookieConsent() {
           ref={acceptAllRef}
           onClick={() => decide("all")}
           style={{
-            background: "var(--eh-gold, #b8862e)",
+            background: "var(--eh-gold, #bf311c)",
             color: "#fff",
             border: "none",
             borderRadius: 9,

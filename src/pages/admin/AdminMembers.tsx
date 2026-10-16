@@ -10,7 +10,6 @@ import {
   StatusPill,
   TierPill,
   Empty,
-  Spinner,
   LoadError,
   RefCode,
   toast,
@@ -272,7 +271,15 @@ export default function AdminMembers() {
         </button>
       </div>
 
-      {q.isLoading && <Spinner />}
+      {q.isLoading && (
+        <div className="eh-card" style={{ padding: "1rem 1.25rem" }}>
+          <div className="eh-skeleton line" />
+          <div className="eh-skeleton line" style={{ width: "82%" }} />
+          <div className="eh-skeleton line" style={{ width: "94%" }} />
+          <div className="eh-skeleton line" style={{ width: "76%" }} />
+          <div className="eh-skeleton line" style={{ width: "88%" }} />
+        </div>
+      )}
       {q.isError && <LoadError onRetry={() => q.refetch()} />}
       {q.data && q.data.length === 0 && (
         <div className="eh-card">

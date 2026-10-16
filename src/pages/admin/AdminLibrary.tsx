@@ -8,7 +8,6 @@ import {
   Pill,
   Empty,
   TierPill,
-  Spinner,
   LoadError,
   Modal,
   Field,
@@ -85,7 +84,13 @@ export default function AdminLibrary() {
       />
 
       {q.isError && <LoadError onRetry={() => q.refetch()} />}
-      {q.isLoading && <Spinner />}
+      {q.isLoading && (
+        <div className="eh-grid g3" style={{ alignItems: "start" }}>
+          <div className="eh-skeleton card" />
+          <div className="eh-skeleton card" />
+          <div className="eh-skeleton card" />
+        </div>
+      )}
       {q.data && q.data.length === 0 && (
         <div className="eh-card">
           <Empty big="Library is empty." />

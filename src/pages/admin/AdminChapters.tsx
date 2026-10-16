@@ -411,7 +411,7 @@ export default function AdminChapters() {
             }
             accent={
               overview.data.avgChi != null && overview.data.avgChi < 65
-                ? "#b8862e"
+                ? "var(--eh-amber, #7f6424)"
                 : "var(--eh-good, #2e7d5b)"
             }
           />
@@ -420,7 +420,9 @@ export default function AdminChapters() {
             v={`${overview.data.atBar}%`}
             n="CHI ≥ 65"
             accent={
-              overview.data.atBar >= 80 ? "var(--eh-good, #2e7d5b)" : "#b8862e"
+              overview.data.atBar >= 80
+                ? "var(--eh-good, #2e7d5b)"
+                : "var(--eh-amber, #7f6424)"
             }
           />
           <ChMetric
@@ -2378,7 +2380,7 @@ function MeetingEditor({
             <input
               type="checkbox"
               checked={present.has(member.id)}
-              style={{ accentColor: "#b8862e" }}
+              style={{ accentColor: "var(--eh-accent)" }}
               onChange={e => {
                 const next = new Set(present);
                 if (e.target.checked) next.add(member.id);

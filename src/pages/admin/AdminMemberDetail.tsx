@@ -17,6 +17,7 @@ import {
   EhCrumbs,
   LoadError,
   toast,
+  confirmDialog,
 } from "@/components/eh";
 import { AdminKycPanel } from "@/components/AdminKycPanel";
 import { AdminValueLedger } from "@/components/AdminValueLedger";
@@ -124,6 +125,13 @@ export default function AdminMemberDetail() {
     },
     onError: e => toast(e.message),
   });
+  const verifyEmail = trpc.admin.verifyMemberEmail.useMutation({
+    onSuccess: () => {
+      toast("Email marked verified.");
+      invalidate();
+    },
+    onError: e => toast(e.message),
+  });
 
   if (q.isLoading)
     return (
@@ -148,6 +156,7 @@ export default function AdminMemberDetail() {
     member,
     userName,
     userEmail,
+    userEmailVerifiedAt,
     pods,
     applications,
     actionItems,
@@ -222,6 +231,27 @@ export default function AdminMemberDetail() {
           </Pill>
           <StatusPill status={member.status} />
           <Pill color="gold">Score {member.hiveScore}</Pill>
+          {!userEmailVerifiedAt && (
+            <button
+              className="eh-btn ghost sm"
+              disabled={verifyEmail.isPending}
+              title="Bypasses inbox verification — only for undeliverable mail"
+              onClick={async () => {
+                if (
+                  await confirmDialog({
+                    title: "Mark email verified?",
+                    body: "Only use this when the member's mailbox is undeliverable — it bypasses the normal verification link. The action is recorded in the audit log.",
+                    confirmLabel: "Mark verified",
+                  })
+                )
+                  verifyEmail.mutate({ userId: member.userId });
+              }}
+            >
+              {verifyEmail.isPending
+                ? "Verifying…"
+                : "Mark email verified"}
+            </button>
+          )}
           <button
             className="eh-btn ghost sm"
             onClick={() => setEditProfile(true)}

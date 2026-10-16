@@ -30,7 +30,12 @@ function VerifyBanner() {
     staleTime: 5 * 60 * 1000,
   });
   const resend = trpc.auth.resendVerification.useMutation({
-    onSuccess: () => toast("Verification email sent — check your inbox."),
+    onSuccess: r =>
+      toast(
+        r.sent
+          ? "Verification email sent — check your inbox."
+          : "Couldn't send the verification email — try again or contact info@ehiveglobal.com.",
+      ),
     onError: e => toast(e.message),
   });
   if (hidden || !cfg.data?.mailConfigured) return null;
@@ -519,7 +524,7 @@ export function Ring(props: {
 /* -------------------------------- shell -------------------------------- */
 /** Breadcrumb trail — `<EhCrumbs items={[{ label: "Pods", to: "/portal/pods" }, { label: "Pod #3" }]}/>`.
  *  The last item renders as the current page (aria-current="page"); give it no
- *  `to`. Not yet wired into pages — provided for the follow-up layout pass. */
+ *  `to`. Wired into pod and member detail pages. */
 export function EhCrumbs(props: { items: { label: string; to?: string }[] }) {
   const last = props.items.length - 1;
   return (

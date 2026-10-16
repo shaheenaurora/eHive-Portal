@@ -69,16 +69,24 @@ function clientIp(headers: Headers): string {
   return forwarded.at(-1) ?? headers.get("x-real-ip") ?? "unknown";
 }
 
-async function issueVerification(userId: number, email: string, name: string) {
+/* Mint a verify token and send the link. Returns whether delivery was accepted
+   so callers can tell the user — never throws, so a mail outage must not block
+   account creation or produce a falsely reassuring "we sent it". */
+async function issueVerification(
+  userId: number,
+  email: string,
+  name: string
+): Promise<boolean> {
   try {
     const raw = await createAuthToken(userId, "verify", VERIFY_TOKEN_TTL_MS);
-    await sendVerifyEmail(
+    return await sendVerifyEmail(
       email,
       name,
       `${env.publicUrl}/verify-email?token=${raw}`
     );
   } catch (e) {
     logger.error("verification email failed", { error: e });
+    return false;
   }
 }
 
@@ -128,7 +136,11 @@ export const authRouter = createRouter({
           message: "Could not create account.",
         });
       }
-      await issueVerification(user.id, user.email!, user.name ?? "");
+      const verificationSent = await issueVerification(
+        user.id,
+        user.email!,
+        user.name ?? ""
+      );
       void recordAnalyticsEvent("user_registered", {
         userId: user.id,
         properties: { emailDomain: user.email?.split("@")[1] },
@@ -137,7 +149,7 @@ export const authRouter = createRouter({
         "set-cookie",
         await sessionSetCookie(user.unionId, user.tokenVersion, ctx.req.headers)
       );
-      return safeUser(user);
+      return { ...safeUser(user), verificationSent };
     }),
 
   login: publicQuery.input(credentials).mutation(async ({ ctx, input }) => {
@@ -262,15 +274,19 @@ export const authRouter = createRouter({
 
   /* ---- email verification ---- */
   resendVerification: authedQuery.mutation(async ({ ctx }) => {
-    if (ctx.user.emailVerifiedAt) return { ok: true, alreadyVerified: true };
+    if (ctx.user.emailVerifiedAt) return { sent: true, alreadyVerified: true };
     if (!(await rateLimit(`verify:${ctx.user.id}`, 3, 60 * 60 * 1000))) {
       throw new TRPCError({
         code: "TOO_MANY_REQUESTS",
         message: "Please wait before requesting another verification email.",
       });
     }
-    await issueVerification(ctx.user.id, ctx.user.email!, ctx.user.name ?? "");
-    return { ok: true };
+    const sent = await issueVerification(
+      ctx.user.id,
+      ctx.user.email!,
+      ctx.user.name ?? ""
+    );
+    return { sent };
   }),
 
   verifyEmail: publicQuery

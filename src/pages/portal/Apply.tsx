@@ -186,7 +186,7 @@ export default function Apply() {
               type="checkbox"
               checked={consent}
               onChange={e => setConsent(e.target.checked)}
-              style={{ marginTop: ".2rem", accentColor: "#b8862e" }}
+              style={{ marginTop: ".2rem", accentColor: "var(--eh-accent)" }}
             />
             <span className="eh-muted">
               I consent to eHive collecting and processing my application data
@@ -207,11 +207,11 @@ export default function Apply() {
           {gateRequired && !gate.isLoading && (
             <div
               style={{
-                border: "1px solid var(--eh-gold, #b8862e)",
+                border: "1px solid var(--eh-gold, #bf311c)",
                 borderRadius: 8,
                 padding: ".75rem 1rem",
                 marginBottom: "1rem",
-                background: "rgba(184,134,46,0.08)",
+                background: "rgba(191,49,28,0.08)",
               }}
             >
               {gateMode === "muslim_only" && (
@@ -223,7 +223,7 @@ export default function Apply() {
                     type="checkbox"
                     checked={muslimIdentity}
                     onChange={e => setMuslimIdentity(e.target.checked)}
-                    style={{ marginTop: ".2rem", accentColor: "#b8862e" }}
+                    style={{ marginTop: ".2rem", accentColor: "var(--eh-accent)" }}
                     required
                   />
                   <span>
@@ -243,7 +243,7 @@ export default function Apply() {
                       type="checkbox"
                       checked={valuesAligned}
                       onChange={e => setValuesAligned(e.target.checked)}
-                      style={{ marginTop: ".2rem", accentColor: "#b8862e" }}
+                      style={{ marginTop: ".2rem", accentColor: "var(--eh-accent)" }}
                       required
                     />
                     <span>
@@ -314,7 +314,7 @@ export default function Apply() {
                     checked={tier === t}
                     disabled={opensLater}
                     onChange={() => setTier(t)}
-                    style={{ marginTop: ".35rem", accentColor: "#b8862e" }}
+                    style={{ marginTop: ".35rem", accentColor: "var(--eh-accent)" }}
                   />
                   <div style={{ flex: 1 }}>
                     <div className="eh-between">

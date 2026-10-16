@@ -95,7 +95,16 @@ export default function Regional() {
         sub="Overview of the chapters, members and operating rhythm in your zone."
       />
 
-      {overview.isLoading && <Spinner />}
+      {overview.isLoading && (
+        <>
+          <div className="eh-grid g3 eh-mb" style={{ alignItems: "start" }}>
+            <div className="eh-skeleton card" />
+            <div className="eh-skeleton card" />
+            <div className="eh-skeleton card" />
+          </div>
+          <div className="eh-skeleton card" />
+        </>
+      )}
 
       {!overview.isLoading && overview.error && !isForbidden && (
         <LoadError

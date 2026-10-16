@@ -96,7 +96,7 @@ export default function AdminDataRequests() {
         <Metric
           k="Open requests"
           v={openCount}
-          accent={openCount > 0 ? "#b8862e" : undefined}
+          accent={openCount > 0 ? "var(--eh-accent)" : undefined}
         />
         <Metric k="Total requests" v={rows.length} />
       </div>

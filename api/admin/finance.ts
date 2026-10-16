@@ -32,6 +32,8 @@ import { TRPCError } from "@trpc/server";
 import { renewalsReport } from "../queries/reports";
 import { listRates, setRate, clearRate } from "../queries/fx";
 import { audit } from "../lib/audit";
+import { rateLimit } from "../lib/rate-limit";
+import { sendPortalApplicationLink } from "../lib/lead-mail";
 import { EXPENSE_CATEGORY_KEYS, CURRENCY_CODES } from "@contracts/constants";
 import { idInput, isFullAdmin } from "./shared";
 import { countFollowUpDue, followUpDueCond } from "../queries/leads";
@@ -276,6 +278,77 @@ export const financeRouter = createRouter({
         detail: input.status ? `status → ${input.status}` : "updated",
       });
       return { ok: true };
+    }),
+
+  /* Email the lead a direct route into the real screening application:
+     sign in to the portal, then Apply. Rate-limited per lead + per admin;
+     the delivery result is returned (not swallowed) so the admin UI can
+     surface a failed send instead of silently dropping it. */
+  sendLeadPortalLink: scopedAdmin("finance")
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const lead = (
+        await getDb()
+          .select()
+          .from(schema.leads)
+          .where(eq(schema.leads.id, input.id))
+          .limit(1)
+      ).at(0);
+      if (!lead)
+        throw new TRPCError({ code: "NOT_FOUND", message: "Lead not found." });
+      if (!lead.email)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This lead has no email address.",
+        });
+      if (
+        !(await rateLimit(
+          `lead-portal-link:${lead.id}`,
+          3,
+          24 * 60 * 60 * 1000
+        ))
+      ) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message:
+            "This lead has already been sent the application link recently.",
+        });
+      }
+      if (
+        !(await rateLimit(
+          `lead-portal-link:admin:${ctx.user.id}`,
+          30,
+          60 * 60 * 1000
+        ))
+      ) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: "You're sending too many emails. Please wait a moment.",
+        });
+      }
+      let name: string | null = null;
+      try {
+        const d = JSON.parse(lead.payload ?? "{}");
+        name = typeof d.name === "string" && d.name ? d.name : null;
+      } catch {
+        /* ignore */
+      }
+      const r = await sendPortalApplicationLink({
+        email: lead.email,
+        name,
+      });
+      await audit(
+        ctx.user,
+        r.ok ? "lead.portalLink" : "lead.portalLinkFailed",
+        {
+          type: "lead",
+          id: lead.id,
+          detail: r.ok
+            ? "portal application link emailed"
+            : `portal application link failed${r.error ? `: ${r.error}` : ""}`,
+        }
+      );
+      return { ok: r.ok, error: r.error };
     }),
 
   /* Issue an open consulting invoice against a won lead. */

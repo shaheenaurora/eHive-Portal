@@ -6,7 +6,6 @@ import {
   PageHead,
   Pill,
   Empty,
-  Spinner,
   LoadError,
 } from "@/components/eh";
 import { fmtDate } from "@/lib/ehf";
@@ -23,7 +22,17 @@ export default function Documents() {
         sub="Download your membership certificate, attendance certificates for events you've attended, and track your CPD credits."
       />
 
-      {q.isLoading && <Spinner />}
+      {q.isLoading && (
+        <>
+          <div className="eh-grid g3 eh-mb" style={{ alignItems: "start" }}>
+            <div className="eh-skeleton card" />
+            <div className="eh-skeleton card" />
+            <div className="eh-skeleton card" />
+          </div>
+          <div className="eh-skeleton card eh-mb" />
+          <div className="eh-skeleton card" />
+        </>
+      )}
       {q.isError && (
         <LoadError what="your documents" onRetry={() => q.refetch()} />
       )}

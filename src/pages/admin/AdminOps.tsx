@@ -87,13 +87,13 @@ export default function AdminOps() {
               k="Open saves"
               v={s.saves.open}
               n="At-risk interventions"
-              accent={s.saves.open > 0 ? "#b8862e" : undefined}
+              accent={s.saves.open > 0 ? "var(--eh-accent)" : undefined}
             />
             <Metric
               k="At-risk / dormant"
               v={`${s.members.atRisk} / ${s.members.dormant}`}
               n="Active members"
-              accent={s.members.atRisk > 0 ? "#b8862e" : undefined}
+              accent={s.members.atRisk > 0 ? "var(--eh-accent)" : undefined}
             />
             <Metric
               k="Data requests"

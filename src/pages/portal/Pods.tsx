@@ -7,7 +7,6 @@ import {
   Pill,
   Empty,
   TierPill,
-  Spinner,
   LoadError,
   Bar,
 } from "@/components/eh";
@@ -30,7 +29,13 @@ export default function Pods() {
         title="Your circles"
         sub="Small rooms, real numbers, one commitment per week. Chatham House Rule applies everywhere."
       />
-      {q.isLoading && <Spinner />}
+      {q.isLoading && (
+        <div className="eh-grid g3" style={{ alignItems: "start" }}>
+          <div className="eh-skeleton card" />
+          <div className="eh-skeleton card" />
+          <div className="eh-skeleton card" />
+        </div>
+      )}
       {q.isError && <LoadError what="your pods" onRetry={() => q.refetch()} />}
       {q.data && q.data.length === 0 && (
         <div className="eh-card">

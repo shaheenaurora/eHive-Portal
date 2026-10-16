@@ -349,7 +349,10 @@ export default function Membership() {
       {(member as { lifecycleState?: string }).lifecycleState === "renewal" && (
         <div
           className="eh-card eh-mb"
-          style={{ borderColor: "#e8d5ac", background: "#fdfaf3" }}
+          style={{
+            borderColor: "rgba(191,49,28,0.25)",
+            background: "var(--eh-gold-soft)",
+          }}
         >
           <div
             className="eh-between"
@@ -406,7 +409,7 @@ export default function Membership() {
               <div
                 className="eh-num"
                 style={{
-                  fontFamily: "Georgia, serif",
+                  fontFamily: "var(--eh-font-display)",
                   fontSize: "1.4rem",
                   fontWeight: 700,
                 }}

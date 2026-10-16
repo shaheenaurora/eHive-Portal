@@ -6,7 +6,6 @@ import {
   Pill,
   Empty,
   TierPill,
-  Spinner,
   LoadError,
 } from "@/components/eh";
 
@@ -23,7 +22,23 @@ export default function Offers() {
         sub="Member rates and priority access across eHive's two practices — business setup and consulting."
       />
 
-      {q.isLoading && <Spinner />}
+      {q.isLoading && (
+        <>
+          {["Business Setup", "Consulting"].map(label => (
+            <div key={label} className="eh-mb">
+              <div
+                className="eh-skeleton line"
+                style={{ width: "30%", marginBottom: ".7rem" }}
+              />
+              <div className="eh-grid g3" style={{ alignItems: "start" }}>
+                <div className="eh-skeleton card" />
+                <div className="eh-skeleton card" />
+                <div className="eh-skeleton card" />
+              </div>
+            </div>
+          ))}
+        </>
+      )}
       {q.isError && (
         <LoadError what="member offers" onRetry={() => q.refetch()} />
       )}

@@ -787,3 +787,30 @@ export async function sendMembershipLifecycleMail(input: {
   });
   return { ok: r.ok, error: r.error };
 }
+
+/** Send a lead the direct route into the real screening application: sign in
+ *  to the portal, then Apply. The login page does not honour a `next`
+ *  redirect param, so the CTA points at /login and the copy says "sign in,
+ *  then Apply" rather than promising deep-linking. */
+export async function sendPortalApplicationLink(input: {
+  email: string;
+  name: string | null;
+}): Promise<{ ok: boolean; error?: string }> {
+  if (!mailEnabled()) return { ok: false, error: "Email is not configured." };
+  const firstName = input.name ? input.name.split(" ")[0] : "";
+  const portalUrl = `${env.publicUrl}/login`;
+  const html = shell(`
+    <h1 style="margin:0 0 12px;font-family:Georgia,serif;font-size:22px;color:#101d2c;font-weight:600">${firstName ? `Hi ${esc(firstName)},` : "Hi there,"}</h1>
+    <p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">Thanks for your interest in eHive. Here's your direct link to the screening application in the eHive portal — completing it takes about 10 minutes, and you can track its status as we review it.</p>
+    <p style="margin:20px 0 0"><a href="${portalUrl}" style="display:inline-block;background:#101d2c;color:#f5efe2;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:600">Sign in, then choose Apply →</a></p>
+    <p style="margin:18px 0 0;color:#5d6f82;font-size:13px;line-height:1.55">Don't have an account yet? Create one on that page first — it only takes a moment. Once you're signed in, choose <strong style="color:#101d2c">Apply</strong> to start the application.</p>
+    <p style="margin:20px 0 0;color:#33465e;font-size:14px;line-height:1.55">Warm regards,<br/><strong>The eHive team</strong><br/><a href="mailto:info@ehiveglobal.com" style="color:#b8862e;text-decoration:none">info@ehiveglobal.com</a></p>
+  `);
+  const r = await sendMailDetailed({
+    to: input.email,
+    subject: "Your eHive application link",
+    html,
+    replyTo: env.leadNotifyEmail || undefined,
+  });
+  return { ok: r.ok, error: r.error };
+}
