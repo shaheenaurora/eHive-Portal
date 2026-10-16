@@ -805,7 +805,7 @@ export function EhShell(props: {
           <InstallAppEntry />
           <a
             className="eh-signout"
-            href="mailto:hello@ehiveglobal.com"
+            href="mailto:info@ehiveglobal.com"
             style={{
               display: "block",
               textAlign: "center",

@@ -143,7 +143,7 @@ service → Variables, or your `.env`) — no code change, just redeploy.
 | `SMTP_PORT`               | `587` (STARTTLS) or `465` (implicit TLS)                               |
 | `SMTP_SECURE`             | `true` for port 465; leave empty for 587                               |
 | `SMTP_USER` / `SMTP_PASS` | mailbox login. For Gmail, create an **App Password** (2FA required)    |
-| `MAIL_FROM`               | `hello@ehiveglobal.com` (defaults to `SMTP_USER`)                      |
+| `MAIL_FROM`               | `info@ehiveglobal.com` (defaults to `SMTP_USER`)                      |
 | `LEAD_NOTIFY_EMAIL`       | where new-lead alerts go (defaults to `OWNER_EMAIL`)                   |
 
 Every website form (newsletter, Get Started, booking, setup calculator, the

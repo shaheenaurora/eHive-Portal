@@ -31,7 +31,7 @@ async function ensureVapid() {
   }
   const subject = env.ownerEmail
     ? `mailto:${env.ownerEmail}`
-    : "mailto:hello@ehiveglobal.com";
+    : "mailto:info@ehiveglobal.com";
   webpush.setVapidDetails(subject, keys.publicKey, keys.privateKey);
   ready = keys;
   return keys;
