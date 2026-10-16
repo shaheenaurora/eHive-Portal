@@ -9,6 +9,7 @@ import {
   Spinner,
   Modal,
   Field,
+  LoadError,
   toast,
   confirmDialog,
 } from "@/components/eh";
@@ -184,18 +185,7 @@ export default function AdminConduct() {
       </div>
 
       {q.isLoading && <Spinner />}
-      {q.isError && (
-        <div className="eh-card">
-          <Empty
-            big="Couldn't load cases."
-            p="You may not have the Conduct & Safeguarding capability."
-          >
-            <button className="eh-btn ghost" onClick={() => q.refetch()}>
-              Retry
-            </button>
-          </Empty>
-        </div>
-      )}
+      {q.isError && <LoadError what="cases" onRetry={() => q.refetch()} />}
       {q.data && q.data.length === 0 && (
         <div className="eh-card">
           <Empty

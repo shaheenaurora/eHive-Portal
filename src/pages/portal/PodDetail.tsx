@@ -8,7 +8,8 @@ import {
   StatusPill,
   Empty,
   TierPill,
-  Spinner,
+  EhCrumbs,
+  LoadError,
   toast,
 } from "@/components/eh";
 import { fmtDateTime, fmtDay, relDay, initials } from "@/lib/ehf";
@@ -43,20 +44,41 @@ export default function PodDetail() {
   if (q.isLoading)
     return (
       <EhShell groups={MEMBER_NAV} brandSub="Member Portal">
-        <Spinner />
+        <div className="eh-skeleton title" />
+        <div className="eh-skeleton line" style={{ maxWidth: 420 }} />
+        <div className="eh-grid g3 eh-mt" style={{ alignItems: "start" }}>
+          <div
+            className="eh-span2"
+            style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+          >
+            <div className="eh-skeleton card" />
+            <div className="eh-skeleton card" />
+          </div>
+          <div className="eh-skeleton card" />
+        </div>
       </EhShell>
     );
-  if (q.error || !q.data)
+  if (q.isError)
     return (
       <EhShell groups={MEMBER_NAV} brandSub="Member Portal">
-        <Empty
-          big="This pod isn't open to you."
-          p="If you think that's a mistake, message your facilitator."
-        >
-          <Link className="eh-btn ghost sm" to="/portal/pods">
-            ← Back to my pods
-          </Link>
-        </Empty>
+        {q.error.data?.code === "FORBIDDEN" ? (
+          <Empty
+            big="This pod isn't open to you."
+            p="If you think that's a mistake, message your facilitator."
+          >
+            <Link className="eh-btn ghost sm" to="/portal/pods">
+              ← Back to my pods
+            </Link>
+          </Empty>
+        ) : (
+          <LoadError what="this pod" onRetry={() => q.refetch()} />
+        )}
+      </EhShell>
+    );
+  if (!q.data)
+    return (
+      <EhShell groups={MEMBER_NAV} brandSub="Member Portal">
+        <LoadError what="this pod" onRetry={() => q.refetch()} />
       </EhShell>
     );
 
@@ -82,13 +104,11 @@ export default function PodDetail() {
 
   return (
     <EhShell groups={MEMBER_NAV} brandSub="Member Portal">
+      <EhCrumbs
+        items={[{ label: "Pods", to: "/portal/pods" }, { label: pod.name }]}
+      />
       <div className="eh-page-head">
         <div>
-          <div className="eh-eyebrow">
-            <Link to="/portal/pods" style={{ color: "inherit" }}>
-              ← Pods
-            </Link>
-          </div>
           <h1 className="eh-h1">{pod.name}</h1>
           <p className="eh-sub">{pod.description}</p>
         </div>

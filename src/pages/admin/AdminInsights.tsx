@@ -9,6 +9,7 @@ import {
   Modal,
   Field,
   Empty,
+  LoadError,
   toast,
   confirmDialog,
 } from "@/components/eh";
@@ -74,6 +75,7 @@ export default function AdminInsights() {
       </div>
 
       {q.isLoading && <Spinner />}
+      {q.isError && <LoadError what="insights" onRetry={() => q.refetch()} />}
       {q.data && q.data.length === 0 && (
         <div className="eh-card">
           <Empty

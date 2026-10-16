@@ -8,7 +8,7 @@ import {
   Pill,
   StatusPill,
   Empty,
-  Spinner,
+  LoadError,
   Modal,
   Field,
   toast,
@@ -47,15 +47,25 @@ export default function Governance() {
   if (q.isLoading)
     return (
       <EhShell groups={MEMBER_NAV} brandSub="Member Portal">
-        <Spinner />
+        <div className="eh-skeleton title" />
+        <div className="eh-skeleton line" style={{ width: "58%" }} />
+        <div className="eh-skeleton card eh-mb" />
+        <div className="eh-grid g2" style={{ alignItems: "start" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <div className="eh-skeleton card" />
+            <div className="eh-skeleton card" />
+          </div>
+          <div className="eh-skeleton card" />
+        </div>
       </EhShell>
     );
-  if (!q.data)
+  if (q.isError)
     return (
       <EhShell groups={MEMBER_NAV} brandSub="Member Portal">
-        <Empty big="Governance unavailable." />
+        <LoadError what="governance" onRetry={() => q.refetch()} />
       </EhShell>
     );
+  if (!q.data) return null;
 
   const { bodies, roles, minutes, policies, myRoles } = q.data;
 

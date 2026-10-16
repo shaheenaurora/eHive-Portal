@@ -1,5 +1,13 @@
+import { Link } from "react-router";
 import { trpc } from "@/providers/trpc";
-import { EhShell, MEMBER_NAV, StatusPill, TierPill } from "@/components/eh";
+import {
+  EhShell,
+  MEMBER_NAV,
+  StatusPill,
+  TierPill,
+  Empty,
+  LoadError,
+} from "@/components/eh";
 import { fmtDate } from "@/lib/ehf";
 
 const STEPS = [
@@ -44,24 +52,57 @@ export default function Status() {
             ? 3
             : 2;
 
+  if (me.isLoading)
+    return (
+      <EhShell groups={MEMBER_NAV} brandSub="Member Portal">
+        <div className="eh-skeleton title" />
+        <div className="eh-skeleton line" style={{ width: "55%" }} />
+        <div className="eh-skeleton card eh-mb" />
+        <div className="eh-skeleton card" />
+      </EhShell>
+    );
+  if (me.isError)
+    return (
+      <EhShell groups={MEMBER_NAV} brandSub="Member Portal">
+        <LoadError what="your application" onRetry={() => me.refetch()} />
+      </EhShell>
+    );
+
   return (
     <EhShell groups={MEMBER_NAV} brandSub="Member Portal">
       <div className="eh-page-head">
         <div>
           <div className="eh-eyebrow">Application status</div>
           <h1 className="eh-h1">
-            {app?.status === "rejected"
-              ? "Not this time."
-              : "Your application is moving."}
+            {!app
+              ? "No application in progress."
+              : app.status === "rejected"
+                ? "Not this time."
+                : "Your application is moving."}
           </h1>
           <p className="eh-sub">
-            {app?.status === "rejected"
-              ? "The council passes on more applications than it accepts — you're welcome to reapply in six months."
-              : "Every application is read by a human. The typical cycle is five working days."}
+            {!app
+              ? "Start one when you're ready — the typical cycle is five working days."
+              : app.status === "rejected"
+                ? "The council passes on more applications than it accepts — you're welcome to reapply in six months."
+                : "Every application is read by a human. The typical cycle is five working days."}
           </p>
         </div>
         {app && <StatusPill status={app.status} />}
       </div>
+
+      {!app && (
+        <div className="eh-card">
+          <Empty
+            big="Nothing on file."
+            p="If you applied before, your application may have been withdrawn. Start a fresh one — it takes five minutes."
+          >
+            <Link className="eh-btn gold" to="/portal/apply">
+              Start your application →
+            </Link>
+          </Empty>
+        </div>
+      )}
 
       {app && app.status !== "rejected" && (
         <div className="eh-card">

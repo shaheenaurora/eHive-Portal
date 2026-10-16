@@ -8,8 +8,8 @@ import {
   PageHead,
   Pill,
   Empty,
+  LoadError,
   TierPill,
-  Spinner,
   Modal,
   Field,
   toast,
@@ -138,7 +138,16 @@ export default function Events() {
         ))}
       </div>
 
-      {q.isLoading && <Spinner />}
+      {q.isLoading && (
+        <div className="eh-grid g3" style={{ alignItems: "start" }}>
+          <div className="eh-skeleton card" />
+          <div className="eh-skeleton card" />
+          <div className="eh-skeleton card" />
+        </div>
+      )}
+      {q.isError && (
+        <LoadError what="the calendar" onRetry={() => q.refetch()} />
+      )}
       {q.data && list.length === 0 && (
         <div className="eh-card">
           <Empty

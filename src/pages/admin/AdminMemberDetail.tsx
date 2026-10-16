@@ -14,6 +14,8 @@ import {
   Field,
   Pill,
   RefCode,
+  EhCrumbs,
+  LoadError,
   toast,
 } from "@/components/eh";
 import { AdminKycPanel } from "@/components/AdminKycPanel";
@@ -129,6 +131,12 @@ export default function AdminMemberDetail() {
         <Spinner />
       </EhShell>
     );
+  if (q.isError)
+    return (
+      <EhShell groups={ADMIN_NAV} brandSub="Admin">
+        <LoadError what="this member" onRetry={() => q.refetch()} />
+      </EhShell>
+    );
   if (!q.data)
     return (
       <EhShell groups={ADMIN_NAV} brandSub="Admin">
@@ -159,13 +167,14 @@ export default function AdminMemberDetail() {
           ← Back
         </button>
       )}
+      <EhCrumbs
+        items={[
+          { label: "Members", to: "/admin/members" },
+          { label: userName ?? "Member" },
+        ]}
+      />
       <div className="eh-page-head">
         <div>
-          <div className="eh-eyebrow">
-            <Link to="/admin/members" style={{ color: "inherit" }}>
-              ← Members
-            </Link>
-          </div>
           <h1 className="eh-h1">
             <span
               className="eh-avatar"

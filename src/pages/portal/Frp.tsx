@@ -7,6 +7,7 @@ import {
   Pill,
   StatusPill,
   Empty,
+  LoadError,
   TierPill,
   Modal,
   Field,
@@ -106,7 +107,26 @@ export default function Frp() {
         sub="Twelve weeks from scattered materials to a data room a GCC fund can diligence in days. Deck, model, data room — reviewed by operators who have sat on both sides of the table."
       />
 
-      {!enrolled && (
+      {mine.isLoading ? (
+        <div className="eh-grid g3" style={{ alignItems: "start" }}>
+          <div className="eh-skeleton card" />
+          <div className="eh-skeleton card" />
+          <div className="eh-skeleton card" />
+        </div>
+      ) : mine.isError ? (
+        <LoadError
+          what="your programme enrolment"
+          onRetry={() => mine.refetch()}
+        />
+      ) : enrolled ? null : cohorts.isLoading ? (
+        <div className="eh-grid g3" style={{ alignItems: "start" }}>
+          <div className="eh-skeleton card" />
+          <div className="eh-skeleton card" />
+          <div className="eh-skeleton card" />
+        </div>
+      ) : cohorts.isError ? (
+        <LoadError what="open cohorts" onRetry={() => cohorts.refetch()} />
+      ) : (
         <div className="eh-grid g3">
           {(cohorts.data ?? []).map(c => (
             <div className="eh-card" key={c.id}>

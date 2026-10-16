@@ -9,6 +9,7 @@ import {
   Spinner,
   Modal,
   Field,
+  LoadError,
   toast,
   confirmDialog,
 } from "@/components/eh";
@@ -284,6 +285,9 @@ export default function AdminOrg() {
       </div>
 
       {q.isLoading && <Spinner />}
+      {q.isError && (
+        <LoadError what="the org tree" onRetry={() => q.refetch()} />
+      )}
       {q.data &&
         q.data.countries.length === 0 &&
         q.data.unassigned.length === 0 && (

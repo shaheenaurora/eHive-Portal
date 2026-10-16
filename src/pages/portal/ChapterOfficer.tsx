@@ -1,14 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/providers/trpc";
-import {
-  Modal,
-  Field,
-  Pill,
-  toast,
-  confirmDialog,
-  Empty,
-  Spinner,
-} from "@/components/eh";
+import { Modal, Field, Pill, toast, confirmDialog, Empty } from "@/components/eh";
 import { fmtDate } from "@/lib/ehf";
 import {
   EXPENSE_CATEGORY_KEYS,
@@ -128,7 +120,13 @@ function OfficerElections({
           Create election
         </button>
       </div>
-      {isLoading && <Spinner />}
+      {isLoading && (
+        <div aria-hidden="true">
+          <div className="eh-skeleton line" />
+          <div className="eh-skeleton line" style={{ width: "72%" }} />
+          <div className="eh-skeleton line" style={{ width: "48%" }} />
+        </div>
+      )}
       {!isLoading && elections.length === 0 && (
         <Empty
           big="No elections yet."
@@ -289,7 +287,13 @@ function OfficerMotions({
           Tabel motion
         </button>
       </div>
-      {isLoading && <Spinner />}
+      {isLoading && (
+        <div aria-hidden="true">
+          <div className="eh-skeleton line" />
+          <div className="eh-skeleton line" style={{ width: "72%" }} />
+          <div className="eh-skeleton line" style={{ width: "48%" }} />
+        </div>
+      )}
       {!isLoading && motions.length === 0 && (
         <Empty
           big="No motions yet."
@@ -425,7 +429,13 @@ function OfficerMeetings({
           Schedule meeting
         </button>
       </div>
-      {isLoading && <Spinner />}
+      {isLoading && (
+        <div aria-hidden="true">
+          <div className="eh-skeleton line" />
+          <div className="eh-skeleton line" style={{ width: "72%" }} />
+          <div className="eh-skeleton line" style={{ width: "48%" }} />
+        </div>
+      )}
       {!isLoading && meetings.length === 0 && (
         <Empty
           big="No meetings scheduled."
@@ -548,7 +558,13 @@ function OfficerFinance({
   return (
     <div className="eh-card">
       <h3 style={{ margin: 0 }}>Officer — Chapter finance</h3>
-      {isLoading && <Spinner />}
+      {isLoading && (
+        <div aria-hidden="true">
+          <div className="eh-skeleton line" />
+          <div className="eh-skeleton line" style={{ width: "72%" }} />
+          <div className="eh-skeleton line" style={{ width: "48%" }} />
+        </div>
+      )}
       {finance && (
         <div className="eh-grid g3 eh-mt" style={{ alignItems: "start" }}>
           <div className="eh-card eh-stat">
@@ -704,7 +720,13 @@ function OfficerFinanceReport({
   return (
     <div className="eh-card">
       <h3 style={{ margin: 0 }}>Officer — Finance report</h3>
-      {isLoading && <Spinner />}
+      {isLoading && (
+        <div aria-hidden="true">
+          <div className="eh-skeleton line" />
+          <div className="eh-skeleton line" style={{ width: "72%" }} />
+          <div className="eh-skeleton line" style={{ width: "48%" }} />
+        </div>
+      )}
       {report && t && (
         <>
           <div className="eh-grid g4 eh-mt" style={{ alignItems: "start" }}>
@@ -895,7 +917,13 @@ function OfficerEvents({
           Create event
         </button>
       </div>
-      {isLoading && <Spinner />}
+      {isLoading && (
+        <div aria-hidden="true">
+          <div className="eh-skeleton line" />
+          <div className="eh-skeleton line" style={{ width: "72%" }} />
+          <div className="eh-skeleton line" style={{ width: "48%" }} />
+        </div>
+      )}
       {!isLoading && events.length === 0 && (
         <Empty
           big="No chapter events."
@@ -1065,7 +1093,13 @@ function OfficerTransfers({
       <div className="eh-between">
         <h3 style={{ margin: 0 }}>Officer — Incoming transfers</h3>
       </div>
-      {isLoading && <Spinner />}
+      {isLoading && (
+        <div aria-hidden="true">
+          <div className="eh-skeleton line" />
+          <div className="eh-skeleton line" style={{ width: "72%" }} />
+          <div className="eh-skeleton line" style={{ width: "48%" }} />
+        </div>
+      )}
       {!isLoading && transfers.length === 0 && (
         <Empty
           big="No incoming transfers."

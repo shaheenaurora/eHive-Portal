@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { trpc } from "@/providers/trpc";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
@@ -10,7 +10,7 @@ import {
   Pill,
   StatusPill,
   TierPill,
-  Spinner,
+  LoadError,
   Modal,
   Field,
   Empty,
@@ -224,13 +224,41 @@ export default function Membership() {
   if (me.isLoading)
     return (
       <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif>
-        <Spinner />
+        <div className="eh-skeleton title" />
+        <div className="eh-skeleton line" style={{ width: "62%" }} />
+        <div className="eh-skeleton card eh-mb" />
+        <div className="eh-grid g3" style={{ alignItems: "start" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <div className="eh-skeleton card" />
+            <div className="eh-skeleton card" />
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <div className="eh-skeleton card" />
+            <div className="eh-skeleton card" />
+          </div>
+          <div className="eh-skeleton card" />
+        </div>
+      </EhShell>
+    );
+  if (me.isError && me.error.data?.code !== "FORBIDDEN")
+    return (
+      <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif>
+        <LoadError what="your membership" onRetry={() => me.refetch()} />
       </EhShell>
     );
   if (!member)
     return (
       <EhShell groups={MEMBER_NAV} brandSub="Member Portal" notif>
-        <Empty big="No membership yet." />
+        <div className="eh-card">
+          <Empty
+            big="No membership yet."
+            p="Once you apply and the Circle team approves, your tier, renewal and profile live here."
+          >
+            <Link className="eh-btn gold" to="/portal/apply">
+              Start an application →
+            </Link>
+          </Empty>
+        </div>
       </EhShell>
     );
 

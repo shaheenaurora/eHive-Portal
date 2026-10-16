@@ -10,6 +10,7 @@ import {
   Spinner,
   Modal,
   Field,
+  LoadError,
   toast,
   confirmDialog,
 } from "@/components/eh";
@@ -186,6 +187,9 @@ export default function AdminSaves() {
       </div>
 
       {q.isLoading && <Spinner />}
+      {q.isError && (
+        <LoadError what="save cases" onRetry={() => q.refetch()} />
+      )}
       {q.data && rows.length === 0 && (
         <div className="eh-card">
           <Empty

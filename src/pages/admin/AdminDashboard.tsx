@@ -9,7 +9,7 @@ import {
   StatusPill,
   Pill,
   Empty,
-  Spinner,
+  LoadError,
   Bar,
   adminHasScope,
 } from "@/components/eh";
@@ -30,7 +30,29 @@ export default function AdminDashboard() {
   if (q.isLoading)
     return (
       <EhShell groups={ADMIN_NAV} brandSub="Admin">
-        <Spinner />
+        <PageHead
+          eyebrow="Admin dashboard"
+          title="The circle at a glance"
+          sub="Membership, applications, events and website leads — live from the same database the portal runs on."
+        />
+        <AdminAttention />
+        <div className="eh-grid g4">
+          {[0, 1, 2, 3].map(i => (
+            <div key={i} className="eh-skeleton card" />
+          ))}
+        </div>
+        <div className="eh-grid g3 eh-mt" style={{ alignItems: "start" }}>
+          {[0, 1, 2].map(i => (
+            <div key={i} className="eh-skeleton card" />
+          ))}
+        </div>
+        {canLeads && <div className="eh-skeleton card eh-mt" />}
+      </EhShell>
+    );
+  if (q.isError)
+    return (
+      <EhShell groups={ADMIN_NAV} brandSub="Admin">
+        <LoadError what="the dashboard stats" onRetry={() => q.refetch()} />
       </EhShell>
     );
   if (!q.data)

@@ -9,6 +9,7 @@ import {
   Modal,
   Field,
   Empty,
+  LoadError,
   toast,
   confirmDialog,
 } from "@/components/eh";
@@ -156,6 +157,9 @@ export default function AdminConnect() {
               </button>
             </div>
             {buddy.isLoading && <Spinner />}
+            {buddy.isError && (
+              <LoadError what="the buddy board" onRetry={() => buddy.refetch()} />
+            )}
             {buddy.data && buddy.data.pairs.length === 0 && (
               <Empty big="No pairs yet." />
             )}
@@ -183,6 +187,9 @@ export default function AdminConnect() {
       {tab === "referrals" && (
         <div className="eh-card">
           {refs.isLoading && <Spinner />}
+          {refs.isError && (
+            <LoadError what="referrals" onRetry={() => refs.refetch()} />
+          )}
           {refs.data && refs.data.length === 0 && (
             <Empty
               big="No referrals yet."
@@ -280,6 +287,9 @@ export default function AdminConnect() {
               </div>
             ))}
           </div>
+          {deals.isError && (
+            <LoadError what="the deal board" onRetry={() => deals.refetch()} />
+          )}
           {deals.data && deals.data.length === 0 && (
             <div className="eh-card">
               <Empty big="Board is empty." />
@@ -291,6 +301,9 @@ export default function AdminConnect() {
       {tab === "121" && (
         <div className="eh-card">
           {oneToOnes.isLoading && <Spinner />}
+          {oneToOnes.isError && (
+            <LoadError what="1-2-1s" onRetry={() => oneToOnes.refetch()} />
+          )}
           {oneToOnes.data && oneToOnes.data.length === 0 && (
             <Empty big="No 1-2-1s logged yet." />
           )}

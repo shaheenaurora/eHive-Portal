@@ -7,7 +7,7 @@ import {
   PageHead,
   Pill,
   Empty,
-  Spinner,
+  LoadError,
   Modal,
   Field,
   Bar,
@@ -211,7 +211,19 @@ export default function Chapter() {
         sub="Chapters run their own elections, motions and budgets — one member, one vote."
       />
 
-      {q.isLoading && <Spinner />}
+      {q.isLoading && (
+        <div aria-hidden="true">
+          <div className="eh-grid g3 eh-mb">
+            <div className="eh-skeleton card" />
+            <div className="eh-skeleton card" />
+            <div className="eh-skeleton card" />
+          </div>
+          <div className="eh-skeleton card" />
+        </div>
+      )}
+      {q.isError && (
+        <LoadError what="your chapter" onRetry={() => q.refetch()} />
+      )}
 
       {pending && (
         <div className="eh-banner eh-mb">

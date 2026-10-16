@@ -9,6 +9,7 @@ import {
   Modal,
   Field,
   Empty,
+  LoadError,
   toast,
 } from "@/components/eh";
 import { fmtDate } from "@/lib/ehf";
@@ -118,6 +119,9 @@ export default function AdminAdmissions() {
       {tab === "zenith" && (
         <>
           {zen.isLoading && <Spinner />}
+          {zen.isError && (
+            <LoadError what="the Zenith pipeline" onRetry={() => zen.refetch()} />
+          )}
           {zen.data && zen.data.apps.length === 0 && (
             <div className="eh-card">
               <Empty
@@ -218,6 +222,9 @@ export default function AdminAdmissions() {
           </div>
           <div className="eh-card">
             {intros.isLoading && <Spinner />}
+            {intros.isError && (
+              <LoadError what="the investor tracker" onRetry={() => intros.refetch()} />
+            )}
             {intros.data && intros.data.length === 0 && (
               <Empty big="No intros logged yet." />
             )}
@@ -247,6 +254,9 @@ export default function AdminAdmissions() {
       {tab === "pdpl" && (
         <div className="eh-card">
           {reqs.isLoading && <Spinner />}
+          {reqs.isError && (
+            <LoadError what="the data requests" onRetry={() => reqs.refetch()} />
+          )}
           {reqs.data && reqs.data.length === 0 && (
             <Empty
               big="No data requests."

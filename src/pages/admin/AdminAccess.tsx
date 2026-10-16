@@ -6,10 +6,10 @@ import {
   ADMIN_NAV,
   PageHead,
   Pill,
-  Empty,
   Spinner,
   Field,
   RefCode,
+  LoadError,
   toast,
   confirmDialog,
 } from "@/components/eh";
@@ -77,17 +77,7 @@ export default function AdminAccess() {
 
       {roster.isLoading && <Spinner />}
       {roster.isError && (
-        <div className="eh-card">
-          <Empty
-            big="Couldn't load the team."
-            p="There was a problem reaching the server."
-          />
-          <div style={{ textAlign: "center" }}>
-            <button className="eh-btn ghost" onClick={() => roster.refetch()}>
-              Try again
-            </button>
-          </div>
-        </div>
+        <LoadError what="the team" onRetry={() => roster.refetch()} />
       )}
 
       {roster.data &&

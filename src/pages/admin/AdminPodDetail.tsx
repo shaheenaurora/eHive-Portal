@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { Link, useParams, useNavigate } from "react-router";
+import { useParams, useNavigate } from "react-router";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { trpc } from "@/providers/trpc";
 import {
@@ -13,6 +13,8 @@ import {
   Spinner,
   Modal,
   Field,
+  EhCrumbs,
+  LoadError,
   toast,
   confirmDialog,
 } from "@/components/eh";
@@ -97,6 +99,12 @@ export default function AdminPodDetail() {
         <Spinner />
       </EhShell>
     );
+  if (q.isError)
+    return (
+      <EhShell groups={ADMIN_NAV} brandSub="Admin">
+        <LoadError what="this pod" onRetry={() => q.refetch()} />
+      </EhShell>
+    );
   if (!q.data)
     return (
       <EhShell groups={ADMIN_NAV} brandSub="Admin">
@@ -159,13 +167,11 @@ export default function AdminPodDetail() {
           ← Back
         </button>
       )}
+      <EhCrumbs
+        items={[{ label: "Pods", to: "/admin/pods" }, { label: pod.name }]}
+      />
       <div className="eh-page-head">
         <div>
-          <div className="eh-eyebrow">
-            <Link to="/admin/pods" style={{ color: "inherit" }}>
-              ← Pods
-            </Link>
-          </div>
           <h1 className="eh-h1">{pod.name}</h1>
           <p className="eh-sub">
             {pod.cadence ?? ""} · {pod.facilitator ?? "No facilitator"}

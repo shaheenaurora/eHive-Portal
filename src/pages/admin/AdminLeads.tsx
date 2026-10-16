@@ -11,6 +11,7 @@ import {
   Modal,
   Field,
   Bar,
+  LoadError,
   toast,
 } from "@/components/eh";
 import { fmtDateTime } from "@/lib/ehf";
@@ -150,13 +151,7 @@ export default function AdminLeads() {
 
       {active.isLoading && <Spinner />}
       {active.isError && (
-        <div className="eh-card">
-          <Empty big="Couldn't load leads." p="Try again in a moment.">
-            <button className="eh-btn ghost" onClick={() => active.refetch()}>
-              Retry
-            </button>
-          </Empty>
-        </div>
+        <LoadError what="leads" onRetry={() => active.refetch()} />
       )}
       {active.data && active.data.length === 0 && (
         <div className="eh-card">

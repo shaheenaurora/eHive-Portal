@@ -803,6 +803,18 @@ export function EhShell(props: {
             </div>
           </div>
           <InstallAppEntry />
+          <a
+            className="eh-signout"
+            href="mailto:hello@ehiveglobal.com"
+            style={{
+              display: "block",
+              textAlign: "center",
+              textDecoration: "none",
+              marginBottom: ".5rem",
+            }}
+          >
+            Support &amp; help
+          </a>
           <button className="eh-signout" onClick={() => logout()}>
             Sign out
           </button>

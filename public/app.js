@@ -2445,3 +2445,70 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
     });
   });
 }
+
+/* ===== Cookie notice =====
+   One-time acknowledgement banner. Shown until the visitor accepts; the
+   acknowledgement is stored in localStorage ("eh-cookie-ok") so it appears
+   once per browser. Purely informational — the site sets no advertising or
+   analytics cookies (see privacy.html#cookies). */
+(function () {
+  "use strict";
+  if (!document.body) return;
+
+  var KEY = "eh-cookie-ok";
+  function acknowledged() {
+    try {
+      return window.localStorage.getItem(KEY) === "1";
+    } catch (e) {
+      return false;
+    }
+  }
+  function acknowledge() {
+    try {
+      window.localStorage.setItem(KEY, "1");
+    } catch (e) {
+      /* storage unavailable — the banner simply won't persist */
+    }
+  }
+  if (acknowledged()) return;
+
+  var el = document.createElement("aside");
+  el.className = "eh-cookie";
+  el.setAttribute("role", "region");
+  el.setAttribute("aria-label", "Cookie notice");
+
+  var p = document.createElement("p");
+  p.textContent =
+    "We use a small set of essential cookies to keep the site and member " +
+    "portal working — no advertising or tracking cookies. By continuing, " +
+    "you acknowledge how we use them.";
+
+  var row = document.createElement("div");
+  row.className = "eh-cookie-row";
+
+  var more = document.createElement("a");
+  more.href = "privacy.html#cookies";
+  more.textContent = "Learn more";
+
+  var btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "eh-cookie-accept";
+  btn.textContent = "Accept";
+
+  function dismiss() {
+    acknowledge();
+    el.classList.remove("eh-cookie-show");
+    if (el.parentNode) el.parentNode.removeChild(el);
+  }
+  btn.addEventListener("click", dismiss);
+
+  row.appendChild(more);
+  row.appendChild(btn);
+  el.appendChild(p);
+  el.appendChild(row);
+  document.body.appendChild(el);
+
+  requestAnimationFrame(function () {
+    el.classList.add("eh-cookie-show");
+  });
+})();

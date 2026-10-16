@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate } from "react-router";
 import { trpc } from "@/providers/trpc";
-import { EhShell, MEMBER_NAV, Field, Pill, toast } from "@/components/eh";
+import { EhShell, MEMBER_NAV, Field, Pill, LoadError, toast } from "@/components/eh";
 import {
   TIERS,
   TIER_LABEL,
@@ -196,7 +196,13 @@ export default function Apply() {
           </label>
 
           {gate.isLoading && (
-            <p className="eh-muted eh-sm">Loading membership settings…</p>
+            <div className="eh-skeleton line" style={{ width: "40%" }} />
+          )}
+          {gate.isError && (
+            <LoadError
+              what="membership settings"
+              onRetry={() => gate.refetch()}
+            />
           )}
           {gateRequired && !gate.isLoading && (
             <div
@@ -268,6 +274,7 @@ export default function Apply() {
               apply.isPending ||
               !consent ||
               gate.isLoading ||
+              gate.isError ||
               (gateMode === "muslim_only" && !muslimIdentity) ||
               (gateMode === "values_gated" && !valuesAligned)
             }

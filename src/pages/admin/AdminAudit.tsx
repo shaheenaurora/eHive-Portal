@@ -8,6 +8,7 @@ import {
   Empty,
   Spinner,
   RefCode,
+  LoadError,
   toast,
 } from "@/components/eh";
 import { fmtDateTime } from "@/lib/ehf";
@@ -125,17 +126,7 @@ export default function AdminAudit() {
 
       {q.isLoading && <Spinner />}
       {q.isError && (
-        <div className="eh-card">
-          <Empty
-            big="Couldn't load the audit trail."
-            p="There was a problem reaching the server."
-          />
-          <div style={{ textAlign: "center" }}>
-            <button className="eh-btn ghost" onClick={() => q.refetch()}>
-              Try again
-            </button>
-          </div>
-        </div>
+        <LoadError what="the audit trail" onRetry={() => q.refetch()} />
       )}
       {q.data && q.data.length === 0 && (
         <div className="eh-card">

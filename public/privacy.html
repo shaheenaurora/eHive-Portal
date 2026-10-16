@@ -51,6 +51,7 @@
     <meta name="apple-mobile-web-app-title" content="eHive" />
   </head>
   <body class="eh-v2">
+    <!-- LEGAL DRAFT pending counsel review 2026-10-17 -->
     <a class="skip" href="#main">Skip to content</a>
 
     <header class="h-nav site-nav" id="siteNav">
@@ -90,62 +91,256 @@
           <nav class="h-legal-nav reveal" aria-label="Legal">
             <a href="privacy.html" aria-current="page">Privacy</a>
             <a href="terms.html">Terms</a>
+            <a href="refunds.html">Refunds</a>
           </nav>
           <p class="h-eyebrow reveal" style="--d: 0.05s">Legal</p>
           <h1 class="h-h2 reveal" id="priv-h" style="margin-top: 0; --d: 0.1s">
             Privacy Policy
           </h1>
           <p class="h-lede reveal" style="--d: 0.15s">
-            Effective at launch — <span data-launch-date>1 October 2026</span>.
-            This policy governs ehiveglobal.com and the eHive member portal.
+            Effective: [launch date]. This policy governs ehiveglobal.com and
+            the eHive member portal. This is a pre-launch draft for counsel
+            review.
           </p>
 
           <div class="h-legal-body reveal" style="--d: 0.2s">
-            <h2>What we collect</h2>
+            <h2>1. Who we are</h2>
             <p>
-              Only what you hand us directly: your name, email, phone number and
-              the answers you give our intake forms (business activity, product
-              or tier interest, questions). If you book a call, we store the
-              slot you chose so the right person shows up.
+              This policy explains what eHive (&ldquo;we&rdquo;, &ldquo;us&rdquo;)
+              collects, why, and your rights over it. eHive operates
+              ehiveglobal.com and the eHive member portal from Dubai, United
+              Arab Emirates, for the eHive Circle founder community. For any
+              privacy question, email
+              <a href="mailto:hello@ehiveglobal.com">hello@ehiveglobal.com</a>
+              — that inbox acts as our data-protection contact.
             </p>
 
-            <h2>What we use it for</h2>
+            <h2>2. What we collect</h2>
+            <p>We collect only what the Services genuinely need:</p>
             <ul>
-              <li>Routing your request to the right team and replying to it</li>
               <li>
-                Sending what you explicitly asked for — a quote, a breakdown,
-                the Journal
+                <strong>Account details</strong> — name, email address, phone
+                number, and a password stored only as a salted hash. You may
+                also enable two-factor authentication.
               </li>
-              <li>Operating your membership, if you join the Circle</li>
+              <li>
+                <strong>Application answers</strong> — what you tell us in
+                membership and programme applications (about you and your
+                business), used to review and process your application.
+              </li>
+              <li>
+                <strong>Verification (KYC) details</strong> — where the
+                membership requires it, a national ID or passport number.
+                These numbers are encrypted at rest (AES-256-GCM) and are only
+                decrypted when an authorised team member needs to verify them.
+              </li>
+              <li>
+                <strong>Membership activity</strong> — the things the portal
+                tracks so the community works: event RSVPs and attendance, pod
+                sessions, one-to-ones, directory visibility preferences, and
+                engagement signals such as Hive Score events.
+              </li>
+              <li>
+                <strong>Payment records</strong> — invoices, amounts, currency
+                and payment status, recorded by our team when you pay by bank
+                transfer, or automatically once card payments are enabled.
+                Your card details themselves never reach us (see section 4).
+              </li>
+              <li>
+                <strong>Enquiries and forms</strong> — leads you send through
+                contact, partner, franchise, or scorecard forms.
+              </li>
+            </ul>
+
+            <h2>3. What we use it for</h2>
+            <ul>
+              <li>Reviewing applications and admitting members</li>
+              <li>
+                Operating your membership: renewals, events, pods, directory,
+                notifications, and member support
+              </li>
+              <li>
+                Keeping the community safe and the Code of Conduct enforced
+              </li>
+              <li>
+                Complying with legal, tax, and accounting obligations in the
+                UAE
+              </li>
+              <li>Replying to your enquiries and sending what you asked for</li>
             </ul>
             <p>
-              We do not sell your data. We do not buy lists. We do not email you
-              about things you didn&rsquo;t ask for.
+              We do not sell your data, buy lists, or run advertising
+              trackers. We do not email you about things you didn&rsquo;t ask
+              for.
             </p>
 
-            <h2>What we never do</h2>
+            <h2>4. Payments and card data</h2>
             <p>
-              No advertising trackers, no third-party data brokers, no shadow
-              profiles. Analytics, where used, are aggregate and
-              privacy-respecting.
+              At launch we collect membership fees by bank transfer, recorded
+              manually against your membership. When card payments are
+              enabled, they are processed by our payment provider (Stripe)
+              through its hosted checkout. Your full card number is processed
+              by the provider on its own pages — eHive never sees it, never
+              stores it, and has no card data on its servers. We keep only the
+              payment record: reference, amount, currency, status, and
+              provider reference.
             </p>
 
-            <!-- COPY-NEEDED: privacy-body -->
-            <div class="ph-block">
-              <div class="ph-kicker">Full policy at launch</div>
-              <p>
-                The complete policy — retention periods, processor list, your
-                rights under UAE law and how to exercise them — is published
-                here before the first form goes live. Until then, this page
-                states our practice in plain language, and we honor it.
-              </p>
-            </div>
-
-            <h2>Contact</h2>
+            <h2>5. Who processes data for us</h2>
             <p>
-              Privacy questions route through
-              <a href="contact.html">Contact us</a>; a human replies within one
-              working day.
+              We use a small set of service providers, each under appropriate
+              safeguards, and only for the service they provide to us:
+            </p>
+            <ul>
+              <li>
+                <strong>Hosting</strong> — the application and its MySQL
+                database run on Railway (with managed database backups).
+              </li>
+              <li>
+                <strong>Email</strong> — transactional and notification mail
+                is delivered through Zoho (ZeptoMail) over HTTPS, or SMTP from
+                the same provider family.
+              </li>
+              <li>
+                <strong>Payments</strong> — Stripe, when card payments are
+                enabled (see section 4).
+              </li>
+              <li>
+                <strong>Web-push notifications</strong> — if you opt in, your
+                browser&rsquo;s push subscription (an endpoint URL and keys) is
+                stored so we can send you portal notifications; you can revoke
+                it at any time from your browser or device settings.
+              </li>
+              <li>
+                <strong>Backups</strong> — database dumps and snapshots are
+                stored with our hosting provider and, where configured,
+                encrypted off-platform object storage, so we can recover from
+                incidents.
+              </li>
+            </ul>
+
+            <h2>6. Retention</h2>
+            <p>
+              We keep personal data no longer than needed for the purposes
+              above:
+            </p>
+            <ul>
+              <li>
+                <strong>Leads and enquiries</strong> are kept while they are
+                active; a retention schedule in our systems anonymises lead
+                personal data (name, email, payload) once it passes the
+                configured retention age.
+              </li>
+              <li>
+                <strong>Membership records</strong> are kept for the life of
+                the membership and a period afterwards to handle renewals,
+                disputes, and legal claims.
+              </li>
+              <li>
+                <strong>Financial records</strong> (invoices, payments) are
+                kept as required by UAE accounting and tax law, even where
+                other personal data has been deleted or anonymised.
+              </li>
+            </ul>
+
+            <h2 id="cookies">7. Cookies and similar technologies</h2>
+            <p>
+              We use the minimum needed to run the site and portal — no
+              advertising cookies, no third-party trackers, no analytics
+              cookies:
+            </p>
+            <ul>
+              <li>
+                <strong>Session cookie</strong> — when you log in, the portal
+                sets a signed session cookie (<code>__Host-eh_sid</code>) so it
+                knows who you are between pages. It is HttpOnly, Secure, and
+                SameSite=Strict, and it expires when you log out or after a
+                short inactivity period.
+              </li>
+              <li>
+                <strong>Browser storage</strong> — some pages use
+                <code>sessionStorage</code> or <code>localStorage</code> for
+                lightweight on-device state, such as remembering you dismissed
+                a notice or the cookie-banner acknowledgement flag. These
+                never contain personal data.
+              </li>
+              <li>
+                <strong>Cookie notice</strong> — a small banner asks visitors
+                to acknowledge this policy on first visit. Accepting stores
+                the acknowledgement in your browser so it is not shown again.
+              </li>
+            </ul>
+
+            <h2>8. Your rights under UAE law</h2>
+            <p>
+              Under the UAE Federal Decree-Law No. 45 of 2021 on Personal
+              Data Protection (&ldquo;PDPL&rdquo;), you have the right to
+              access, correct, delete, and object to the processing of your
+              personal data, and to request a copy of it in a portable form.
+              You can exercise these rights in two ways:
+            </p>
+            <ul>
+              <li>
+                <strong>In the portal</strong> — the Membership page has
+                &ldquo;Request data export&rdquo; and &ldquo;Request
+                deletion&rdquo; actions that send the request straight to our
+                fulfilment queue. Export produces a copy of your data;
+                deletion anonymises your record and removes your personal
+                content, keeping only the financial records the law requires.
+              </li>
+              <li>
+                <strong>By email</strong> — write to
+                <a href="mailto:hello@ehiveglobal.com"
+                  >hello@ehiveglobal.com</a
+                >
+                from the email address on your account and tell us what you
+                need. We respond within one working day and fulfil verified
+                requests without undue delay.
+              </li>
+            </ul>
+            <p>
+              Where deletion is restricted (for example, financial records we
+              must keep), we will tell you what is kept and why. You may
+              complain to the UAE Data Office if you believe your data has
+              been misused.
+            </p>
+
+            <h2>9. International transfers</h2>
+            <p>
+              Our hosting and service providers may process data outside the
+              UAE. Where that happens, we rely on appropriate safeguards —
+              contractual protections, encryption in transit, and the
+              providers&rsquo; own compliance programmes — and we transfer only
+              what the service requires.
+            </p>
+
+            <h2>10. Security</h2>
+            <p>
+              Access to the portal requires a password (stored as a salted,
+              computationally-hard hash) with optional two-factor
+              authentication. Sessions are signed, short-lived, and scoped to
+              your device. ID numbers and similar sensitive fields are
+              encrypted at rest. Traffic is encrypted in transit (HTTPS with
+              HSTS), administrative actions are audit-logged, and access to
+              member data inside the team is limited to those who need it to
+              operate the Services.
+            </p>
+
+            <h2>11. Changes to this policy</h2>
+            <p>
+              When this policy changes meaningfully, we update the
+              &ldquo;Effective&rdquo; date above and, for material changes,
+              tell members by email or in the portal before the change takes
+              effect. The version you accepted when you joined is recorded
+              with your account as evidence of consent.
+            </p>
+
+            <h2>12. Contact</h2>
+            <p>
+              Privacy questions, rights requests, and anything else:
+              <a href="mailto:hello@ehiveglobal.com">hello@ehiveglobal.com</a>
+              or through <a href="contact.html">Contact us</a>. A human
+              replies within one working day.
             </p>
           </div>
         </div>
@@ -215,6 +410,7 @@
           <div>
             <a href="privacy.html">Privacy</a>
             <a href="terms.html" style="margin-left: 1rem">Terms</a>
+            <a href="refunds.html" style="margin-left: 1rem">Refunds</a>
             <a href="code-of-conduct.html" style="margin-left: 1rem"
               >Code of Conduct</a
             >

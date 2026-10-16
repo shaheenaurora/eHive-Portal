@@ -8590,3 +8590,83 @@ a.art:hover {
     transform: none;
   }
 }
+
+/* ---- cookie notice ---------------------------------------------------------
+   Lightweight acknowledgement banner, injected by app.js once per browser.
+   Sits bottom-left so it never covers the WhatsApp CTA (bottom-right). */
+.eh-cookie {
+  position: fixed;
+  left: 18px;
+  bottom: 18px;
+  z-index: 150;
+  max-width: 26rem;
+  background: var(--h-paper);
+  border: 1px solid var(--h-line);
+  border-radius: var(--h-radius);
+  box-shadow: var(--h-shadow-lg);
+  padding: 1rem 1.25rem;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--h-navy);
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+  transition:
+    opacity 0.25s var(--h-ease),
+    transform 0.25s var(--h-ease);
+}
+
+.eh-cookie.eh-cookie-show {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.eh-cookie p {
+  margin: 0 0 0.75rem;
+}
+
+.eh-cookie a {
+  color: var(--h-coral);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.eh-cookie-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.eh-cookie-accept {
+  appearance: none;
+  border: 0;
+  border-radius: var(--h-radius-sm);
+  background: var(--h-coral);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 0.5rem 1.1rem;
+  cursor: pointer;
+}
+
+.eh-cookie-accept:hover {
+  background: var(--h-coral-2);
+}
+
+@media (max-width: 560px) {
+  .eh-cookie {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    max-width: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eh-cookie {
+    transition: none;
+    transform: none;
+  }
+}

@@ -7,7 +7,7 @@ import {
   PageHead,
   Pill,
   Empty,
-  Spinner,
+  LoadError,
   Modal,
   Field,
   TierPill,
@@ -332,7 +332,19 @@ export default function Connect() {
           )}
 
           <div className="eh-card">
-            {oneToOnes.isLoading && <Spinner />}
+            {oneToOnes.isLoading && (
+              <div aria-hidden="true">
+                <div className="eh-skeleton line" />
+                <div className="eh-skeleton line" style={{ width: "68%" }} />
+                <div className="eh-skeleton line" style={{ width: "45%" }} />
+              </div>
+            )}
+            {oneToOnes.isError && (
+              <LoadError
+                what="your 1-2-1s"
+                onRetry={() => oneToOnes.refetch()}
+              />
+            )}
             {oneToOnes.data && myLog.length === 0 && (
               <Empty
                 big="No 1-2-1s yet."
@@ -381,6 +393,19 @@ export default function Connect() {
             earn double. One referral per quarter unlocks Deal Flow posting.
           </p>
           <div className="eh-card">
+            {referrals.isLoading && (
+              <div aria-hidden="true">
+                <div className="eh-skeleton line" />
+                <div className="eh-skeleton line" style={{ width: "62%" }} />
+                <div className="eh-skeleton line" style={{ width: "44%" }} />
+              </div>
+            )}
+            {referrals.isError && (
+              <LoadError
+                what="your referrals"
+                onRetry={() => referrals.refetch()}
+              />
+            )}
             {referrals.data && referrals.data.length === 0 && (
               <Empty
                 big="No referrals yet."
@@ -440,6 +465,15 @@ export default function Connect() {
             </div>
           )}
           <div className="eh-grid g2">
+            {deals.isLoading && (
+              <>
+                <div className="eh-skeleton card" />
+                <div className="eh-skeleton card" />
+              </>
+            )}
+            {deals.isError && (
+              <LoadError what="the board" onRetry={() => deals.refetch()} />
+            )}
             {(deals.data?.deals ?? []).map(d => (
               <div className="eh-card" key={d.id}>
                 <div className="eh-between">
