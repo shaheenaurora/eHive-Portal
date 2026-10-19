@@ -932,8 +932,34 @@ body.embed .assess-wrap {
   margin: 0 0 16px;
 }
 
+.assess-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 22px 0 0;
+}
+.assess-pdf-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+.assess-pdf-btn svg {
+  flex: 0 0 auto;
+}
+.assess-pdf-btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+.assess-pdf-btn.assess-pdf-failed {
+  background: #a5342b;
+}
+
 .assess-print-btn {
   margin: 18px 0 0;
+}
+.assess-actions .assess-print-btn {
+  margin: 0;
 }
 
 /* ---- AI narrative upgrade ------------------------------------------------- */
@@ -1062,7 +1088,8 @@ body.embed .assess-wrap {
     padding: 0 8mm;
   }
   .assess-report-cta,
-  .assess-print-btn {
+  .assess-print-btn,
+  .assess-actions {
     display: none !important;
   }
   .assess-ring .assess-ring-fg,

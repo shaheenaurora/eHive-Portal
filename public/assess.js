@@ -1,13 +1,20 @@
 /* ==========================================================================
    eHive — AssessEngine
    Shared client-side assessment engine for the standalone tool pages
-   (brand-check today; clarity-scorecard next). Vanilla JS, no deps.
+   (brand-check + clarity-scorecard). Vanilla JS core; the PDF report
+   builder imports pdf-lib + qrcode, which esbuild resolves from
+   node_modules when bundling build:public (--bundle --format=iife).
 
    Public API
    ----------
    AssessEngine.mount(config)  — render a full assessment into #assess-root
    AssessEngine.score(config, answers)  — pure scoring → {dims,total,band}
    AssessEngine.bandFor(config, value)  — resolve a value to its band object
+   AssessEngine.buildReportPdf(config, state) — A4 multi-page report
+                                          → Promise<Uint8Array>. Pure:
+                                          the caller decides which narrative
+                                          (template vs AI-enhanced) goes in
+                                          state.ai.
 
    config = {
      tool: "brand-check",                 // endpoint + storage namespace
@@ -54,6 +61,9 @@
      POST /api/report/checkout             → {url} | 503 (never called while launchOffer)
      POST /api/report/compose              → {narrative} | 502/503 → keep template
    ========================================================================== */
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import QRCode from "qrcode";
+
 (function (global) {
   "use strict";
 
@@ -205,6 +215,858 @@
     });
     var total = wtotal ? Math.round(wsum / wtotal) : 0;
     return { dims: dims, total: total, band: bandFor(config, total) };
+  }
+
+  /* ------------------------------------------------------- PDF report ----
+   * Client-side report builder (pdf-lib + qrcode, bundled by build:public).
+   * Design system mirrors assess.css tokens: navy #0b1526/#0f1c3a, coral
+   * #da3a22, gold #b8862e, paper #faf8f2, ink #141312. Standard fonts only
+   * (Helvetica / Helvetica-Bold) so text stays selectable and the file
+   * stays small. Layout idiom (wrap helper, section boxes, chips) is ported
+   * from api/lib/pdf-invoice.ts. */
+
+  var PDF_A4_W = 595.28;
+  var PDF_A4_H = 841.89;
+
+  /* Strip control characters; everything else in the narrative copy is
+   * WinAnsi-safe (curly quotes, dashes, middle dots, ™) which is the
+   * encoding pdf-lib uses for the standard fonts. */
+  function pdfClean(s) {
+    return String(s == null ? "" : s).replace(/[ --]/g, "");
+  }
+
+  function pdfWrap(text, font, size, maxWidth) {
+    var words = pdfClean(text).split(/\s+/);
+    var lines = [];
+    var cur = "";
+    for (var i = 0; i < words.length; i++) {
+      var test = cur ? cur + " " + words[i] : words[i];
+      if (font.widthOfTextAtSize(test, size) <= maxWidth) {
+        cur = test;
+      } else {
+        if (cur) lines.push(cur);
+        cur = words[i];
+      }
+    }
+    if (cur) lines.push(cur);
+    return lines.length ? lines : [""];
+  }
+
+  /* Aurora product names take ™ on first mention (report-knowledge.md). */
+  var PDF_TRADEMARKS = [
+    [/Clarity Sprint(?!™)/g, "Clarity Sprint™"],
+    [/Strategy Sprint(?!™)/g, "Strategy Sprint™"],
+    [/Gap\s*Navigator(?!™)/g, "Gap Navigator™"],
+    [/Momentum90(?!™)/g, "Momentum90™"],
+    [/OpsBlueprint(?!™)/g, "OpsBlueprint™"],
+    [/Brand\s*3D(?!™)/g, "Brand3D™"],
+    [/Founder Mentoring(?!™)/g, "Founder Mentoring™"],
+  ];
+  function pdfTrademark(s) {
+    var out = String(s == null ? "" : s);
+    for (var i = 0; i < PDF_TRADEMARKS.length; i++) {
+      out = out.replace(PDF_TRADEMARKS[i][0], PDF_TRADEMARKS[i][1]);
+    }
+    return out;
+  }
+
+  /* Cover title from the page title: "The eHive Brand Diagnostic" →
+   * "Brand Diagnostic Report"; "The eHive Business Clarity Scorecard" →
+   * "Business Clarity Report". */
+  function pdfReportTitle(config) {
+    var t = String(config.title || "Assessment").replace(/^The\s+eHive\s+/i, "");
+    if (/scorecard\s*$/i.test(t)) t = t.replace(/scorecard\s*$/i, "Report");
+    else if (!/report\s*$/i.test(t)) t += " Report";
+    return t;
+  }
+
+  /* Recommendation selection mirrors the on-screen dimRecs/allRecs:
+   * band-locked recs only in their band, min-threshold recs above their
+   * floor, sorted impact-high first then effort-low first. */
+  function pdfRecs(config, dims) {
+    var narr = config.narrative || {};
+    var out = [];
+    dims.forEach(function (dm) {
+      var band = bandFor(config, dm.pct);
+      ((narr.recommendations || {})[dm.key] || []).forEach(function (r) {
+        var ok =
+          r.bandKey != null
+            ? r.bandKey === band.key
+            : dm.pct >= (r.min != null ? r.min : 0);
+        if (ok) out.push({ dim: dm, rec: r });
+      });
+    });
+    function ri(r) {
+      return r.impact === "high" ? 0 : 1;
+    }
+    function re(r) {
+      return r.effort === "low" ? 0 : 1;
+    }
+    out.sort(function (a, b) {
+      return ri(a.rec) - ri(b.rec) || re(a.rec) - re(b.rec);
+    });
+    return out;
+  }
+
+  function pdfProductForHref(href) {
+    var m = /[?&]product=([a-z0-9-]+)/i.exec(href || "");
+    if (!m) return null;
+    var map = {
+      "brand-3d": "Brand3D™",
+      "clarity-sprint": "Clarity Sprint™",
+      "strategy-sprint": "Strategy Sprint™",
+      opsblueprint: "OpsBlueprint™",
+      gapnavigator: "Gap Navigator™",
+      momentum90: "Momentum90™",
+    };
+    return map[m[1].toLowerCase()] || null;
+  }
+
+  function pdfAbsoluteUrl(href) {
+    try {
+      return new URL(href, global.location.href).toString();
+    } catch (e) {
+      return "https://www.ehiveglobal.com/" + String(href || "").replace(/^\/+/, "");
+    }
+  }
+
+  async function buildReportPdf(config, state) {
+    state = state || {};
+    var dims = state.dims || [];
+    var total = state.total != null ? Number(state.total) : 0;
+    var band = state.band || bandFor(config, total);
+    var ai = state.ai || null;
+    var answers = state.answers || {};
+    var narr = config.narrative || {};
+    var toolTitle = config.toolTitle || config.title || "Assessment";
+    var title = pdfReportTitle(config);
+    var name = pdfClean(answers.name || answers.company || "").trim();
+    var dateStr = new Date().toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+
+    /* ---- design tokens ---- */
+    var NAVY = rgb(11 / 255, 21 / 255, 38 / 255); // #0b1526
+    var NAVY_MID = rgb(30 / 255, 49 / 255, 87 / 255); // #1e3157
+    var NAVY_LINE = rgb(22 / 255, 38 / 255, 76 / 255); // #16264c
+    var CORAL = rgb(218 / 255, 58 / 255, 34 / 255); // #da3a22
+    var GOLD = rgb(184 / 255, 134 / 255, 46 / 255); // #b8862e
+    var GOLD_DARK = rgb(138 / 255, 106 / 255, 29 / 255); // #8a6a1d
+    var PAPER = rgb(250 / 255, 248 / 255, 242 / 255); // #faf8f2
+    var PANEL = rgb(243 / 255, 241 / 255, 234 / 255); // #f3f1ea
+    var CORAL_SOFT = rgb(253 / 255, 240 / 255, 236 / 255);
+    var GOLD_SOFT = rgb(245 / 255, 234 / 255, 209 / 255);
+    var NAVY_SOFT = rgb(226 / 255, 233 / 255, 245 / 255);
+    var INK = rgb(20 / 255, 19 / 255, 18 / 255); // #141312
+    var BODY = rgb(56 / 255, 54 / 255, 49 / 255);
+    var GREY = rgb(95 / 255, 92 / 255, 83 / 255); // #5f5c53
+    var LINE = rgb(228 / 255, 222 / 255, 207 / 255); // #e4decf
+    var WHITE = rgb(1, 1, 1);
+    var MIST = rgb(0.62, 0.67, 0.76); // muted light blue-grey on navy
+    var FOG = rgb(0.82, 0.86, 0.94); // brighter muted on navy
+
+    /* ---- geometry ---- */
+    var W = PDF_A4_W;
+    var H = PDF_A4_H;
+    var MARGIN = 46; // 40pt+ outer margins
+    var CW = W - MARGIN * 2;
+    var TOP = H - 66;
+    var BOT = 72; // footer zone sits below this
+
+    var pdfDoc = await PDFDocument.create();
+    var bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    var reg = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+    var page = null;
+    var y = 0;
+    var pageNo = 0;
+
+    /* dark pages (covers) skip the running head — the full-bleed navy is
+     * painted over the whole sheet anyway. */
+    function newPage(dark) {
+      page = pdfDoc.addPage([W, H]);
+      pageNo += 1;
+      page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: PAPER });
+      y = TOP;
+      if (!dark && pageNo > 1) {
+        page.drawText("eHive", { x: MARGIN, y: H - 38, size: 10.5, font: bold, color: NAVY });
+        var wcW = reg.widthOfTextAtSize("Circle", 10.5);
+        page.drawText("Circle", { x: MARGIN + bold.widthOfTextAtSize("eHive", 10.5) + 3, y: H - 38, size: 10.5, font: reg, color: GOLD_DARK });
+        var rt = String(toolTitle);
+        page.drawText(rt, { x: W - MARGIN - reg.widthOfTextAtSize(rt, 8), y: H - 37, size: 8, font: reg, color: GREY });
+        page.drawRectangle({ x: MARGIN, y: H - 46, width: CW, height: 0.8, color: LINE });
+        page.drawRectangle({ x: MARGIN, y: H - 46, width: 30, height: 0.8, color: GOLD });
+      }
+    }
+    function need(h) {
+      if (y - h < BOT) newPage();
+    }
+    function hexAt(cx, cy, r, color, thickness) {
+      var pts = [];
+      for (var i = 0; i < 6; i++) {
+        var a = Math.PI / 2 + (Math.PI / 3) * i; // pointy-top hexagon
+        pts.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) });
+      }
+      for (i = 0; i < 6; i++) {
+        page.drawLine({ start: pts[i], end: pts[(i + 1) % 6], thickness: thickness, color: color });
+      }
+    }
+    function para(text, opts) {
+      opts = opts || {};
+      var font = opts.font || reg;
+      var size = opts.size || 10.5;
+      var leading = opts.leading || 14;
+      var color = opts.color || BODY;
+      var maxWidth = opts.maxWidth || CW;
+      var after = opts.after == null ? 8 : opts.after;
+      var lines = pdfWrap(text, font, size, maxWidth);
+      need(lines.length * leading + after);
+      var x = opts.x == null ? MARGIN : opts.x;
+      for (var i = 0; i < lines.length; i++) {
+        page.drawText(lines[i], { x: x, y: y - size, size: size, font: font, color: color });
+        y -= leading;
+      }
+      y -= after;
+      return lines.length;
+    }
+    function eyebrow(t, color) {
+      need(22);
+      page.drawText(String(t).toUpperCase(), {
+        x: MARGIN,
+        y: y - 8,
+        size: 7.5,
+        font: bold,
+        color: color || CORAL,
+        characterSpacing: 1.6,
+      });
+      y -= 15;
+    }
+    /* Section heading: 16pt bold navy under a small-caps eyebrow, with a
+     * gold tick. need(88) guarantees the heading never orphans at the
+     * bottom of a page — there's always room for it plus body copy. */
+    function sectionHead(eb, t) {
+      need(92);
+      eyebrow(eb);
+      var tl = pdfWrap(t, bold, 16, CW);
+      for (var i = 0; i < tl.length; i++) {
+        page.drawText(tl[i], { x: MARGIN, y: y - 16, size: 16, font: bold, color: NAVY });
+        y -= 20;
+      }
+      y -= 6;
+      page.drawRectangle({ x: MARGIN, y: y, width: 30, height: 2.2, color: GOLD });
+      y -= 14;
+    }
+    function subLabel(t) {
+      need(44); // label + at least one body line stay together
+      page.drawText(String(t).toUpperCase(), {
+        x: MARGIN,
+        y: y - 8,
+        size: 8,
+        font: bold,
+        color: GOLD_DARK,
+        characterSpacing: 1.5,
+      });
+      y -= 18;
+    }
+    function chip(t, idx, x, yTop) {
+      var styles = [
+        { bg: CORAL_SOFT, fg: CORAL },
+        { bg: GOLD_SOFT, fg: GOLD_DARK },
+        { bg: NAVY_SOFT, fg: NAVY_MID },
+        { bg: NAVY, fg: WHITE },
+      ];
+      var c = styles[Math.max(0, Math.min(styles.length - 1, idx))];
+      var txt = String(t || "").toUpperCase();
+      var w = bold.widthOfTextAtSize(txt, 7.5) + 16;
+      var h = 15;
+      page.drawRectangle({ x: x, y: yTop - h, width: w, height: h, color: c.bg });
+      page.drawText(txt, {
+        x: x + 8,
+        y: yTop - h + 4.5,
+        size: 7.5,
+        font: bold,
+        color: c.fg,
+        characterSpacing: 0.5,
+      });
+      return w;
+    }
+    function bandIdxOf(b) {
+      var i = ((config.bands || []).slice().sort(function (a, c) {
+        return a.min - c.min;
+      })).indexOf(b);
+      return i < 0 ? 0 : i;
+    }
+    function barColor(idx) {
+      return [CORAL, GOLD, NAVY_MID, NAVY][Math.max(0, Math.min(3, idx))];
+    }
+    function bullet(t) {
+      var lines = pdfWrap(pdfTrademark(t), reg, 10.5, CW - 24);
+      need(lines.length * 14.5 + 8);
+      hexAt(MARGIN + 6, y - 9, 4.2, GOLD, 1.6);
+      for (var i = 0; i < lines.length; i++) {
+        page.drawText(lines[i], { x: MARGIN + 22, y: y - 12.5, size: 10.5, font: reg, color: BODY });
+        y -= 14.5;
+      }
+      y -= 7;
+    }
+
+    /* ---- booking link + QR (degrades to no-QR when canvas is missing,
+     * e.g. server-side or test environments) ---- */
+    var recs = pdfRecs(config, dims);
+    var top = recs[0] || null;
+    var bookHref =
+      (top && top.rec.cta && top.rec.cta.href) || (config.cta && config.cta.href) || "";
+    if (bookHref && bookHref.indexOf("src=pdf") === -1) {
+      bookHref += (bookHref.indexOf("?") > -1 ? "&" : "?") + "src=pdf";
+    }
+    var bookUrl = pdfAbsoluteUrl(bookHref);
+    var qrImage = null;
+    try {
+      var dataUrl = await QRCode.toDataURL(bookUrl, {
+        width: 520,
+        margin: 1,
+        color: { dark: "#0b1526", light: "#ffffff" },
+      });
+      var b64 = String(dataUrl).split(",")[1] || "";
+      var binStr =
+        typeof atob === "function"
+          ? atob(b64)
+          : Buffer.from(b64, "base64").toString("binary");
+      var png = new Uint8Array(binStr.length);
+      for (var bi = 0; bi < binStr.length; bi++) png[bi] = binStr.charCodeAt(bi);
+      qrImage = await pdfDoc.embedPng(png);
+    } catch (qrErr) {
+      qrImage = null;
+    }
+
+    /* ================= 1 · cover — full-bleed navy */
+    (function cover() {
+      newPage(true);
+      page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: NAVY });
+      hexAt(W - 24, 118, 170, NAVY_LINE, 2);
+      hexAt(W - 24, 118, 124, NAVY_LINE, 1);
+      hexAt(52, H - 84, 34, NAVY_LINE, 1.2);
+
+      var cx = W / 2;
+      hexAt(cx, H - 158, 30, GOLD, 2.4);
+      page.drawEllipse({ x: cx, y: H - 158, xScale: 4, yScale: 4, color: GOLD });
+
+      var wmW = bold.widthOfTextAtSize("eHive", 30);
+      var wcW = reg.widthOfTextAtSize("Circle", 30);
+      page.drawText("eHive", { x: cx - (wmW + 8 + wcW) / 2, y: H - 250, size: 30, font: bold, color: WHITE });
+      page.drawText("Circle", { x: cx - (wmW + 8 + wcW) / 2 + wmW + 8, y: H - 250, size: 30, font: reg, color: GOLD });
+
+      var tW = bold.widthOfTextAtSize(title, 17);
+      page.drawText(title, { x: (W - tW) / 2, y: H - 294, size: 17, font: bold, color: FOG });
+
+      var py = H - 348;
+      if (name) {
+        var pf = "PREPARED FOR";
+        page.drawText(pf, { x: cx - reg.widthOfTextAtSize(pf, 8) / 2, y: py, size: 8, font: bold, color: GOLD, characterSpacing: 1.8 });
+        page.drawText(name, { x: cx - bold.widthOfTextAtSize(name, 15) / 2, y: py - 23, size: 15, font: bold, color: WHITE });
+        py -= 23;
+      }
+      page.drawText(dateStr, { x: cx - reg.widthOfTextAtSize(dateStr, 10.5) / 2, y: py - 19, size: 10.5, font: reg, color: MIST });
+
+      var sc = String(total);
+      var scW = bold.widthOfTextAtSize(sc, 96);
+      page.drawText(sc, { x: cx - scW / 2 - 22, y: 292, size: 96, font: bold, color: WHITE });
+      page.drawText("/100", { x: cx + scW / 2 - 20, y: 266, size: 17, font: reg, color: MIST });
+
+      var gt = String(band.label).toUpperCase();
+      var gw = bold.widthOfTextAtSize(gt, 10) + 28;
+      page.drawRectangle({ x: cx - gw / 2, y: 226, width: gw, height: 24, borderColor: GOLD, borderWidth: 1.4 });
+      page.drawText(gt, { x: cx - gw / 2 + 14, y: 233, size: 10, font: bold, color: GOLD, characterSpacing: 1.6 });
+
+      var hy = 198;
+      var hl = pdfWrap(band.headline, reg, 13, W - 200);
+      for (var i = 0; i < hl.length; i++) {
+        page.drawText(hl[i], { x: (W - reg.widthOfTextAtSize(hl[i], 13)) / 2, y: hy - 13, size: 13, font: reg, color: rgb(0.88, 0.9, 0.95) });
+        hy -= 18;
+      }
+      page.drawRectangle({ x: cx - 45, y: hy - 14, width: 90, height: 1.6, color: GOLD });
+
+      var cf = "Private & confidential · ehiveglobal.com";
+      page.drawText(cf, { x: cx - reg.widthOfTextAtSize(cf, 8.5) / 2, y: 44, size: 8.5, font: reg, color: rgb(0.5, 0.55, 0.65) });
+    })();
+
+    /* ================= 2 · executive summary */
+    (function execSummary() {
+      newPage();
+      sectionHead("Executive summary", band.headline || "Your result");
+      para(band.copy, { size: 11, leading: 15.5, color: INK, after: 10 });
+
+      var sorted = dims.slice().sort(function (a, b) {
+        return b.pct - a.pct;
+      });
+      var strongest = sorted[0];
+      var weakest = sorted[sorted.length - 1];
+      var exec;
+      if (ai && ai.executiveSummary) {
+        exec = ai.executiveSummary;
+      } else {
+        exec =
+          "Your strongest area right now is " + (strongest ? strongest.label : "—") +
+          " at " + (strongest ? strongest.pct : 0) +
+          "%. The clearest gap is " + (weakest ? weakest.label : "—") +
+          " at " + (weakest ? weakest.pct : 0) +
+          "% — and in our experience that's where the fastest, cheapest gains usually sit for a business at this stage.";
+      }
+      para(pdfTrademark(exec), { size: 10.5, leading: 14.5, after: 12 });
+
+      subLabel("What this means for you");
+      bullet("Your strongest area is " + (strongest ? strongest.label : "—") + " (" + (strongest ? strongest.pct : 0) + "/100) — protect it deliberately while you work the rest.");
+      bullet("The clearest gap is " + (weakest ? weakest.label : "—") + " (" + (weakest ? weakest.pct : 0) + "/100) — that's where the fastest, cheapest gains sit.");
+      bullet("The 90-day roadmap at the end of this report sequences the fixes — one phase at a time, with one owner per fix.");
+    })();
+
+    /* ================= 3 · how you scored */
+    (function scorecard() {
+      sectionHead("Your scorecard", "How you scored");
+      dims.forEach(function (dm) {
+        var dBand = bandFor(config, dm.pct);
+        var idx = bandIdxOf(dBand);
+        var label = dm.short || dm.label;
+        var chipT = String(dBand.label).toUpperCase();
+        var chipW = bold.widthOfTextAtSize(chipT, 7.5) + 16;
+        need(44);
+        page.drawText(label, { x: MARGIN, y: y - 11, size: 10.5, font: bold, color: INK });
+        var valT = dm.pct + "/100";
+        page.drawText(valT, {
+          x: W - MARGIN - chipW - 12 - bold.widthOfTextAtSize(valT, 10.5),
+          y: y - 11,
+          size: 10.5,
+          font: bold,
+          color: NAVY,
+        });
+        chip(dBand.label, idx, W - MARGIN - chipW, y + 2);
+        var trackY = y - 27;
+        page.drawRectangle({ x: MARGIN, y: trackY, width: CW, height: 9, color: PANEL });
+        page.drawRectangle({
+          x: MARGIN,
+          y: trackY,
+          width: Math.max(2, (CW * dm.pct) / 100),
+          height: 9,
+          color: barColor(idx),
+        });
+        y -= 44;
+      });
+      if (config.benchmark) {
+        var blines = pdfWrap(config.benchmark, reg, 9.5, CW - 28);
+        var bh = 14 + 14 + blines.length * 13 + 14;
+        need(bh + 10);
+        y -= 4;
+        page.drawRectangle({ x: MARGIN, y: y - bh, width: CW, height: bh, color: PANEL });
+        page.drawRectangle({ x: MARGIN, y: y - bh, width: 3, height: bh, color: GOLD });
+        page.drawText("BENCHMARK", { x: MARGIN + 16, y: y - 18, size: 7.5, font: bold, color: GOLD_DARK, characterSpacing: 1.4 });
+        var by = y - 32;
+        blines.forEach(function (l) {
+          page.drawText(l, { x: MARGIN + 16, y: by - 9.5, size: 9.5, font: reg, color: GREY });
+          by -= 13;
+        });
+        y -= bh + 12;
+      }
+    })();
+
+    /* ================= 4 · dimension deep-dives */
+    function watchBox(lines) {
+      var innerW = CW - 36;
+      var heights = lines.map(function (t) {
+        return pdfWrap(t, reg, 10, innerW).length;
+      });
+      var h = 24 + heights.reduce(function (a, n) {
+        return a + n * 13.5 + 6;
+      }, 0) + 6;
+      need(Math.min(h, TOP - BOT));
+      page.drawRectangle({ x: MARGIN, y: y - h, width: CW, height: h, color: CORAL_SOFT });
+      page.drawRectangle({ x: MARGIN, y: y - h, width: 3, height: h, color: CORAL });
+      var iy = y - 19;
+      page.drawText("WATCH OUT", { x: MARGIN + 16, y: iy, size: 7.5, font: bold, color: CORAL, characterSpacing: 1.5 });
+      iy -= 17;
+      lines.forEach(function (t) {
+        pdfWrap(t, reg, 10, innerW).forEach(function (l) {
+          page.drawText(l, { x: MARGIN + 16, y: iy - 10, size: 10, font: reg, color: INK });
+          iy -= 13.5;
+        });
+        iy -= 6;
+      });
+      y -= h + 12;
+    }
+
+    (function deepDives() {
+      sectionHead("The detail", "Dimension by dimension");
+      dims.forEach(function (dm) {
+        var d = null;
+        for (var i = 0; i < (config.dimensions || []).length; i++) {
+          if (config.dimensions[i].key === dm.key) d = config.dimensions[i];
+        }
+        if (!d) return;
+        var dBand = bandFor(config, dm.pct);
+        var idx = bandIdxOf(dBand);
+        var aiDim = (ai && ai.dimensions && ai.dimensions[dm.key]) || {};
+        var analysis = aiDim.analysis || ((narr.analysis || {})[dm.key] || {})[dBand.key] || "";
+        var signals = aiDim.signals || ((narr.signals || {})[dm.key] || {})[dBand.key] || "";
+        var watch = [];
+        var below = d.watchBelow != null ? d.watchBelow : config.watchBelowDefault;
+        if (below != null && dm.pct < below && narr.watch && narr.watch[dm.key]) {
+          watch.push(narr.watch[dm.key]);
+        }
+        (d.questions || []).forEach(function (q) {
+          if (q.type !== "choice" || !q.options) return;
+          var a = answers[q.id];
+          q.options.forEach(function (o) {
+            if (o.label === a && o.watch) watch.push(o.watch);
+          });
+        });
+
+        /* keep-together: if the whole block fits on one page, it starts on
+         * one page; if it's taller than a page it flows with sub-heading
+         * orphan guards instead. */
+        var labelLines = pdfWrap(d.label, bold, 13, CW - 170);
+        var aLines = analysis ? pdfWrap(pdfTrademark(analysis), reg, 10.5, CW).length : 0;
+        var sLines = signals ? pdfWrap(pdfTrademark(signals), reg, 10.5, CW).length : 0;
+        var est =
+          labelLines.length * 17 + 16 +
+          (aLines ? 22 + aLines * 14.5 : 0) +
+          (sLines ? 22 + sLines * 14.5 : 0) +
+          (watch.length ? 44 + watch.length * 14 : 0) + 24;
+        need(Math.min(est, TOP - BOT));
+
+        var chipT = String(dBand.label).toUpperCase();
+        var chipW = bold.widthOfTextAtSize(chipT, 7.5) + 16;
+        var scoreT = dm.pct + "/100";
+        for (i = 0; i < labelLines.length; i++) {
+          page.drawText(labelLines[i], { x: MARGIN, y: y - 13 - i * 15, size: 13, font: bold, color: NAVY });
+        }
+        chip(dBand.label, idx, W - MARGIN - chipW, y + 2);
+        page.drawText(scoreT, {
+          x: W - MARGIN - chipW - 12 - bold.widthOfTextAtSize(scoreT, 11),
+          y: y - 12,
+          size: 11,
+          font: bold,
+          color: NAVY,
+        });
+        y -= labelLines.length * 16 + 6;
+        page.drawRectangle({ x: MARGIN, y: y, width: CW, height: 0.8, color: LINE });
+        y -= 12;
+
+        if (analysis) {
+          subLabel("Analysis");
+          para(pdfTrademark(analysis), { size: 10.5, leading: 14.5, after: 8 });
+        }
+        if (signals) {
+          subLabel("What's happening");
+          para(pdfTrademark(signals), { size: 10.5, leading: 14.5, color: GREY, after: 8 });
+        }
+        if (watch.length) watchBox(watch.map(pdfTrademark));
+        y -= 12;
+      });
+    })();
+
+    /* ================= 5 · cross-cutting insights (AI narrative only) */
+    (function crossCutting() {
+      if (!ai) return;
+      if (!((ai.crossInsights && ai.crossInsights.length) || ai.priorities)) return;
+      sectionHead("Across the dimensions", "Cross-cutting insights");
+      (ai.crossInsights || []).forEach(bullet);
+      if (ai.priorities) {
+        subLabel("Where to focus first");
+        para(pdfTrademark(ai.priorities), { size: 10.5, leading: 14.5, after: 8 });
+      }
+    })();
+
+    /* ================= 6 · 90-day roadmap */
+    (function roadmap() {
+      var phases = config.roadmapPhases || [];
+      if (!phases.length) return;
+      sectionHead("Your roadmap", "Your first 90 days");
+      var gap = 14;
+      var bw = (CW - gap * (phases.length - 1)) / phases.length;
+      var boxes = phases.map(function (p) {
+        return {
+          tl: pdfWrap(p.title, bold, 9.5, bw - 24),
+          cl: pdfWrap(p.copy, reg, 8.5, bw - 24),
+        };
+      });
+      var bh = 0;
+      boxes.forEach(function (b) {
+        bh = Math.max(bh, 48 + b.tl.length * 12 + 6 + b.cl.length * 11.5);
+      });
+      need(bh + 20);
+      boxes.forEach(function (b, i) {
+        var x = MARGIN + i * (bw + gap);
+        page.drawRectangle({ x: x, y: y - bh, width: bw, height: bh, color: PANEL });
+        page.drawRectangle({ x: x, y: y - 3, width: bw, height: 3, color: GOLD });
+        page.drawText("0" + (i + 1), { x: x + 12, y: y - 24, size: 13, font: bold, color: CORAL });
+        var ty = y - 42;
+        b.tl.forEach(function (l) {
+          page.drawText(l, { x: x + 12, y: ty - 9.5, size: 9.5, font: bold, color: NAVY });
+          ty -= 12;
+        });
+        ty -= 5;
+        b.cl.forEach(function (l) {
+          page.drawText(l, { x: x + 12, y: ty - 8.5, size: 8.5, font: reg, color: GREY });
+          ty -= 11.5;
+        });
+      });
+      y -= bh + 26;
+    })();
+
+    /* ================= 7 · recommended next step — the conversion page.
+     * Deliberately starts on a fresh page so it stands alone as a sell:
+     * the routed product with ™, the why, the discovery-call promise and a
+     * scannable booking QR. No prices, per the method guardrails. */
+    (function nextStep() {
+      var product =
+        pdfProductForHref(bookHref) || (config.cta && config.cta.label) || "Discovery call";
+      var why = top
+        ? pdfTrademark(top.rec.why)
+        : "Bring these results to a working session and we'll turn the roadmap into a plan with owners and dates — most teams leave with the first phase already scheduled.";
+
+      newPage();
+      sectionHead("Recommended next step", "One call. One clear priority.");
+      page.drawText(product, { x: MARGIN, y: y - 24, size: 24, font: bold, color: NAVY });
+      y -= 36;
+      page.drawRectangle({ x: MARGIN, y: y, width: 40, height: 2.4, color: GOLD });
+      y -= 14;
+
+      if (top) {
+        var ix = MARGIN;
+        var impT = "IMPACT: " + String(top.rec.impact || "").toUpperCase();
+        var iw = bold.widthOfTextAtSize(impT, 7.5) + 14;
+        page.drawRectangle({
+          x: ix,
+          y: y - 15,
+          width: iw,
+          height: 15,
+          color: top.rec.impact === "high" ? CORAL : NAVY_MID,
+        });
+        page.drawText(impT, { x: ix + 7, y: y - 10.5, size: 7.5, font: bold, color: WHITE });
+        ix += iw + 8;
+        var effT = "EFFORT: " + String(top.rec.effort || "").toUpperCase();
+        var ew = bold.widthOfTextAtSize(effT, 7.5) + 14;
+        page.drawRectangle({ x: ix, y: y - 15, width: ew, height: 15, color: GOLD_SOFT });
+        page.drawText(effT, { x: ix + 7, y: y - 10.5, size: 7.5, font: bold, color: GOLD_DARK });
+        y -= 28;
+      }
+
+      para(why, { size: 11, leading: 15.5, color: INK, after: 16 });
+
+      var panelH = 176;
+      need(panelH + 70);
+      page.drawRectangle({ x: MARGIN, y: y - panelH, width: CW, height: panelH, color: NAVY });
+      page.drawRectangle({ x: MARGIN, y: y - panelH, width: 3.5, height: panelH, color: GOLD });
+
+      var textW = qrImage ? CW - 132 - 52 : CW - 44;
+      page.drawText("WHAT HAPPENS ON YOUR DISCOVERY CALL", {
+        x: MARGIN + 22,
+        y: y - 30,
+        size: 8.5,
+        font: bold,
+        color: GOLD,
+        characterSpacing: 1.2,
+      });
+      var cy2 = y - 56;
+      [
+        "We'll walk through your report live.",
+        "You'll leave with one clear priority whether or not we engage.",
+        "No pitch, no pressure.",
+      ].forEach(function (b) {
+        hexAt(MARGIN + 26, cy2 - 6, 3.6, GOLD, 1.2);
+        pdfWrap(b, reg, 10, textW - 20).forEach(function (l) {
+          page.drawText(l, { x: MARGIN + 40, y: cy2 - 9, size: 10, font: reg, color: WHITE });
+          cy2 -= 13.5;
+        });
+        cy2 -= 9;
+      });
+
+      if (qrImage) {
+        var qs = 132;
+        var qx = W - MARGIN - 16 - qs;
+        var qy = y - (panelH + qs) / 2 + 4;
+        page.drawRectangle({ x: qx - 6, y: qy - 6, width: qs + 12, height: qs + 12, color: WHITE });
+        page.drawImage(qrImage, { x: qx, y: qy, width: qs, height: qs });
+        var cap = "Scan to book your discovery call";
+        page.drawText(cap, {
+          x: qx + qs / 2 - reg.widthOfTextAtSize(cap, 7.5) / 2,
+          y: qy - 18,
+          size: 7.5,
+          font: reg,
+          color: rgb(0.75, 0.78, 0.86),
+        });
+      } else {
+        /* No canvas (server/test env): the URL takes the QR's place. */
+        page.drawText("BOOK YOUR CALL", { x: W - MARGIN - 180, y: y - panelH / 2 + 20, size: 7.5, font: bold, color: GOLD, characterSpacing: 1.2 });
+        var uy = y - panelH / 2 + 4;
+        pdfWrap(bookUrl, reg, 8, 170).forEach(function (l) {
+          page.drawText(l, { x: W - MARGIN - 180, y: uy, size: 8, font: reg, color: WHITE });
+          uy -= 11;
+        });
+      }
+      y -= panelH + 20;
+
+      para("Book directly: " + bookUrl, { size: 9, leading: 12, color: GREY, after: 3 });
+      para(
+        "Questions, or prefer email? " + (config.contactEmail || "info@ehiveglobal.com"),
+        { size: 9, leading: 12, color: GREY, after: 0 }
+      );
+    })();
+
+    /* ================= 8 · methodology + about eHive */
+    (function aboutBlock() {
+      sectionHead("Methodology", "About this assessment");
+      if (config.methodology) {
+        para(config.methodology, { size: 9.5, leading: 13.5, color: GREY, after: 16 });
+      }
+      need(96);
+      page.drawRectangle({ x: MARGIN, y: y, width: 30, height: 2.2, color: GOLD });
+      y -= 20;
+      page.drawText("Confusion is expensive. Clarity is profitable.", {
+        x: MARGIN,
+        y: y - 14,
+        size: 12.5,
+        font: bold,
+        color: NAVY,
+      });
+      y -= 32;
+      page.drawText("One product, three verticals — Business Setup · Consulting · eHive Circle.", {
+        x: MARGIN,
+        y: y - 10,
+        size: 9.5,
+        font: reg,
+        color: GREY,
+      });
+      y -= 24;
+      var contact = (config.contactEmail || "info@ehiveglobal.com") + "  ·  ehiveglobal.com";
+      page.drawText(contact, { x: MARGIN, y: y - 10, size: 9.5, font: bold, color: NAVY_MID });
+    })();
+
+    /* ================= appendix · the founder's own responses. The
+     * methodology promises the open-text answers appear in the report and
+     * are read by a strategist; the scored answers make the PDF forwardable
+     * to a co-founder as a standalone record of the diagnostic. */
+    function pdfHumanAnswer(q, a) {
+      if (a == null || a === "") return "—";
+      if (q.type === "scale") {
+        var lbl = a === 1 ? q.lo || "Not at all" : a === 5 ? q.hi || "Completely true" : "";
+        return a + " / 5" + (lbl ? " — " + lbl : "");
+      }
+      return String(a);
+    }
+    (function appendix() {
+      var ctxRows = (config.context || []).filter(function (q) {
+        var a = answers[q.id];
+        return a != null && a !== "";
+      });
+      if (!ctxRows.length && !dims.length) return;
+      newPage();
+      sectionHead("Appendix", "Your responses, question by question");
+
+      if (ctxRows.length) {
+        subLabel("In your own words");
+        ctxRows.forEach(function (q) {
+          page.drawText(q.label, { x: MARGIN, y: y - 9.5, size: 9.5, font: bold, color: NAVY });
+          y -= 20;
+          para(pdfClean(answers[q.id]), { size: 9.5, leading: 13, color: GREY, after: 10 });
+        });
+      }
+
+      dims.forEach(function (dm) {
+        var d = null;
+        for (var i = 0; i < (config.dimensions || []).length; i++) {
+          if (config.dimensions[i].key === dm.key) d = config.dimensions[i];
+        }
+        if (!d) return;
+        need(64);
+        page.drawText(d.label, { x: MARGIN, y: y - 10, size: 10, font: bold, color: NAVY });
+        y -= 20;
+        page.drawRectangle({ x: MARGIN, y: y + 6, width: CW, height: 0.6, color: LINE });
+        (d.questions || []).forEach(function (q) {
+          var ql = pdfWrap(q.label, reg, 8.5, CW - 160);
+          var al = pdfWrap(pdfHumanAnswer(q, answers[q.id]), bold, 8.5, 150);
+          var rh = Math.max(ql.length, al.length) * 11 + 8;
+          need(rh);
+          var rowTop = y;
+          for (var qi = 0; qi < ql.length; qi++) {
+            page.drawText(ql[qi], { x: MARGIN, y: rowTop - 8.5, size: 8.5, font: reg, color: GREY });
+            rowTop -= 11;
+          }
+          var ansTop = y;
+          for (var ai = 0; ai < al.length; ai++) {
+            page.drawText(al[ai], { x: W - MARGIN - 150, y: ansTop - 8.5, size: 8.5, font: bold, color: NAVY_MID });
+            ansTop -= 11;
+          }
+          y -= rh;
+        });
+        y -= 14;
+      });
+    })();
+
+    /* ================= back cover — full-bleed navy mirror of the cover */
+    (function backCover() {
+      newPage(true);
+      page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: NAVY });
+      hexAt(40, 90, 80, NAVY_LINE, 1.4);
+      hexAt(W - 60, H - 90, 100, NAVY_LINE, 1.6);
+      var cx = W / 2;
+      hexAt(cx, H - 210, 30, GOLD, 2.4);
+      page.drawEllipse({ x: cx, y: H - 210, xScale: 4, yScale: 4, color: GOLD });
+      var wmW = bold.widthOfTextAtSize("eHive", 24);
+      var wcW = reg.widthOfTextAtSize("Circle", 24);
+      page.drawText("eHive", { x: cx - (wmW + 7 + wcW) / 2, y: H - 286, size: 24, font: bold, color: WHITE });
+      page.drawText("Circle", { x: cx - (wmW + 7 + wcW) / 2 + wmW + 7, y: H - 286, size: 24, font: reg, color: GOLD });
+      page.drawRectangle({ x: cx - 45, y: H - 322, width: 90, height: 1.6, color: GOLD });
+
+      var tag = "Confusion is expensive. Clarity is profitable.";
+      page.drawText(tag, { x: cx - bold.widthOfTextAtSize(tag, 14) / 2, y: H - 420, size: 14, font: bold, color: WHITE });
+      var vt = "ONE PRODUCT, THREE VERTICALS";
+      page.drawText(vt, { x: cx - bold.widthOfTextAtSize(vt, 8) / 2, y: H - 470, size: 8, font: bold, color: GOLD, characterSpacing: 1.8 });
+      var vs = "Business Setup  ·  Consulting  ·  eHive Circle";
+      page.drawText(vs, { x: cx - reg.widthOfTextAtSize(vs, 11) / 2, y: H - 492, size: 11, font: reg, color: rgb(0.88, 0.9, 0.95) });
+
+      var contact = (config.contactEmail || "info@ehiveglobal.com") + "  ·  ehiveglobal.com";
+      page.drawText(contact, { x: cx - reg.widthOfTextAtSize(contact, 10) / 2, y: 120, size: 10, font: reg, color: MIST });
+      var cf = "Private & confidential";
+      page.drawText(cf, { x: cx - reg.widthOfTextAtSize(cf, 8.5) / 2, y: 44, size: 8.5, font: reg, color: rgb(0.5, 0.55, 0.65) });
+    })();
+
+    /* ---- footer on every page from page 2 on (back cover excluded) ---- */
+    for (var pi = 1; pi < pdfDoc.getPageCount() - 1; pi++) {
+      var pg = pdfDoc.getPage(pi);
+      pg.drawLine({
+        start: { x: MARGIN, y: 56 },
+        end: { x: W - MARGIN, y: 56 },
+        thickness: 0.6,
+        color: LINE,
+      });
+      var ft = "eHive · " + toolTitle + " · page " + (pi + 1);
+      pg.drawText(ft, {
+        x: (W - reg.widthOfTextAtSize(ft, 8)) / 2,
+        y: 42,
+        size: 8,
+        font: reg,
+        color: GREY,
+      });
+    }
+
+    try {
+      pdfDoc.setTitle(title + (name ? " — " + name : ""));
+      pdfDoc.setAuthor("eHive");
+      pdfDoc.setSubject(toolTitle + " · " + total + "/100 · " + band.label);
+      pdfDoc.setKeywords(["eHive", config.tool || "assessment", "report"]);
+      pdfDoc.setCreationDate(new Date());
+      pdfDoc.setCreator("eHive AssessEngine");
+      pdfDoc.setProducer("eHive AssessEngine");
+    } catch (metaErr) {
+      /* metadata is best-effort */
+    }
+
+    /* Classic xref table instead of compressed object streams: friendlier
+     * to older viewers, email scanners and diff-friendly tooling, at the
+     * cost of a slightly larger file on a document this size. */
+    return pdfDoc.save({ useObjectStreams: false });
   }
 
   /* --------------------------------------------------------------- mount */
@@ -1329,6 +2191,57 @@
 
     /* ------------------------------------------------------- full report */
 
+    /* Which narrative the PDF should use: the in-memory compose result when
+     * it belongs to this exact report state, else the per-token localStorage
+     * ledger (covers rehydrated reports composed on an earlier visit). */
+    function aiNarrativeFor(token, total, bandKey) {
+      var want = config.tool + ":" + (token || "") + ":" + total + ":" + (bandKey || "");
+      if (aiStatus === "done" && aiNarrative && aiFor === want) return aiNarrative;
+      if (token) return aiLoad(token, total, bandKey);
+      return null;
+    }
+
+    function downloadReportPdf(btn, dims, total, band, token) {
+      if (btn.disabled) return;
+      var span = btn.querySelector("span");
+      btn.disabled = true;
+      btn.setAttribute("aria-busy", "true");
+      btn.classList.remove("assess-pdf-failed");
+      if (span) span.textContent = "Preparing…";
+      buildReportPdf(config, {
+        dims: dims,
+        total: total,
+        band: band,
+        answers: S.answers || {},
+        token: token || null,
+        ai: aiNarrativeFor(token, total, band.key),
+      })
+        .then(function (bytes) {
+          var blob = new Blob([bytes], { type: "application/pdf" });
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement("a");
+          a.href = url;
+          a.download = "ehive-" + config.tool + "-report.pdf";
+          document.body.appendChild(a);
+          a.click();
+          if (a.remove) a.remove();
+          setTimeout(function () {
+            URL.revokeObjectURL(url);
+          }, 5000);
+        })
+        .catch(function () {
+          btn.classList.add("assess-pdf-failed");
+          if (span) span.textContent = "Couldn't build the PDF — try again";
+        })
+        .then(function () {
+          btn.disabled = false;
+          btn.removeAttribute("aria-busy");
+          if (span && !btn.classList.contains("assess-pdf-failed")) {
+            span.textContent = "Download PDF report";
+          }
+        });
+    }
+
     function renderReport(dims, total, band, opts) {
       var box = document.getElementById("assessReport");
       if (!box) return;
@@ -1444,13 +2357,24 @@
         "<p>Bring these results to a working session and we'll turn the roadmap into a plan with owners and dates — most teams leave with the first phase already scheduled.</p>" +
         (config.cta ? '<a class="assess-btn assess-btn-coral" href="' + esc(config.cta.href) + '">' + esc(config.cta.label) + "</a>" : "") +
         "</div>" +
+        '<div class="assess-actions">' +
+        '<button type="button" class="assess-btn assess-btn-coral assess-pdf-btn" id="assessPdfBtn">' +
+        '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<path d="M8 2v8m0 0 3-3M8 10 5 7"/><path d="M3 12.5V13.5h10v-1"/></svg>' +
+        "<span>Download PDF report</span></button>" +
         '<button class="assess-btn-ghost assess-print-btn" id="assessPrint">Print / save as PDF</button>' +
+        "</div>" +
         "</article>";
 
       var printBtn = document.getElementById("assessPrint");
       if (printBtn)
         printBtn.addEventListener("click", function () {
           global.print();
+        });
+      var pdfBtn = document.getElementById("assessPdfBtn");
+      if (pdfBtn)
+        pdfBtn.addEventListener("click", function () {
+          downloadReportPdf(pdfBtn, dims, total, band, (opts && opts.token) || S.token);
         });
       aiApply();
       global.scrollTo({ top: 0, behavior: "smooth" });
@@ -1518,6 +2442,7 @@
     mount: mount,
     score: score,
     bandFor: bandFor,
+    buildReportPdf: buildReportPdf,
   };
   global.AssessEngine = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
