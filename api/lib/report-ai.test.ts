@@ -3,9 +3,11 @@ import {
   buildComposeFacts,
   buildComposePrompt,
   parseAiNarrative,
+  reportKnowledgeBase,
 } from "./report-ai";
 import {
   REPORT_AI_ANSWER_CAP,
+  REPORT_AI_KB_MIN_CHARS,
   REPORT_AI_PRIVATE_KEYS,
 } from "@contracts/constants";
 
@@ -199,6 +201,42 @@ describe("buildComposeFacts (PII stripping)", () => {
     });
     expect(facts.total).toBe(100);
     expect(facts.dims).toEqual([{ key: "ok", label: null, pct: 65 }]);
+  });
+});
+
+describe("method knowledge base grounding", () => {
+  it("loads at module init and exceeds the sanity length", () => {
+    expect(reportKnowledgeBase).not.toBeNull();
+    expect(reportKnowledgeBase!.length).toBeGreaterThan(
+      REPORT_AI_KB_MIN_CHARS
+    );
+  });
+
+  it("anchors the built prompt in the method (identity, beliefs, routing)", () => {
+    const { system, user } = buildComposePrompt({
+      tool: "clarity-scorecard",
+      total: 72,
+      band: "Building",
+      dims: [
+        { key: "Strategy", label: null, pct: 65 },
+        { key: "Financials", label: null, pct: 80 },
+      ],
+      answers: { q1: 4 },
+    });
+    const prompt = system + "\n" + user;
+    for (const anchor of [
+      "Confusion is expensive", // firm tagline / identity
+      "Sequence, not stack", // core belief + routing rule
+      "Gap Navigator", // routing table product
+      "Brand3D", // routing table product
+      "Decision Architecture", // framework the writer may cite
+      "Diagnostic Engine", // scorecard domain alignment
+      "https://www.ehiveglobal.com/book.html", // discovery-call next step
+    ]) {
+      expect(prompt).toContain(anchor);
+    }
+    // The user message carries facts only; method grounding lives in system.
+    expect(user).not.toContain("Confusion is expensive");
   });
 });
 

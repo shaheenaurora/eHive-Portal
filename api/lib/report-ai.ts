@@ -12,15 +12,20 @@
    template narrative on any non-ok response, so a broken/missing AI_API_KEY
    degrades the product silently rather than breaking it. */
 
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import {
   REPORT_AI_ANSWER_CAP,
   REPORT_AI_CACHE_TTL_MS,
   REPORT_AI_FACTS_CAP,
+  REPORT_AI_KB_MIN_CHARS,
   REPORT_AI_PRIVATE_KEYS,
   REPORT_AI_TIMEOUT_MS,
 } from "@contracts/constants";
 import { env } from "./env";
+import { logger } from "./log";
 
 export type AiComposeErrorCode =
   | "ai_disabled"
@@ -154,12 +159,47 @@ export function buildComposeFacts(row: ComposeReportRow): ComposeFacts {
 
 /* ------------------------------------------------------------- prompt --- */
 
-const SYSTEM_PROMPT =
-  "You are a senior strategy consultant writing the analysis layer of a " +
-  "paid-grade business assessment report. The client is a founder-led " +
-  "business in the Gulf market (UAE / GCC). You write in confident, plain, " +
-  "consultative English — the register of a partner briefing a client, not " +
-  "a chatbot.";
+/* The distilled Shaheen Saleem method knowledge base (report-knowledge.md)
+   grounds the narrative in the company's proprietary frameworks, routing
+   logic, voice and guardrails. Loaded once at module init and cached for the
+   process lifetime. Path resolution mirrors boot.ts: under dev/test the
+   module file sits next to the .md; the production bundle lands in dist/
+   with the source tree one level up. */
+function loadKnowledgeBase(): string | null {
+  const here = dirname(fileURLToPath(import.meta.url));
+  for (const candidate of [
+    resolve(here, "report-knowledge.md"),
+    resolve(here, "../api/lib/report-knowledge.md"),
+  ]) {
+    try {
+      return readFileSync(candidate, "utf-8");
+    } catch {
+      /* try the next candidate */
+    }
+  }
+  return null;
+}
+
+const knowledgeBase = loadKnowledgeBase();
+if (!knowledgeBase) {
+  logger.warn(
+    "[report-ai] method knowledge base not found — composing without it"
+  );
+} else if (knowledgeBase.length < REPORT_AI_KB_MIN_CHARS) {
+  logger.warn("[report-ai] method knowledge base is suspiciously short", {
+    chars: knowledgeBase.length,
+  });
+}
+
+/** The loaded knowledge base, or null when the file is missing. Exported for
+ *  tests — production code should treat it as an implementation detail. */
+export const reportKnowledgeBase: string | null = knowledgeBase;
+
+const IDENTITY_LINE =
+  "You are the eHive Clarity Assistant, the analysis layer of a paid-grade " +
+  "business assessment report on the eHive global website, trained on the " +
+  "Shaheen Saleem method (Aurora Consulting, Dubai). The client is a " +
+  "founder-led business in the Gulf market (UAE / GCC).";
 
 const OUTPUT_SHAPE = `{
   "executiveSummary": string,   // 2-4 sentences, the report opener
@@ -168,8 +208,37 @@ const OUTPUT_SHAPE = `{
   "priorities": string          // 2-4 sentences: where to focus first
 }`;
 
+const OUTPUT_RULES = `Rules:
+- Ground every claim in the provided scores and answers; never invent numbers and never contradict a dimension score.
+- You may cite the method's frameworks by name (with ™ on first use) where they illuminate the read.
+- Recommend at most ONE next product per the routing table in the knowledge base, named with ™, framed as a next step (book a discovery call at https://www.ehiveglobal.com/book.html) — never as pressure.
+- End priorities with one reflective question.
+- When the assessment tool is the clarity scorecard, the dimension keys in the user message are the eight Diagnostic Engine™ domains — refer to them as the Diagnostic Engine domains.
+- Write in the method's voice per the knowledge base.
+- Exactly one "dimensions" entry per provided dimension key, keyed by the same key.
+- 2-4 sentences per section. Confident and specific; no fluff, no marketing clichés.
+- Plain text inside strings only: no markdown, no bullet characters, no line breaks, no code fences.
+- Output the JSON object alone — nothing before or after it.`;
+
+function buildSystemPrompt(): string {
+  return [
+    IDENTITY_LINE,
+    "",
+    "# Method knowledge base",
+    knowledgeBase ??
+      "(Knowledge base unavailable — write as a calm senior strategist: direct, warm, candid, no hype.)",
+    "",
+    "# Output contract",
+    `Write the report narrative as ONE JSON object with exactly this shape:
+${OUTPUT_SHAPE}`,
+    OUTPUT_RULES,
+  ].join("\n");
+}
+
 /** Build the two prompt messages. The deterministic scores are presented as
- *  ground truth the model must not contradict. */
+ *  ground truth the model must not contradict. The system message carries
+ *  the method knowledge base and the output contract; the user message
+ *  carries only the report facts. */
 export function buildComposePrompt(facts: ComposeFacts): {
   system: string;
   user: string;
@@ -192,15 +261,8 @@ export function buildComposePrompt(facts: ComposeFacts): {
   );
   lines.push(JSON.stringify(facts.answers, null, 2));
   lines.push("");
-  lines.push(`Write the report narrative as ONE JSON object with exactly this shape:
-${OUTPUT_SHAPE}
-Rules:
-- Ground every claim in the scores and answers above. Never invent numbers and never contradict a dimension score.
-- Exactly one "dimensions" entry per provided dimension key, keyed by the same key.
-- 2-4 sentences per section. Confident and specific; no fluff, no marketing clichés.
-- Plain text inside strings only: no markdown, no bullet characters, no line breaks, no code fences.
-- Output the JSON object alone — nothing before or after it.`);
-  return { system: SYSTEM_PROMPT, user: lines.join("\n") };
+  lines.push("Write the report narrative per the output contract above.");
+  return { system: buildSystemPrompt(), user: lines.join("\n") };
 }
 
 /* ---------------------------------------------------------- validation -- */

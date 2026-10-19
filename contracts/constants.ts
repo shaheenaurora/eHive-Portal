@@ -1367,6 +1367,10 @@ export const REPORT_AI_TIMEOUT_MS = 30_000;
 export const REPORT_AI_ANSWER_CAP = 2_000;
 /** Rough cap on the serialized facts payload embedded in the prompt. */
 export const REPORT_AI_FACTS_CAP = 12_000;
+/** Sanity floor (chars) for the distilled method knowledge base loaded at
+ *  module init (api/lib/report-knowledge.md). A file shorter than this means
+ *  the distillation broke or the deploy lost it — tests guard it. */
+export const REPORT_AI_KB_MIN_CHARS = 8_000;
 /** Answer keys that are contact/identity fields and must never leave our
  *  servers for the AI provider. Mirrors the gate/business fields collected by
  *  AssessEngine plus internal bookkeeping keys. */
