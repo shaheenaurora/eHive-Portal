@@ -37,6 +37,13 @@ import {
   notifyLead,
 } from "./lib/lead-mail";
 import { signBookingToken, verifyBookingToken } from "./lib/booking-token";
+import { reportApp } from "./report-routes";
+import { sendReportUnlocked } from "./lib/report-mail";
+import {
+  findReportBySession,
+  reportContactName,
+} from "./queries/assessment-reports";
+import { REPORT_PRICE_FILS, type ReportTool } from "@contracts/constants";
 import { mailProvider, mailEnabled, verifyMailTransport } from "./lib/mailer";
 import {
   getCreditNoteById,
@@ -505,6 +512,11 @@ app.post("/api/lead", async c => {
     emailError: emailResult.error || null,
   });
 });
+
+/* Paid assessment-report API — full-report unlock for the Brand Check and
+   Clarity Scorecard tool pages. Token-gated reads, server-recomputed totals,
+   invoice-request + Stripe checkout paths. See api/report-routes.ts. */
+app.route("/api/report", reportApp);
 
 /* Public content JSON for the marketing site (published insights + newsletter archive). */
 app.get("/api/insights", async c => {
@@ -1140,6 +1152,60 @@ app.post("/api/payments/webhook", async c => {
     ).at(0);
 
     if (result.status === "paid") {
+      // Paid assessment report: checkout sessions created by
+      // /api/report/checkout carry metadata.kind === "report" and never create
+      // a payment_records row — the session id was stored on the report row at
+      // checkout time, so it is the join key. Settle the report here and leave
+      // the membership/ticket fulfillment below untouched.
+      const reportRow = await findReportBySession(result.providerRef);
+      if (reportRow) {
+        // Same defence-in-depth as payment records: the amount was fixed
+        // server-side at checkout, so a settled amount that disagrees means
+        // tampering or gateway misconfiguration — never unlock on it.
+        if (result.amount != null && result.amount !== REPORT_PRICE_FILS) {
+          logger.error("webhook: report amount mismatch", {
+            providerRef: result.providerRef,
+            reportId: reportRow.id,
+            expectedAmount: REPORT_PRICE_FILS,
+            webhookAmount: result.amount,
+          });
+          return c.json({ ok: false, error: "amount mismatch" }, 400);
+        }
+        // Compare-and-swap so a Stripe retry can't double-send the unlock mail.
+        if (reportRow.paid !== "paid") {
+          const reportPaid = await db
+            .update(schema.assessmentReports)
+            .set({ paid: "paid" })
+            .where(
+              and(
+                eq(schema.assessmentReports.id, reportRow.id),
+                inArray(schema.assessmentReports.paid, ["free", "requested"])
+              )
+            );
+          if (
+            (reportPaid as unknown as [{ affectedRows: number }])[0]
+              .affectedRows > 0
+          ) {
+            void sendReportUnlocked({
+              email: reportRow.email,
+              name: reportContactName(reportRow.contact),
+              tool: reportRow.tool as ReportTool,
+              token: reportRow.token,
+            }).catch(() => {
+              /* non-fatal — a missing email must not fail the webhook */
+            });
+            void recordAnalyticsEvent("payment_succeeded", {
+              properties: {
+                purpose: "report",
+                tool: reportRow.tool,
+                reportId: reportRow.id,
+                amount: result.amount,
+              },
+            });
+          }
+        }
+        return c.json({ ok: true });
+      }
       if (!record) {
         logger.error("webhook: no matching payment record", {
           providerRef: result.providerRef,

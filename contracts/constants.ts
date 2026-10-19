@@ -1309,3 +1309,77 @@ export const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1h
 export const BUDDY_PAIR_WITHIN_DAYS = 5;
 /** Days after pairing for the buddy 30-day check-in */
 export const BUDDY_CHECKIN_DAYS = 30;
+
+/* ============================================================================
+   PAID ASSESSMENT REPORTS — full-report unlock for the public assessment
+   tools (Brand Check, Clarity Scorecard). Server core for the paid-report
+   flow: /api/report/save, /api/report/:tool/:token, /api/report/config,
+   /api/report/request-invoice, /api/report/checkout + the Stripe webhook
+   branch in api/boot.ts. Added 2026-10-19.
+   ============================================================================ */
+/** Tools that sell a paid full report through /api/report/*. */
+export const REPORT_TOOLS = ["brand-check", "clarity-scorecard"] as const;
+export type ReportTool = (typeof REPORT_TOOLS)[number];
+/** Human labels per tool — used in checkout line items and report emails. */
+export const REPORT_TOOL_LABEL: Record<ReportTool, string> = {
+  "brand-check": "Brand Check",
+  "clarity-scorecard": "Clarity Scorecard",
+};
+/** Full-report price in whole AED.
+ *  ⚠ OWNER-ADJUSTABLE PLACEHOLDER — confirm the real price before launch. */
+export const REPORT_PRICE_AED = 99;
+/** Same price in fils (AED × 100) — the amount Stripe actually charges. */
+export const REPORT_PRICE_FILS = REPORT_PRICE_AED * 100;
+/* Launch-offer phase (owner decision, 2026-10-19): the full report is priced
+ * at AED 99 above, but while Stripe is not set up AND the firm is not yet
+ * legally registered nobody can be charged. The site keeps showing the AED 99
+ * price (anchoring) while the engine unlocks the full report for every
+ * visitor — the goal of this phase is leads, not revenue. Runtime switch:
+ * env REPORT_LAUNCH_OFFER (api/lib/env.ts, default ON via
+ * REPORT_LAUNCH_OFFER_DEFAULT). While the offer runs,
+ * /api/report/checkout and /api/report/request-invoice answer
+ * 403 "launch_offer" (defense in depth — the client never calls them) and
+ * GET /api/report/config reports launchOffer: true. To end the launch offer
+ * and start charging: set REPORT_LAUNCH_OFFER=false AND configure the Stripe
+ * keys (STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET). */
+export const REPORT_LAUNCH_OFFER_DEFAULT = true;
+/** Report-link token lifetime: 1 year. Paying customers keep permanent
+ *  access; a re-save of the assessment refreshes the link if it ever lapses. */
+export const REPORT_TOKEN_TTL_MS = 365 * 24 * 60 * 60 * 1000;
+/** Payment state of a saved report row. free → requested (invoice asked for)
+ *  or paid (Stripe checkout settled). */
+export const REPORT_PAID_STATUSES = ["free", "requested", "paid"] as const;
+export type ReportPaidStatus = (typeof REPORT_PAID_STATUSES)[number];
+
+/* ---- AI narrative layer (added 2026-10-19) ---------------------------------
+   Optional upgrade over the template narrative of the full assessment report.
+   POST /api/report/compose asks Kimi (Moonshot AI) to re-write the per-dimension
+   analysis/signals, the executive summary and a cross-dimension synthesis from
+   the saved (PII-stripped) answers. The deterministic scores, watch-outs and
+   recommendations are never AI-generated, and any AI failure leaves the client
+   on the template narrative silently. When AI_API_KEY is unset the endpoint
+   returns 503 "ai_disabled" and the layer is inert. */
+/** In-process memoization TTL for a composed narrative, per report token. */
+export const REPORT_AI_CACHE_TTL_MS = 60 * 60 * 1000;
+/** Upstream request timeout (ms) for one Kimi call. */
+export const REPORT_AI_TIMEOUT_MS = 30_000;
+/** Max chars of any single answer (incl. open-text context) sent upstream. */
+export const REPORT_AI_ANSWER_CAP = 2_000;
+/** Rough cap on the serialized facts payload embedded in the prompt. */
+export const REPORT_AI_FACTS_CAP = 12_000;
+/** Answer keys that are contact/identity fields and must never leave our
+ *  servers for the AI provider. Mirrors the gate/business fields collected by
+ *  AssessEngine plus internal bookkeeping keys. */
+export const REPORT_AI_PRIVATE_KEYS = [
+  "name",
+  "role",
+  "email",
+  "phone",
+  "company",
+  "website",
+  "industry",
+  "years",
+  "team_size",
+  "company_website",
+  "_consent",
+] as const;

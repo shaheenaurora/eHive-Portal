@@ -239,6 +239,13 @@
       "when": 1792042673348,
       "tag": "0034_aberrant_thunderbolts",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "5",
+      "when": 1792385608301,
+      "tag": "0035_neat_anthem",
+      "breakpoints": true
     }
   ]
 }

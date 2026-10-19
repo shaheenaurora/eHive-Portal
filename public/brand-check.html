@@ -3,19 +3,19 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>eHive Brand Check</title>
+    <title>The eHive Brand Diagnostic — how your brand really performs</title>
     <meta
       name="description"
-      content="A short brand discovery form we ask every prospective client to complete before we recommend anything. No scoring, no wrong answers."
+      content="A 4-minute scored diagnostic across 7 dimensions of brand performance — positioning, audience, offer, marketing engine, metrics, identity and readiness. Built for founder-led businesses in the Gulf."
     />
     <link
       rel="canonical"
       href="https://www.ehiveglobal.com/brand-check.html"
     />
-    <meta property="og:title" content="eHive Brand Check" />
+    <meta property="og:title" content="The eHive Brand Diagnostic" />
     <meta
       property="og:description"
-      content="A short brand discovery form we ask every prospective client to complete before we recommend anything. No scoring, no wrong answers."
+      content="Find out how your brand really performs in about 4 minutes — 28 questions, 7 dimensions, one honest score with a clear 90-day roadmap."
     />
     <meta property="og:type" content="website" />
     <meta
@@ -28,367 +28,17 @@
     />
     <meta property="og:site_name" content="eHive" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="eHive Brand Check" />
+    <meta name="twitter:title" content="The eHive Brand Diagnostic" />
     <meta
       name="twitter:description"
-      content="A short brand discovery form we ask every prospective client to complete before we recommend anything. No scoring, no wrong answers."
+      content="Find out how your brand really performs in about 4 minutes — 28 questions, 7 dimensions, one honest score with a clear 90-day roadmap."
     />
     <meta
       name="twitter:image"
       content="https://www.ehiveglobal.com/og/brand-check.png"
     />
     <link rel="stylesheet" href="fonts.css" />
-    <style>
-      :root {
-        --navy: #0f1c3a;
-        --navy-soft: #16264c;
-        --gold: #da3a22;
-        --gold-lite: #e4decf;
-        --cream: #f3f1ea;
-        --paper: #fbf9f5;
-        --ink: #0f1c3a;
-        --muted: #5f5c53;
-        --white: #fff;
-      }
-      * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-      }
-      html,
-      body {
-        height: 100%;
-      }
-      body {
-        font-family:
-          "Manrope",
-          "Segoe UI",
-          system-ui,
-          -apple-system,
-          sans-serif;
-        background: var(--paper);
-        color: var(--ink);
-        line-height: 1.55;
-        -webkit-font-smoothing: antialiased;
-      }
-      .wrap {
-        max-width: 760px;
-        margin: 0 auto;
-        padding: 32px 20px 64px;
-      }
-      .brand {
-        display: inline-block;
-        line-height: 0;
-        background: var(--navy);
-        padding: 9px 14px;
-        border-radius: 9px;
-      }
-      .brand img {
-        height: 22px;
-        width: auto;
-        display: block;
-      }
-      body.embed .wrap {
-        padding-top: 18px;
-      }
-      .rule {
-        height: 3px;
-        width: 56px;
-        background: var(--gold);
-        margin: 10px 0 0;
-      }
-      h1 {
-        font-family: "Space Grotesk", system-ui, sans-serif;
-        font-size: clamp(27px, 5vw, 40px);
-        line-height: 1.15;
-        font-weight: 700;
-        margin: 22px 0 14px;
-      }
-      h2 {
-        font-family: "Space Grotesk", system-ui, sans-serif;
-        font-size: clamp(20px, 3.4vw, 26px);
-        line-height: 1.25;
-        font-weight: 700;
-        margin: 0 0 10px;
-      }
-      p.lede {
-        font-size: 17px;
-        color: var(--muted);
-        max-width: 60ch;
-      }
-      .meta {
-        display: flex;
-        gap: 22px;
-        flex-wrap: wrap;
-        margin: 26px 0 30px;
-        padding: 16px 0;
-        border-top: 1px solid var(--gold-lite);
-        border-bottom: 1px solid var(--gold-lite);
-      }
-      .meta div {
-        font-size: 13px;
-        color: var(--muted);
-      }
-      .meta b {
-        display: block;
-        font-family: "Space Grotesk", system-ui, sans-serif;
-        font-size: 17px;
-        color: var(--navy);
-      }
-      button {
-        font-family: inherit;
-        font-size: inherit;
-        cursor: pointer;
-        border: none;
-        background: none;
-        color: inherit;
-      }
-      .btn {
-        display: inline-block;
-        background: var(--navy);
-        color: var(--white);
-        padding: 14px 28px;
-        border-radius: 4px;
-        font-size: 16px;
-        font-weight: 600;
-        transition:
-          background 0.18s ease,
-          transform 0.12s ease;
-      }
-      .btn:hover {
-        background: #16264c;
-      }
-      .btn:active {
-        transform: translateY(1px);
-      }
-      .btn:disabled {
-        opacity: 0.35;
-        cursor: not-allowed;
-      }
-      .btn-ghost {
-        background: none;
-        color: var(--muted);
-        padding: 12px 4px;
-        font-size: 14px;
-        text-decoration: underline;
-        text-underline-offset: 3px;
-      }
-      :focus-visible {
-        outline: 2.5px solid var(--gold);
-        outline-offset: 3px;
-        border-radius: 3px;
-      }
-
-      /* progress */
-      .prog {
-        margin: 0 0 22px;
-      }
-      .prog-track {
-        height: 6px;
-        background: var(--gold-lite);
-        border-radius: 5px;
-        overflow: hidden;
-      }
-      .prog-fill {
-        height: 100%;
-        background: var(--gold);
-        border-radius: 5px;
-        width: 0;
-        transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
-      }
-      .prog-label {
-        display: flex;
-        justify-content: space-between;
-        font-size: 12px;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        color: var(--muted);
-        margin-top: 8px;
-      }
-
-      .section-no {
-        font-family: "Space Grotesk", system-ui, sans-serif;
-        font-size: 13px;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: var(--gold);
-        font-weight: 700;
-        margin-bottom: 4px;
-      }
-      .section-title {
-        font-family: "Space Grotesk", system-ui, sans-serif;
-        font-size: clamp(21px, 3.4vw, 27px);
-        line-height: 1.2;
-        font-weight: 700;
-        margin: 0 0 22px;
-      }
-
-      /* question blocks */
-      .q {
-        margin: 0 0 22px;
-      }
-      .q > .qlabel {
-        display: block;
-        font-size: 16px;
-        font-weight: 600;
-        color: var(--ink);
-        margin: 0 0 4px;
-        letter-spacing: 0;
-        text-transform: none;
-      }
-      .q > .qhint {
-        font-size: 13.5px;
-        color: var(--muted);
-        margin: 0 0 9px;
-      }
-      label {
-        display: block;
-        font-size: 13px;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--muted);
-        margin: 0 0 6px;
-        font-weight: 600;
-      }
-      textarea,
-      input,
-      select {
-        width: 100%;
-        padding: 12px 14px;
-        font-family: inherit;
-        font-size: 16px;
-        border: 1.5px solid var(--gold-lite);
-        border-radius: 4px;
-        background: var(--white);
-        color: var(--ink);
-        appearance: none;
-        -webkit-appearance: none;
-      }
-      textarea {
-        min-height: 84px;
-        resize: vertical;
-        line-height: 1.5;
-      }
-      select {
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23B8862E' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 14px center;
-        padding-right: 38px;
-        cursor: pointer;
-      }
-      textarea:focus,
-      input:focus,
-      select:focus {
-        border-color: var(--gold);
-        outline: none;
-      }
-
-      /* 1-5 scale */
-      .scale-row {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-      }
-      .sopt {
-        flex: 1 1 0;
-        min-width: 52px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 4px;
-        background: var(--white);
-        border: 1.5px solid var(--gold-lite);
-        border-radius: 6px;
-        padding: 11px 6px;
-        font-size: 12px;
-        color: var(--muted);
-        transition:
-          border-color 0.15s,
-          background 0.15s,
-          color 0.15s;
-      }
-      .sopt .snum {
-        font-family: "Space Grotesk", system-ui, sans-serif;
-        font-weight: 700;
-        font-size: 17px;
-        color: var(--navy);
-      }
-      .sopt:hover {
-        border-color: var(--gold);
-        background: #fffdf8;
-      }
-      .sopt.sel {
-        border-color: var(--navy);
-        background: var(--navy);
-        color: var(--white);
-      }
-      .sopt.sel .snum {
-        color: var(--gold);
-      }
-      .scale-ends {
-        display: flex;
-        justify-content: space-between;
-        font-size: 12px;
-        color: var(--muted);
-        margin-top: 7px;
-      }
-
-      .field {
-        margin-bottom: 16px;
-      }
-      .grid2 {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 14px;
-      }
-      @media (max-width: 540px) {
-        .grid2 {
-          grid-template-columns: 1fr;
-        }
-      }
-      .err {
-        color: #a5342b;
-        font-size: 13.5px;
-        margin-top: 8px;
-        display: none;
-      }
-      .fineprint {
-        font-size: 12.5px;
-        color: var(--muted);
-        margin-top: 14px;
-      }
-      .consent {
-        display: flex;
-        gap: 11px;
-        align-items: flex-start;
-        font-size: 13.5px;
-        color: var(--muted);
-        margin: 6px 0 4px;
-        cursor: pointer;
-      }
-      .consent input {
-        width: auto;
-        margin-top: 3px;
-        accent-color: var(--gold);
-      }
-
-      .nav {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px;
-        margin-top: 26px;
-      }
-
-      .hidden {
-        display: none;
-      }
-      @media (prefers-reduced-motion: reduce) {
-        * {
-          transition: none !important;
-        }
-      }
-    </style>
+    <link rel="stylesheet" href="assess.css" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="theme-color" content="#16264C" />
     <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
@@ -405,700 +55,907 @@
       if (new URLSearchParams(location.search).get("embed") === "1")
         document.body.classList.add("embed");
     </script>
-    <div class="wrap">
-      <!-- ============ INTRO ============ -->
-      <section id="intro">
-        <a class="brand" href="/" aria-label="eHive — home"
-          ><img src="/assets/ehive-wordmark.png" alt="eHive"
-        /></a>
-        <div class="rule"></div>
-        <h1>The Brand Check</h1>
-        <p class="lede">
-          A short discovery form we ask every prospective client to complete
-          before we recommend anything. There's no scoring and no wrong answers.
-        </p>
-        <div class="meta">
-          <div><b>~8 minutes</b>9 short sections</div>
-          <div><b>No score</b>A read, not a grade</div>
-          <div><b>Free</b>No obligation</div>
-        </div>
-        <p class="lede" style="font-size: 15px; margin-bottom: 26px">
-          Some of these questions are more specific than most marketing forms
-          ask — that's intentional. Answer as precisely as you can. If something
-          makes you pause, write that down too; a pause is useful information in
-          itself.
-        </p>
-        <button class="btn" id="start">Begin the Brand Check</button>
-        <p class="fineprint">
-          Take your time — you can move back and forth. Nothing is shared with
-          anyone.
-        </p>
-      </section>
+    <div id="assess-root"></div>
 
-      <!-- ============ STEPS (business info → 9 sections → contact) ============ -->
-      <section id="quiz" class="hidden">
-        <div class="prog">
-          <div class="prog-track">
-            <div class="prog-fill" id="progFill"></div>
-          </div>
-          <div class="prog-label">
-            <span id="progStep"></span><span id="progName"></span>
-          </div>
-        </div>
-        <div id="stepBody"></div>
-        <p class="err" id="stepErr">
-          Please complete the highlighted fields to continue.
-        </p>
-        <div class="nav">
-          <button class="btn-ghost" id="back">← Back</button>
-          <button class="btn" id="nextBtn">Continue →</button>
-        </div>
-      </section>
-
-      <!-- ============ DONE ============ -->
-      <section id="done" class="hidden">
-        <a class="brand" href="/" aria-label="eHive — home"
-          ><img src="/assets/ehive-wordmark.png" alt="eHive"
-        /></a>
-        <div class="rule"></div>
-        <h1>Thank you — that's everything we need.</h1>
-        <h2>What happens next</h2>
-        <p class="lede">
-          Once we've been through your answers, we'll share what we're seeing —
-          where things are genuinely solid, and where the biggest opportunity
-          sits. No cost, no obligation.
-        </p>
-        <p class="lede" style="font-size: 15px; margin-top: 14px">
-          If a few of these questions were harder to answer than expected,
-          that's a normal outcome of this exercise, not a failing on your part —
-          it's simply where the clearest opportunity usually is.
-        </p>
-        <div style="margin-top: 28px">
-          <a
-            class="btn"
-            id="bookBtn"
-            href="book.html?product=brand-3d&src=brand-check"
-            >Book a conversation</a
-          >
-        </div>
-        <p class="fineprint">
-          Your responses are saved — nothing else is needed from you. We'll also
-          email a copy to your inbox when mail service is available.
-        </p>
-      </section>
-    </div>
-
+    <script src="assess.min.js?v=3"></script>
     <script>
       (function () {
         "use strict";
 
-        // ---- The About-your-business step ----
-        var BUSINESS = [
-          {
-            k: "company",
-            label: "Company name",
-            type: "text",
-            ph: "Your company",
-            required: true,
+        var BOOK_URL = "book.html?product=brand-3d&src=brand-check";
+
+        var CONFIG = {
+          tool: "brand-check",
+          storageKey: "ehiveBrandCheck",
+          leadForm: "brand-check",
+          title: "The eHive Brand Diagnostic",
+          toolTitle: "Brand Diagnostic",
+          summaryTitle: "Your Brand Diagnostic result",
+          intro:
+            "Find out how your brand really performs — in about four minutes. Twenty-eight precise questions across seven dimensions, scored against what actually moves buyer behaviour in the Gulf. No fluff and no wrong answers: just a clear read on where you stand and where the leverage is.",
+          introNote:
+            "Answer as things are today, not as the deck says they are. If a question makes you pause, that pause is the diagnostic working.",
+          fineprint:
+            "Your free summary appears the moment you finish. The full breakdown — band-by-band analysis, watch-outs and a 90-day roadmap — is available after. Questions? info@ehiveglobal.com.",
+          meta: [
+            { big: "~4 minutes", small: "28 questions · 7 dimensions" },
+            { big: "Scored / 100", small: "From Invisible to Distinct" },
+            { big: "Free summary", small: "Full report optional" },
+          ],
+          brand: {
+            href: "/",
+            img: "/assets/ehive-wordmark.png",
+            alt: "eHive",
           },
-          {
-            k: "website",
-            label: "Website / primary social handles",
-            type: "text",
-            ph: "example.com · @handle",
-          },
-          {
-            k: "industry",
-            label: "Industry / sector",
-            type: "text",
-            ph: "e.g. Food & Beverage",
-          },
-          {
-            k: "years",
-            label: "Years in operation",
-            type: "text",
-            ph: "e.g. 4",
-          },
-          { k: "team_size", label: "Team size", type: "text", ph: "e.g. 12" },
-        ];
-
-        // ---- 9 sections, verbatim from the eHive Brand Clarity Check ----
-        var SECTIONS = [
-          {
-            no: "01",
-            title: "Positioning & Clarity",
-            qs: [
-              {
-                k: "pos_one_sentence",
-                type: "textarea",
-                q: "In one sentence: what do you do, and for whom?",
-                hint: "No lists, no “and also.” One sentence.",
-              },
-              {
-                k: "pos_only_choice",
-                type: "textarea",
-                q: "What makes you the only sensible choice over your closest competitor? Name the competitor.",
-              },
-              {
-                k: "pos_team_agree",
-                type: "scale",
-                q: "If you asked three people on your team “what do we stand for?” separately, they’d give the same answer.",
-                lo: "Not at all",
-                hi: "Completely true",
-              },
-              {
-                k: "pos_changed",
-                type: "textarea",
-                q: "Has your positioning changed in the last 12 months? If yes, why — and was that a deliberate decision or a drift?",
-              },
-            ],
-          },
-          {
-            no: "02",
-            title: "Target Audience",
-            qs: [
-              {
-                k: "aud_ideal",
-                type: "textarea",
-                q: "Describe your ideal customer in specific terms.",
-                hint: "“Everyone” or “SMEs in the region” doesn't count — be specific: role, size, behaviour, budget.",
-              },
-              {
-                k: "aud_why_you",
-                type: "textarea",
-                q: "In the customer's own words, not yours — why do they actually choose you?",
-              },
-              {
-                k: "aud_personas",
-                type: "textarea",
-                q: "Do you have documented buyer personas? If yes, when were they last updated?",
-              },
-            ],
-          },
-          {
-            no: "03",
-            title: "Product & Offer",
-            qs: [
-              {
-                k: "off_core",
-                type: "textarea",
-                q: "List your core products or services, and mark which one actually drives the most profit — not revenue.",
-              },
-              {
-                k: "off_hardest",
-                type: "textarea",
-                q: "Which of your offers is hardest to explain to a brand-new customer in one breath? Why do you think that is?",
-              },
-              {
-                k: "off_unreviewed",
-                type: "text",
-                q: "What percentage of your current offers have not been reviewed or repriced in the last 12 months?",
-                ph: "e.g. 60%",
-              },
-            ],
-          },
-          {
-            no: "04",
-            title: "Pricing",
-            qs: [
-              {
-                k: "price_set",
-                type: "textarea",
-                q: "How was your current pricing actually set?",
-                hint: "Matched a competitor / cost-plus / gut feel / value-based / other — describe.",
-              },
-              {
-                k: "price_raise",
-                type: "textarea",
-                q: "When did you last raise prices, and what happened afterward?",
-              },
-              {
-                k: "price_cac",
-                type: "scale",
-                q: "You know your true cost to acquire a customer, by channel — not an estimate, an actual number.",
-                lo: "Not at all",
-                hi: "Completely true",
-              },
-            ],
-          },
-          {
-            no: "05",
-            title: "Marketing Strategy & Campaigns",
-            qs: [
-              {
-                k: "mkt_channels",
-                type: "textarea",
-                q: "List every channel you are currently active on.",
-              },
-              {
-                k: "mkt_strategy",
-                type: "textarea",
-                q: "Of those channels, which have a written strategy behind them versus “we just post there”?",
-              },
-              {
-                k: "mkt_objective",
-                type: "textarea",
-                q: "What was the specific, measurable objective of your last campaign?",
-                hint: "“Brand awareness” is not specific — what number were you moving?",
-              },
-              {
-                k: "mkt_owner",
-                type: "textarea",
-                q: "Who owns marketing decisions internally, and roughly how many hours a week do they spend on it?",
-              },
-            ],
-          },
-          {
-            no: "06",
-            title: "Metrics, KPIs & ROI",
-            qs: [
-              {
-                k: "met_kpis",
-                type: "textarea",
-                q: "What are your top three marketing KPIs right now?",
-              },
-              {
-                k: "met_roi",
-                type: "textarea",
-                q: "What was your marketing ROI last quarter — with actual numbers, not a general sense of “it's working”?",
-              },
-              {
-                k: "met_tools",
-                type: "textarea",
-                q: "What tools do you currently use to track performance?",
-              },
-            ],
-          },
-          {
-            no: "07",
-            title: "Team & Process",
-            qs: [
-              {
-                k: "team_setup",
-                type: "textarea",
-                q: "Is marketing run in-house, through an agency, freelance, or a mix? Briefly describe the setup.",
-              },
-              {
-                k: "team_underperform",
-                type: "textarea",
-                q: "Walk us through what actually happens, step by step, when a campaign underperforms.",
-              },
-            ],
-          },
-          {
-            no: "08",
-            title: "Competitive Landscape",
-            qs: [
-              {
-                k: "comp_top3",
-                type: "textarea",
-                q: "Name your top three competitors.",
-              },
-              {
-                k: "comp_better",
-                type: "textarea",
-                q: "Pick one thing at least one of them genuinely does better than you. Be honest — this one's just for you.",
-              },
-            ],
-          },
-          {
-            no: "09",
-            title: "Ambition",
-            qs: [
-              {
-                k: "amb_12m",
-                type: "textarea",
-                q: "Where do you want the brand to be in 12 months? Be specific enough that someone else could tell if you got there.",
-              },
-              {
-                k: "amb_blocked",
-                type: "textarea",
-                q: "What's actually stopped you from getting there so far?",
-              },
-              {
-                k: "amb_first",
-                type: "textarea",
-                q: "If budget and time weren't a constraint, what's the first thing you'd fix?",
-              },
-            ],
-          },
-        ];
-
-        var SCALE = ["Not at all", "", "", "", "Completely true"];
-
-        // Ordered content steps: business, each section, then the contact gate.
-        var STEPS = [{ type: "business" }];
-        SECTIONS.forEach(function (s, i) {
-          STEPS.push({ type: "section", i: i });
-        });
-        STEPS.push({ type: "gate" });
-
-        var answers = {}; // keyed by question/business/contact key
-        var step = 0;
-
-        /* ---- progress persistence: an accidental close/refresh must not lose
-         *  the member's work. Answers live in sessionStorage and are cleared
-         *  once the form is submitted. */
-        var STORE_KEY = "ehiveBrandCheck";
-        function saveProgress() {
-          try {
-            sessionStorage.setItem(
-              STORE_KEY,
-              JSON.stringify({ answers: answers, step: step })
-            );
-          } catch (e) {
-            /* storage unavailable — non-fatal */
-          }
-        }
-        function clearProgress() {
-          try {
-            sessionStorage.removeItem(STORE_KEY);
-          } catch (e) {
-            /* non-fatal */
-          }
-        }
-        (function restoreProgress() {
-          try {
-            var saved = JSON.parse(sessionStorage.getItem(STORE_KEY) || "null");
-            if (saved && saved.answers && Object.keys(saved.answers).length) {
-              answers = saved.answers;
-              step = Math.min(
-                Math.max(Number(saved.step) || 0, 0),
-                STEPS.length - 1
-              );
-            }
-          } catch (e) {
-            /* corrupt state — start fresh */
-          }
-        })();
-
-        var $ = function (id) {
-          return document.getElementById(id);
-        };
-        function show(id) {
-          ["intro", "quiz", "done"].forEach(function (s) {
-            $(s).classList.add("hidden");
-          });
-          $(id).classList.remove("hidden");
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        }
-        function esc(s) {
-          return String(s).replace(/[&<>"]/g, function (c) {
-            return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
-          });
-        }
-
-        function fieldHtml(f) {
-          var val = answers[f.k] != null ? esc(answers[f.k]) : "";
-          if (f.type === "textarea") {
-            return (
-              '<textarea data-k="' +
-              f.k +
-              '" aria-label="' +
-              esc(f.label || f.ph || "Your answer") +
-              '" placeholder="' +
-              esc(f.ph || "Type your answer…") +
-              '">' +
-              val +
-              "</textarea>"
-            );
-          }
-          if (f.type === "scale") {
-            var cur = answers[f.k];
-            var opts = "";
-            for (var v = 1; v <= 5; v++) {
-              var lbl = SCALE[v - 1]
-                ? "<span>" + esc(SCALE[v - 1]) + "</span>"
-                : "<span>&nbsp;</span>";
-              opts +=
-                '<button type="button" class="sopt' +
-                (String(cur) === String(v) ? " sel" : "") +
-                '" data-k="' +
-                f.k +
-                '" data-v="' +
-                v +
-                '">' +
-                '<span class="snum">' +
-                v +
-                "</span>" +
-                lbl +
-                "</button>";
-            }
-            return '<div class="scale-row">' + opts + "</div>";
-          }
-          return (
-            '<input type="text" data-k="' +
-            f.k +
-            '" aria-label="' +
-            esc(f.label || f.ph || "Your answer") +
-            '" value="' +
-            val +
-            '" placeholder="' +
-            esc(f.ph || "") +
-            '">'
-          );
-        }
-
-        function renderStep() {
-          var s = STEPS[step];
-          var body = $("stepBody");
-          $("stepErr").style.display = "none";
-          // progress across content steps
-          var pct = Math.round((step / (STEPS.length - 1)) * 100);
-          $("progFill").style.width = pct + "%";
-
-          if (s.type === "business") {
-            $("progStep").textContent = "About your business";
-            $("progName").textContent = "Step 1 of " + STEPS.length;
-            var rows = BUSINESS.map(function (f) {
-              return (
-                '<div class="field"><label>' +
-                esc(f.label) +
-                (f.required ? " *" : "") +
-                "</label>" +
-                fieldHtml(f) +
-                "</div>"
-              );
-            }).join("");
-            body.innerHTML =
-              '<div class="section-no">Before we start</div>' +
-              '<div class="section-title">A little context</div>' +
-              '<div class="grid2">' +
-              rows +
-              "</div>";
-          } else if (s.type === "section") {
-            var sec = SECTIONS[s.i];
-            $("progStep").textContent = "Section " + sec.no;
-            $("progName").textContent =
-              "Step " + (step + 1) + " of " + STEPS.length;
-            var qhtml = sec.qs
-              .map(function (q) {
-                var hint = q.hint
-                  ? '<div class="qhint">' + esc(q.hint) + "</div>"
-                  : "";
-                return (
-                  '<div class="q"><span class="qlabel">' +
-                  esc(q.q) +
-                  "</span>" +
-                  hint +
-                  fieldHtml(q) +
-                  "</div>"
-                );
-              })
-              .join("");
-            body.innerHTML =
-              '<div class="section-no">' +
-              sec.no +
-              "</div>" +
-              '<div class="section-title">' +
-              esc(sec.title) +
-              "</div>" +
-              qhtml;
-          } else {
-            $("progStep").textContent = "Almost done";
-            $("progName").textContent =
-              "Step " + (step + 1) + " of " + STEPS.length;
-            body.innerHTML =
-              '<div class="section-no">Where to send our read</div>' +
-              '<div class="section-title">Your details</div>' +
-              '<div class="grid2">' +
-              '<div class="field"><label>Your name *</label><input type="text" data-k="name" aria-label="Your name" value="' +
-              esc(answers.name || "") +
-              '" autocomplete="name" placeholder="Full name"></div>' +
-              '<div class="field"><label>Your role</label><input type="text" data-k="role" aria-label="Your role" value="' +
-              esc(answers.role || "") +
-              '" autocomplete="organization-title" placeholder="e.g. Founder / CMO"></div>' +
-              '<div class="field"><label>Email *</label><input type="email" data-k="email" aria-label="Email" value="' +
-              esc(answers.email || "") +
-              '" autocomplete="email" placeholder="you@company.com"></div>' +
-              '<div class="field"><label>Phone *</label><input type="tel" data-k="phone" aria-label="Phone" value="' +
-              esc(answers.phone || "") +
-              '" autocomplete="tel" inputmode="tel" placeholder="+971 50 000 0000"></div>' +
-              "</div>" +
-              '<label class="consent"><input type="checkbox" id="bcConsent"' +
-              (answers._consent ? " checked" : "") +
-              ">" +
-              "<span>I'm happy for the eHive team to review these answers and contact me about them. " +
-              "I can request deletion of my data at any time.</span></label>";
-          }
-
-          // wire inputs
-          wireInputs(body);
-          $("back").style.visibility = step === 0 ? "hidden" : "visible";
-          $("nextBtn").textContent =
-            step === STEPS.length - 1 ? "Send my answers →" : "Continue →";
-        }
-
-        function wireInputs(root) {
-          var fields = root.querySelectorAll("[data-k]");
-          for (var i = 0; i < fields.length; i++) {
-            (function (el) {
-              if (el.classList.contains("sopt")) {
-                el.addEventListener("click", function () {
-                  var k = el.getAttribute("data-k");
-                  answers[k] = Number(el.getAttribute("data-v"));
-                  var sibs = el.parentNode.querySelectorAll(".sopt");
-                  for (var j = 0; j < sibs.length; j++)
-                    sibs[j].classList.remove("sel");
-                  el.classList.add("sel");
-                  saveProgress();
-                });
-              } else {
-                var ev = el.tagName === "SELECT" ? "change" : "input";
-                el.addEventListener(ev, function () {
-                  answers[el.getAttribute("data-k")] = el.value;
-                  saveProgress();
-                });
-              }
-            })(fields[i]);
-          }
-          var consent = root.querySelector("#bcConsent");
-          if (consent)
-            consent.addEventListener("change", function () {
-              answers._consent = consent.checked;
-              saveProgress();
-            });
-        }
-
-        function emailOk(e) {
-          return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e || "");
-        }
-        function phoneOk(p) {
-          return String(p || "").replace(/[^\d]/g, "").length >= 7;
-        }
-
-        function validateStep() {
-          var s = STEPS[step];
-          if (s.type === "business") {
-            return answers.company && String(answers.company).trim()
-              ? null
-              : "company";
-          }
-          if (s.type === "gate") {
-            if (!answers.name || !String(answers.name).trim()) return "name";
-            if (!emailOk(answers.email)) return "email";
-            if (!phoneOk(answers.phone)) return "phone";
-            if (!answers._consent) return "consent";
-            return null;
-          }
-          return null; // sections are optional by design
-        }
-
-        function submitLead() {
-          var sections = SECTIONS.map(function (sec) {
-            return {
-              title: sec.no + " " + sec.title,
-              items: sec.qs.map(function (q) {
-                var a = answers[q.k];
-                if (q.type === "scale" && a)
-                  a = a + " / 5" + (SCALE[a - 1] ? " — " + SCALE[a - 1] : "");
-                return { q: q.q, a: a == null || a === "" ? "—" : String(a) };
-              }),
-            };
-          });
-          var payload = {
-            form: "brand-check",
-            name: answers.name || "",
-            role: answers.role || "",
-            email: answers.email || "",
-            phone: answers.phone || "",
-            company: answers.company || "",
-            website: answers.website || "",
-            industry: answers.industry || "",
-            years: answers.years || "",
-            team_size: answers.team_size || "",
-            source_page: (function () {
-              try {
-                return document.referrer &&
-                  document.referrer.indexOf(location.host) !== -1
-                  ? new URL(document.referrer).pathname
-                  : "/brand-check.html";
-              } catch (e) {
-                return "/brand-check.html";
-              }
-            })(),
-            sections: sections,
-          };
-          return fetch("/api/lead", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Accept: "application/json",
+          business: [
+            {
+              k: "company",
+              label: "Company name",
+              ph: "Your company",
+              required: true,
             },
-            keepalive: true,
-            body: JSON.stringify(payload),
-          })
-            .then(function (r) {
-              return r.json().catch(function () {
-                return { ok: false };
-              });
-            })
-            .then(function (d) {
-              return { ok: d && d.ok === true, data: d };
-            })
-            .catch(function () {
-              return { ok: false, data: null };
-            });
-        }
+            {
+              k: "website",
+              label: "Website / primary social handles",
+              ph: "example.com · @handle",
+            },
+            {
+              k: "industry",
+              label: "Industry / sector",
+              ph: "e.g. Food & Beverage",
+            },
+            { k: "years", label: "Years in operation", ph: "e.g. 4" },
+            { k: "team_size", label: "Team size", ph: "e.g. 12" },
+          ],
 
-        function setSubmitting(busy) {
-          var btn = $("nextBtn");
-          if (btn) {
-            btn.disabled = busy;
-            btn.textContent = busy ? "Sending…" : "Continue →";
-          }
-        }
+          dimensions: [
+            {
+              key: "positioning",
+              label: "Positioning & Differentiation",
+              short: "Positioning",
+              weight: 20,
+              watchBelow: 45,
+              intro:
+                "Most founder-led businesses in the Gulf can't say what makes them different in one sentence. This dimension measures whether yours can.",
+              questions: [
+                {
+                  id: "pos_sentence",
+                  type: "scale",
+                  label:
+                    "If you asked three people on your team “what do we do, and for whom?” — separately — they'd give essentially the same one-sentence answer.",
+                  lo: "Three different stories",
+                  hi: "Identical answer",
+                },
+                {
+                  id: "pos_only_choice",
+                  type: "choice",
+                  label:
+                    "What makes you the only sensible choice over your closest competitor — honestly?",
+                  options: [
+                    { label: "Price, mostly — we're the cheaper or easier option", points: 1 },
+                    { label: "We're better, but saying exactly why is hard", points: 2 },
+                    { label: "A specific strength competitors can't easily copy", points: 3 },
+                    { label: "A named, documented positioning everyone uses", points: 4 },
+                  ],
+                },
+                {
+                  id: "pos_compete",
+                  type: "choice",
+                  label:
+                    "When a prospect compares you with the strongest alternative, what usually decides it?",
+                  options: [
+                    { label: "They compare on price and we often lose", points: 0 },
+                    { label: "Word of mouth or relationships we can't trace", points: 2 },
+                    { label: "A specific outcome or proof point we lead with", points: 3 },
+                    { label: "Our reputation — they arrive already convinced", points: 4 },
+                  ],
+                },
+                {
+                  id: "pos_drift",
+                  type: "scale",
+                  label:
+                    "Your positioning today is a deliberate decision made in the last 12 months — not a drift you ended up with.",
+                  lo: "Total drift",
+                  hi: "Deliberate and recent",
+                },
+              ],
+            },
+            {
+              key: "audience",
+              label: "Audience Precision",
+              short: "Audience",
+              weight: 15,
+              watchBelow: 40,
+              intro:
+                "“Everyone in the UAE” is not an audience. Precision here is the difference between marketing that lands and marketing that makes noise.",
+              questions: [
+                {
+                  id: "aud_ideal",
+                  type: "scale",
+                  label:
+                    "You can describe your ideal customer in specific terms — role, size, budget, buying behaviour — not just a sector.",
+                  lo: "Not at all",
+                  hi: "Completely true",
+                },
+                {
+                  id: "aud_why",
+                  type: "scale",
+                  label:
+                    "You know, in the customer's own words, why they actually choose you — not why you think they should.",
+                  lo: "Not at all",
+                  hi: "Completely true",
+                },
+                {
+                  id: "aud_personas",
+                  type: "choice",
+                  label: "How documented are your buyer personas?",
+                  options: [
+                    { label: "None — it's all in the founder's head", points: 0 },
+                    { label: "Rough and informal — never written down properly", points: 1 },
+                    { label: "Written, but more than a year old", points: 2 },
+                    { label: "Written, current, and used in campaign planning", points: 4 },
+                  ],
+                },
+                {
+                  id: "aud_segment",
+                  type: "choice",
+                  label: "When you plan a campaign, how do you decide who it goes to?",
+                  options: [
+                    {
+                      label: "Everyone gets the same message",
+                      points: 0,
+                      watch:
+                        "One message to every segment is the most common reason Gulf ad budgets underperform — you end up paying to be ignored by most of the audience.",
+                    },
+                    { label: "A broad segment (e.g. SMEs, expats, a nationality)", points: 1 },
+                    { label: "2–3 defined segments with tailored messages", points: 3 },
+                    { label: "Persona-level targeting, message matched to each", points: 4 },
+                  ],
+                },
+              ],
+            },
+            {
+              key: "offer",
+              label: "Offer & Pricing Clarity",
+              short: "Offer & Pricing",
+              weight: 15,
+              watchBelow: 40,
+              intro:
+                "Profit hides in the offer. This dimension looks at whether your range, pricing logic and packaging are working for you or quietly against you.",
+              questions: [
+                {
+                  id: "off_core",
+                  type: "scale",
+                  label:
+                    "You know which offer drives the most profit — not the most revenue — and it gets the most marketing attention.",
+                  lo: "Not at all",
+                  hi: "Completely true",
+                },
+                {
+                  id: "off_explain",
+                  type: "scale",
+                  label:
+                    "A brand-new customer can understand your core offer from your website or first conversation — without you having to translate it for them.",
+                  lo: "Not at all",
+                  hi: "Completely true",
+                },
+                {
+                  id: "off_pricing_method",
+                  type: "choice",
+                  label: "How was your current pricing actually set?",
+                  options: [
+                    {
+                      label: "Matched a competitor, or gut feel",
+                      points: 1,
+                      watch:
+                        "Competitor-matched and gut-feel pricing in the Gulf almost always underprices — regional buyers routinely pay premiums for clarity and confidence.",
+                    },
+                    { label: "Cost-plus", points: 1 },
+                    { label: "Tested a few price points and settled", points: 2 },
+                    { label: "Value-based, tested, and reviewed in the last 12 months", points: 4 },
+                  ],
+                },
+                {
+                  id: "off_review",
+                  type: "choice",
+                  label: "When did you last review or reprice your offers?",
+                  options: [
+                    { label: "Never, or more than two years ago", points: 0 },
+                    { label: "More than 12 months ago", points: 1 },
+                    { label: "Within the last 12 months", points: 3 },
+                    { label: "Within the last 6 months, with data behind it", points: 4 },
+                  ],
+                },
+              ],
+            },
+            {
+              key: "marketing",
+              label: "Marketing Engine",
+              short: "Marketing",
+              weight: 15,
+              watchBelow: 40,
+              intro:
+                "A marketing engine is a system — owner, objective, measurement, learning loop. Here's where yours actually stands.",
+              questions: [
+                {
+                  id: "mkt_strategy",
+                  type: "scale",
+                  label:
+                    "Every channel you're active on has a written strategy behind it — not just a posting habit.",
+                  lo: "We just post",
+                  hi: "Written strategy per channel",
+                },
+                {
+                  id: "mkt_objective",
+                  type: "scale",
+                  label:
+                    "Your last campaign had one specific, measurable objective — a number you were moving, not “awareness”.",
+                  lo: "Not at all",
+                  hi: "Completely true",
+                },
+                {
+                  id: "mkt_owner",
+                  type: "choice",
+                  label: "Who owns marketing decisions, and how much real time do they get?",
+                  options: [
+                    { label: "Nobody officially — it's whoever has time", points: 0 },
+                    { label: "The founder, in scraps of time", points: 1 },
+                    { label: "One named person, part-time", points: 2 },
+                    { label: "A dedicated owner with real hours every week", points: 4 },
+                  ],
+                },
+                {
+                  id: "mkt_response",
+                  type: "choice",
+                  label: "What happens, step by step, when a campaign underperforms?",
+                  options: [
+                    {
+                      label: "We stop and move on",
+                      points: 0,
+                      watch:
+                        "Campaigns that are abandoned instead of diagnosed teach you nothing — every dirham spent becomes tuition you never collect.",
+                    },
+                    { label: "Someone reviews it informally", points: 1 },
+                    { label: "We diagnose it against the objective and adjust", points: 3 },
+                    { label: "A written learn-and-adjust process we actually follow", points: 4 },
+                  ],
+                },
+              ],
+            },
+            {
+              key: "metrics",
+              label: "Metrics & ROI Visibility",
+              short: "Metrics",
+              weight: 15,
+              watchBelow: 40,
+              intro:
+                "You can't improve what you can't see. This is about whether your numbers tell you the truth in time to act on it.",
+              questions: [
+                {
+                  id: "met_kpi",
+                  type: "scale",
+                  label: "You can name your top three marketing KPIs right now, without checking.",
+                  lo: "Not at all",
+                  hi: "Completely true",
+                },
+                {
+                  id: "met_roi",
+                  type: "scale",
+                  label:
+                    "You know your marketing ROI for the last quarter — actual numbers, not a general sense of “it's working”.",
+                  lo: "Not at all",
+                  hi: "Completely true",
+                },
+                {
+                  id: "met_cac",
+                  type: "scale",
+                  label:
+                    "You know your true cost to acquire a customer, by channel — an actual number, not an estimate.",
+                  lo: "Not at all",
+                  hi: "Completely true",
+                },
+                {
+                  id: "met_tools",
+                  type: "choice",
+                  label: "What do you use to track marketing performance?",
+                  options: [
+                    { label: "Platform dashboards only, each in isolation", points: 1 },
+                    { label: "A spreadsheet we update manually", points: 2 },
+                    { label: "A dashboard pulling from several sources", points: 3 },
+                    { label: "A dashboard plus a weekly review ritual that actually happens", points: 4 },
+                  ],
+                },
+              ],
+            },
+            {
+              key: "identity",
+              label: "Brand Identity & Trust Signals",
+              short: "Identity & Trust",
+              weight: 10,
+              watchBelow: 40,
+              intro:
+                "Before a Gulf buyer ever calls you, they've judged you. This dimension reads whether that silent judgment is fair — and profitable.",
+              questions: [
+                {
+                  id: "id_consistent",
+                  type: "scale",
+                  label:
+                    "Your brand looks and sounds the same everywhere — website, decks, socials, proposals.",
+                  lo: "Not at all",
+                  hi: "Completely true",
+                },
+                {
+                  id: "id_proof",
+                  type: "scale",
+                  label:
+                    "A first-time visitor can find proof you deliver — reviews, case studies, named clients — within a minute on your website.",
+                  lo: "Not at all",
+                  hi: "Completely true",
+                },
+                {
+                  id: "id_site",
+                  type: "choice",
+                  label: "If a prospect compares your website with your strongest competitor's, where does it land?",
+                  options: [
+                    { label: "Embarrassingly behind", points: 0 },
+                    { label: "About the same", points: 2 },
+                    { label: "Clearly ahead", points: 4 },
+                    { label: "We're the one others compare themselves to", points: 4 },
+                  ],
+                },
+                {
+                  id: "id_investment",
+                  type: "choice",
+                  label: "When did you last invest properly in your brand identity (design, messaging, website)?",
+                  options: [
+                    { label: "Never — it's DIY", points: 0 },
+                    { label: "More than 3 years ago", points: 1 },
+                    { label: "1–3 years ago", points: 3 },
+                    { label: "Within the last year, aligned to our positioning", points: 4 },
+                  ],
+                },
+              ],
+            },
+            {
+              key: "ambition",
+              label: "Ambition & Readiness",
+              short: "Ambition",
+              weight: 10,
+              watchBelow: 50,
+              intro:
+                "A score means nothing without intent. The last dimension reads how ready the business is to act on what the score says.",
+              questions: [
+                {
+                  id: "amb_12m",
+                  type: "scale",
+                  label:
+                    "You can state where the brand needs to be in 12 months specifically enough that someone else could tell whether you got there.",
+                  lo: "Not at all",
+                  hi: "Completely true",
+                },
+                {
+                  id: "amb_capacity",
+                  type: "scale",
+                  label:
+                    "If a clear roadmap landed tomorrow, someone in the business has the time and authority to run it.",
+                  lo: "Not at all",
+                  hi: "Completely true",
+                },
+                {
+                  id: "amb_budget",
+                  type: "choice",
+                  label: "What's realistically available to invest in closing the gaps this diagnostic finds?",
+                  options: [
+                    {
+                      label: "Nothing right now",
+                      points: 1,
+                      watch:
+                        "A zero budget is a smaller blocker than it feels — several fixes in a typical roadmap cost time, not money. But untreated, the gaps this report shows keep taxing the business every quarter.",
+                    },
+                    { label: "Time, but no budget", points: 2 },
+                    { label: "A modest budget we can release", points: 3 },
+                    { label: "A real budget, approved in principle", points: 4 },
+                  ],
+                },
+                {
+                  id: "amb_first",
+                  type: "choice",
+                  label: "If budget and time weren't constraints, the first thing you'd fix is:",
+                  options: [
+                    { label: "I've never really thought about it", points: 0 },
+                    { label: "Something specific, though unprioritised", points: 2 },
+                    { label: "A named fix I've already scoped", points: 3 },
+                    { label: "Work already in motion that needs doing properly", points: 4 },
+                  ],
+                },
+              ],
+            },
+          ],
 
-        function next() {
-          var bad = validateStep();
-          if (bad) {
-            $("stepErr").style.display = "block";
-            var el =
-              $("stepBody").querySelector('[data-k="' + bad + '"]') ||
-              $("bcConsent");
-            if (el && el.focus) el.focus();
-            return;
-          }
-          if (step === STEPS.length - 1) {
-            setSubmitting(true);
-            $("stepErr").style.display = "none";
-            submitLead().then(function (result) {
-              setSubmitting(false);
-              if (result.ok) {
-                clearProgress();
-                show("done");
-              } else {
-                $("stepErr").textContent =
-                  "We couldn't send your responses right now. Please check your connection and try again.";
-                $("stepErr").style.display = "block";
-              }
-            });
-            return;
-          }
-          step++;
-          renderStep();
-          saveProgress();
-        }
+          context: [
+            {
+              id: "ctx_challenge",
+              label: "What's the single biggest brand or marketing challenge right now? (optional)",
+              hint: "A sentence or two is plenty.",
+            },
+            {
+              id: "ctx_goals",
+              label: "What would make the next 12 months a clear win for the brand? (optional)",
+            },
+          ],
 
-        $("start").addEventListener("click", function () {
-          /* Resuming after an accidental close? Jump straight back to the
-           * saved step instead of restarting from the intro. */
-          if (step > 0) renderStep();
-          else {
-            step = 0;
-            renderStep();
-          }
-          saveProgress();
-          show("quiz");
-        });
-        $("nextBtn").addEventListener("click", next);
-        $("back").addEventListener("click", function () {
-          if (step > 0) {
-            step--;
-            renderStep();
-            saveProgress();
-          }
-        });
+          bands: [
+            {
+              min: 0,
+              key: "invisible",
+              label: "Invisible",
+              headline: "The market can't find you.",
+              copy:
+                "Your overall read: the business is doing better work than the market can see. That's fixable — invisibility is a positioning and packaging problem, not a capability problem, and it's usually the fastest dimension to move.",
+            },
+            {
+              min: 40,
+              key: "blending",
+              label: "Blending In",
+              headline: "You're in the market, but not in the conversation.",
+              copy:
+                "Your overall read: real capability wearing a forgettable story. The market can't repeat why you're different, so it compares you on price — the most expensive way to compete in this region.",
+            },
+            {
+              min: 60,
+              key: "defined",
+              label: "Defined",
+              headline: "The foundations are real — and leaking value.",
+              copy:
+                "Your overall read: the fundamentals exist and mostly hold. What's costing you now is the last twenty percent — consistency, packaging and rhythm — which is good news, because those are cheap to fix relative to what they return.",
+            },
+            {
+              min: 80,
+              key: "distinct",
+              label: "Distinct",
+              headline: "You have something rare. Now scale it deliberately.",
+              copy:
+                "Your overall read: a differentiated, credible brand with working fundamentals. The risk at this level is drift — growth and comfort quietly eroding what made you distinct. Codify it, assign owners, keep measuring.",
+            },
+          ],
+
+          narrative: {
+            analysis: {
+              positioning: {
+                invisible:
+                  "Your positioning is currently a rumour, not an asset. When three people in the business would describe it three different ways, every piece of marketing starts from a different place — and in a Gulf market where trust is built on clarity, that inconsistency costs deals you never see. The good news: this is the cheapest dimension to fix, and it amplifies everything else you do.",
+                blending:
+                  "You have a real business with a vague story. You compete on capability, but the market can't repeat why you're different — so it defaults to comparing price. In the UAE and wider Gulf, where buyers shortlist fast and research silently, a forgettable position means you're out before you knew you were in.",
+                defined:
+                  "Your positioning exists and mostly holds — a genuine asset. The leaks are consistency: it lives in the founder's head more than in a document, and it weakens under pressure (“and also we do…”). Tightening it into one enforceable sentence is the highest-leverage work available to you right now.",
+                distinct:
+                  "You have what most competitors don't: a position the market can repeat. Your job shifts from finding the story to defending it — codifying it so new hires, agencies and partners tell it the same way, and resisting the drift that comes with growth.",
+              },
+              audience: {
+                invisible:
+                  "You're marketing to a silhouette. Without a specific picture of who buys, why, and what they compare you against, every dirham of spend is a small gamble — and founder relationships are carrying a load they can't scale past.",
+                blending:
+                  "You know your audience in outline but not in detail. You can name the sector and maybe the role, but messaging is written for “people like us” — which in this region spans nationalities, languages and buying cultures that respond to very different triggers.",
+                defined:
+                  "You have real audience understanding — segments are named and mostly current. The gap between good and great here is evidence: refreshing personas from actual sales conversations and lost-deal reviews rather than assumption.",
+                distinct:
+                  "You know your buyer precisely — probably better than they can articulate it themselves. The next move is operationalising it: making persona insight a mandatory input for every campaign, page and offer decision.",
+              },
+              offer: {
+                invisible:
+                  "Your offer architecture has grown organically — services added when clients asked, prices set when someone pushed back. That's normal, and it's quietly capping your margin: undifferentiated offers force price-led conversations, and stale pricing in a growing Gulf market is money left on the table every single month.",
+                blending:
+                  "The core offer is sound but cluttered. Clients probably buy the thing you do best as “one of several things you do”, which blurs your value and softens your pricing power. There's a flagship offer in here that has never been packaged as one.",
+                defined:
+                  "You know what drives profit and it shows — your lead offer is reasonably clear and priced with some intent. The remaining gains are in the packaging: tiering, anchoring, and presenting price with the confidence of someone who knows the value behind it.",
+                distinct:
+                  "Your offer is clear, packaged and priced with intent. Buyers understand it quickly, and competitors find it hard to undercut without simply looking cheaper. Now protect it: review pricing against value annually and watch for scope creep.",
+              },
+              marketing: {
+                invisible:
+                  "Marketing is a set of activities, not a system — posting when there's time, boosting when a post does okay. Without an owner, an objective per campaign, and a response when things underperform, every campaign is a fresh coin toss.",
+                blending:
+                  "There's a real rhythm — channels are active and someone cares. But the engine runs on effort rather than design: strategy lives in someone's head, and results depend on individual heroics instead of a repeatable process.",
+                defined:
+                  "You have a working engine with named ownership and mostly deliberate choices. The upgrade now is discipline: written channel strategies, a consistent review cadence, and killing the channels that consume budget without a job to do.",
+                distinct:
+                  "Marketing runs as a system — objectives, owners, measurement, learning loops. The risk at this level is optimisation without ambition: fine-tuning existing channels while the market shifts around you. Keep deliberately testing new angles.",
+              },
+              metrics: {
+                invisible:
+                  "You're flying with the instruments switched off. Without KPIs, ROI or acquisition cost, every budget decision is a bet on instinct — and in a market with this much channel noise, instinct without numbers is expensive.",
+                blending:
+                  "You have numbers, but they're fragmented — platform dashboards that each tell their own truth. You know roughly what's working, but “roughly” is doing a lot of work, and it breaks down exactly when decisions get expensive.",
+                defined:
+                  "Your measurement covers the essentials and mostly gets looked at. The gap is ritual: numbers that aren't reviewed weekly, on a fixed cadence, don't change behaviour fast enough to matter.",
+                distinct:
+                  "You run on numbers — acquisition cost by channel, ROI by campaign, a weekly rhythm. The next edge is predictive: using the data to decide what to try next, not just to judge what already happened.",
+              },
+              identity: {
+                invisible:
+                  "Your brand's first impression undersells the business behind it. In the Gulf, buyers check you out silently before they ever call — an inconsistent or dated identity reads as risk, and risk is what this market prices hardest.",
+                blending:
+                  "The identity is acceptable but uneven — strong in places, DIY in others. Prospects who meet you are impressed; prospects who find you online are less sure. That gap is where deals quietly die.",
+                defined:
+                  "You present credibly and consistently in most places. The remaining work is proof: sharpening case studies, reviews and named-client evidence so the identity claim is backed by third-party fact, not just good design.",
+                distinct:
+                  "Your identity and trust signals do real commercial work — the site pre-sells, proof is visible, and you read as the safe choice. Maintain it as the business evolves; brands at this level lose ground through neglect, not competition.",
+              },
+              ambition: {
+                invisible:
+                  "Either the ambition isn't clearly named, or the capacity to act on it isn't there — often both. A diagnostic can show you the map, but this score suggests the journey needs a decision first: what is this brand actually for, and who is allowed to make it happen?",
+                blending:
+                  "There's ambition, but it's more feeling than plan — and the business is busy enough that the brand keeps waiting. That's the trap: the market won't wait with you. The readiness gap is usually smaller than it feels; it's mostly about naming one priority.",
+                defined:
+                  "You know where you want to be and largely what's blocked you. What's missing is sequencing — trying to fix everything at once is how brand work dies. A prioritised roadmap with one owner turns this from intention into execution.",
+                distinct:
+                  "Ambition and capacity are aligned — you're ready to move, and probably already moving. Use that momentum: brands that act on a diagnosis at this level compound fast, because the fundamentals are there to build on.",
+              },
+            },
+            signals: {
+              positioning: {
+                invisible:
+                  "Sales depend on the founder being in the room; every proposal is written from scratch; referrals arrive confused about what you actually do; and price conversations start early — and hurt.",
+                blending:
+                  "You win when you're in the room but lose the shortlists you never hear about; marketing earns engagement without enquiries; competitors with weaker offerings out-talk you.",
+                defined:
+                  "Your best clients can almost articulate your difference; new team members take months to absorb the story; campaigns noticeably work harder when the founder writes them.",
+                distinct:
+                  "Referrals arrive pre-sold; competitors mimic your messaging; the story survives even when you're not in the room — the risk now is complacency and drift at the edges.",
+              },
+              audience: {
+                invisible:
+                  "Campaigns get polite engagement but few enquiries; the pipeline is whoever the founder already knows; and “everyone” still appears in your marketing briefs.",
+                blending:
+                  "You can describe your best client when asked — but it changes each time; content gets likes from peers, not buyers; ad audiences stay broad by default.",
+                defined:
+                  "Segment differences show up in results but aren't acted on systematically; personas exist but gather dust between planning cycles.",
+                distinct:
+                  "Campaigns convert consistently because the message lands; sales calls start warm; you can often predict which segment a lead came from before the first meeting.",
+              },
+              offer: {
+                invisible:
+                  "Every deal is bespoke; discounts appear to close; the most profitable service is an accidental secret; and you dread the “how much?” question.",
+                blending:
+                  "Prospects compare you on price because they can't compare you on offer; proposals take days to write; the website lists services without selling any of them.",
+                defined:
+                  "Your best clients buy fast and rarely haggle; scope confusion happens occasionally; pricing conversations happen later than they used to — a good sign.",
+                distinct:
+                  "Price objections are rare and specific; clients refer you by quoting your offer back in your own words; competitors position against you by name.",
+              },
+              marketing: {
+                invisible:
+                  "Campaigns start late and end abruptly; results are judged by feel; the same three ideas rotate because nobody has time to plan.",
+                blending:
+                  "Some campaigns perform but nobody can fully explain why; the founder is the marketing team's escalation path; agencies and freelancers execute without a real brief.",
+                defined:
+                  "You can point to campaigns that worked — and say why; there's a loose calendar; underperformance gets noticed, though the response varies.",
+                distinct:
+                  "There's a planning rhythm — briefs, reviews, learning; results are predictable within a range; new channels are tested deliberately, not reactively.",
+              },
+              metrics: {
+                invisible:
+                  "“How's marketing doing?” gets a feeling, not a figure; budget discussions are guesses; platforms report their own success and nobody reconciles them.",
+                blending:
+                  "Reporting exists but arrives late; each channel claims the same win; and you can't answer “what does a customer cost?” without pausing to think.",
+                defined:
+                  "KPIs are agreed, if not always tracked; someone looks at a dashboard roughly monthly; channel-level results are visible even when not actioned.",
+                distinct:
+                  "Weekly numbers reviews happen and produce actions; you can rank channels by real ROI; budget shifts are driven by data, not by who shouts loudest.",
+              },
+              identity: {
+                invisible:
+                  "People who meet the founder are surprised by the quality; the website hasn't changed in years; proposals carry the brand better than the brand carries itself.",
+                blending:
+                  "Different channels look like different companies; social proof is thin or hard to find; the pitch deck gets compliments the website doesn't.",
+                defined:
+                  "Consistency is decent with occasional off-brand artifacts; testimonials exist but aren't deployed; the identity mostly survives new staff and new agencies.",
+                distinct:
+                  "Prospects reference your content and case studies on calls; the brand is recognisable at a glance; new hires adopt the identity quickly.",
+              },
+              ambition: {
+                invisible:
+                  "The 12-month goal changes with the quarter; brand work is always “next quarter”; nobody outside the founder can name the priority.",
+                blending:
+                  "You can feel the gap between the business you have and the one you describe; initiatives start in January and fade by March; budget exists but never gets committed.",
+                defined:
+                  "There's a real plan, partially executed; competing priorities dilute it; the team would know exactly what to do with a clear roadmap.",
+                distinct:
+                  "Initiatives get finished; the team asks for the next move; investment in the brand is treated as a normal operating cost, not a gamble.",
+              },
+            },
+            watch: {
+              positioning:
+                "The longer positioning stays fuzzy, the more the business quietly becomes “the generalist with good relationships” — the hardest position to escape, because it pays today while it costs you tomorrow.",
+              audience:
+                "In this region your next buyer is often researching you in a language and context you never see. Vague audience definition means you simply never show up in those conversations.",
+              offer:
+                "Every quarter without an offer and pricing review, cost inflation and competitor moves eat your margin silently. Stale pricing is the most expensive line item that never appears on a P&L.",
+              marketing:
+                "Activity without an engine burns the founder's credibility budget as well as cash. After enough “we tried marketing” cycles, a business stops believing growth is controllable at all.",
+              metrics:
+                "The longer you operate without numbers, the more every budget conversation becomes political instead of analytical — and the harder it gets to justify any spend, including the spend that would actually work.",
+              identity:
+                "An undersold brand doesn't just lose new clients — it anchors your existing clients' price expectations, making every future pricing conversation harder than it needs to be.",
+              ambition:
+                "Unreadiness compounds. Gulf markets move fast, and a brand that waits two years rarely catches the positioning it could have owned today.",
+            },
+            recommendations: {
+              positioning: [
+                {
+                  bandKey: "invisible",
+                  title: "Write the one-sentence position — then test it",
+                  why:
+                    "Put the founder, the sales lead and one delivery person in a room. Draft the sentence: what you do, for whom, and why you win. Then say it to five real customers and listen for what they repeat back. That sentence becomes the filter for every future campaign, page and proposal.",
+                  impact: "high",
+                  effort: "low",
+                  cta: { label: "Do this with us in a working session", href: BOOK_URL },
+                },
+                {
+                  bandKey: "blending",
+                  title: "Codify the difference you already have",
+                  why:
+                    "Your difference exists — it's just undocumented. Turn your three best client wins into a named, provable claim (an outcome, a method, a guarantee), then lead every touchpoint with it for 90 days.",
+                  impact: "high",
+                  effort: "medium",
+                },
+                {
+                  bandKey: "defined",
+                  title: "Enforce the story everywhere",
+                  why:
+                    "The sentence exists; now close the gaps. Audit the website, deck, proposals and top five social posts against it — anything that doesn't say it the same way gets rewritten. Inconsistency is what keeps a good position at 75%. ",
+                  impact: "medium",
+                  effort: "low",
+                },
+                {
+                  bandKey: "distinct",
+                  title: "Protect the position as you scale",
+                  why:
+                    "Codify the positioning into an onboarding asset so new hires, agencies and partners tell it identically — and schedule an annual positioning review before the market drifts you.",
+                  impact: "medium",
+                  effort: "low",
+                },
+              ],
+              audience: [
+                {
+                  bandKey: "invisible",
+                  title: "Pick one beachhead segment",
+                  why:
+                    "Choose the single segment where you win most easily today — specific role, specific situation. Write one page on what they care about, in their words, and aim all marketing at them for a quarter. Breadth is what's failing you; depth is the fix.",
+                  impact: "high",
+                  effort: "low",
+                },
+                {
+                  bandKey: "blending",
+                  title: "Interview your five best clients",
+                  why:
+                    "Thirty minutes each: why did they buy, what almost stopped them, what they'd say to a peer. The transcripts become your persona draft and — almost always — the raw material for your sharpest messaging.",
+                  impact: "high",
+                  effort: "low",
+                },
+                {
+                  bandKey: "defined",
+                  title: "Refresh personas from evidence",
+                  why:
+                    "Rewrite each persona using last year's sales conversations and lost-deal reasons, not memory. Add the trigger event that makes them buy — timing beats targeting in this market.",
+                  impact: "medium",
+                  effort: "low",
+                },
+                {
+                  bandKey: "distinct",
+                  title: "Make personas mandatory input",
+                  why:
+                    "Institutionalise it: no campaign brief, landing page or offer change without a named persona and their trigger. This is how precision survives growth.",
+                  impact: "medium",
+                  effort: "low",
+                },
+              ],
+              offer: [
+                {
+                  bandKey: "invisible",
+                  title: "Name your flagship offer",
+                  why:
+                    "Pick the offer that should lead — usually your best margin, strongest proof. Give it a name, a fixed scope, a price you say out loud without flinching, and put it front and centre. Everything else becomes a follow-on sale.",
+                  impact: "high",
+                  effort: "medium",
+                  cta: { label: "Scope it in a working session", href: BOOK_URL },
+                },
+                {
+                  bandKey: "blending",
+                  title: "Package the core offer into three tiers",
+                  why:
+                    "Good / better / best with deliberate anchoring. Tiering lets cautious Gulf buyers self-select upward, and makes your real price look like the sensible middle — because it is.",
+                  impact: "high",
+                  effort: "medium",
+                },
+                {
+                  bandKey: "defined",
+                  title: "Run an annual value-based pricing review",
+                  why:
+                    "Raise prices where proof is strongest and present price with the value story attached. Most defined brands we work with find 10–20% headroom they're leaving unclaimed.",
+                  impact: "high",
+                  effort: "low",
+                },
+                {
+                  bandKey: "distinct",
+                  title: "Institutionalise pricing reviews",
+                  why:
+                    "Put a twice-yearly pricing review in the calendar with real inputs: win/loss data, delivery cost, competitor moves. Distinct brands get copied — a live pricing discipline is part of the moat.",
+                  impact: "medium",
+                  effort: "low",
+                },
+              ],
+              marketing: [
+                {
+                  bandKey: "invisible",
+                  title: "Appoint an owner — then run one channel properly",
+                  why:
+                    "One named person (can be you, with protected hours) and one channel with a written one-page strategy: who it targets, what job it does, what number it moves. Kill or pause everything else for 90 days.",
+                  impact: "high",
+                  effort: "low",
+                },
+                {
+                  bandKey: "blending",
+                  title: "Write the one-page strategy per channel",
+                  why:
+                    "One page each: audience, objective, content pillars, budget, and the kill criteria. Strategy that's written survives staff changes, agency changes and busy months.",
+                  impact: "high",
+                  effort: "low",
+                },
+                {
+                  bandKey: "defined",
+                  title: "Add the weekly marketing review ritual",
+                  why:
+                    "Thirty minutes, same time every week: what ran, what the numbers said, what changes. This single ritual is the difference between a defined engine and a distinct one.",
+                  impact: "high",
+                  effort: "low",
+                },
+                {
+                  bandKey: "distinct",
+                  title: "Ring-fence a test-and-learn budget",
+                  why:
+                    "Allocate a fixed slice of budget to structured experiments — new angles, new channels, new offers — judged by pre-agreed criteria. Optimisation keeps you current; experimentation keeps you ahead.",
+                  impact: "medium",
+                  effort: "medium",
+                },
+              ],
+              metrics: [
+                {
+                  bandKey: "invisible",
+                  title: "Define three KPIs and baseline them this week",
+                  why:
+                    "Pick three: e.g. qualified enquiries per month, cost per enquiry, proposal win rate. Baseline them now, even crudely. You don't need perfect data — you need a starting line.",
+                  impact: "high",
+                  effort: "low",
+                },
+                {
+                  bandKey: "blending",
+                  title: "Consolidate into one honest dashboard",
+                  why:
+                    "Pull the platforms into a single weekly view — even a shared spreadsheet. One version of the truth ends the argument about what's working and starts the conversation about what to do.",
+                  impact: "medium",
+                  effort: "medium",
+                },
+                {
+                  bandKey: "defined",
+                  title: "Lock the weekly metrics ritual",
+                  why:
+                    "A dashboard nobody opens is decoration. Put a recurring 30-minute review on the calendar with a named owner and a standing agenda — visibility only becomes ROI when it changes decisions.",
+                  impact: "high",
+                  effort: "low",
+                },
+                {
+                  bandKey: "distinct",
+                  title: "Move from reporting to forecasting",
+                  why:
+                    "Use trailing data to set forward targets per channel and model budget scenarios before you commit. At your level, the edge is deciding faster and with more confidence than competitors.",
+                  impact: "medium",
+                  effort: "medium",
+                },
+              ],
+              identity: [
+                {
+                  bandKey: "invisible",
+                  title: "Fix the front door first",
+                  why:
+                    "Website, Google presence and three strong proof points (reviews, case studies, named clients) before anything decorative. This is the silent first meeting — make it representative of the business behind it.",
+                  impact: "high",
+                  effort: "medium",
+                },
+                {
+                  bandKey: "blending",
+                  title: "Run a consistency sweep",
+                  why:
+                    "One pass over website, decks, socials and proposals: same story, same look, same tone. Fix the two channels prospects see first — usually the website and one social profile. It's faster than a rebrand and closes most of the gap.",
+                  impact: "medium",
+                  effort: "low",
+                },
+                {
+                  bandKey: "defined",
+                  title: "Deploy your proof",
+                  why:
+                    "Collect reviews and case studies into the places decisions happen: homepage, proposals, follow-up emails. Build one flagship case study that mirrors your positioning claim — third parties saying it is worth more than you saying it.",
+                  impact: "medium",
+                  effort: "low",
+                },
+                {
+                  bandKey: "distinct",
+                  title: "Add light brand governance",
+                  why:
+                    "A one-page identity rulebook and a single approver keeps quality from eroding as more people create. Neglect — not competitors — is how distinct brands become blending ones.",
+                  impact: "medium",
+                  effort: "low",
+                },
+              ],
+              ambition: [
+                {
+                  bandKey: "invisible",
+                  title: "Decide what the brand is for",
+                  why:
+                    "A 90-minute working session answering three questions: where must the brand be in 12 months, what specifically blocks it, and who has authority to act. Write it down. That document is the readiness you're missing.",
+                  impact: "high",
+                  effort: "low",
+                  cta: { label: "Book the working session", href: BOOK_URL },
+                },
+                {
+                  bandKey: "blending",
+                  title: "Commit to one priority per quarter",
+                  why:
+                    "Readiness grows by finishing, not by planning. Choose the single highest-leverage gap from this report, assign one owner, and protect their hours. One finished priority changes the business's belief in itself.",
+                  impact: "high",
+                  effort: "low",
+                },
+                {
+                  bandKey: "defined",
+                  title: "Sequence the roadmap",
+                  why:
+                    "Turn the recommendations in this report into a dated 90-day plan with one owner per item — sequence by leverage, not by ease. You already have the intent; this is the logistics.",
+                  impact: "medium",
+                  effort: "low",
+                },
+                {
+                  bandKey: "distinct",
+                  title: "Build the brand operating rhythm",
+                  why:
+                    "A standing monthly brand review — positioning, pipeline, metrics, next moves — so momentum doesn't depend on energy. Distinct brands stay distinct on rhythm, not on inspiration.",
+                  impact: "medium",
+                  effort: "low",
+                },
+              ],
+            },
+          },
+
+          watchBelowDefault: 40,
+
+          roadmapPhases: [
+            {
+              title: "Days 1–30 — Get clear, get baseline",
+              copy:
+                "Write and test the one-sentence position, name your beachhead segment, and baseline your three KPIs — even crudely. Fix the front door: make the website and primary profile say the same thing, and list every offer with its price logic. Nothing launches this month; everything gets named.",
+            },
+            {
+              title: "Days 31–60 — Build the visible machine",
+              copy:
+                "Package the flagship offer with named tiers, write the one-page strategy for your single most important channel, and publish your proof — reviews, one flagship case study, named clients. Start the weekly 30-minute metrics ritual and the campaign learn-and-adjust review.",
+            },
+            {
+              title: "Days 61–90 — Compound deliberately",
+              copy:
+                "Run the value-based pricing review and adjust where the proof supports it. Refresh personas from real sales conversations, decide the second channel (or scale the winner) using 60 days of your own data, and lock the quarterly brand review into the calendar so the score never slips back unnoticed.",
+            },
+          ],
+
+          benchmark:
+            "Across founder-led Gulf businesses we've assessed, most first-time scores land between 40 and 60 — capable businesses blending in. Scores above 80 almost always belong to businesses with a named positioning, at least one measured channel, and a price list reviewed within the year. The gap is rarely talent; it's sequence. Note the weighting: a 10-point move in Positioning is worth roughly double a 10-point move in Identity, because it compounds through every other dimension.",
+
+          methodology:
+            "This diagnostic scores 28 questions across 7 dimensions, weighted by commercial leverage: Positioning & Differentiation 20, Audience Precision 15, Offer & Pricing Clarity 15, Marketing Engine 15, Metrics & ROI Visibility 15, Brand Identity & Trust 10, Ambition & Readiness 10. Scale answers map 1–5 to 0–4 points; multiple-choice answers carry fixed points up to 4. Your overall score is the weight-adjusted average across dimensions, banded as: 0–39 Invisible, 40–59 Blending In, 60–79 Defined, 80–100 Distinct. It takes about four minutes, and your free summary renders instantly. Your two optional open-text answers are never scored — they appear below and are read by a strategist, not an algorithm. Written and maintained by the eHive strategy team; questions or data requests: info@ehiveglobal.com.",
+
+          priceLabel: "AED 99",
+          cta: { label: "Book a working session", href: BOOK_URL },
+        };
+
+        AssessEngine.mount(CONFIG);
       })();
     </script>
   </body>

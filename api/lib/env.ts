@@ -48,6 +48,15 @@ export const env = {
   // Payment gateway (Stripe reference impl). Empty = online payment disabled.
   stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? "",
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
+  // Launch offer for the paid assessment reports (Brand Check / Clarity
+  // Scorecard full report). DEFAULT ON: while Stripe is not set up and the
+  // firm is not yet legally registered, the full report is FREE for everyone
+  // — the AED 99 price still shows (anchoring) but charging is impossible:
+  // /api/report/checkout and /api/report/request-invoice return 403
+  // "launch_offer" and the engine unlocks the full report for every visitor.
+  // Set REPORT_LAUNCH_OFFER=false once Stripe is live AND the firm is
+  // registered to start charging.
+  reportLaunchOffer: process.env.REPORT_LAUNCH_OFFER !== "false",
   // Outbound email (SMTP). Empty host = email disabled (leads still stored).
   smtpHost: process.env.SMTP_HOST ?? "",
   smtpPort: Number(process.env.SMTP_PORT ?? "587"),
@@ -87,6 +96,21 @@ export const env = {
   // magic-byte validation is performed and the upload is logged as un-scanned.
   clamavUrl: process.env.CLAMAV_URL ?? "",
   clamavToken: process.env.CLAMAV_TOKEN ?? "",
+  // AI narrative layer for the paid assessment reports (POST /api/report/compose).
+  // Empty AI_API_KEY = the feature is disabled: compose returns 503 and clients
+  // keep the deterministic template narrative. Kimi (Moonshot AI) OpenAI-compatible
+  // API — get a key at https://platform.kimi.ai (API Keys section).
+  aiApiKey: process.env.AI_API_KEY ?? "",
+  // International endpoint. The legacy .cn endpoint (api.moonshot.cn) serves
+  // mainland accounts; keep the default unless your key was issued there.
+  aiBaseUrl: (process.env.AI_BASE_URL ?? "https://api.moonshot.ai/v1").replace(
+    /\/+$/,
+    ""
+  ),
+  // Current model identifiers: kimi-k3 (flagship, default), kimi-k2.6
+  // (general-purpose, cheaper/faster), kimi-k2.7-code (coding-focused).
+  // moonshot-v1-* and kimi-k2.5 were retired by Moonshot on 2026-08-31.
+  aiModel: process.env.AI_MODEL ?? "kimi-k3",
   // API keys for the read-only integration API (/api/integrations/v1/*) that an
   // external ERP / accounting app polls. Empty = the whole integration API is
   // disabled (returns 503).

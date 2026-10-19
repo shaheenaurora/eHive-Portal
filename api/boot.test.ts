@@ -91,3 +91,120 @@ describe("public site + ops routes", () => {
     expect(res.status).toBe(401);
   });
 });
+
+describe("paid report routes", () => {
+  it("/api/report/config returns pricing, payments flag and tool labels", async () => {
+    const res = await app.request("/api/report/config");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      priceAed: number;
+      priceFils: number;
+      paymentsEnabled: boolean;
+      launchOffer: boolean;
+      tools: Record<string, { label: string }>;
+    };
+    expect(body.priceAed).toBe(99);
+    expect(body.priceFils).toBe(9900);
+    expect(typeof body.paymentsEnabled).toBe("boolean");
+    /* launch offer defaults ON (REPORT_LAUNCH_OFFER unset) — while it runs
+     * the full report is free for everyone and charging is impossible */
+    expect(body.launchOffer).toBe(true);
+    expect(body.tools["brand-check"].label).toBe("Brand Check");
+    expect(body.tools["clarity-scorecard"].label).toBe("Clarity Scorecard");
+  });
+
+  it("/api/report/checkout and /request-invoice are closed during the launch offer", async () => {
+    for (const path of ["/api/report/checkout", "/api/report/request-invoice"]) {
+      const res = await app.request(path, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ tool: "brand-check", token: "1.2.abc" }),
+      });
+      expect(res.status).toBe(403);
+      const body = (await res.json()) as { ok: boolean; error: string };
+      expect(body.ok).toBe(false);
+      expect(body.error).toBe("launch_offer");
+    }
+  });
+
+  it("/api/report/save validates input before touching storage", async () => {
+    const post = (b: unknown) =>
+      app.request("/api/report/save", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(b),
+      });
+    const cases = [
+      { tool: "mystery", email: "a@b.co", answers: {}, dims: [{ score: 1 }] },
+      { tool: "brand-check", email: "nope", answers: {}, dims: [{ score: 1 }] },
+      { tool: "brand-check", email: "a@b.co", answers: {}, dims: [] },
+      { tool: "brand-check", email: "a@b.co", answers: {}, dims: "x" },
+      { tool: "brand-check", email: "a@b.co", dims: [{ score: 5 }] },
+      {
+        tool: "brand-check",
+        email: "a@b.co",
+        answers: "x",
+        dims: [{ score: 5 }],
+      },
+    ];
+    for (const body of cases) {
+      const res = await post(body);
+      expect(res.status).toBe(400);
+      const json = (await res.json()) as { ok: boolean };
+      expect(json.ok).toBe(false);
+    }
+  });
+
+  it("/api/report/save quietly drops honeypot submissions without a token", async () => {
+    const res = await app.request("/api/report/save", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        tool: "brand-check",
+        email: "a@b.co",
+        answers: {},
+        dims: [{ score: 5 }],
+        company_website: "https://spam.example",
+      }),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { ok: boolean; token?: string };
+    expect(body.ok).toBe(true);
+    expect(body.token).toBeUndefined();
+  });
+
+  it("/api/report/:tool/:token rejects bad tokens and unknown tools pre-storage", async () => {
+    const malformed = await app.request("/api/report/brand-check/not-a-token");
+    expect(malformed.status).toBe(403);
+    const unknownTool = await app.request("/api/report/mystery/1.2.abc");
+    expect(unknownTool.status).toBe(404);
+  });
+
+  it("/api/report/compose validates input and rejects bad tokens pre-storage", async () => {
+    const post = (b: unknown) =>
+      app.request("/api/report/compose", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(b),
+      });
+    const invalidJson = await app.request("/api/report/compose", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{not json",
+    });
+    expect(invalidJson.status).toBe(400);
+
+    const unknownTool = await post({ tool: "mystery", token: "1.2.abc" });
+    expect(unknownTool.status).toBe(404);
+    const body404 = (await unknownTool.json()) as { ok: boolean };
+    expect(body404.ok).toBe(false);
+
+    const malformedToken = await post({
+      tool: "brand-check",
+      token: "not-a-token",
+    });
+    expect(malformedToken.status).toBe(403);
+    const body403 = (await malformedToken.json()) as { ok: boolean };
+    expect(body403.ok).toBe(false);
+  });
+});

@@ -2458,3 +2458,47 @@ export const rateLimits = mysqlTable("rate_limits", {
   count: int("count").notNull(),
   resetAt: bigint("resetAt", { mode: "number" }).notNull(),
 });
+
+/* Paid assessment reports — the server core behind the Brand Check and
+   Clarity Scorecard full-report unlock. A visitor's answers are saved
+   (POST /api/report/save), the client gets a signed token back, and the full
+   report is gated behind that token until either the owner sends an invoice
+   (paid='requested') or a Stripe checkout settles (paid='paid' via webhook).
+   One row per (tool, email) — re-taking a tool updates the existing row so the
+   unlock token mailed to the customer keeps working. */
+export const assessmentReports = mysqlTable(
+  "assessment_reports",
+  {
+    id: serial("id").primaryKey(),
+    tool: varchar("tool", { length: 32 }).notNull(),
+    /* Signed access credential: reportId.exp.hmac (see api/lib/report-token.ts).
+       Minted once per row and never rotated, so emailed links stay valid. */
+    token: varchar("token", { length: 64 }).notNull().unique(),
+    /* Normalised to lowercase on write — the (tool, email) lookup depends on it. */
+    email: varchar("email", { length: 320 }).notNull(),
+    contact: json("contact"), // name / phone / company / etc.
+    answers: json("answers"), // per-question answers
+    dims: json("dims"), // per-dimension scores + percentages (server-recomputed)
+    /* Server-authoritative total (0–100), recomputed from dims on every save —
+       the client-supplied total is never trusted. */
+    total: int("total").notNull(),
+    band: varchar("band", { length: 32 }),
+    paid: mysqlEnum("paid", ["free", "requested", "paid"])
+      .notNull()
+      .default("free"),
+    /* Stripe checkout session id while a payment is in flight; also how the
+       webhook finds the row to mark paid. */
+    stripeSessionId: varchar("stripeSessionId", { length: 128 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt")
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  t => [
+    index("ix_assessment_reports_email").on(t.email),
+    uniqueIndex("ux_assessment_reports_tool_email").on(t.tool, t.email),
+  ]
+);
+export type AssessmentReport = typeof assessmentReports.$inferSelect;
+export type InsertAssessmentReport = typeof assessmentReports.$inferInsert;
