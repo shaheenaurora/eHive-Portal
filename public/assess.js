@@ -232,7 +232,26 @@ import QRCode from "qrcode";
    * WinAnsi-safe (curly quotes, dashes, middle dots, ™) which is the
    * encoding pdf-lib uses for the standard fonts. */
   function pdfClean(s) {
-    return String(s == null ? "" : s).replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, "");
+    var str = String(s == null ? "" : s);
+    str = str.replace(
+      /[→⇒←↔↑↓✓✔✗✘₹]/g,
+      function (ch) {
+        switch (ch) {
+          case "→": case "⇒": return "->";
+          case "←": return "<-";
+          case "↔": return "<->";
+          case "↑": return "up";
+          case "↓": return "down";
+          case "✓": case "✔": return "+";
+          case "✗": case "✘": return "x";
+          case "₹": return "Rs";
+          default: return "";
+        }
+      },
+    );
+    return str
+      .replace(/[\t\n\r]+/g, " ")
+      .replace(/[^\x20-\x7e\x80-\xff]/g, "");
   }
 
   function pdfWrap(text, font, size, maxWidth) {
