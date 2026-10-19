@@ -8670,3 +8670,119 @@ a.art:hover {
     transform: none;
   }
 }
+
+/* ---- exit-intent lead capture (app.js) ---------------------------------------
+   Injected by app.js on marketing pages, which load home.css — the styles
+   originally lived in the retired styles.css, so the overlay rendered
+   unstyled: a static block at the end of the body whose close-button focus
+   scrolled the page to the bottom. Tokens mapped to the current system.
+   Sits just under the scorecard/brand-check modals (z 1000). */
+.exit-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 990;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(11, 21, 38, 0.78);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+
+.exit-overlay.on {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.exit-card {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  padding: 2rem 2.2rem 2.2rem;
+  background: var(--h-paper);
+  border-radius: 18px;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.35);
+  color: var(--h-ink);
+  transform: translateY(12px) scale(0.98);
+  transition: transform 0.25s ease;
+}
+
+.exit-overlay.on .exit-card {
+  transform: none;
+}
+
+.exit-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.9rem;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--h-muted);
+  font-size: 1.6rem;
+  line-height: 36px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.exit-close:hover,
+.exit-close:focus-visible {
+  background: var(--h-line);
+  color: var(--h-ink);
+}
+
+.exit-eyebrow {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--h-coral);
+}
+
+.exit-card h2 {
+  margin: 0 0 0.7rem;
+  font-family: var(--eh-font-display);
+  font-size: clamp(1.5rem, 4vw, 1.9rem);
+  line-height: 1.15;
+  color: var(--h-navy);
+}
+
+.exit-card > p {
+  margin: 0 0 1.4rem;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--h-muted);
+}
+
+.exit-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.exit-actions .btn {
+  justify-content: center;
+}
+
+@media (min-width: 480px) {
+  .exit-actions {
+    flex-direction: row;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .exit-overlay,
+  .exit-card {
+    transition: none;
+    transform: none;
+  }
+}

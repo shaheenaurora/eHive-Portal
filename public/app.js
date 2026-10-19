@@ -118,12 +118,22 @@ function submitLead(payload, onOk, onErr) {
      input) — which scrolls the page to the bottom. Combined with
      html { scroll-behavior: smooth } that read as the landing page
      "jumping to the bottom" on load. Manual restoration + an instant
-     scroll-to-top (unless the URL targets an explicit #anchor) keeps the
-     first screen deterministic. ---- */
+     scroll-to-top keeps the first screen deterministic. Only a hash that
+     actually matches an element on the page earns the exemption — a stale
+     or stray hash must not park a returning visitor mid-page. ---- */
   if ("scrollRestoration" in history) history.scrollRestoration = "manual";
   window.addEventListener("load", function () {
-    if (location.hash) return;
-    if ((window.scrollY || 0) > 0)
+    var anchor = null;
+    if (location.hash && location.hash.length > 1) {
+      try {
+        anchor = document.getElementById(
+          decodeURIComponent(location.hash.slice(1))
+        );
+      } catch (e) {
+        /* malformed hash — treat as no anchor */
+      }
+    }
+    if (!anchor && (window.scrollY || 0) > 0)
       window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   });
 
@@ -165,13 +175,13 @@ function submitLead(payload, onOk, onErr) {
     document.body.classList.add("menu-open");
     toggle.setAttribute("aria-expanded", "true");
     var links = menuLinks();
-    if (links.length) links[0].focus();
+    if (links.length) links[0].focus({ preventScroll: true });
   }
   function closeMenu() {
     if (!document.body.classList.contains("menu-open")) return;
     document.body.classList.remove("menu-open");
     toggle.setAttribute("aria-expanded", "false");
-    toggle.focus();
+    toggle.focus({ preventScroll: true });
   }
   if (toggle && menu) {
     toggle.addEventListener("click", function () {
@@ -197,10 +207,10 @@ function submitLead(payload, onOk, onErr) {
         last = links[links.length - 1];
       if (e.shiftKey && document.activeElement === first) {
         e.preventDefault();
-        last.focus();
+        last.focus({ preventScroll: true });
       } else if (!e.shiftKey && document.activeElement === last) {
         e.preventDefault();
-        first.focus();
+        first.focus({ preventScroll: true });
       }
     });
   }
@@ -1892,7 +1902,7 @@ function submitLead(payload, onOk, onErr) {
     }, 200);
     overlay = null;
     document.removeEventListener("keydown", onKey);
-    if (lastFocus && lastFocus.focus) lastFocus.focus();
+    if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
   }
   function onKey(e) {
     if (e.key === "Escape") close();
@@ -1920,12 +1930,12 @@ function submitLead(payload, onOk, onErr) {
     closeBtn.addEventListener("click", close);
     if (trap) {
       trap.addEventListener("focus", function () {
-        closeBtn.focus();
+        closeBtn.focus({ preventScroll: true });
       });
       closeBtn.addEventListener("keydown", function (e) {
         if (e.key === "Tab" && e.shiftKey) {
           e.preventDefault();
-          trap.focus();
+          trap.focus({ preventScroll: true });
         }
       });
     }
@@ -1937,7 +1947,7 @@ function submitLead(payload, onOk, onErr) {
       overlay.classList.add("on");
     });
     setTimeout(function () {
-      if (closeBtn) closeBtn.focus();
+      if (closeBtn) closeBtn.focus({ preventScroll: true });
     }, 60);
   }
 
@@ -1985,7 +1995,7 @@ function submitLead(payload, onOk, onErr) {
     }, 200);
     overlay = null;
     document.removeEventListener("keydown", onKey);
-    if (lastFocus && lastFocus.focus) lastFocus.focus();
+    if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
   }
   function onKey(e) {
     if (e.key === "Escape") close();
@@ -2013,12 +2023,12 @@ function submitLead(payload, onOk, onErr) {
     closeBtn.addEventListener("click", close);
     if (trap) {
       trap.addEventListener("focus", function () {
-        closeBtn.focus();
+        closeBtn.focus({ preventScroll: true });
       });
       closeBtn.addEventListener("keydown", function (e) {
         if (e.key === "Tab" && e.shiftKey) {
           e.preventDefault();
-          trap.focus();
+          trap.focus({ preventScroll: true });
         }
       });
     }
@@ -2030,7 +2040,7 @@ function submitLead(payload, onOk, onErr) {
       overlay.classList.add("on");
     });
     setTimeout(function () {
-      if (closeBtn) closeBtn.focus();
+      if (closeBtn) closeBtn.focus({ preventScroll: true });
     }, 60);
   }
 
@@ -2126,7 +2136,7 @@ function submitLead(payload, onOk, onErr) {
     }, 200);
     overlay = null;
     document.removeEventListener("keydown", onKey);
-    if (lastFocus && lastFocus.focus) lastFocus.focus();
+    if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
   }
   function focusables() {
     return overlay
@@ -2153,10 +2163,10 @@ function submitLead(payload, onOk, onErr) {
       last = links[links.length - 1];
     if (e.shiftKey && document.activeElement === first) {
       e.preventDefault();
-      last.focus();
+      last.focus({ preventScroll: true });
     } else if (!e.shiftKey && document.activeElement === last) {
       e.preventDefault();
-      first.focus();
+      first.focus({ preventScroll: true });
     }
   }
   function open() {
@@ -2188,7 +2198,7 @@ function submitLead(payload, onOk, onErr) {
     document.addEventListener("keydown", onKey);
     requestAnimationFrame(function () {
       overlay.classList.add("on");
-      closeBtn.focus();
+      closeBtn.focus({ preventScroll: true });
     });
   }
   document.addEventListener("mouseout", function (e) {

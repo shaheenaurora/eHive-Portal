@@ -135,7 +135,11 @@ body.embed .assess-wrap {
   color: var(--eh-navy-900);
 }
 
-.assess-wrap button {
+/* Bare buttons only: the reset must not out-specify the component classes
+   below (e.g. .assess-btn/.assess-sopt are (0,1,0) and would lose their
+   background/border/color to this rule), or every styled <button> in the
+   engine renders as plain text. */
+.assess-wrap button:not([class]) {
   font-family: inherit;
   font-size: inherit;
   cursor: pointer;
@@ -152,9 +156,11 @@ body.embed .assess-wrap {
   color: var(--eh-white);
   padding: 14px 28px;
   border-radius: 6px;
+  font-family: inherit;
   font-size: 16px;
   font-weight: 600;
   text-decoration: none;
+  cursor: pointer;
   transition:
     background 0.18s ease,
     transform 0.16s var(--eh-ease-expo),
@@ -185,11 +191,13 @@ body.embed .assess-wrap {
   background: none;
   color: var(--eh-ink-600);
   padding: 12px 4px;
+  font-family: inherit;
   font-size: 14px;
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 3px;
   border-radius: 4px;
+  cursor: pointer;
   transition: color 0.15s ease;
 }
 .assess-btn-ghost:hover {
@@ -402,9 +410,11 @@ body.embed .assess-wrap {
   border: 1.5px solid var(--eh-paper-200);
   border-radius: 8px;
   padding: 10px 6px;
+  font-family: inherit;
   font-size: 11.5px;
   line-height: 1.25;
   color: var(--eh-ink-600);
+  cursor: pointer;
   transition:
     border-color 0.16s ease,
     background 0.16s ease,
@@ -480,9 +490,11 @@ body.embed .assess-wrap {
   border: 1.5px solid var(--eh-paper-200);
   border-radius: 8px;
   padding: 13px 14px;
+  font-family: inherit;
   font-size: 14.5px;
   line-height: 1.45;
   color: var(--eh-ink-900);
+  cursor: pointer;
   transition:
     border-color 0.16s ease,
     background 0.16s ease,
@@ -861,11 +873,11 @@ body.embed .assess-wrap {
   font-size: 13.5px;
   font-weight: 700;
   color: var(--eh-coral-500);
-  text-decoration: none;
-}
-.assess-rec-cta:hover {
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+.assess-rec-cta:hover {
+  color: var(--eh-coral-400);
 }
 
 /* ---- unlock panel ------------------------------------------------------- */
