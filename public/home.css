@@ -1135,7 +1135,7 @@ a {
   }
 }
 
-.h-footer h4 {
+.h-footer h3 {
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.14em;
@@ -1430,6 +1430,15 @@ body.has-sticky-cta {
     padding-right: 0.7rem;
     font-size: 0.95rem;
     white-space: nowrap;
+  }
+}
+
+/* While the full-width cookie banner is up (small screens only — at wider
+   widths it hugs the bottom-left and clears the FAB), lift the concierge FAB
+   above it so it never covers the banner text. */
+@media (max-width: 560px) {
+  body.has-cookie-notice .cg-fab {
+    bottom: 12.5rem;
   }
 }
 
@@ -5112,6 +5121,21 @@ a.art:hover {
 
 .sub-form button:hover {
   background: var(--h-coral-2);
+}
+
+/* inline validation for the newsletter/subscribe forms (app.js) —
+   matches the footer success message colour so it reads on the dark band */
+.h-lead-form,
+.sub-form {
+  flex-wrap: wrap;
+}
+
+.news-err {
+  flex: 1 0 100%;
+  margin: 0.6rem 0 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--gold-2, #e4573f);
 }
 
 @media (max-width: 560px) {

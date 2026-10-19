@@ -400,10 +400,20 @@ function submitLead(payload, onOk, onErr) {
     f.addEventListener("submit", function (e) {
       e.preventDefault();
       var inp = f.querySelector('input[type="email"]');
+      var err = f.querySelector(".news-err");
       if (!inp || !isValidEmail(inp.value.trim())) {
+        /* a bare refocus reads as "nothing happened" — say why */
+        if (!err) {
+          err = document.createElement("p");
+          err.className = "news-err";
+          err.setAttribute("role", "alert");
+          f.appendChild(err);
+        }
+        err.textContent = "Please enter a valid email address.";
         if (inp) inp.focus();
         return;
       }
+      if (err) err.parentNode.removeChild(err);
       var email = inp.value.trim();
       submitLead(
         {
@@ -2413,6 +2423,10 @@ function submitLead(payload, onOk, onErr) {
               return (
                 '<button role="tab" aria-selected="' +
                 (j === i) +
+                '" aria-label="Testimonial ' +
+                (j + 1) +
+                " of " +
+                list.length +
                 '" data-j="' +
                 j +
                 '" style="width:9px;height:9px;border-radius:50%;border:0;margin:0 4px;padding:0;cursor:pointer;background:' +
@@ -2508,6 +2522,7 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
   function dismiss() {
     acknowledge();
     el.classList.remove("eh-cookie-show");
+    document.body.classList.remove("has-cookie-notice");
     if (el.parentNode) el.parentNode.removeChild(el);
   }
   btn.addEventListener("click", dismiss);
@@ -2520,5 +2535,6 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
 
   requestAnimationFrame(function () {
     el.classList.add("eh-cookie-show");
+    document.body.classList.add("has-cookie-notice");
   });
 })();
