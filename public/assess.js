@@ -232,7 +232,7 @@ import QRCode from "qrcode";
    * WinAnsi-safe (curly quotes, dashes, middle dots, ™) which is the
    * encoding pdf-lib uses for the standard fonts. */
   function pdfClean(s) {
-    return String(s == null ? "" : s).replace(/[ --]/g, "");
+    return String(s == null ? "" : s).replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, "");
   }
 
   function pdfWrap(text, font, size, maxWidth) {
@@ -1517,7 +1517,7 @@ import QRCode from "qrcode";
 
       root.innerHTML =
         progressHtml() +
-        '<div id="assessStepBody">' + body + "</div>" +
+        '<div id="assessStepBody" class="' + (S.dir === "back" ? "assess-step-back" : "assess-step-fwd") + '">' + body + "</div>" +
         '<p class="assess-err" id="assessErr"></p>' +
         '<div class="assess-nav">' +
         '<button class="assess-btn-ghost" id="assessBack"' + (S.step === 0 ? ' style="visibility:hidden"' : "") + ">← Back</button>" +
@@ -1542,6 +1542,19 @@ import QRCode from "qrcode";
       wireStep();
       document.getElementById("assessBack").addEventListener("click", goBack);
       document.getElementById("assessNext").addEventListener("click", goNext);
+
+      /* animate the progress fill from empty each step (inline width paints
+       * before a transition can run, so set 0 and commit on the next frame) */
+      var fill = root.querySelector(".assess-prog-fill");
+      if (fill && !reduceMotion()) {
+        var targetW = fill.style.width;
+        fill.style.width = "0%";
+        global.requestAnimationFrame(function () {
+          global.requestAnimationFrame(function () {
+            fill.style.width = targetW;
+          });
+        });
+      }
     }
 
     function wireStep() {
@@ -1660,6 +1673,7 @@ import QRCode from "qrcode";
     function goBack() {
       if (S.step > 0) {
         S.step--;
+        S.dir = "back";
         saveProgress();
         renderStep();
         global.scrollTo({ top: 0, behavior: "smooth" });
@@ -1677,6 +1691,7 @@ import QRCode from "qrcode";
         return;
       }
       S.step++;
+      S.dir = "fwd";
       saveProgress();
       renderStep();
       global.scrollTo({ top: 0, behavior: "smooth" });
@@ -1762,6 +1777,11 @@ import QRCode from "qrcode";
       /* honeypot tripped — pretend success, send nothing */
       if (String(S.answers.company_website || "").trim()) {
         clearProgress();
+        /* renderSummary reads S.dims/S.total/S.band for the decoy result */
+        var scHp = score(config, S.answers);
+        S.dims = scHp.dims;
+        S.total = scHp.total;
+        S.band = scHp.band;
         renderSummary(null, { saved: false });
         return;
       }
@@ -1951,10 +1971,13 @@ import QRCode from "qrcode";
       var bars = dims
         .map(function (d) {
           var isLow = d.pct === lowestPct && dims.length > 1;
+          var dBand = bandFor(config, d.pct);
+          var bIdx = config.bands.indexOf(dBand);
           return (
             '<div class="assess-dimbar' + (isLow ? " lowest" : "") + '">' +
             '<span class="assess-dimbar-name">' + esc(d.short || d.label) + "</span>" +
             '<span class="assess-dimbar-track"><span class="assess-dimbar-fill" data-pct="' + d.pct + '" style="width:0"></span></span>' +
+            '<span class="assess-chip band-' + (bIdx < 0 ? 0 : bIdx) + ' assess-dimbar-chip">' + esc(dBand.label) + "</span>" +
             '<span class="assess-dimbar-val">' + d.pct + "</span></div>"
           );
         })
@@ -1991,12 +2014,12 @@ import QRCode from "qrcode";
 
       animateRing(total);
       var fills = root.querySelectorAll(".assess-dimbar-fill");
-      Array.prototype.forEach.call(fills, function (f) {
+      Array.prototype.forEach.call(fills, function (f, i) {
         var pct = Number(f.getAttribute("data-pct")) || 0;
         if (reduceMotion()) f.style.width = pct + "%";
         else setTimeout(function () {
           f.style.width = pct + "%";
-        }, 60);
+        }, 260 + i * 110);
       });
 
       renderUnlock(dims, total, band, opts);
@@ -2031,8 +2054,9 @@ import QRCode from "qrcode";
       return (
         '<div class="assess-launch-ribbon" role="note">' +
         '<span class="assess-launch-tag">Launch offer</span>' +
-        '<span class="assess-launch-copy">Full strategic report <b>FREE</b>' +
-        " · regularly " + esc(label) + "</span>" +
+        '<span class="assess-launch-copy">The full strategic report is <b>FREE</b> right now ' +
+        '<span class="assess-launch-was">regularly <s>' + esc(label) + "</s></span>" +
+        '<span class="assess-launch-sub">Limited time — it unlocks the moment you finish.</span></span>' +
         "</div>"
       );
     }
@@ -2287,6 +2311,7 @@ import QRCode from "qrcode";
             '<div class="assess-rdim-head"><h3>' + esc(d.label) + "</h3>" +
             '<div class="assess-rdim-score"><span class="assess-rdim-pct">' + dm.pct + "/100</span>" +
             '<span class="assess-chip band-' + bandIdxOf(dBand) + '">' + esc(dBand.label) + "</span></div></div>" +
+            "<h4>Analysis</h4>" +
             '<p data-ai-analysis="' + esc(d.key) + '">' + esc(analysis) + "</p>" +
             (signals
               ? "<h4>What's happening</h4><p data-ai-signals=\"" + esc(d.key) + "\">" + esc(signals) + "</p>"
@@ -2328,6 +2353,10 @@ import QRCode from "qrcode";
         })
         .join("");
 
+      var product = config.cta
+        ? pdfProductForHref(config.cta.href) || config.cta.label || "Discovery call"
+        : "Discovery call";
+
       box.innerHTML =
         '<article class="assess-report" id="assess-report">' +
         '<div class="assess-report-head">' +
@@ -2353,9 +2382,17 @@ import QRCode from "qrcode";
             (config.appendixNote ? '<p style="margin-top:10px">' + esc(config.appendixNote) + "</p>" : "") +
             "</div>"
           : "") +
-        '<div class="assess-report-cta"><h3>Want this done with you, not just read to you?</h3>' +
-        "<p>Bring these results to a working session and we'll turn the roadmap into a plan with owners and dates — most teams leave with the first phase already scheduled.</p>" +
-        (config.cta ? '<a class="assess-btn assess-btn-coral" href="' + esc(config.cta.href) + '">' + esc(config.cta.label) + "</a>" : "") +
+        '<div class="assess-report-cta">' +
+        '<div class="assess-cta-eyebrow">Recommended next step</div>' +
+        "<h3>Want this done with you, not just read to you?</h3>" +
+        "<p class=\"assess-cta-why\">Bring these results to a working session and we'll turn the roadmap into a plan with owners and dates — most teams leave with the first phase already scheduled.</p>" +
+        '<div class="assess-cta-product">' + esc(product) + "</div>" +
+        '<ul class="assess-cta-points">' +
+        "<li>We'll walk through your report live.</li>" +
+        "<li>You'll leave with one clear priority whether or not we engage.</li>" +
+        "<li>No pitch, no pressure.</li>" +
+        "</ul>" +
+        (config.cta ? '<a class="assess-btn assess-btn-coral assess-cta-btn" href="' + esc(config.cta.href) + '">' + esc(config.cta.label) + " →</a>" : "") +
         "</div>" +
         '<div class="assess-actions">' +
         '<button type="button" class="assess-btn assess-btn-coral assess-pdf-btn" id="assessPdfBtn">' +
