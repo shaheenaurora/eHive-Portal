@@ -84,6 +84,72 @@ export async function sendReportUnlocked(input: {
 }
 
 /**
+ * Post-assessment summary email — the owner wants the mail SHORT (a summary)
+ * with the full designed PDF attached, not the detailed in-line results the
+ * generic lead confirmation used to carry. Sent once per report, after the
+ * client has generated + uploaded the PDF (we send without attachment if the
+ * upload never arrived, with the online link as the fallback).
+ */
+export async function sendReportSummary(input: {
+  tool: string;
+  email: string;
+  name: string | null;
+  total: number;
+  band: string | null;
+  weakestDimLabel: string | null;
+  productLabel: string | null;
+  token: string;
+  pdfBase64: string | null;
+}): Promise<{ ok: boolean; error?: string }> {
+  if (!mailEnabled()) {
+    return { ok: false, error: "Email is not configured." };
+  }
+  const label = labelFor(input.tool);
+  const first = input.name ? esc(input.name.split(" ")[0]) : "";
+  const reportUrl = `${env.publicUrl}/${reportToolPage(input.tool)}?report=${encodeURIComponent(input.token)}`;
+  const bandLine = input.band
+    ? `You scored <strong style="color:#101d2c">${esc(input.total)}/100 — ${esc(input.band)}</strong>.`
+    : `You scored <strong style="color:#101d2c">${esc(input.total)}/100</strong>.`;
+  const readLine = input.pdfBase64
+    ? `Your full report is <strong>attached as a PDF</strong> — your dimension-by-dimension analysis, watch-outs and your 90-day roadmap.`
+    : `Your full report — dimension-by-dimension analysis, watch-outs and your 90-day roadmap — is ready:`;
+  const weakestLine = input.weakestDimLabel
+    ? `Your clearest gap sits in <strong style="color:#101d2c">${esc(input.weakestDimLabel)}</strong>${
+        input.productLabel
+          ? ` — and the most direct next step from here is ${esc(input.productLabel)}`
+          : ""
+      }.`
+    : "";
+  const html = shell(`
+    <h1 style="margin:0 0 12px;font-family:Georgia,serif;font-size:22px;color:#101d2c;font-weight:600">${first ? `Hi ${first},` : "Hi there,"}</h1>
+    <p style="margin:0 0 14px;color:#33465e;font-size:15px;line-height:1.55">Thank you for completing the eHive ${esc(label)}. ${bandLine}</p>
+    ${weakestLine ? `<p style="margin:0 0 14px;color:#33465e;font-size:15px;line-height:1.55">${weakestLine}</p>` : ""}
+    <p style="margin:0 0 18px;color:#33465e;font-size:15px;line-height:1.55">${readLine}</p>
+    <p style="margin:20px 0 0"><a href="${reportUrl}" style="display:inline-block;background:#101d2c;color:#f5efe2;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:600">Open your report online →</a></p>
+    <p style="margin:20px 0 0;color:#33465e;font-size:14px;line-height:1.55">If you'd like to talk any of it through, reply to this email or book a free discovery call at <a href="${env.publicUrl}/book.html" style="color:#b23a2e;text-decoration:underline">${env.publicUrl.replace(/^https:\/\//, "")}/book.html</a>.</p>
+    <p style="margin:20px 0 0;color:#33465e;font-size:14px;line-height:1.55">Warm regards,<br/><strong>The eHive team</strong><br/><a href="mailto:info@ehiveglobal.com" style="color:#b8862e;text-decoration:none">info@ehiveglobal.com</a></p>
+  `);
+  const r = await sendMailDetailed({
+    to: input.email,
+    subject: `Your eHive ${label} report`,
+    html,
+    replyTo: env.leadNotifyEmail || undefined,
+    ...(input.pdfBase64
+      ? {
+          attachments: [
+            {
+              filename: `ehive-${input.tool}-report.pdf`,
+              content: Buffer.from(input.pdfBase64, "base64"),
+              contentType: "application/pdf",
+            },
+          ],
+        }
+      : {}),
+  });
+  return { ok: r.ok, error: r.error };
+}
+
+/**
  * Owner notification for the invoice path — a customer asked to be invoiced
  * for the full report instead of paying by card. Plain summary to the lead
  * inbox with reply-to set to the requester so the team can reply directly.

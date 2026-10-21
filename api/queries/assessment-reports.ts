@@ -142,3 +142,23 @@ export function reportContactName(contact: unknown): string | null {
   const name = (contact as Record<string, unknown>).name;
   return typeof name === "string" && name.trim() ? name.trim() : null;
 }
+
+/** Store (or replace) the base64 PDF for a report — generated client-side and
+ *  uploaded so the summary email can attach the exact report the founder saw. */
+export async function saveReportPdf(
+  id: number,
+  pdfBase64: string
+): Promise<void> {
+  await getDb()
+    .update(schema.assessmentReports)
+    .set({ pdf: pdfBase64 })
+    .where(eq(schema.assessmentReports.id, id));
+}
+
+/** One-way mark: the summary email has been sent for this report. */
+export async function markReportEmailed(id: number): Promise<void> {
+  await getDb()
+    .update(schema.assessmentReports)
+    .set({ reportEmailedAt: new Date() })
+    .where(eq(schema.assessmentReports.id, id));
+}

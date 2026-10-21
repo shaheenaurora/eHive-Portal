@@ -19,13 +19,20 @@ import {
   findReportById,
   findReportByToolEmail,
   insertReport,
+  markReportEmailed,
   markReportRequested,
   reportContactName,
+  saveReportPdf,
   setReportStripeSession,
   setReportToken,
   updateReportData,
 } from "./queries/assessment-reports";
-import { sendReportInvoiceRequested, reportToolPage } from "./lib/report-mail";
+import {
+  sendReportInvoiceRequested,
+  sendReportSummary,
+  reportToolPage,
+} from "./lib/report-mail";
+import { buildScorecardReport } from "../src/lib/scorecard";
 import {
   AiComposeError,
   buildComposeFacts,
@@ -271,7 +278,11 @@ reportApp.post("/compose", async c => {
   const tool = String(body.tool ?? "");
   const token = String(body.token ?? "");
   if (
-    !(await rateLimit(`report:compose:tok:${tool}:${token}`, 10, 10 * 60 * 1000))
+    !(await rateLimit(
+      `report:compose:tok:${tool}:${token}`,
+      10,
+      10 * 60 * 1000
+    ))
   ) {
     return c.json(
       { ok: false, error: "Too many requests. Please try again shortly." },
@@ -301,13 +312,178 @@ reportApp.post("/compose", async c => {
   } catch (err) {
     if (err instanceof AiComposeError) {
       /* Client contract: any non-ok = keep the template narrative. */
-      const status = err.code === "ai_upstream_error" || err.code === "ai_bad_response" ? 502 : 503;
+      const status =
+        err.code === "ai_upstream_error" || err.code === "ai_bad_response"
+          ? 502
+          : 503;
       logger.warn("report compose failed", { code: err.code, tool });
       return c.json({ ok: false, error: err.code }, status);
     }
     logger.error("report compose failed", { error: err, tool });
     return c.json({ ok: false, error: "compose failed" }, 500);
   }
+});
+
+/** Client-generated PDF upload: the engine builds the designed report PDF in
+ *  the browser (same narrative the founder saw, AI-enhanced when available)
+ *  and uploads it so the summary email can attach it. Token-gated, PDF magic
+ *  validated, overwrite-on-retake. */
+reportApp.post("/upload-pdf", async c => {
+  if (!(await rateLimit(`report:pdf:${clientIp(c)}`, 20, 10 * 60 * 1000))) {
+    return c.json(
+      { ok: false, error: "Too many requests. Please try again shortly." },
+      429
+    );
+  }
+  let body: Record<string, unknown>;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ ok: false, error: "invalid json" }, 400);
+  }
+  const tool = String(body.tool ?? "");
+  const token = String(body.token ?? "");
+  if (
+    !(await rateLimit(`report:pdf:tok:${tool}:${token}`, 5, 10 * 60 * 1000))
+  ) {
+    return c.json(
+      { ok: false, error: "Too many requests. Please try again shortly." },
+      429
+    );
+  }
+  const pdfBase64 = String(body.pdfBase64 ?? "");
+  if (!pdfBase64 || pdfBase64.length > 2_100_000) {
+    return c.json({ ok: false, error: "invalid pdf payload" }, 400);
+  }
+  let head = "";
+  try {
+    head = Buffer.from(pdfBase64, "base64").subarray(0, 4).toString("latin1");
+  } catch {
+    head = "";
+  }
+  if (head !== "%PDF") {
+    return c.json({ ok: false, error: "invalid pdf payload" }, 400);
+  }
+  const result = await verifiedReport(tool, token);
+  if ("status" in result) {
+    return c.json(
+      {
+        ok: false,
+        error:
+          result.status === 404
+            ? "report not found"
+            : "invalid or expired link",
+      },
+      result.status
+    );
+  }
+  await saveReportPdf(result.row.id, pdfBase64);
+  return c.json({ ok: true });
+});
+
+/* Symptom → product, per the method's routing table (KB §8.1): brand-flavoured
+ * gaps point to Brand3D™, numbers/offer gaps to the flagship Clarity Sprint™.
+ * Only used for the brand check — the scorecard reuses its own routing. */
+const BRAND_CHECK_PRODUCT_BY_DIM: Record<string, string> = {
+  "Positioning & Differentiation": "Brand3D™",
+  "Audience Precision": "Brand3D™",
+  "Marketing Engine": "Brand3D™",
+  "Brand Identity & Trust Signals": "Brand3D™",
+  "Offer & Pricing Clarity": "Clarity Sprint™",
+  "Metrics & ROI Visibility": "Clarity Sprint™",
+  "Ambition & Readiness": "Founder Mentoring™",
+};
+
+type DimEntry = { key?: string; label?: string; raw?: number; pct?: number };
+
+function weakestDim(rowDims: unknown): DimEntry | null {
+  if (!Array.isArray(rowDims) || !rowDims.length) return null;
+  let weakest: DimEntry | null = null;
+  for (const d of rowDims as DimEntry[]) {
+    if (!d || typeof d !== "object") continue;
+    if (!weakest || (d.pct ?? 101) < (weakest.pct ?? 101)) weakest = d;
+  }
+  return weakest;
+}
+
+/** Summary email with the PDF attached. Idempotent per report — the engine
+ *  triggers it after the first full render; a retake updates the report but
+ *  doesn't re-email (the email links back to the live report). */
+reportApp.post("/send-email", async c => {
+  if (!(await rateLimit(`report:email:${clientIp(c)}`, 20, 10 * 60 * 1000))) {
+    return c.json(
+      { ok: false, error: "Too many requests. Please try again shortly." },
+      429
+    );
+  }
+  let body: Record<string, unknown>;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ ok: false, error: "invalid json" }, 400);
+  }
+  const tool = String(body.tool ?? "");
+  const token = String(body.token ?? "");
+  if (
+    !(await rateLimit(`report:email:tok:${tool}:${token}`, 3, 10 * 60 * 1000))
+  ) {
+    return c.json(
+      { ok: false, error: "Too many requests. Please try again shortly." },
+      429
+    );
+  }
+  const result = await verifiedReport(tool, token);
+  if ("status" in result) {
+    return c.json(
+      {
+        ok: false,
+        error:
+          result.status === 404
+            ? "report not found"
+            : "invalid or expired link",
+      },
+      result.status
+    );
+  }
+  const { row } = result;
+  if (row.reportEmailedAt) {
+    return c.json({ ok: true, already: true });
+  }
+
+  const weak = weakestDim(row.dims);
+  let productLabel: string | null = null;
+  if (tool === "clarity-scorecard") {
+    const domains = Array.isArray(row.dims)
+      ? (row.dims as DimEntry[]).map(d => ({
+          key: String(d.key ?? ""),
+          raw: Number(d.raw ?? 0),
+          pct: Number(d.pct ?? 0),
+        }))
+      : [];
+    const report = buildScorecardReport({ total: row.total, domains });
+    if (report?.recommendation?.product) {
+      productLabel = `${report.recommendation.product}™`;
+    }
+  } else if (weak?.key) {
+    productLabel = BRAND_CHECK_PRODUCT_BY_DIM[weak.key] ?? "Clarity Sprint™";
+  }
+
+  await markReportEmailed(row.id);
+  const sent = await sendReportSummary({
+    tool,
+    email: row.email,
+    name: reportContactName(row.contact),
+    total: row.total,
+    band: row.band,
+    weakestDimLabel: weak?.label ?? weak?.key ?? null,
+    productLabel,
+    token,
+    pdfBase64: row.pdf ?? null,
+  });
+  if (!sent.ok) {
+    logger.warn("report summary email failed", { tool, error: sent.error });
+  }
+  return c.json({ ok: true, emailed: sent.ok });
 });
 
 /** Invoice path: flag the report as invoice-requested and tell the owner

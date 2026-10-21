@@ -2285,6 +2285,87 @@ import QRCode from "qrcode";
         });
     }
 
+    /* ---- summary email with the PDF attached ---- */
+
+    var EMAIL_FLAG_KEY = "ehiveAssessEmailed";
+    function emailedMap() {
+      try {
+        return JSON.parse(global.localStorage.getItem(EMAIL_FLAG_KEY) || "{}");
+      } catch (e) {
+        return {};
+      }
+    }
+    function wasEmailed(token) {
+      return !!emailedMap()[config.tool + ":" + token];
+    }
+    function markEmailed(token) {
+      var m = emailedMap();
+      m[config.tool + ":" + token] = 1;
+      try {
+        global.localStorage.setItem(EMAIL_FLAG_KEY, JSON.stringify(m));
+      } catch (e) {}
+    }
+    function bytesToBase64(bytes) {
+      var bin = "";
+      var CHUNK = 32768;
+      for (var i = 0; i < bytes.length; i += CHUNK) {
+        bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+      }
+      return btoa(bin);
+    }
+    /* Generate the same PDF the download button builds, upload it (so the
+     * summary email can attach it), then ask the server to send the summary.
+     * Idempotent per token: localStorage flag + server-side reportEmailedAt. */
+    function emailReportCopy(btn, dims, total, band, token) {
+      if (!token) return Promise.resolve(false);
+      function setBtn(label, disabled, failed) {
+        if (!btn) return;
+        btn.disabled = !!disabled;
+        if (label) btn.textContent = label;
+        btn.classList.toggle("assess-pdf-failed", !!failed);
+      }
+      setBtn("Sending…", true, false);
+      var pdfBytes = null;
+      function upload() {
+        return fetchJSON("/api/report/upload-pdf", {
+          method: "POST",
+          body: { tool: config.tool, token: token, pdfBase64: bytesToBase64(pdfBytes) },
+        });
+      }
+      return buildReportPdf(config, {
+        dims: dims,
+        total: total,
+        band: band,
+        answers: S.answers || {},
+        token: token,
+        ai: aiNarrativeFor(token, total, band.key),
+      })
+        .then(function (bytes) {
+          pdfBytes = bytes;
+        })
+        .then(upload)
+        .catch(function () {
+          return new Promise(function (r) {
+            setTimeout(r, 5000);
+          }).then(upload);
+        })
+        .then(function () {
+          return fetchJSON("/api/report/send-email", {
+            method: "POST",
+            body: { tool: config.tool, token: token },
+          });
+        })
+        .then(function () {
+          markEmailed(token);
+          setBtn("Sent — check your inbox", false, false);
+          return true;
+        })
+        .catch(function () {
+          setBtn("Couldn't send — try again", false, true);
+          return false;
+        });
+    }
+
     function renderReport(dims, total, band, opts) {
       var box = document.getElementById("assessReport");
       if (!box) return;
@@ -2418,9 +2499,21 @@ import QRCode from "qrcode";
         '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
         '<path d="M8 2v8m0 0 3-3M8 10 5 7"/><path d="M3 12.5V13.5h10v-1"/></svg>' +
         "<span>Download PDF report</span></button>" +
+        '<button class="assess-btn-ghost assess-email-btn" id="assessEmailBtn">Email me a copy</button>' +
         '<button class="assess-btn-ghost assess-print-btn" id="assessPrint">Print / save as PDF</button>' +
         "</div>" +
         "</article>";
+
+      var reportToken = (opts && opts.token) || S.token;
+      var emailBtn = document.getElementById("assessEmailBtn");
+      if (emailBtn)
+        emailBtn.addEventListener("click", function () {
+          if (wasEmailed(reportToken)) {
+            emailBtn.textContent = "Already sent — check your inbox";
+            return;
+          }
+          emailReportCopy(emailBtn, dims, total, band, reportToken);
+        });
 
       var printBtn = document.getElementById("assessPrint");
       if (printBtn)
@@ -2430,9 +2523,18 @@ import QRCode from "qrcode";
       var pdfBtn = document.getElementById("assessPdfBtn");
       if (pdfBtn)
         pdfBtn.addEventListener("click", function () {
-          downloadReportPdf(pdfBtn, dims, total, band, (opts && opts.token) || S.token);
+          downloadReportPdf(pdfBtn, dims, total, band, reportToken);
         });
       aiApply();
+      /* Deliver the summary email (PDF attached) once per report, shortly
+       * after the first full render — by then the AI narrative has usually
+       * landed, so the attached PDF carries it. Server-side idempotency
+       * (reportEmailedAt) covers flag loss. */
+      if (reportToken && !wasEmailed(reportToken)) {
+        setTimeout(function () {
+          emailReportCopy(null, dims, total, band, reportToken);
+        }, 6000);
+      }
       global.scrollTo({ top: 0, behavior: "smooth" });
     }
 

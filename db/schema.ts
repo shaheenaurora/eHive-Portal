@@ -4,6 +4,7 @@ import {
   serial,
   varchar,
   text,
+  mediumtext,
   timestamp,
   bigint,
   int,
@@ -2489,6 +2490,13 @@ export const assessmentReports = mysqlTable(
     /* Stripe checkout session id while a payment is in flight; also how the
        webhook finds the row to mark paid. */
     stripeSessionId: varchar("stripeSessionId", { length: 128 }),
+    /* Designed PDF of the full report, base64 (posted by the engine to
+       /api/report/upload-pdf). mediumtext holds ~16MB — far above the 1.5MB
+       upload cap — and retakes simply overwrite it. */
+    pdf: mediumtext("pdf"),
+    /* Set once the summary email (PDF attached) has gone out — POST
+       /api/report/send-email is idempotent on this marker. */
+    reportEmailedAt: timestamp("reportEmailedAt"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt")
       .defaultNow()

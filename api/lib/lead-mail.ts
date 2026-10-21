@@ -316,7 +316,15 @@ export async function notifyLead(input: {
   }
 
   // 2) Confirm to the person who filled the form (if they gave an email).
-  if (input.email) {
+  //  Engine submissions (brand-check / clarity-scorecard with structured
+  //  sections or domains) get the report summary + attached PDF from the
+  //  report flow instead (api/report-routes /send-email) — the owner wants a
+  //  short mail with the PDF attached, not detailed in-line results.
+  const engineReportSubmission =
+    (input.form === "brand-check" || input.form === "clarity-scorecard") &&
+    (Array.isArray(input.payload.sections) ||
+      Array.isArray(input.payload.domains));
+  if (input.email && !engineReportSubmission) {
     const name =
       typeof input.payload.name === "string"
         ? input.payload.name.split(" ")[0]
@@ -342,7 +350,8 @@ export async function notifyLead(input: {
     if (!r.ok && r.error) errors.push(r.error);
   }
 
-  const ok = ownerSent && (!input.email || confirmSent);
+  const ok =
+    ownerSent && (!input.email || confirmSent || engineReportSubmission);
   return {
     ok,
     ownerSent,
