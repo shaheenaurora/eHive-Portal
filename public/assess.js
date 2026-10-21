@@ -2470,6 +2470,13 @@ import QRCode from "qrcode";
         "<h1 style=\"margin-top:10px\">" + esc(config.title) + "</h1>" +
         (opts && opts.saved ? '<p class="assess-saved-note">Your saved report' + (opts.token ? " · " + esc(opts.token) : "") + "</p>" : "") +
         "</div>" +
+        '<div class="assess-actions assess-actions-top">' +
+        '<button type="button" class="assess-btn assess-btn-coral assess-pdf-btn" id="assessPdfBtnTop">' +
+        '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<path d="M8 2v8m0 0 3-3M8 10 5 7"/><path d="M3 12.5V13.5h10v-1"/></svg>' +
+        "<span>Download PDF report</span></button>" +
+        '<button class="assess-btn-ghost assess-email-btn" id="assessEmailBtnTop">Email me a copy</button>' +
+        "</div>" +
         dimsHtml +
         '<div data-ai-cross></div>' +
         '<div class="assess-roadmap"><h2 style="margin-bottom:6px">Your first 90 days</h2>' + phases + "</div>" +
@@ -2505,26 +2512,32 @@ import QRCode from "qrcode";
         "</article>";
 
       var reportToken = (opts && opts.token) || S.token;
-      var emailBtn = document.getElementById("assessEmailBtn");
-      if (emailBtn)
-        emailBtn.addEventListener("click", function () {
-          if (wasEmailed(reportToken)) {
-            emailBtn.textContent = "Already sent — check your inbox";
-            return;
-          }
-          emailReportCopy(emailBtn, dims, total, band, reportToken);
+      function bindAll(ids, fn) {
+        ids.forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el) fn(el);
         });
-
-      var printBtn = document.getElementById("assessPrint");
-      if (printBtn)
-        printBtn.addEventListener("click", function () {
+      }
+      bindAll(["assessPrint", "assessPrintTop"], function (el) {
+        el.addEventListener("click", function () {
           global.print();
         });
-      var pdfBtn = document.getElementById("assessPdfBtn");
-      if (pdfBtn)
-        pdfBtn.addEventListener("click", function () {
-          downloadReportPdf(pdfBtn, dims, total, band, reportToken);
+      });
+      bindAll(["assessPdfBtn", "assessPdfBtnTop"], function (el) {
+        el.addEventListener("click", function () {
+          downloadReportPdf(el, dims, total, band, reportToken);
         });
+      });
+      bindAll(["assessEmailBtn", "assessEmailBtnTop"], function (el) {
+        el.addEventListener("click", function () {
+          if (wasEmailed(reportToken)) {
+            el.textContent = "Already sent — check your inbox";
+            return;
+          }
+          emailReportCopy(el, dims, total, band, reportToken);
+        });
+      });
+
       aiApply();
       /* Deliver the summary email (PDF attached) once per report, shortly
        * after the first full render — by then the AI narrative has usually

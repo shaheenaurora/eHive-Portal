@@ -369,6 +369,13 @@ function LeadDetail({
   onSaved: () => void;
 }) {
   const roster = trpc.admin.adminRoster.useQuery(undefined, { retry: false });
+  const reportLink = trpc.reportLinkForLead.useQuery(
+    { leadId: lead.id },
+    {
+      retry: false,
+      enabled: lead.form === "brand-check" || lead.form === "clarity-scorecard",
+    }
+  );
   const update = trpc.admin.updateLead.useMutation({
     onSuccess: () => {
       toast("Lead updated.");
@@ -414,6 +421,20 @@ function LeadDetail({
       onClose={onClose}
       wide
     >
+      {/* The exact report the founder saw — scores, analysis, watch-outs,
+          roadmap — opens in a new tab from the report token. */}
+      {reportLink.data?.url && (
+        <p style={{ margin: "0 0 .8rem" }}>
+          <a
+            className="eh-btn gold"
+            href={reportLink.data.url}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Open the full report they received ↗
+          </a>
+        </p>
+      )}
       {/* ---- Clarity Scorecard report ---- */}
       {report && (
         <div

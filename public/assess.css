@@ -1379,6 +1379,13 @@ body.embed .assess-wrap {
   flex-wrap: wrap;
   margin: 24px 0 0;
 }
+/* top-of-report action bar — the report is long; download/email must be
+   visible immediately, not only at the bottom. */
+.assess-actions-top {
+  margin: 4px 0 20px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(20, 19, 18, 0.12);
+}
 .assess-pdf-btn {
   display: inline-flex;
   align-items: center;

@@ -2,6 +2,8 @@ import { z } from "zod";
 import { eq, desc, sql, and, gte, lte } from "drizzle-orm";
 import * as schema from "@db/schema";
 import { escapeHtml } from "./lib/html";
+import { env } from "./lib/env";
+import { findReportByToolEmail } from "./queries/assessment-reports";
 import { authRouter } from "./auth-router";
 import { circleRouter } from "./circle-router";
 import { adminRouter } from "./admin-router";
@@ -104,6 +106,33 @@ export const appRouter = createRouter({
         .set({ nurtureStage: input.stage })
         .where(eq(schema.scorecardResults.id, input.id));
       return { ok: true };
+    }),
+
+  /* The full designed report for a tool lead — lets the team read exactly what
+   * the founder saw (scores, analysis, watch-outs) before the discovery call.
+   * Joins the lead to its saved assessment report by (tool, email). */
+  reportLinkForLead: scopedAdmin("leads")
+    .input(z.object({ leadId: z.number().int().positive() }))
+    .query(async ({ input }) => {
+      const lead = (
+        await getDb()
+          .select()
+          .from(schema.leads)
+          .where(eq(schema.leads.id, input.leadId))
+          .limit(1)
+      ).at(0);
+      if (
+        !lead ||
+        !lead.email ||
+        (lead.form !== "brand-check" && lead.form !== "clarity-scorecard")
+      ) {
+        return { url: null as string | null };
+      }
+      const report = await findReportByToolEmail(lead.form, lead.email);
+      if (!report) return { url: null as string | null };
+      return {
+        url: `${env.publicUrl}/${lead.form}.html?report=${encodeURIComponent(report.token)}`,
+      };
     }),
 
   sendScorecardFollowUp: scopedAdmin("leads")

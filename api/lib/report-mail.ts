@@ -111,7 +111,7 @@ export async function sendReportSummary(input: {
     ? `You scored <strong style="color:#101d2c">${esc(input.total)}/100 — ${esc(input.band)}</strong>.`
     : `You scored <strong style="color:#101d2c">${esc(input.total)}/100</strong>.`;
   const readLine = input.pdfBase64
-    ? `Your full report is <strong>attached as a PDF</strong> — your dimension-by-dimension analysis, watch-outs and your 90-day roadmap.`
+    ? `Your full report is <strong>attached as a PDF</strong> — your dimension-by-dimension analysis, watch-outs and your 90-day roadmap. You can also download it any time from your report page (the Download button at the top).`
     : `Your full report — dimension-by-dimension analysis, watch-outs and your 90-day roadmap — is ready:`;
   const weakestLine = input.weakestDimLabel
     ? `Your clearest gap sits in <strong style="color:#101d2c">${esc(input.weakestDimLabel)}</strong>${
